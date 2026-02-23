@@ -8,7 +8,8 @@
 
 ### **LLM Security Guardrails for Node.js**
 
-[![npm](https://img.shields.io/npm/v/%40blackunicorn%2Fbonklm)](https://www.npmjs.com/package/@blackunicorn/bonklm)
+[![npm version](https://badge.fury.io/js/%40blackunicorn%2Fbonklm.svg)](https://www.npmjs.com/package/@blackunicorn/bonklm)
+[![npm downloads](https://img.shields.io/npm/dm/%40blackunicorn%2Fbonklm)](https://www.npmjs.com/package/@blackunicorn/bonklm)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/node/v/%40blackunicorn%2Fbonklm.svg)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
@@ -176,14 +177,17 @@ interface GuardrailResult {
 
 ## 🔌 Integrations
 
-BonkLM works with **any** Node.js framework, LLM provider, or platform. Official connector packages available for:
+BonkLM works with **any** Node.js framework, LLM provider, or platform. The core library is framework-agnostic and can be integrated directly. The connector packages below are available in the repository for monorepo usage.
+
+> **Note:** Connector packages are currently available for use within this monorepo. For standalone npm package installation, use the core `@blackunicorn/bonklm` package which includes all validators and guards.
 
 ### Framework Middleware
 
 ```bash
-npm install @blackunicorn/bonklm-express      # Express
-npm install @blackunicorn/bonklm-fastify      # Fastify
-npm install @blackunicorn/bonklm-nestjs       # NestJS
+npm install @blackunicorn/bonklm-express      # Express middleware
+npm install @blackunicorn/bonklm-fastify      # Fastify plugin
+npm install @blackunicorn/bonklm-nestjs       # NestJS module
+npm install @blackunicorn/bonklm-openclaw     # OpenClaw integration
 ```
 
 ### AI SDKs
@@ -221,12 +225,20 @@ npm install @blackunicorn/bonklm-genkit       # Google Genkit
 npm install @blackunicorn/bonklm-copilotkit   # CopilotKit
 ```
 
+### Additional Packages
+
+```bash
+npm install @blackunicorn/bonklm-wizard       # Interactive setup CLI
+npm install @blackunicorn/bonklm-logger       # Structured logging utilities
+```
+
 ---
 
 ## 📚 Documentation
 
 - **[Getting Started Guide](./docs/getting-started.md)** - Complete setup guide
 - **[API Reference](./docs/api-reference.md)** - Full API documentation
+- **[OpenClaw Integration Guide](./docs/openclaw-integration.md)** - OpenClaw connector setup
 - **[User Documentation](./docs/user/README.md)** - Comprehensive user guide
 - **[Release Notes](./RELEASE-NOTES.md)** - What's new in v0.2.0
 
