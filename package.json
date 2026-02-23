@@ -1,5 +1,5 @@
 {
-  "name": "@blackunicorn/bonklm-monorepo",
+  "name": "@blackunicorn-bonklm",
   "version": "0.2.0",
   "description": "BonkLM - LLM Security Guardrails for prompt injection, jailbreak, and content validation",
   "private": true,
