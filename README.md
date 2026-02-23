@@ -6,7 +6,7 @@
 
 <div align="center">
 
-### **Production-Ready LLM Security Guardrails for Node.js**
+### **LLM Security Guardrails for Node.js**
 
 [![npm](https://img.shields.io/npm/v/%40blackunicorn%2Fbonklm)](https://www.npmjs.com/package/@blackunicorn/bonklm)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -288,7 +288,6 @@ MIT © [Black Unicorn](https://blackunicorn.tech)
 
 ## 🔗 Links
 
-- **Documentation**: [docs.bonklm.dev](https://docs.bonklm.dev)
 - **GitHub**: [github.com/blackunicorn/bonklm](https://github.com/blackunicorn/bonklm)
 - **npm**: [npmjs.com/package/@blackunicorn/bonklm](https://www.npmjs.com/package/@blackunicorn/bonklm)
 - **Issues**: [github.com/blackunicorn/bonklm/issues](https://github.com/blackunicorn/bonklm/issues)
