@@ -52,10 +52,11 @@ work:
   filtered to `Severity.WARNING` or `CRITICAL` before flipping
   `contains_injection` — INFO-only patterns (e.g. `priority_markers`) no
   longer escalate the wrapping `multi_layer_encoding` finding to CRITICAL.
-- **`StreamValidationError` consolidated.** Was duplicated 7 times across
-  the monorepo; cross-package `instanceof` checks silently failed.
-  6 connector type files now re-export from
-  `@blackunicorn/bonklm/core/connector-utils` (single source of truth).
+- **`StreamValidationError` consolidated.** Was duplicated across the
+  monorepo; cross-package `instanceof` checks silently failed. All connector
+  type files (mastra, openai, anthropic, langchain, copilotkit, genkit,
+  ollama) now re-export from `@blackunicorn/bonklm/core/connector-utils`
+  (single source of truth).
 - **`validatePositiveNumber` hoisted.** Was copy-pasted into 8 connectors.
   Moved to `packages/core/src/connector-utils/validation-helpers.ts`; all
   connectors import from there.
@@ -64,10 +65,12 @@ work:
   carries no source tree — changesets stops publishing it. The duplicate
   5000-line CLI tree under `packages/wizard/src/` (1:1 mirror of
   `packages/core/src/cli/`) was deleted.
-- **`streamingMode: 'buffer'` honesty.** The 3 connectors that never
-  implemented the mode (openai, anthropic, langchain) now log an explicit
-  warning instead of silently no-op'ing. Connectors that do implement
-  buffer mode (copilotkit, genkit, mastra, vercel) continue to work.
+- **`streamingMode: 'buffer'` honesty.** openai and anthropic connectors
+  now log an explicit `logger.warn` when `'buffer'` is passed (was silent
+  no-op). langchain marks the field `@deprecated` in JSDoc since it
+  validates at stream-end regardless of mode. Connectors that genuinely
+  implement buffer mode (copilotkit, genkit, mastra, vercel) continue to
+  work as before.
 - **`Validator` and `Guard` interfaces widened** to
   `validate(content): GuardrailResult | Promise<GuardrailResult>` for
   forward-compatibility with ML / remote-API validators.
