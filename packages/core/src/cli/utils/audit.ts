@@ -15,7 +15,7 @@
 import { appendFile, chmod, mkdir, readFile, stat } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { createHmac } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { WizardError } from './error.js';
 
 /**
@@ -53,7 +53,7 @@ if (!hmacSecretFromEnv) {
     );
   }
   // For development, generate a random key at startup
-  HMAC_SECRET = require('crypto').randomBytes(32).toString('base64');
+  HMAC_SECRET = randomBytes(32).toString('base64');
   console.warn('[SECURITY] Using temporary HMAC key for development. Set LLM_GUARDRAILS_AUDIT_KEY in production!');
 } else {
   HMAC_SECRET = hmacSecretFromEnv;

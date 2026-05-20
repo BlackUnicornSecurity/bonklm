@@ -119,8 +119,13 @@ function detectMultiLayerEncoding(content: string, maxDepth: number = MAX_DECODE
       const result = iterativeDecode(encodedText, processedInputs, maxDepth);
 
       if (result.decodeLayers.length > 1) {
-        // Run the full pattern suite on the decoded payload, not a 4-keyword grep.
-        const containsInjection = detectPatterns(result.finalDecoded).length > 0;
+        // Run the full pattern suite on the decoded payload. Filter to WARNING+
+        // so low-signal INFO patterns (e.g. priority_markers) don't escalate the
+        // multi-layer finding to CRITICAL on benign content.
+        const decodedFindings = detectPatterns(result.finalDecoded);
+        const containsInjection = decodedFindings.some(
+          (f) => f.severity === Severity.WARNING || f.severity === Severity.CRITICAL
+        );
 
         findings.push({
           category: 'multi_layer_encoding',
@@ -286,8 +291,12 @@ function detectBase64Payloads(text: string): Base64Finding[] {
         continue;
       }
 
-      // Run the full pattern suite on the decoded payload, not a narrow keyword regex.
-      const containsInjection = detectPatterns(decoded).length > 0;
+      // Run the full pattern suite on the decoded payload. Filter to WARNING+
+      // so low-signal INFO patterns don't escalate the base64 finding to CRITICAL.
+      const decodedFindings = detectPatterns(decoded);
+      const containsInjection = decodedFindings.some(
+        (f) => f.severity === Severity.WARNING || f.severity === Severity.CRITICAL
+      );
 
       findings.push({
         category: 'base64_payload',

@@ -45,8 +45,18 @@ const hmacMock = {
 };
 
 const createHmacMock = vi.fn(() => hmacMock);
+// `randomBytes` is called at MODULE-INIT time inside `audit.ts` to generate a
+// dev-only HMAC key when LLM_GUARDRAILS_AUDIT_KEY is unset. Since vi.mock is
+// hoisted above all top-level statements, the mock factory runs before any
+// regular const declaration. vi.hoisted ensures `randomBytesMock` is defined
+// when the mock factory references it. `createHmac` doesn't need this because
+// it's only invoked from method bodies, after beforeEach() has run.
+const { randomBytesMock } = vi.hoisted(() => ({
+  randomBytesMock: () => Buffer.from('deadbeefdeadbeefdeadbeefdeadbeef', 'hex'),
+}));
 vi.mock('node:crypto', () => ({
   createHmac: (...args: unknown[]) => createHmacMock(...args),
+  randomBytes: (...args: unknown[]) => randomBytesMock(),
 }));
 
 describe('AuditLogger', () => {

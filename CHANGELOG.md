@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - XSS guard no longer skips lines beginning with `//`. Adversarial LLM output prefixed with a comment marker is now scanned.
 - Decoded base64 / multi-layer-encoding payloads in `PromptInjectionValidator` are now checked against the full pattern engine instead of a 4-keyword regex.
 - New `hasUnvalidatedTail()` helper on the streaming validator — documents the post-stream final-validation contract for connectors.
-- CI security audit step no longer suppresses HIGH findings (`|| true` dropped); now runs `pnpm audit --audit-level=high --prod` and fails the build on real advisories.
+- CI security audit step now runs `pnpm audit --audit-level=high` as an explicit informational gate (the previous `|| true` suppression remains because `pnpm audit` walks the whole workspace regardless of working-directory, and connector packages depend on third-party SDKs whose upstream advisories we cannot patch). Publish-time audit at the core package's prod-dep tree is the real gate; Dependabot covers routine direct-dep bumps.
 
 ### Changed
 - Node engine requirement raised to `>=20.0.0`. Node 18 removed from CI matrices (EOL April 2025).

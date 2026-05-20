@@ -18,17 +18,42 @@ export default defineConfig({
     coverage: {
       provider: 'istanbul',
       reporter: ['text', 'json', 'html', 'json-summary'],
-      include: ['packages/core/src/**/*.ts'],
-      exclude: ['**/*.d.ts', 'node_modules/**', 'dist/**', 'packages/*/tests/**'],
+      include: [
+        'packages/core/src/**/*.ts',
+        'packages/*/src/**/*.ts',
+      ],
+      exclude: [
+        '**/*.d.ts',
+        'node_modules/**',
+        'dist/**',
+        'packages/*/tests/**',
+        'packages/*/examples/**',
+        'packages/examples/**',
+        'packages/core/uat/**',
+        'packages/core/benchmarks/**',
+        // Wizard CLI is interactive / I/O-driven — hard to cover meaningfully in unit tests.
+        'packages/wizard/src/**',
+      ],
       all: true,
       extension: ['.js', '.ts', '.jsx', '.tsx'],
       usePerFileCoverage: true,
-      // CLAUDE.md 80% coverage requirement
+      // CLAUDE.md 80% requirement for core (validators/guards/engine — security-critical).
+      // Connectors are integration-glue and get a relaxed floor — they catch
+      // hasUnvalidatedTail() wire-up gaps and other seam regressions without
+      // requiring full unit coverage of mocked-SDK code paths.
       thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 75,
-        statements: 80,
+        // Global floor across all included files.
+        lines: 60,
+        functions: 60,
+        branches: 50,
+        statements: 60,
+        // Strict per-file thresholds for security-critical core code.
+        'packages/core/src/**/*.ts': {
+          lines: 80,
+          functions: 80,
+          branches: 75,
+          statements: 80,
+        },
       },
     },
     testTimeout: 30000,
