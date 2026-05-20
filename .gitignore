@@ -1,6 +1,17 @@
 # BonkLM .gitignore
 
 # ===================
+# Legacy framework leftovers (defensive — these directories should never
+# come back into the repo)
+# ===================
+_bmad/
+_bmad-output/
+_bmad-backup-*/
+packages/wizard/src/
+packages/wizard/dist/
+packages/wizard/tests/
+
+# ===================
 # Node.js
 # ===================
 node_modules/
