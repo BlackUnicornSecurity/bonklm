@@ -64,3 +64,6 @@ export {
   logTimeout,
   type StandardLoggerOptions,
 } from './logger.js';
+
+// Validation helpers
+export { validatePositiveNumber } from './validation-helpers.js';

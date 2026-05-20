@@ -9,10 +9,12 @@
  */
 
 import type {
+  Logger,
   PromptInjectionConfig,
   SecretGuardConfig,
 } from '@blackunicorn/bonklm';
 import {
+  createLogger,
   createResult,
   type GuardrailResult,
   PromptInjectionValidator,
@@ -34,21 +36,6 @@ const DEFAULT_CONFIG: Required<Omit<OpenClawAdapterConfig, 'logger'>> = {
 };
 
 /**
- * Simple logger implementation
- */
-class ConsoleLogger {
-  info(message: string, context?: Record<string, unknown>): void {
-    console.log(`[INFO] ${message}`, context || '');
-  }
-  warn(message: string, context?: Record<string, unknown>): void {
-    console.warn(`[WARN] ${message}`, context || '');
-  }
-  error(message: string, context?: Record<string, unknown>): void {
-    console.error(`[ERROR] ${message}`, context || '');
-  }
-}
-
-/**
  * OpenClaw Guardrails Middleware
  *
  * Integrates with OpenClaw's hook system to provide security validation
@@ -56,7 +43,7 @@ class ConsoleLogger {
  */
 export class OpenClawGuardrailsMiddleware {
   private readonly config: Required<OpenClawAdapterConfig>;
-  private readonly logger: ConsoleLogger;
+  private readonly logger: Logger;
   private readonly promptInjectionValidator: PromptInjectionValidator;
   private readonly secretGuard: SecretGuard;
 
@@ -67,12 +54,15 @@ export class OpenClawGuardrailsMiddleware {
       secret?: SecretGuardConfig;
     }
   ) {
+    // Use the shared Logger contract from core instead of a local
+    // class-with-console-log so consumers can pass in their structured
+    // logger (e.g. pino, winston) via config.logger.
     this.config = {
       ...DEFAULT_CONFIG,
       ...config,
-      logger: config.logger ?? new ConsoleLogger(),
+      logger: config.logger ?? createLogger('console'),
     } as Required<OpenClawAdapterConfig>;
-    this.logger = this.config.logger as unknown as ConsoleLogger;
+    this.logger = this.config.logger as unknown as Logger;
 
     this.promptInjectionValidator = new PromptInjectionValidator(validators?.promptInjection);
     this.secretGuard = new SecretGuard(validators?.secret);

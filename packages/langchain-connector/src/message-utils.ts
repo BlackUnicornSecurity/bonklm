@@ -30,13 +30,7 @@ export interface LLMResultLike {
  *
  * @throws {TypeError} If value is not a positive finite number.
  */
-export function validatePositiveNumber(value: number, optionName: string): void {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    throw new TypeError(
-      `${optionName} must be a positive number. Received: ${value}`,
-    );
-  }
-}
+
 
 /**
  * Extracts text content from message-like objects.

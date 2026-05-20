@@ -12,13 +12,15 @@ import type { OverrideTokenConfigString } from '../security/override-token.js';
 /**
  * Validator instance interface.
  * All validators must implement a validate method that accepts content
- * and returns a GuardrailResult.
+ * and returns a GuardrailResult. The return type accepts either a
+ * synchronous result or a Promise so future ML / remote-API validators
+ * can plug in without breaking existing sync validators.
  */
 export interface Validator {
   /**
-   * Validate content and return a result.
+   * Validate content and return a result (sync or async).
    */
-  validate(content: string): GuardrailResult;
+  validate(content: string): GuardrailResult | Promise<GuardrailResult>;
 
   /**
    * Optional validator name for identification.
@@ -29,12 +31,13 @@ export interface Validator {
 /**
  * Guard instance interface.
  * Guards validate content with optional context (e.g., file path).
+ * Return type accepts sync or Promise for forward compatibility.
  */
 export interface Guard {
   /**
-   * Validate content and return a result.
+   * Validate content and return a result (sync or async).
    */
-  validate(content: string, context?: string): GuardrailResult;
+  validate(content: string, context?: string): GuardrailResult | Promise<GuardrailResult>;
 
   /**
    * Optional guard name for identification.

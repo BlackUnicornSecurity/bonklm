@@ -77,9 +77,12 @@ const CRITICAL_PATTERNS: SecretPattern[] = [
   // SendGrid
   { pattern: /SG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}/g, secretType: 'SendGrid API Key', confidence: 'critical' },
 
-  // Mailgun — require a credential-assignment context to reduce false positives.
-  // Bare `key-XXX` 32-char strings matched too many feature-flag and config-key identifiers.
-  { pattern: /(?:mailgun|api[_-]?key|mg[_-]?key)\s*[=:]\s*["']?key-[A-Za-z0-9]{32}["']?/gi, secretType: 'Mailgun API Key', confidence: 'critical' },
+  // Mailgun — require a Mailgun-adjacent identifier within 120 chars OR a
+  // credential-noun (key/token/secret/auth/api) on the same line so we
+  // tolerate naming variations (MAILGUN_TOKEN, MG_AUTH_KEY, yaml `mailgun:\n  key: …`)
+  // without flagging every bare `key-…` 32-char identifier.
+  { pattern: /\bmailgun[\w-]*\s*[:=]?[\s\S]{0,120}?key-[A-Za-z0-9]{32}\b/gi, secretType: 'Mailgun API Key (named)', confidence: 'critical' },
+  { pattern: /\b(?:api[_-]?key|api[_-]?token|secret|auth[_-]?key|auth[_-]?token|token|mg[_-]?[\w-]*key|mg[_-]?[\w-]*token)\b[\s\S]{0,40}?["']?key-[A-Za-z0-9]{32}\b/gi, secretType: 'Mailgun API Key (credential context)', confidence: 'critical' },
 
   // Azure
   { pattern: /SharedAccessSignature\s+sr=[^\s&]+&sig=[A-Za-z0-9%+/=]+&/g, secretType: 'Azure Shared Access Signature', confidence: 'critical' },
@@ -188,10 +191,13 @@ export class SecretGuard {
           continue;
         }
 
+        // Redact the matched substring from the line context too — otherwise
+        // logs would carry e.g. `MAILGUN_API_KEY="key-abcdef…"` verbatim.
+        const redactedLine = matchLine.split(matchText).join('[REDACTED]');
         detections.push({
           secretType: secretPattern.secretType,
           match: '[REDACTED]', // Redact matches entirely to prevent partial credential leakage
-          line: matchLine.trim().slice(0, 100),
+          line: redactedLine.trim().slice(0, 100),
           lineNumber,
           confidence: secretPattern.confidence,
         });

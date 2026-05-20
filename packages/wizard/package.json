@@ -1,65 +1,11 @@
 {
   "name": "@blackunicorn/bonklm-wizard",
   "version": "0.3.0",
-  "description": "⚠️ DEPRECATED: This package has been merged into @blackunicorn/bonklm. Please install @blackunicorn/bonklm instead. All wizard functionality is now part of the core package.",
+  "private": true,
+  "deprecated": "This package has been merged into @blackunicorn/bonklm. Please install @blackunicorn/bonklm instead — the `bonklm` CLI is shipped from there now.",
+  "description": "DEPRECATED: merged into @blackunicorn/bonklm. Install @blackunicorn/bonklm instead.",
   "type": "module",
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "bin": {
-    "bonklm": "./dist/bin/run.js"
-  },
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    },
-    "./utils": {
-      "import": "./dist/utils/index.js",
-      "types": "./dist/utils/index.d.ts"
-    }
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
-  "scripts": {
-    "build": "tsc && chmod +x dist/bin/run.js",
-    "dev": "tsc --watch",
-    "test": "vitest",
-    "test:coverage": "vitest --coverage",
-    "lint": "eslint src",
-    "clean": "rm -rf dist"
-  },
-  "keywords": [
-    "llm",
-    "security",
-    "guardrails",
-    "wizard",
-    "cli",
-    "installer"
-  ],
-  "author": "Black Unicorn <security@blackunicorn.tech>",
-  "license": "MIT",
-  "devDependencies": {
-    "@types/node": "^20.11.0",
-    "@types/which": "^3.0.4",
-    "@vitest/coverage-v8": "^4.1.7",
-    "typescript": "^5.3.3",
-    "vitest": "^4.1.7"
-  },
   "engines": {
-    "node": ">=20.0.0"
-  },
-  "dependencies": {
-    "@clack/prompts": "^0.8.2",
-    "commander": "^12.1.0",
-    "dotenv": "^17.3.1",
-    "lru-cache": "^11.2.6",
-    "secure-json-parse": "^2.5.0",
-    "which": "^4.0.0",
-    "zod": "^4.3.6"
+    "node": ">=20.4.0"
   }
 }

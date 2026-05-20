@@ -95,7 +95,6 @@ const MAX_INPUT_LENGTH = 100_000;
  */
 function detectMultiLayerEncoding(content: string, maxDepth: number = MAX_DECODE_DEPTH): MultiLayerEncodingFinding[] {
   const findings: MultiLayerEncodingFinding[] = [];
-  const processedInputs = new Set<string>();
 
   const encodingPatterns = [
     { name: 'base64', pattern: /[A-Za-z0-9+/]{40,}={0,2}/g },
@@ -116,6 +115,11 @@ function detectMultiLayerEncoding(content: string, maxDepth: number = MAX_DECODE
         continue;
       }
 
+      // Scope the loop-detection Set per-match. Sharing one Set across all
+      // patterns let an attacker neutralise a later malicious payload by
+      // priming it with a benign earlier base64 that shares a decode prefix
+      // (the second match would short-circuit with LOOP_DETECTED).
+      const processedInputs = new Set<string>();
       const result = iterativeDecode(encodedText, processedInputs, maxDepth);
 
       if (result.decodeLayers.length > 1) {
@@ -201,13 +205,11 @@ function attemptDecode(content: string): { method: string; result: string } | nu
       if (decoded !== content && decoded.length > 0) {
         return { method: 'base64', result: decoded };
       }
-    } catch (error) {
-      // Log decode failures for security monitoring
-      // Silent failure is acceptable here as we're just detecting patterns
-      if (error instanceof Error && error.message !== 'Invalid input') {
-        // Unexpected errors should be logged in production
-        console.debug('Base64 decode failed:', { inputLength: content.length, error: error.message });
-      }
+    } catch {
+      // Base64 decode failure during pattern detection is expected for
+      // many non-base64 substrings. Swallow silently — we already iterate
+      // through every potential encoding and rely on type-of-match, not
+      // exception flow.
     }
   }
 

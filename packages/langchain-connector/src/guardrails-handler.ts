@@ -51,8 +51,8 @@ import {
   extractLLMResultText,
   type LLMResultLike,
   messagesToText,
-  validatePositiveNumber,
 } from './message-utils.js';
+import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * Default logger instance.

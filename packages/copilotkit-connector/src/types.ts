@@ -257,16 +257,7 @@ export interface GuardedCopilotKitOptions {
  * @remarks
  * This error class is provided for type-checking and catching stream validation errors.
  */
-export class StreamValidationError extends Error {
-  constructor(
-    message: string,
-    public readonly reason: string,
-    public readonly blocked: boolean = true,
-  ) {
-    super(message);
-    this.name = 'StreamValidationError';
-  }
-}
+export { StreamValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * Validation interval for incremental stream validation.

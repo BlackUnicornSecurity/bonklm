@@ -25,12 +25,11 @@
       "@blackunicorn/bonklm-pinecone",
       "@blackunicorn/bonklm-qdrant",
       "@blackunicorn/bonklm-vercel",
-      "@blackunicorn/bonklm-weaviate",
-      "@blackunicorn/bonklm-wizard"
+      "@blackunicorn/bonklm-weaviate"
     ]
   ],
+  "ignore": ["@blackunicorn/bonklm-wizard"],
   "access": "public",
   "baseBranch": "main",
-  "updateInternalDependencies": "patch",
-  "ignore": []
+  "updateInternalDependencies": "patch"
 }
