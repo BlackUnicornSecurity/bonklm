@@ -16,6 +16,11 @@ import {
   type JailbreakAnalysisResult,
 } from '../src/validators/jailbreak';
 import {
+  ALL_PATTERNS,
+  JAILBREAK_KEYWORDS,
+  JAILBREAK_PHRASES,
+} from '../src/validators/jailbreak-patterns';
+import {
   clearAllSessions,
   resetSessionState,
   getSessionState,
@@ -27,6 +32,24 @@ describe('JailbreakValidator', () => {
   beforeEach(() => {
     // Clear all sessions before each test
     clearAllSessions();
+  });
+
+  describe('Pattern Inventory (regression guard against accidental pattern removal)', () => {
+    it('ALL_PATTERNS contains a non-empty, named-pattern array', () => {
+      expect(Array.isArray(ALL_PATTERNS)).toBe(true);
+      expect(ALL_PATTERNS.length).toBeGreaterThanOrEqual(40);
+      for (const p of ALL_PATTERNS) {
+        expect(typeof p.name).toBe('string');
+        expect(p.pattern).toBeInstanceOf(RegExp);
+        expect(typeof p.weight).toBe('number');
+        expect(typeof p.description).toBe('string');
+      }
+    });
+
+    it('JAILBREAK_KEYWORDS and JAILBREAK_PHRASES are populated', () => {
+      expect(JAILBREAK_KEYWORDS.length).toBeGreaterThanOrEqual(10);
+      expect(JAILBREAK_PHRASES.length).toBeGreaterThanOrEqual(10);
+    });
   });
 
   describe('Pattern Detection', () => {
