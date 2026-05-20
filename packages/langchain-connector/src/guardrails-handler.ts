@@ -44,16 +44,15 @@ import {
 // Type alias for the standard StreamValidationError
 type StreamValidationError = ConnectorStreamValidationError;
 
-// Define types for LangChain objects to avoid import issues
-interface BaseMessageLike {
-  content: string | unknown[];
-  _getType(): string;
-}
-
-interface LLMResultLike {
-  generations: Array<{ text?: string }[]>;
-  llmOutput?: unknown;
-}
+// Message-extraction helpers live in ./message-utils.ts to keep this file under
+// the 800-line size cap. Imported below.
+import {
+  type BaseMessageLike,
+  extractLLMResultText,
+  type LLMResultLike,
+  messagesToText,
+  validatePositiveNumber,
+} from './message-utils.js';
 
 /**
  * Default logger instance.
@@ -61,96 +60,6 @@ interface LLMResultLike {
  * @internal
  */
 const DEFAULT_LOGGER: Logger = createLogger('console');
-
-/**
- * Validates that a numeric option is a positive number.
- *
- * @internal
- * @throws {TypeError} If value is not a positive finite number
- */
-function validatePositiveNumber(value: number, optionName: string): void {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    throw new TypeError(
-      `${optionName} must be a positive number. Received: ${value}`,
-    );
-  }
-}
-
-/**
- * Extracts text content from message-like objects.
- *
- * @remarks
- * Handles complex message content types per SEC-006:
- * - String content: "Hello"
- * - Array content with structured blocks
- * - Different message types (human, ai, system, etc.)
- *
- * This is a critical security function as it prevents validation bypass
- * when messages contain structured data.
- *
- * @param messages - Array of message objects
- * @returns Concatenated text content from all messages
- *
- * @example
- * ```ts
- * const messages = [
- *   { content: 'Hello', _getType: () => 'human' },
- *   { content: [{ type: 'text', text: 'Hi there' }], _getType: () => 'human' }
- * ];
- * const text = messagesToText(messages); // "Hello\nHi there"
- * ```
- */
-function messagesToText(messages: BaseMessageLike[]): string {
-  return messages
-    .map((m) => {
-      const content = m.content;
-
-      // Handle string content (most common case)
-      if (typeof content === 'string') {
-        return content;
-      }
-
-      // Handle array content (SEC-006: structured data)
-      if (Array.isArray(content)) {
-        return content
-          .filter((c) => {
-            // Extract text blocks for validation
-            return typeof c === 'object' && c !== null && 'type' in c && c.type === 'text';
-          })
-          .map((c) => {
-            if (typeof c === 'object' && c !== null && 'type' in c && c.type === 'text' && 'text' in c) {
-              return String((c as { text: string }).text || '');
-            }
-            return '';
-          })
-          .join('\n');
-      }
-
-      // Handle other types (convert to string)
-      return String(content ?? '');
-    })
-    .filter((c) => c.length > 0)
-    .join('\n');
-}
-
-/**
- * Extracts text content from an LLMResult-like object.
- *
- * @internal
- */
-function extractLLMResultText(llmResult: LLMResultLike): string[] {
-  const texts: string[] = [];
-
-  for (const generations of llmResult.generations) {
-    for (const gen of generations) {
-      if (gen.text) {
-        texts.push(gen.text);
-      }
-    }
-  }
-
-  return texts;
-}
 
 /**
  * LangChain Callback Handler for Guardrails Validation.

@@ -7,13 +7,38 @@
  */
 
 import { createLogger, type Logger, LogLevel } from '../base/GenericLogger.js';
-import { createResult, type GuardrailResult, RiskLevel, Severity } from '../base/GuardrailResult.js';
+import { createResult, RiskLevel, Severity } from '../base/GuardrailResult.js';
 import {
   hashContent,
-  type OverrideTokenConfigString,
   OverrideTokenValidator,
   parseOverrideTokenConfig,
 } from '../security/override-token.js';
+import { StreamValidationError } from '../connector-utils/errors.js';
+import { CircuitBreaker, type CircuitBreakerMetrics } from './CircuitBreaker.js';
+
+// Re-export so existing consumers importing StreamValidationError from this module
+// continue to work without a path change.
+export { StreamValidationError } from '../connector-utils/errors.js';
+import type {
+  EngineResult,
+  ExecutionOrder,
+  Guard,
+  GuardrailEngineConfig,
+  InterceptCallback,
+  Validator,
+  ValidatorResult,
+} from './GuardrailEngine.types.js';
+
+// Re-export types for public API surface compatibility.
+export type {
+  ExecutionOrder,
+  Guard,
+  GuardrailEngineConfig,
+  EngineResult,
+  InterceptCallback,
+  Validator,
+  ValidatorResult,
+} from './GuardrailEngine.types.js';
 
 /**
  * Maximum time (ms) to spend on pattern matching before timeout.
@@ -33,222 +58,10 @@ const DEFAULT_MAX_BUFFER_SIZE = 1024 * 1024; // 1MB
  */
 const DEFAULT_CIRCUIT_BREAKER_THRESHOLD = 3;
 
-/**
- * Stream validation error for buffer overflow protection.
- */
-export class StreamValidationError extends Error {
-  public readonly reason: string;
-  public readonly blocked: boolean;
+// StreamValidationError + CircuitBreaker now live in dedicated modules
+// (../connector-utils/errors.ts and ./CircuitBreaker.ts respectively) to keep
+// this orchestration file under the 800-line size cap. They are imported above.
 
-  constructor(message: string, reason: string = 'buffer_exceeded', blocked: boolean = true) {
-    super(message);
-    this.name = 'StreamValidationError';
-    this.reason = reason;
-    this.blocked = blocked;
-  }
-}
-
-/**
- * Circuit breaker state for preventing repeated buffer overflow attacks.
- */
-enum CircuitBreakerState {
-  CLOSED = 'CLOSED',  // Normal operation
-  OPEN = 'OPEN',      // Blocking requests after threshold
-  HALF_OPEN = 'HALF_OPEN',  // Testing if recovery is possible
-}
-
-/**
- * Circuit breaker metrics for tracking buffer overflow violations.
- */
-interface CircuitBreakerMetrics {
-  violationCount: number;
-  lastViolationTime: number;
-  state: CircuitBreakerState;
-  openUntil?: number;
-}
-
-/**
- * Validator instance interface.
- * All validators must implement a validate method that accepts content
- * and returns a GuardrailResult.
- */
-export interface Validator {
-  /**
-   * Validate content and return a result.
-   */
-  validate(content: string): GuardrailResult;
-
-  /**
-   * Optional validator name for identification.
-   */
-  name?: string;
-}
-
-/**
- * Guard instance interface.
- * Guards validate content with optional context (e.g., file path).
- */
-export interface Guard {
-  /**
-   * Validate content and return a result.
-   */
-  validate(content: string, context?: string): GuardrailResult;
-
-  /**
-   * Optional guard name for identification.
-   */
-  name?: string;
-}
-
-/**
- * Execution order for validators.
- */
-export type ExecutionOrder = 'sequential' | 'parallel';
-
-/**
- * Engine configuration options.
- */
-export interface GuardrailEngineConfig {
-  /**
-   * List of validators to run.
-   */
-  validators?: Validator[];
-
-  /**
-   * List of guards to run.
-   */
-  guards?: Guard[];
-
-  /**
-   * Whether to stop execution on first failure.
-   * @default true
-   */
-  shortCircuit?: boolean;
-
-  /**
-   * Execution order for validators.
-   * @default 'sequential'
-   */
-  executionOrder?: ExecutionOrder;
-
-  /**
-   * Custom logger.
-   */
-  logger?: Logger;
-
-  /**
-   * Whether to include individual validator results in the output.
-   * @default true
-   */
-  includeIndividualResults?: boolean;
-
-  /**
-   * Global sensitivity level.
-   * @default 'standard'
-   */
-  sensitivity?: 'strict' | 'standard' | 'permissive';
-
-  /**
-   * Global action mode.
-   * @default 'block'
-   */
-  action?: 'block' | 'sanitize' | 'log' | 'allow';
-
-  /**
-   * Override token to bypass validation.
-   * S011-006: Now supports cryptographic validation.
-   * - string: Legacy plaintext token (INSECURE, not recommended)
-   * - OverrideTokenConfig object: Secure HMAC-based token validation
-   *
-   * @example
-   * // Legacy (insecure)
-   * overrideToken: 'BYPASS-VALIDATION'
-   *
-   * // Secure (recommended)
-   * overrideToken: { secret: 'your-32-char-secret' }
-   */
-  overrideToken?: OverrideTokenConfigString;
-
-  /**
-   * Maximum time in milliseconds for validation to complete.
-   * Prevents DoS via complex regex patterns. @default 5000ms
-   */
-  validationTimeout?: number;
-
-  /**
-   * Maximum time for individual pattern matching.
-   * Prevents ReDoS attacks. @default 100ms
-   */
-  patternTimeout?: number;
-
-  /**
-   * Maximum buffer size for streaming validation in bytes.
-   * Prevents memory exhaustion through buffer overflow attacks. @default 1MB
-   */
-  maxBufferSize?: number;
-
-  /**
-   * Circuit breaker threshold for buffer overflow violations.
-   * Triggers circuit breaker after this many violations. @default 3
-   */
-  circuitBreakerThreshold?: number;
-
-  /**
-   * Circuit breaker timeout in milliseconds.
-   * How long to stay in OPEN state before attempting recovery. @default 60000ms (1 minute)
-   */
-  circuitBreakerTimeout?: number;
-}
-
-/**
- * Individual validator result with metadata.
- */
-export interface ValidatorResult extends GuardrailResult {
-  /**
-   * Name of the validator that produced this result.
-   */
-  validatorName: string;
-}
-
-/**
- * Aggregated engine result.
- */
-export interface EngineResult extends GuardrailResult {
-  /**
-   * Individual results from each validator/guard.
-   */
-  results: ValidatorResult[];
-
-  /**
-   * Number of validators run.
-   */
-  validatorCount: number;
-
-  /**
-   * Number of guards run.
-   */
-  guardCount: number;
-
-  /**
-   * Execution time in milliseconds.
-   */
-  executionTime: number;
-}
-
-/**
- * Callback function type for intercept events.
- * Called when validation completes with a result.
- *
- * @param result - The engine result from validation
- * @param context - Context including original content and optional validation context
- */
-export type InterceptCallback = (
-  result: EngineResult,
-  context: {
-    content: string;
-    validation_context?: string;
-  }
-) => void | Promise<void>;
 
 /**
  * GuardrailEngine - Main orchestration class for LLM guardrails.
@@ -287,12 +100,8 @@ export class GuardrailEngine {
   private readonly circuitBreakerTimeout: number;
   private interceptCallbacks: InterceptCallback[] = [];
 
-  // S011-005: Circuit breaker state for buffer overflow protection
-  private circuitBreaker: CircuitBreakerMetrics = {
-    violationCount: 0,
-    lastViolationTime: 0,
-    state: CircuitBreakerState.CLOSED,
-  };
+  // S011-005: Circuit breaker for buffer overflow protection (lives in CircuitBreaker.ts)
+  private readonly circuitBreaker: CircuitBreaker;
 
   constructor(config: GuardrailEngineConfig = {}) {
     this.validators = config.validators ?? [];
@@ -308,6 +117,12 @@ export class GuardrailEngine {
     this.circuitBreakerThreshold = config.circuitBreakerThreshold ?? DEFAULT_CIRCUIT_BREAKER_THRESHOLD;
     this.circuitBreakerTimeout = config.circuitBreakerTimeout ?? 60000; // 1 minute
     this.logger = config.logger ?? createLogger('console', LogLevel.INFO);
+
+    this.circuitBreaker = new CircuitBreaker({
+      threshold: this.circuitBreakerThreshold,
+      timeoutMs: this.circuitBreakerTimeout,
+      logger: this.logger,
+    });
 
     // S011-006: Initialize override token validator
     if (config.overrideToken) {
@@ -356,7 +171,7 @@ export class GuardrailEngine {
     const newSize = currentBufferSize + chunkSize;
 
     if (newSize > this.maxBufferSize) {
-      this.recordBufferOverflowViolation();
+      this.circuitBreaker.recordViolation();
       throw new StreamValidationError(
         `Stream buffer size (${newSize} bytes) would exceed maximum (${this.maxBufferSize} bytes)`,
         'buffer_exceeded',
@@ -367,81 +182,24 @@ export class GuardrailEngine {
 
   /**
    * S011-005: Check if circuit breaker is tripped (blocking requests).
-   * @returns true if circuit breaker is open and blocking requests
+   * Delegates to the CircuitBreaker class.
    */
   isCircuitBreakerOpen(): boolean {
-    const now = Date.now();
-
-    // Check if we should transition from OPEN to HALF_OPEN
-    if (
-      this.circuitBreaker.state === CircuitBreakerState.OPEN &&
-      this.circuitBreaker.openUntil &&
-      now >= this.circuitBreaker.openUntil
-    ) {
-      this.circuitBreaker.state = CircuitBreakerState.HALF_OPEN;
-      this.logger.info('Circuit breaker transitioned to HALF_OPEN');
-      return false;
-    }
-
-    return this.circuitBreaker.state === CircuitBreakerState.OPEN;
+    return this.circuitBreaker.isOpen();
   }
 
   /**
-   * S011-005: Record a buffer overflow violation and update circuit breaker state.
-   * When in HALF_OPEN state, any violation immediately trips back to OPEN.
-   */
-  private recordBufferOverflowViolation(): void {
-    const now = Date.now();
-    this.circuitBreaker.violationCount++;
-    this.circuitBreaker.lastViolationTime = now;
-
-    this.logger.warn('Buffer overflow violation recorded', {
-      violationCount: this.circuitBreaker.violationCount,
-      threshold: this.circuitBreakerThreshold,
-      state: this.circuitBreaker.state,
-    });
-
-    // If in HALF_OPEN state, any violation immediately trips back to OPEN
-    if (this.circuitBreaker.state === CircuitBreakerState.HALF_OPEN) {
-      this.circuitBreaker.state = CircuitBreakerState.OPEN;
-      this.circuitBreaker.openUntil = now + this.circuitBreakerTimeout;
-
-      this.logger.error('Circuit breaker re-tripped from HALF_OPEN due to new violation', {
-        openUntil: new Date(this.circuitBreaker.openUntil).toISOString(),
-      });
-      return;
-    }
-
-    // Check if we should trip the circuit breaker (from CLOSED state)
-    if (this.circuitBreaker.violationCount >= this.circuitBreakerThreshold) {
-      this.circuitBreaker.state = CircuitBreakerState.OPEN;
-      this.circuitBreaker.openUntil = now + this.circuitBreakerTimeout;
-
-      this.logger.error('Circuit breaker tripped due to buffer overflow violations', {
-        violationCount: this.circuitBreaker.violationCount,
-        openUntil: new Date(this.circuitBreaker.openUntil).toISOString(),
-      });
-    }
-  }
-
-  /**
-   * S011-005: Reset circuit breaker after successful validation (in HALF_OPEN state).
+   * S011-005: Reset circuit breaker after successful validation (HALF_OPEN → CLOSED).
    */
   private resetCircuitBreaker(): void {
-    if (this.circuitBreaker.state === CircuitBreakerState.HALF_OPEN) {
-      this.circuitBreaker.state = CircuitBreakerState.CLOSED;
-      this.circuitBreaker.violationCount = 0;
-      this.circuitBreaker.openUntil = undefined;
-
-      this.logger.info('Circuit breaker reset after successful validation');
-    }
+    this.circuitBreaker.resetIfRecovering();
   }
 
   /**
    * Get current circuit breaker state (for monitoring).
    */
   getCircuitBreakerState(): CircuitBreakerMetrics {
-    return { ...this.circuitBreaker };
+    return this.circuitBreaker.getState();
   }
 
   /**
@@ -625,8 +383,8 @@ export class GuardrailEngine {
 
     const result = this.aggregateResults(allResults, startTime);
 
-    // S011-005: Reset circuit breaker on successful validation
-    if (result.allowed && this.circuitBreaker.state === CircuitBreakerState.HALF_OPEN) {
+    // S011-005: Reset circuit breaker on successful validation (no-op unless HALF_OPEN)
+    if (result.allowed) {
       this.resetCircuitBreaker();
     }
 
