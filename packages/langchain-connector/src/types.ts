@@ -213,22 +213,10 @@ export class GuardrailsViolationError extends Error {
   }
 }
 
-/**
- * Error thrown when stream validation fails.
- *
- * @remarks
- * This error class is provided for type-checking and catching stream validation errors.
- */
-export class StreamValidationError extends Error {
-  constructor(
-    message: string,
-    public readonly reason: string,
-    public readonly blocked: boolean = true,
-  ) {
-    super(message);
-    this.name = 'StreamValidationError';
-  }
-}
+// StreamValidationError is the single source of truth in
+// @blackunicorn/bonklm/core/connector-utils. Re-exported here so existing
+// consumers importing it from this module continue to work.
+export { StreamValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * Validation context for tracking stream state per run.

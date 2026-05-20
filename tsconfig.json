@@ -34,8 +34,7 @@
     "emitDecoratorMetadata": true
   },
   "include": [
-    "packages/*/src/**/*",
-    "packages/adapters/*/src/**/*"
+    "packages/*/src/**/*"
   ],
   "exclude": [
     "node_modules",

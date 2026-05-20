@@ -38,12 +38,11 @@
   },
   "files": [
     "dist",
-    "bin",
     "README.md",
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc && node -e \"const fs=require('fs');const f='dist/bin/run.js';fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace(/from '\\.\\.\\/cli\\//g,\\\"from './cli/\\\"));fs.chmodSync(f,0o755);\"",
+    "build": "tsc && chmod +x dist/bin/run.js",
     "dev": "tsc --watch",
     "test": "vitest",
     "lint": "eslint src",

@@ -63,9 +63,10 @@ const CRITICAL_PATTERNS: SecretPattern[] = [
   { pattern: /AIza[0-9A-Za-z\-_]{35}/g, secretType: 'Google API Key', confidence: 'critical' },
 
   // OpenAI — legacy keys carry the T3BlbkFJ infix; 2024+ sk-proj- keys do not.
+  // The modern pattern uses a negative lookahead so a legacy key isn't reported twice.
   { pattern: /sk-proj-[A-Za-z0-9]{20,}T3BlbkFJ[A-Za-z0-9]{20,}/g, secretType: 'OpenAI Project Key (legacy format)', confidence: 'critical' },
   { pattern: /sk-[A-Za-z0-9]{20}T3BlbkFJ[A-Za-z0-9]{20}/g, secretType: 'OpenAI Legacy Key', confidence: 'critical' },
-  { pattern: /sk-proj-[A-Za-z0-9_-]{40,}/g, secretType: 'OpenAI Project Key', confidence: 'critical' },
+  { pattern: /sk-proj-(?!.*T3BlbkFJ)[A-Za-z0-9_-]{40,}/g, secretType: 'OpenAI Project Key', confidence: 'critical' },
 
   // Anthropic
   { pattern: /sk-ant-api03-[A-Za-z0-9\-_]{93}/g, secretType: 'Anthropic API Key', confidence: 'critical' },

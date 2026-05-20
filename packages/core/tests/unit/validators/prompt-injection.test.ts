@@ -384,6 +384,29 @@ describe('PromptInjectionValidator', () => {
         }
       }
     });
+
+    it('should NOT escalate decoded content to CRITICAL when only INFO-severity patterns match', () => {
+      // Regression guard: the decoded-content check was widened from a
+      // 4-keyword regex to detectPatterns(), then narrowed to require
+      // Severity.WARNING or CRITICAL. INFO-level patterns alone must not
+      // flip contains_injection true and so must not force the wrapping
+      // multi_layer_encoding finding to CRITICAL.
+      // The synonym map's `priority_markers` is INFO-severity. Encoding
+      // benign markdown-flavoured content like `# Section 1` in base64
+      // produces decoded text that may match priority_markers but no
+      // higher-severity pattern.
+      const innocuousContent = Buffer.from('# Important Note: please review this section carefully and respond.', 'utf8').toString('base64');
+      // The base64 must be long enough to trigger detection (>= 40 chars)
+      const content = innocuousContent + 'AAAAAAAAAAAAAAAAAAAAAAAAAA==';
+      const result = validatePromptInjection(content, { includeFindings: true, detectMultiLayerEncoding: true });
+      if (result.findings) {
+        const multiLayer = result.findings.find((f: any) => f.category === 'multi_layer_encoding' || f.category === 'base64_payload');
+        if (multiLayer) {
+          // Either no decoded injection found OR weight should not be escalated to the 20 used for CRITICAL.
+          expect(multiLayer.severity).not.toBe('critical');
+        }
+      }
+    });
   });
 
   describe('Risk Level in validate()', () => {

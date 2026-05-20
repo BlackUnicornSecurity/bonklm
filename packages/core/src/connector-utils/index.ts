@@ -41,13 +41,17 @@ export {
   validateBufferBeforeAccumulation,
   updateStreamValidatorState,
   shouldValidateStream,
+  hasUnvalidatedTail,
   markStreamBlocked,
   resetStreamValidatorState,
   processStreamChunk,
   createStreamValidatorState,
   DEFAULT_MAX_BUFFER_SIZE,
   DEFAULT_VALIDATION_INTERVAL,
+  StreamValidator,
   type StreamValidationOptions,
+  type StreamValidatorEngine,
+  type StreamValidatorResult,
   type StreamValidatorState,
 } from './stream-validator.js';
 

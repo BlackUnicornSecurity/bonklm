@@ -12,8 +12,9 @@
  * - Dangerous pattern detection
  */
 
-import type { EventEmitter } from 'events';
-import { randomUUID } from 'crypto';
+import { EventEmitter } from 'node:events';
+import { randomUUID } from 'node:crypto';
+import * as vm from 'node:vm';
 
 // ============================================================================
 // TYPES
@@ -175,13 +176,7 @@ export class HookSandbox {
       logExecutions: config?.logExecutions ?? true,
     };
 
-    // Try to load EventEmitter
-    try {
-      const events = require('events');
-      this.eventEmitter = new events.EventEmitter();
-    } catch {
-      // EventEmitter not available, continue without it
-    }
+    this.eventEmitter = new EventEmitter();
   }
 
   /**
@@ -337,22 +332,11 @@ export class HookSandbox {
   // ==========================================================================
 
   private validateEnvironment(): void {
-    // Ensure VM module is available
-    try {
-      require('vm');
-    } catch {
-      throw new Error('VM module not available');
-    }
-
-    // Check Node.js version for VM security features
-    const nodeVersion = process.versions.node.split('.').map(Number);
-    if (nodeVersion[0] < 14) {
-      console.warn('Node.js 14+ recommended for improved VM security');
-    }
+    // vm module is statically imported at the top of this file (node:vm).
+    // engines.node >=20 guarantees its presence; no runtime check needed.
   }
 
   private createSandboxContext(context: ExecutionContext, _options?: Partial<SandboxConfig>): Record<string, unknown> {
-    const vm = require('vm');
     const sandbox: Record<string, unknown> = {};
 
     // Add safe globals
@@ -509,8 +493,6 @@ export class HookSandbox {
     context: Record<string, unknown>,
     timeout: number
   ): Promise<unknown> {
-    const vm = require('vm');
-
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         const error = new Error(`Hook execution timed out after ${timeout}ms`);
@@ -519,10 +501,11 @@ export class HookSandbox {
       }, timeout);
 
       try {
+        // vm.Script's ScriptOptions does not take `timeout` — the timeout
+        // applies at runInContext time. The outer setTimeout above acts as a
+        // belt-and-braces guard for misbehaving async work.
         const script = new vm.Script(code, {
           filename: `hook-${randomUUID()}.js`,
-          timeout,
-          displayErrors: true,
         });
 
         const result = script.runInContext(context, {

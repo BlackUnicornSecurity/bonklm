@@ -161,7 +161,9 @@ export function shouldValidateStream(
   state: StreamValidatorState,
   interval: number = DEFAULT_VALIDATION_INTERVAL
 ): boolean {
-  return !state.blocked && state.chunkCount > 0 && state.chunkCount % interval === 0;
+  // Guard against `interval = 0` (would make `x % 0` produce NaN).
+  const safeInterval = interval >= 1 ? Math.floor(interval) : DEFAULT_VALIDATION_INTERVAL;
+  return !state.blocked && state.chunkCount > 0 && state.chunkCount % safeInterval === 0;
 }
 
 /**
@@ -191,7 +193,8 @@ export function hasUnvalidatedTail(
   state: StreamValidatorState,
   interval: number = DEFAULT_VALIDATION_INTERVAL
 ): boolean {
-  return !state.blocked && state.chunkCount > 0 && state.chunkCount % interval !== 0;
+  const safeInterval = interval >= 1 ? Math.floor(interval) : DEFAULT_VALIDATION_INTERVAL;
+  return !state.blocked && state.chunkCount > 0 && state.chunkCount % safeInterval !== 0;
 }
 
 /**
@@ -293,4 +296,150 @@ export function processStreamChunk(
   validateBufferBeforeAccumulation(state, chunk, options);
   updateStreamValidatorState(state, chunk);
   return state.accumulated;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Lifecycle class — preferred high-level API
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Minimal engine contract for stream validation. Compatible with
+ * `GuardrailEngine.validate()` and any function that returns a result with an
+ * `allowed` boolean and an optional `reason`.
+ */
+export interface StreamValidatorEngine {
+  validate(
+    content: string
+  ): Promise<{ allowed: boolean; reason?: string }> | { allowed: boolean; reason?: string };
+}
+
+export interface StreamValidatorResult {
+  allowed: boolean;
+  reason?: string;
+  accumulated: string;
+}
+
+/**
+ * Enforced-lifecycle stream validator.
+ *
+ * Wraps the functional `processStreamChunk` / `shouldValidateStream` /
+ * `hasUnvalidatedTail` primitives in a class that makes the "validate the
+ * tail after the stream ends" contract impossible to skip.
+ *
+ * Supports `Symbol.asyncDispose` (TC39 explicit-resource-management) so
+ * `await using validator = StreamValidator.create(engine)` finalises on scope
+ * exit even if an exception propagates.
+ *
+ * @example
+ * ```ts
+ * await using validator = StreamValidator.create(engine, { validationInterval: 10 });
+ * for await (const chunk of llmStream) {
+ *   const r = await validator.process(chunk);
+ *   if (r && !r.allowed) {
+ *     throw new Error(`Stream blocked: ${r.reason}`);
+ *   }
+ * }
+ * // Symbol.asyncDispose runs validator.finalize() here automatically.
+ * ```
+ *
+ * @example Manual lifecycle (no `await using`):
+ * ```ts
+ * const validator = StreamValidator.create(engine);
+ * try {
+ *   for await (const chunk of stream) {
+ *     const r = await validator.process(chunk);
+ *     if (r && !r.allowed) throw new Error(r.reason);
+ *   }
+ *   const tail = await validator.finalize();
+ *   if (tail && !tail.allowed) throw new Error(tail.reason);
+ * } finally {
+ *   // finalize() is idempotent; safe to call from a finally if you skipped above.
+ * }
+ * ```
+ */
+export class StreamValidator {
+  private readonly state: StreamValidatorState;
+  private readonly engine: StreamValidatorEngine;
+  private readonly options: StreamValidationOptions;
+  private readonly interval: number;
+  private finalised = false;
+
+  private constructor(engine: StreamValidatorEngine, options: StreamValidationOptions) {
+    this.engine = engine;
+    this.options = options;
+    this.interval =
+      options.validationInterval !== undefined && options.validationInterval >= 1
+        ? Math.floor(options.validationInterval)
+        : DEFAULT_VALIDATION_INTERVAL;
+    this.state = createStreamValidatorState();
+  }
+
+  static create(
+    engine: StreamValidatorEngine,
+    options: StreamValidationOptions = {}
+  ): StreamValidator {
+    return new StreamValidator(engine, options);
+  }
+
+  /** Accumulated decoded content so far (empty after a block). */
+  get accumulated(): string {
+    return this.state.accumulated;
+  }
+
+  /** True after the stream has been marked blocked. Further calls are no-ops. */
+  get blocked(): boolean {
+    return this.state.blocked;
+  }
+
+  /**
+   * Append a chunk and run a scheduled validation if the interval boundary is
+   * reached. Returns the validation result on intervals, otherwise null.
+   *
+   * Throws `StreamValidationError` if the chunk would overflow the buffer.
+   */
+  async process(chunk: string): Promise<StreamValidatorResult | null> {
+    if (this.state.blocked) return null;
+
+    processStreamChunk(this.state, chunk, this.options);
+
+    if (!shouldValidateStream(this.state, this.interval)) {
+      return null;
+    }
+    return this.runValidation();
+  }
+
+  /**
+   * Run a final validation on any chunks accumulated since the last interval
+   * boundary. Idempotent: safe to call multiple times; subsequent calls return
+   * null. Called automatically by `Symbol.asyncDispose` when used with
+   * `await using`.
+   */
+  async finalize(): Promise<StreamValidatorResult | null> {
+    if (this.finalised || this.state.blocked) {
+      this.finalised = true;
+      return null;
+    }
+    this.finalised = true;
+    if (!hasUnvalidatedTail(this.state, this.interval)) {
+      return null;
+    }
+    return this.runValidation();
+  }
+
+  private async runValidation(): Promise<StreamValidatorResult> {
+    const engineResult = await this.engine.validate(this.state.accumulated);
+    const accumulated = this.state.accumulated;
+    if (!engineResult.allowed) {
+      const reason = engineResult.reason ?? 'stream_blocked';
+      this.options.onBlocked?.(accumulated, reason);
+      markStreamBlocked(this.state, reason);
+      return { allowed: false, reason, accumulated };
+    }
+    return { allowed: true, accumulated };
+  }
+
+  // TC39 Stage 3 explicit-resource-management hook.
+  async [Symbol.asyncDispose](): Promise<void> {
+    await this.finalize();
+  }
 }

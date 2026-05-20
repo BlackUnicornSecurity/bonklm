@@ -5,8 +5,7 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "packages/*",
-    "packages/adapters/*"
+    "packages/*"
   ],
   "scripts": {
     "build": "pnpm -r --filter \"@blackunicorn/*\" run build",
