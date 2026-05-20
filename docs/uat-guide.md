@@ -21,7 +21,7 @@ User Acceptance Testing validates that the package meets real-world requirements
 npm run uat
 
 # Or using tsx directly
-tsx team/uat/run-uat.ts
+tsx packages/core/uat/run-uat.ts
 
 # Run specific category
 npm run uat -- --category security
@@ -53,7 +53,7 @@ npm run uat -- --report
 
 ### HTML Report
 
-When using `--report`, an interactive HTML report is generated at `team/uat/reports/uat-report-<timestamp>.html`.
+When using `--report`, an interactive HTML report is generated at `packages/core/uat/reports/uat-report-<timestamp>.html`.
 
 The report includes:
 - Summary metrics (total, passed, failed, pass rate, duration)
@@ -206,13 +206,13 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Run UAT
-        run: tsx team/uat/run-uat.ts --json --report
+        run: tsx packages/core/uat/run-uat.ts --json --report
       - name: Upload Report
         uses: actions/upload-artifact@v3
         if: always()
         with:
           name: uat-report
-          path: team/uat/reports/*.html
+          path: packages/core/uat/reports/*.html
 ```
 
 ### GitLab CI Example
@@ -222,10 +222,10 @@ uat:
   script:
     - npm ci
     - npm run build
-    - tsx team/uat/run-uat.ts --json --report
+    - tsx packages/core/uat/run-uat.ts --json --report
   artifacts:
     paths:
-      - team/uat/reports/*.html
+      - packages/core/uat/reports/*.html
     when: always
 ```
 

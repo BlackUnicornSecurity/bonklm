@@ -15,16 +15,16 @@
  */
 
 import {
-  GuardrailEngine,
   createLogger,
-  Severity,
-  RiskLevel,
-  type Logger,
   type EngineResult,
+  GuardrailEngine,
+  type Logger,
+  RiskLevel,
+  Severity,
 } from '@blackunicorn/bonklm';
 import {
-  extractContentFromResponse,
   ConnectorValidationError,
+  extractContentFromResponse,
   logTimeout,
   logValidationFailure,
 } from '@blackunicorn/bonklm/core/connector-utils';
@@ -33,8 +33,8 @@ import type {
   TextGenerationOptions,
 } from './types.js';
 import {
-  DEFAULT_VALIDATION_TIMEOUT,
   DEFAULT_MAX_INPUT_LENGTH,
+  DEFAULT_VALIDATION_TIMEOUT,
 } from './types.js';
 
 /**
@@ -318,7 +318,7 @@ export function createGuardedInference(
             await validateInput(inputText);
 
             // Call the original method
-            const rawResult = await (target as any)[prop](model, messages, options);
+            const rawResult = await (target)[prop](model, messages, options);
 
             // Extract output using content extractor
             const outputText = extractContentFromResponse(rawResult, {
@@ -349,7 +349,7 @@ export function createGuardedInference(
           await validateInput(inputs);
 
           // Call the original method
-          const rawResult = await (target as any)[prop](options);
+          const rawResult = await (target)[prop](options);
 
           // Extract output using content extractor with method-specific fields
           const fields = OUTPUT_FIELD_MAP[propStr] || ['generated_text', 'text', 'output'];
@@ -372,7 +372,7 @@ export function createGuardedInference(
       }
 
       // For all other methods, pass through without validation
-      const value = (target as any)[prop];
+      const value = (target)[prop];
       return typeof value === 'function' ? value.bind(target) : value;
     },
   });

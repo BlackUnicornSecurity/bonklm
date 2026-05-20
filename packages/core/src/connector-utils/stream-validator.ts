@@ -165,6 +165,36 @@ export function shouldValidateStream(
 }
 
 /**
+ * Returns true if the stream has accumulated content since the last scheduled
+ * validation interval but has not yet been validated.
+ *
+ * Connectors MUST call this after the stream ends and run a final validation pass
+ * if it returns true — otherwise the tail of the stream (chunks since the last
+ * interval boundary) may bypass detection.
+ *
+ * @example
+ * ```ts
+ * for await (const chunk of stream) {
+ *   processStreamChunk(state, chunk);
+ *   if (shouldValidateStream(state, 10)) {
+ *     const r = await engine.validate(state.accumulated);
+ *     if (!r.allowed) { markStreamBlocked(state, r.reason); break; }
+ *   }
+ * }
+ * if (hasUnvalidatedTail(state, 10)) {
+ *   const r = await engine.validate(state.accumulated);
+ *   if (!r.allowed) markStreamBlocked(state, r.reason);
+ * }
+ * ```
+ */
+export function hasUnvalidatedTail(
+  state: StreamValidatorState,
+  interval: number = DEFAULT_VALIDATION_INTERVAL
+): boolean {
+  return !state.blocked && state.chunkCount > 0 && state.chunkCount % interval !== 0;
+}
+
+/**
  * Marks the stream as blocked.
  * Use this when validation fails.
  *

@@ -19,7 +19,7 @@ import type {
   ChatCompletionCreateParamsNonStreaming,
   ChatCompletionCreateParamsStreaming,
 } from 'openai/resources/chat/completions';
-import type { Validator, Guard, Logger, GuardrailResult } from '@blackunicorn/bonklm';
+import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
 
 /**
  * Configuration options for the guarded OpenAI wrapper.

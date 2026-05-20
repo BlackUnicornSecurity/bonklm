@@ -11,7 +11,7 @@
  * @package @blackunicorn/bonklm-mastra
  */
 
-import type { MastraMessage, MastraContentPart, MastraToolCall } from './types.js';
+import type { MastraContentPart, MastraMessage, MastraToolCall } from './types.js';
 
 /**
  * Extracts text content from Mastra messages.
@@ -79,7 +79,7 @@ function contentPartToText(part: MastraContentPart): string {
     case 'text':
       return part.text || '';
 
-    case 'tool_use':
+    case 'tool_use': {
       // SEC-005: Extract tool call info for validation
       // Format: "Tool: toolName\nInput: {...}"
       const toolParts: string[] = [];
@@ -87,8 +87,6 @@ function contentPartToText(part: MastraContentPart): string {
         toolParts.push(`Tool: ${part.toolUse.name}`);
       }
       if (part.toolUse?.input) {
-        // Sanitize tool input by converting to string
-        // This prevents injection via malformed objects
         try {
           toolParts.push(`Input: ${JSON.stringify(part.toolUse.input)}`);
         } catch {
@@ -96,6 +94,7 @@ function contentPartToText(part: MastraContentPart): string {
         }
       }
       return toolParts.join('\n');
+    }
 
     case 'tool_result':
       // Extract tool result content
@@ -104,11 +103,11 @@ function contentPartToText(part: MastraContentPart): string {
       }
       if (Array.isArray(part.toolResult?.content)) {
         return (
-          'Tool Result: ' +
+          `Tool Result: ${ 
           part.toolResult.content
             .map((p) => contentPartToText(p))
             .filter((c) => c.length > 0)
-            .join('\n')
+            .join('\n')}`
         );
       }
       return part.toolResult?.isError ? 'Tool Error' : '';

@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-wizard",
-  "version": "0.2.0-deprecated",
+  "version": "0.3.0",
   "description": "⚠️ DEPRECATED: This package has been merged into @blackunicorn/bonklm. Please install @blackunicorn/bonklm instead. All wizard functionality is now part of the core package.",
   "type": "module",
   "main": "./dist/index.js",
@@ -46,12 +46,12 @@
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@types/which": "^3.0.4",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/coverage-v8": "^4.1.7",
     "typescript": "^5.3.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.7"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "@clack/prompts": "^0.8.2",

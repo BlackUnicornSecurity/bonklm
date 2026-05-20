@@ -18,21 +18,21 @@
 
 import type { CoreMessage } from 'ai';
 import {
-  GuardrailEngine,
   createLogger,
-  Severity,
-  RiskLevel,
-  type Logger,
   type EngineResult,
+  GuardrailEngine,
+  type Logger,
+  RiskLevel,
+  Severity,
 } from '@blackunicorn/bonklm';
 import {
   ConnectorValidationError,
-  StreamValidationError,
-  validateBufferBeforeAccumulation,
-  updateStreamValidatorState,
   createStreamValidatorState,
   logTimeout,
   logValidationFailure,
+  StreamValidationError,
+  updateStreamValidatorState,
+  validateBufferBeforeAccumulation,
 } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
   GuardedAIOptions,
@@ -40,9 +40,9 @@ import type {
   GuardedTextResult,
 } from './types.js';
 import {
-  VALIDATION_INTERVAL,
   DEFAULT_MAX_BUFFER_SIZE,
   DEFAULT_VALIDATION_TIMEOUT,
+  VALIDATION_INTERVAL,
 } from './types.js';
 
 /**

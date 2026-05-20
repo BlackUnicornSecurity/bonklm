@@ -5,14 +5,38 @@ All notable changes to BonkLM (`@blackunicorn/bonklm`) will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - 2026-02-17
+## [0.3.0] - 2026-05-20
+
+### Removed
+- Dropped the internal BMAD development framework from the repo: deleted `_bmad/`, `.claude/validators-node/`, `tools/`, `tests/` (root-level), `examples/automation/`, `examples/installer/`, `examples/versioning/`, `.githooks/`, BMAD scripts, stale BMAD build artifacts under `dist/`.
+
+### Fixed
+- `bash-safety` guard no longer crashes at runtime — replaced `require('path')` (which is unavailable in this ESM package) with a proper `node:path` import. Path containment for `rm -rf` targets now actually executes.
+- Cross-platform build — removed BSD-only `sed -i ''` from the core build script in favour of a Node-based import-rewrite step. Ubuntu CI now builds successfully.
+- Removed broken `cli` entry from `packages/core/package.json` `bin` field (pointed at a non-existent `.ts` source).
+- Fixed three test fixtures in `secret.test.ts` that did not match the documented regex shapes for Slack / Stripe / OpenAI keys.
+
+### Security
+- Secret guard now detects 2024+ OpenAI `sk-proj-*` keys that lack the legacy `T3BlbkFJ` infix.
+- Unicode normalization (`normalizeText`) is now applied at the entry of the bash-safety, XSS, and secret guards — defeats zero-width-character splitting (`r​m -rf /`) and homoglyph bypass.
+- XSS guard no longer skips lines beginning with `//`. Adversarial LLM output prefixed with a comment marker is now scanned.
+- Decoded base64 / multi-layer-encoding payloads in `PromptInjectionValidator` are now checked against the full pattern engine instead of a 4-keyword regex.
+- New `hasUnvalidatedTail()` helper on the streaming validator — documents the post-stream final-validation contract for connectors.
+- CI security audit step no longer suppresses HIGH findings (`|| true` dropped); now runs `pnpm audit --audit-level=high --prod` and fails the build on real advisories.
+
+### Changed
+- Node engine requirement raised to `>=20.0.0`. Node 18 removed from CI matrices (EOL April 2025).
+- Coverage thresholds enforced in `vitest.config.ts` (80% lines / functions / statements, 75% branches) per project standard.
+- All workspace packages aligned to version `0.3.0`. Wizard package no longer carries the `-deprecated` tag.
+
+## [0.2.0] - 2026-02-17
 
 ### Added
 
 #### Core Package (@blackunicorn/bonklm)
 
 **Validators**
-- PromptInjectionValidator - Multi-layer prompt injection detection with 35+ pattern categories
+- PromptInjectionValidator - Multi-layer prompt injection detection with 35+ patterns across 6 categories
   - Unicode normalization and obfuscation detection
   - Base64 payload detection with decoding
   - Multi-layer encoding detection (up to 5 layers deep)

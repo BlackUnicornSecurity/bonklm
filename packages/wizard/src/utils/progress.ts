@@ -82,7 +82,7 @@ export async function withSpinner<T>(
 export function createProgressBar(total: number) {
   const { isTTY } = getTerminalCapabilities();
   let current = 0;
-  let startTime = Date.now();
+  const startTime = Date.now();
 
   if (!isTTY) {
     // Non-TTY fallback

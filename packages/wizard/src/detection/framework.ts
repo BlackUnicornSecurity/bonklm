@@ -183,7 +183,6 @@ export async function detectFrameworks(
 
     // Use secure-json-parse with protoAction and constructorAction removal
     // Call parse with null reviver and options object
-    // @ts-ignore - secure-json-parse types are complex, but this is the correct API
     pkg = parse(content, null, {
       protoAction: 'remove',
       constructorAction: 'remove',

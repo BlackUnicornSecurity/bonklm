@@ -20,29 +20,29 @@
  */
 
 import {
-  GuardrailEngine,
   createLogger,
-  Severity,
   createResult,
-  RiskLevel,
-  type Logger,
   type EngineResult,
+  GuardrailEngine,
+  type Logger,
+  RiskLevel,
+  Severity,
 } from '@blackunicorn/bonklm';
 import {
   ConnectorValidationError,
-  StreamValidationError,
+  createStreamValidatorState,
   logTimeout,
   logValidationFailure,
-  validateBufferBeforeAccumulation,
+  StreamValidationError,
   updateStreamValidatorState,
-  createStreamValidatorState,
+  validateBufferBeforeAccumulation,
 } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
+  AgentHookResult,
   GuardedMastraOptions,
+  MastraAgentContext,
   MastraMessage,
   MastraToolCall,
-  MastraAgentContext,
-  AgentHookResult,
 } from './types.js';
 import {
   DEFAULT_MAX_BUFFER_SIZE,

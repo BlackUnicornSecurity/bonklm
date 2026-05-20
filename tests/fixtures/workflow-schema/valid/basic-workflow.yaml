@@ -1,4 +1,0 @@
-name: basic-workflow
-description: "A basic test workflow for schema validation"
-author: "Test"
-config_source: "{project-root}/test/config.yaml"

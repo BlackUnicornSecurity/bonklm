@@ -1,6 +1,6 @@
 {
   "$schema": "https://typedoc.org/schema.json",
-  "entryPoints": ["_bmad/framework/src/index.ts"],
+  "entryPoints": ["packages/core/src/index.ts"],
   "out": "dist/docs",
   "plugin": ["typedoc-plugin-markdown"],
   "excludePrivate": true,

@@ -14,14 +14,14 @@
  * @package @blackunicorn/bonklm-llamaindex
  */
 
-import { GuardrailEngine, createLogger, Severity, createResult, type GuardrailResult, type Logger } from '@blackunicorn/bonklm';
+import { createLogger, createResult, GuardrailEngine, type GuardrailResult, type Logger, Severity } from '@blackunicorn/bonklm';
 import type {
   GuardedLlamaIndexOptions,
   GuardedQueryResult,
 } from './types.js';
 import {
-  DEFAULT_VALIDATION_TIMEOUT,
   DEFAULT_MAX_RETRIEVED_DOCS,
+  DEFAULT_VALIDATION_TIMEOUT,
 } from './types.js';
 
 /**

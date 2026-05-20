@@ -144,15 +144,18 @@ export function detectUnusualWhitespace(text: string): {
  * Normalize text by applying NFKC, stripping hidden chars, and mapping confusables.
  */
 export function normalizeText(text: string): string {
-  // Step 1: NFKC normalization
-  let normalized = text.normalize('NFKC');
+  // Step 1: NFKD normalization — DECOMPOSE precomposed characters into
+  // base + combining mark so step 3 can strip the mark. NFKC composes
+  // them back together, which defeats the combining-mark strip and
+  // allows `cŭrl`, `evạl`, `mkfŝ`-style obfuscation bypasses.
+  let normalized = text.normalize('NFKD');
 
   // Step 2: Strip zero-width characters
   for (const char of ZERO_WIDTH_CHARS) {
     normalized = normalized.split(char).join('');
   }
 
-  // Step 3: Strip combining marks
+  // Step 3: Strip combining marks (now reachable after NFKD decomposition)
   normalized = normalized.replace(COMBINING_MARK_PATTERN, '');
 
   // Step 3b: Strip Braille pattern blanks

@@ -19,13 +19,12 @@
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 import type { NewTokenIndices } from '@langchain/core/callbacks/base';
 import {
-  GuardrailEngine,
   createLogger,
-  Severity,
   createResult,
+  GuardrailEngine,
   type GuardrailResult,
   type Logger,
-  type EngineResult,
+  Severity,
 } from '@blackunicorn/bonklm';
 // S012-011: Use standard connector error classes from core
 import {
@@ -37,8 +36,8 @@ import type {
   StreamValidationContext,
 } from './types.js';
 import {
-  DEFAULT_VALIDATION_INTERVAL,
   DEFAULT_MAX_BUFFER_SIZE,
+  DEFAULT_VALIDATION_INTERVAL,
   DEFAULT_VALIDATION_TIMEOUT,
 } from './types.js';
 
@@ -300,7 +299,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
 
       // Convert EngineResult to GuardrailResult[]
       if ('results' in engineResult) {
-        const multiResult = engineResult as EngineResult;
+        const multiResult = engineResult;
         return multiResult.results || [engineResult as GuardrailResult];
       }
 
@@ -393,15 +392,15 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
     _llm: unknown,
     prompts: string[],
     runId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _parentRunId?: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _extraParams?: Record<string, unknown>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _tags?: string[],
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _metadata?: Record<string, unknown>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _runName?: string,
   ): Promise<void> {
     try {
@@ -442,15 +441,15 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
     _llm: unknown,
     messages: unknown[][],
     runId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _parentRunId?: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _extraParams?: Record<string, unknown>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _tags?: string[],
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _metadata?: Record<string, unknown>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _runName?: string,
   ): Promise<void> {
     try {
@@ -669,15 +668,15 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
     _chain: unknown,
     inputs: Record<string, unknown>,
     runId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _parentRunId?: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _tags?: string[],
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _metadata?: Record<string, unknown>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _runType?: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _runName?: string,
   ): Promise<void> {
     try {
@@ -718,11 +717,11 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
   async handleChainEnd(
     outputs: Record<string, unknown>,
     runId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _parentRunId?: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _tags?: string[],
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _kwargs?: { inputs?: Record<string, unknown> },
   ): Promise<void> {
     try {
@@ -765,13 +764,13 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
     _tool: unknown,
     input: string,
     runId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _parentRunId?: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _tags?: string[],
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _metadata?: Record<string, unknown>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _runName?: string,
   ): Promise<void> {
     try {
@@ -798,9 +797,9 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
   async handleToolEnd(
     output: string,
     runId: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _parentRunId?: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+     
     _tags?: string[],
   ): Promise<void> {
     try {

@@ -14,28 +14,41 @@ export default tseslint.config(
   {
     ignores: [
       'node_modules/',
+      '**/node_modules/',
       'dist/',
+      '**/dist/',
       '**/*.d.ts',
-      '_bmad-backup-*/',
-      '_bmad-output/',
-      'tests/',
-      'tools/',
-      'test-installation/',
-      'Docs/',
-      'examples/',
-      'dev-tools/',
+      '**/*.js.map',
+      'reference/',
       'coverage/',
+      '**/coverage/',
       'team/',
-      // Separate workspaces — lint independently with their own config
-      '.claude/validators-node/',
-      '_bmad/framework/',
       // TS files not in any tsconfig project (parse errors)
-      '.claude/hooks/',
-      '.claude/scripts/',
+      '.claude/',
       'vitest.config.ts',
+      // Lock files & build manifests
+      'pnpm-lock.yaml',
+      'package-lock.json',
+      '**/*.tsbuildinfo',
       // Test files — excluded from tsconfig.json, linting separately
       '**/*.test.ts',
       '**/*.spec.ts',
+      // Compiled .js sitting next to .ts source (legacy stragglers)
+      'packages/core/src/**/*.js',
+      // Per-package vitest configs not part of root tsconfig project
+      '**/vitest.config.ts',
+      // Example snippets — documentation, not production code, not built
+      'packages/*/examples/**',
+      'packages/examples/**',
+      // UAT harness + benchmarks — runnable artefacts, not part of the library build
+      'packages/core/uat/**',
+      'packages/core/benchmarks/**',
+      // Bin entry points — own shebang and may use `tsx`/runtime tricks not in tsconfig project
+      'packages/*/bin/**',
+      'packages/*/src/bin/**',
+      // tests/ subdirs that contain setup files only (test cases themselves caught by **/*.test.ts)
+      'packages/*/tests/setup.ts',
+      'packages/*/tests/vitest-setup.ts',
     ]
   },
 
@@ -92,7 +105,6 @@ export default tseslint.config(
       'no-return-assign': 'error',
       'no-throw-literal': 'error',
       'no-debugger': 'error',
-      'no-duplicate-imports': 'error',
 
       // ── Code Complexity ────────────────────────────────────────────
       // Size rules off — codebase has many large generated/legacy files.
@@ -108,7 +120,11 @@ export default tseslint.config(
       'sort-imports': ['error', {
         ignoreCase: true,
         ignoreDeclarationSort: true
-      }]
+      }],
+      // Connector packages routinely split type-only and value imports across two
+      // statements from the same module. That's an idiomatic TS pattern, not a real
+      // duplicate.
+      'no-duplicate-imports': 'off'
     }
   },
 
@@ -262,51 +278,35 @@ export default tseslint.config(
     }
   },
 
-  // ── Override: Pattern files — allow regex escapes for readability ──────
-  //    Regex patterns use escapes like \. and \- for clarity, even if unnecessary
+  // ── Override: Pattern + security files — relaxed regex/whitespace rules ─
+  //    These files contain intentional escapes, control characters, irregular
+  //    whitespace, and similar — all part of the detection surface.
   {
     files: [
       'packages/core/src/guards/secret.ts',
       'packages/core/src/guards/bash-safety.ts',
+      'packages/core/src/guards/xss-safety.ts',
       'packages/core/src/validators/jailbreak.ts',
       'packages/core/src/validators/text-normalizer.ts',
       'packages/core/src/cli/utils/error.ts',
       'packages/core/src/cli/utils/audit.ts',
+      'packages/core/src/cli/commands/wizard.ts',
+      'packages/core/src/connector-utils/content-extractor.ts',
+      'packages/core/src/logging/MonitoringLogger.ts',
+      'packages/core/benchmarks/benchmark.bench.ts',
+      'packages/logger/src/AttackLogger.ts',
+      'packages/logger/src/transform.ts',
+      'packages/express-middleware/src/middleware.ts',
+      'packages/genkit-connector/src/messages-to-text.ts',
+      'packages/weaviate-connector/src/guarded-weaviate.ts',
+      'packages/wizard/src/utils/audit.ts',
+      'packages/wizard/src/utils/error.ts',
     ],
     rules: {
       'no-useless-escape': 'off',
       'no-misleading-character-class': 'off',
-    }
-  },
-
-  // ── Override: Test files — vitest globals + relaxed rules ──────────
-  {
-    files: ['tests/**/*.{js,ts}', 'src/**/__tests__/**/*.{js,ts}'],
-    languageOptions: {
-      globals: {
-        describe: 'readonly',
-        it: 'readonly',
-        expect: 'readonly',
-        test: 'readonly',
-        beforeAll: 'readonly',
-        afterAll: 'readonly',
-        beforeEach: 'readonly',
-        afterEach: 'readonly',
-        vi: 'readonly',
-      }
-    },
-    rules: {
-      'max-nested-callbacks': ['error', 6],
-      'max-depth': ['error', 8],
-    }
-  },
-
-  // ── Override: Tools — CLI scripts with relaxed complexity ─────────
-  {
-    files: ['tools/**/*.{js,ts}'],
-    rules: {
-      'max-nested-callbacks': 'off',
-      'max-depth': 'off',
+      'no-control-regex': 'off',
+      'no-irregular-whitespace': 'off',
     }
   },
 

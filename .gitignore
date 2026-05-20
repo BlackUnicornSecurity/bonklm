@@ -1,217 +1,30 @@
-# BMAD Framework .gitignore
-# Generated for public GitHub release
+# BonkLM .gitignore
 
 # ===================
-# BMAD Framework
+# Node.js
 # ===================
-# BMAD module directory
-_bmad/
-
-# ===================
-# Output Directories
-# ===================
-# User-generated outputs - created during workflow execution
-_output/
-_bmad-output/
-
-# ===================
-# Data Files
-# ===================
-# Active legal holds - contains sensitive case data
-data/legal-holds/active-holds.json
-
-# ===================
-# Claude Code Settings
-# ===================
-# Local settings contain user-specific configurations
-.claude/settings.local.json
-.claude/settings-python-backup.json
-.claude/audio/
-.claude/projects/
-.claude/validators-node/.env.example
-
-# Runtime state files - NEVER commit
-.claude/.rate_limit_state.json
-.claude/.confidence_state.json
-.claude/.override_state.json
-.claude/.resource_state.json
-.claude/.session_claims.json
-.claude/.session_validated
-.claude/*.lock
-.claude/dashboard.html
-
-# User preference files
-.claude/github-star-reminder.txt
-.claude/llm-provider.txt
-
-# Log files - contain sensitive runtime data
-.claude/logs/*.log
-.claude/logs/*.json
-.claude/logs/*.jsonl
-.claude/logs/.chain_state.json
-.claude/logs/.anomaly_baseline.json
-.claude/logs/.jailbreak_session.json
-.claude/logs/.session_security_state.json
-.claude/logs/.session_risk.json
-
-# Validator state
-.claude/validators-node/state/
-
-# ===================
-# Archive Directories
-# ===================
-# Archived Python validators (development artifacts)
-.claude/validators-python-backup/
-
-# Legacy output artifacts
-Docs/archive/
-Docs/07-archive/legacy-documents/
-Docs/07-archive/test-archives/
-
-# ===================
-# Docs - Internal Folders
-# ===================
-# Internal documentation not for public release
-Docs/03-developer-docs/
-Docs/04-operations/
-Docs/05-project-management/
-Docs/06-reference/
-
-# Exception: track required security docs for tests
-!Docs/04-operations/security/ARCHITECTURE.md
-!Docs/04-operations/security/THREAT-MODEL-TEMPLATE.md
-!Docs/04-operations/security/SECRET-MANAGEMENT.md
-!Docs/04-operations/security/RISK-REGISTER.md
-!Docs/04-operations/security/owasp-controls.yaml
-!Docs/03-developer-docs/RBAC-MIGRATION-MATRIX.md
-!Docs/03-developer-docs/ADR-007-help-system-design.md
-
-# But ignore these subdirectories in Docs/04-operations/
-Docs/04-operations/security/testing/
-Docs/04-operations/security/audit-reports/
-
-# ===================
-# Docs - Generated Test Output
-# ===================
-# Test fixtures and generated test data (regenerated during testing)
-Docs/03-developer-docs/testing/fixtures/
-Docs/03-developer-docs/testing/reports/
-Docs/03-developer-docs/testing/benchmarks/
-Docs/03-developer-docs/testing/performance/
-Docs/03-developer-docs/testing/security/
-Docs/TestingLogs/
-
-# QA generated files
-Docs/03-developer-docs/qa/progress-dashboard.json
-
-# ===================
-# Docs - Security Testing Output
-# ===================
-# Penetration test results and vulnerability reports
-Docs/04-operations/security/testing/penetration-tests/results/
-Docs/04-operations/security/testing/alerts/
-Docs/04-operations/security/testing/revalidation/
-
-# ===================
-# Dev Tools
-# ===================
-# Internal development, testing, and security tools (not for public release)
-dev-tools/
-
-# ===================
-# Private Projects
-# ===================
-# Internal security investigations and private project documentation
-docs/projects/
-privateproject/
-
-# ===================
-# Planning Artifacts
-# ===================
-# Workflow planning documents (development artifacts)
-**/workflow-plan-*.md
-**/COMPLETE-*.md
-**/VERIFICATION-REPORT.md
-**/PRODUCTION-READY.md
-**/MODULE-CREATION-PLAYBOOK.md
-**/TROUBLESHOOTING-GUIDE.md
-
-# ===================
-# Security Keys & Certificates
-# ===================
-# Private signing key - NEVER commit
-_bmad/core/security/bmad-private-key.asc
-src/core/security/bmad-private-key.asc
-.bmad-token
-.bmad-key
-
-# SSL/TLS certificates and private keys
-*.pem
-*.key
-*.crt
-*.cer
-*.p12
-*.pfx
-id_rsa*
-*.pub
-
-# ===================
-# Backup Files
-# ===================
-# Editor and manual backup files - NEVER commit
-*.bak
-*.backup
-*.old
-*.orig
-
-# ===================
-# OS Generated Files
-# ===================
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# ===================
-# Editor/IDE Files
-# ===================
-*.swp
-*.swo
-*~
-.idea/
-.vscode/
-*.sublime-workspace
-*.sublime-project
-
-# ===================
-# Claude AI Configuration
-# ===================
-CLAUDE.md
-
-# ===================
-# Logs and Temp Files
-# ===================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 *.log
-*.tmp
-*.temp
-.cache/
-.version-check-cache
 
-# Root-level logs directory
-logs/
+# ===================
+# Build Output
+# ===================
+dist/
+build/
+*.tsbuildinfo
+*.map
 
-# Test artifacts
-packages/*/output.txt
-packages/*/test_debug.js
-test_*.js
-*.json.bak
+# Package distribution artifacts
+*.tgz
+*.tar.gz
+*.sha256
+*.sbom.json
 
-# Path traversal test artifacts (URL-encoded filenames)
-**/%2e%2e%2f*
-**/*.passwd
+# Test coverage
+coverage/
 
 # ===================
 # Environment Files
@@ -222,101 +35,84 @@ test_*.js
 *.env
 
 # ===================
-# Build Output
+# Security Keys & Certificates
 # ===================
-# TypeScript compiled output - generated by `npm run build`
-dist/
-build/
-
-# Package distribution artifacts
-*.tgz
-*.tar.gz
-*.sha256
-*.sbom.json
-
-# Exception: validators-node dist is used by tests (bin files import from dist)
-!.claude/validators-node/dist/
-
-# Source maps - generated during TypeScript compilation
-*.map
-
-# Test coverage
-coverage/
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+id_rsa*
+*.pub
 
 # ===================
-# Node.js
+# Internal team directory (CLAUDE.md: dev/planning/qa/security)
 # ===================
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+team/
 
 # ===================
-# Python (if applicable)
+# Claude Code local settings
 # ===================
-__pycache__/
-*.py[cod]
-*$py.class
-.Python
-venv/
-.venv/
-
-# ===================
-# Team - Internal Files
-# ===================
-# Internal team documentation and working files
-team/audit-report-*.md
-team/ci-test-summary.md
-team/lessonslearned.md
-team/remaining-errors-summary.md
-team/test-fixes-plan.md
-
-# Backup files - NEVER commit
-team/backups/
+.claude/settings.local.json
+.claude/audio/
+.claude/projects/
+.claude/logs/
+.claude/.rate_limit_state.json
+.claude/.confidence_state.json
+.claude/.override_state.json
+.claude/.resource_state.json
+.claude/.session_claims.json
+.claude/.session_validated
+.claude/*.lock
+.claude/dashboard.html
+.claude/github-star-reminder.txt
+.claude/llm-provider.txt
 
 # ===================
-# Private Development
+# Editor / IDE
 # ===================
-# Private development workspace - never commit
-dev-private/
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
 
 # ===================
-# BMAD Generated Files
+# OS Generated
 # ===================
-# BMAD-generated documents and outputs
-docs/01-briefs/
-docs/02-prds/
-docs/03-architectures/
-docs/04-epics/
-docs/05-stories/
-docs/06-tech-specs/
-docs/07-sprints/
-docs/08-retrospectives/
-docs/09-ux-designs/
-docs/10-test-plans/
-docs/11-gdds/
-docs/12-game-briefs/
-docs/13-game-architectures/
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# BMAD workflow state files
-*.workflow-state.yaml
-*.sprint-status.yaml
-.project-context.md
+# ===================
+# Editor backup files
+# ===================
+*.bak
+*.backup
+*.old
+*.orig
 
-# BMAD planning documents
-**/IMPLEMENTATION_PLAN.md
-**/TROUBLESHOOTING-GUIDE.md
+# ===================
+# Logs and Temp
+# ===================
+*.tmp
+*.temp
+.cache/
 
-# BMAD project artifacts at root level (if generated)
-/bmad-*.md
-/bmad-*.json
-/bmad-*.tar.gz*
-/brief.md
-/gdd.md
-/prd.md
-/architecture.md
-/tech-spec.md
+# Test debug scratch
+packages/*/output.txt
+packages/*/test_debug.js
+test_*.js
+*.json.bak
 
-# BMAD state and tracking files
-.project-status.yaml
-project-status.md
+# ===================
+# Misc binary assets (move to assets/ if needed)
+# ===================
+*.pptx

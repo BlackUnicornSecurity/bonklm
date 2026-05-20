@@ -13,7 +13,7 @@
  */
 
 import type { ExecutionContext } from '@nestjs/common';
-import type { Validator, Guard, GuardrailResult, Logger } from '@blackunicorn/bonklm';
+import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
 import type { AttackLogger } from '@blackunicorn/bonklm-logger';
 
 /**

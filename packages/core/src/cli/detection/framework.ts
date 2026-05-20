@@ -13,7 +13,7 @@
  * - Dependency limit: Caps checked dependencies to prevent resource exhaustion
  */
 
-/* eslint-disable @typescript-eslint/ban-ts-comment */
+ 
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cwd } from 'node:process';
@@ -182,8 +182,6 @@ export async function detectFrameworks(
 
     // Use secure-json-parse with protoAction and constructorAction removal
     // Call parse with null reviver and options object
-    // @ts-ignore - secure-json-parse types are complex, but this is the correct API
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     pkg = parse(content, null, {
       protoAction: 'remove',
       constructorAction: 'remove',

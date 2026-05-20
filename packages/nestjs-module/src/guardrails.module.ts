@@ -13,8 +13,8 @@ import {
 } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import type {
-  GuardrailsModuleOptions,
   GuardrailsModuleAsyncOptions,
+  GuardrailsModuleOptions,
 } from './types.js';
 import { GuardrailsService } from './guardrails.service.js';
 import { GuardrailsInterceptor } from './guardrails.interceptor.js';

@@ -16,26 +16,26 @@
  */
 
 import {
-  GuardrailEngine,
-  createLogger,
-  Severity,
-  createResult,
   ConnectorValidationError,
+  createLogger,
+  createResult,
+  GuardrailEngine,
   type GuardrailResult,
   type Logger,
+  Severity,
 } from '@blackunicorn/bonklm';
 import type {
   GuardedQdrantOptions,
   GuardedQdrantResult,
-  QdrantSearchOptions,
   QdrantPoint,
+  QdrantSearchOptions,
 } from './types.js';
 import {
-  DEFAULT_VALIDATION_TIMEOUT,
-  DEFAULT_MAX_LIMIT,
   DEFAULT_MAX_FILTER_LENGTH,
+  DEFAULT_MAX_LIMIT,
   DEFAULT_MAX_PAYLOAD_SIZE,
   DEFAULT_REGEX_TIMEOUT,
+  DEFAULT_VALIDATION_TIMEOUT,
 } from './types.js';
 
 /**

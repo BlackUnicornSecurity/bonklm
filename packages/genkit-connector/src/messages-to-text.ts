@@ -11,7 +11,7 @@
  * @package @blackunicorn/bonklm-genkit
  */
 
-import type { GenkitMessage, GenkitContentPart, GenkitToolCall } from './types.js';
+import type { GenkitContentPart, GenkitMessage, GenkitToolCall } from './types.js';
 
 /**
  * Extracts text content from Genkit messages.
@@ -64,7 +64,7 @@ function contentPartToText(part: GenkitContentPart): string {
     case 'text':
       return part.text || '';
 
-    case 'toolRequest':
+    case 'toolRequest': {
       // SEC-005: Extract tool call info for validation
       const toolReqParts: string[] = [];
       if (part.toolRequest?.name) {
@@ -78,8 +78,9 @@ function contentPartToText(part: GenkitContentPart): string {
         }
       }
       return toolReqParts.join('\n');
+    }
 
-    case 'toolResponse':
+    case 'toolResponse': {
       // Extract tool response content
       const toolRespParts: string[] = [];
       if (part.toolResponse?.name) {
@@ -93,6 +94,7 @@ function contentPartToText(part: GenkitContentPart): string {
         }
       }
       return toolRespParts.join('\n');
+    }
 
     case 'image':
       // Don't validate image URLs directly

@@ -23,28 +23,27 @@
  * @package @blackunicorn/bonklm-express
  */
 
-import type { Request, Response, NextFunction } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { normalize } from 'node:path';
 import {
+  createLogger,
   GuardrailEngine,
   type GuardrailResult,
-  createLogger,
+  isSessionEscalated,
   LogLevel,
-  Severity,
   RiskLevel,
   Schema,
-  Validators,
-  updateSessionState,
-  isSessionEscalated,
   type SessionPatternFinding,
+  Severity,
+  updateSessionState,
+  Validators,
 } from '@blackunicorn/bonklm';
-import type { AttackLogger } from '@blackunicorn/bonklm-logger';
 import type {
+  BodyExtractor,
+  ErrorHandler,
   GuardrailsMiddlewareConfig,
   GuardrailsRequest,
   PathMatcher,
-  ErrorHandler,
-  BodyExtractor,
 } from './types.js';
 
 // DEV-002: Use proper logger instead of raw console
@@ -262,7 +261,7 @@ export function createGuardrailsMiddleware(
   if (attackLogger) {
     // The AttackLogger type is defined in types.ts and used for config validation
     // We need to call getInterceptCallback() to register with the engine
-    engine.onIntercept((attackLogger as AttackLogger).getInterceptCallback());
+    engine.onIntercept((attackLogger).getInterceptCallback());
   }
 
   // S013-005: Default session ID extractor
@@ -427,7 +426,7 @@ export function createGuardrailsMiddleware(
               for (const finding of result.findings || []) {
                 findings.push({
                   category: finding.category,
-                  weight: finding.weight || finding.severity === 'critical' ? 5 : finding.severity === 'blocked' ? 3 : 1,
+                  weight: finding.weight ?? (finding.severity === Severity.CRITICAL ? 5 : finding.severity === Severity.BLOCKED ? 3 : 1),
                   pattern_name: finding.pattern_name,
                   timestamp: result.timestamp,
                 });
@@ -496,12 +495,12 @@ export function createGuardrailsMiddleware(
       const chunks: Buffer[] = [];
 
       // Override res.write to buffer chunks
-      const originalWrite = res.write;
+      const originalWrite = res.write.bind(res);
       res.write = function (this: Response, chunk: any, cb?: any): boolean {
         if (chunk) {
           chunks.push(Buffer.from(chunk));
         }
-        return originalWrite.call(this, chunk, cb);
+        return originalWrite(chunk, cb);
       } as any;
 
       // Override res.send to buffer and validate

@@ -5,7 +5,7 @@
  * Includes security-related options for inference API validation.
  */
 
-import type { Validator, Guard, Logger, GuardrailResult } from '@blackunicorn/bonklm';
+import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
 
 /**
  * Configuration options for the guarded HuggingFace wrapper.

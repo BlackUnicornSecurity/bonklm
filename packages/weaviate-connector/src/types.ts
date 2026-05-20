@@ -7,7 +7,7 @@
  * @package @blackunicorn/bonklm-weaviate
  */
 
-import type { Validator, Guard, Logger, GuardrailResult } from '@blackunicorn/bonklm';
+import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
 
 /**
  * Default validation timeout in milliseconds.

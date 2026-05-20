@@ -34,7 +34,7 @@
 
 | Security Layer | What It Protects Against | Coverage |
 |----------------|-------------------------|----------|
-| **Prompt Injection Detection** | Malicious prompt manipulation, instruction override | 35+ pattern categories |
+| **Prompt Injection Detection** | Malicious prompt manipulation, instruction override | 35+ patterns across 6 categories |
 | **Jailbreak Detection** | DAN, roleplay, social engineering, adversarial attacks | 44 patterns across 10 categories |
 | **Reformulation Detection** | Code format injection, character encoding tricks, context overload | Multi-layer encoding analysis |
 | **Secret Guard** | Leaked API keys, tokens, credentials in code/content | 30+ credential types |

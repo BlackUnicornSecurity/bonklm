@@ -12,18 +12,18 @@
  */
 
 import {
+  BadRequestException,
+  CallHandler,
+  ExecutionContext,
   Injectable,
   NestInterceptor,
-  ExecutionContext,
-  CallHandler,
-  BadRequestException,
   Logger as NestLogger,
 } from '@nestjs/common';
-import { Observable, throwError, forkJoin, of } from 'rxjs';
-import { catchError, map, switchMap, finalize } from 'rxjs/operators';
+import { forkJoin, Observable, of, throwError } from 'rxjs';
+import { catchError, finalize, map, switchMap } from 'rxjs/operators';
 import { Reflector } from '@nestjs/core';
 import type { GuardrailResult } from '@blackunicorn/bonklm';
-import { Severity, RiskLevel } from '@blackunicorn/bonklm';
+import { RiskLevel, Severity } from '@blackunicorn/bonklm';
 import type { UseGuardrailsDecoratorOptions } from './types.js';
 import { GuardrailsService } from './guardrails.service.js';
 import { USE_GUARDRAILS_KEY } from './constants.js';
@@ -320,9 +320,10 @@ export class GuardrailsInterceptor implements NestInterceptor {
    */
   private getRequest(context: ExecutionContext): any {
     switch (context.getType()) {
-      case 'http':
+      case 'http': {
         const http = context.switchToHttp();
         return http.getRequest();
+      }
       case 'rpc':
         // RPC context (e.g., microservices)
         return context.getArgByIndex(0);

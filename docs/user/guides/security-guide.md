@@ -59,7 +59,7 @@ const result = validator.validate(htmlComment);
 
 ### Detected Pattern Categories
 
-The validator detects 35+ pattern categories:
+The validator detects 35+ patterns across 6 categories:
 
 1. **Instruction Override** - "Ignore all instructions"
 2. **Role Reversal** - "You are now a different AI"

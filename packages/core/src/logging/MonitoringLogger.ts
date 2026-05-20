@@ -7,7 +7,7 @@
  */
 
 import type { Logger } from '../base/GenericLogger.js';
-import { redactPIIInStringSync, redactPIIInObject } from '../guards/pii/validators.js';
+import { redactPIIInObject, redactPIIInStringSync } from '../guards/pii/validators.js';
 
 /**
  * Log level

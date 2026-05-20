@@ -11,19 +11,19 @@
 import type {
   PromptInjectionConfig,
   SecretGuardConfig,
-} from '@blackunicorn-llmguardrails/core';
+} from '@blackunicorn/bonklm';
 import {
+  createResult,
+  type GuardrailResult,
   PromptInjectionValidator,
   SecretGuard,
-  createResult,
   Severity,
-  type GuardrailResult,
-} from '@blackunicorn-llmguardrails/core';
+} from '@blackunicorn/bonklm';
 import type {
+  OpenClawAdapterConfig,
+  OpenClawGuardrailResult,
   OpenClawMessageContext,
   OpenClawToolContext,
-  OpenClawGuardrailResult,
-  OpenClawAdapterConfig,
 } from './types.js';
 
 const DEFAULT_CONFIG: Required<Omit<OpenClawAdapterConfig, 'logger'>> = {
@@ -217,9 +217,9 @@ export class OpenClawGuardrailsMiddleware {
     context: OpenClawMessageContext | OpenClawToolContext
   ): Promise<OpenClawGuardrailResult> {
     if ('content' in context) {
-      return this.validateMessage(context as OpenClawMessageContext);
+      return this.validateMessage(context);
     } else {
-      return this.validateTool(context as OpenClawToolContext);
+      return this.validateTool(context);
     }
   }
 

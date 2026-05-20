@@ -18,7 +18,7 @@ import { createConnection, Socket } from 'net';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import which from 'which';
-import { detectWithTimeout, DETECTION_TIMEOUTS } from './timeout.js';
+import { DETECTION_TIMEOUTS, detectWithTimeout } from './timeout.js';
 
 // Promisify execFile for async/await usage
 const execFileAsync = promisify(execFile);

@@ -22,27 +22,26 @@
  */
 
 import fp from 'fastify-plugin';
-import type { FastifyPluginAsync, FastifyRequest, FastifyReply } from 'fastify';
+import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import { normalize } from 'node:path';
 import {
+  createLogger,
   GuardrailEngine,
   type GuardrailResult,
-  createLogger,
+  isSessionEscalated,
   LogLevel,
-  Severity,
   RiskLevel,
   Schema,
-  Validators,
-  updateSessionState,
-  isSessionEscalated,
   type SessionPatternFinding,
+  Severity,
+  updateSessionState,
+  Validators,
 } from '@blackunicorn/bonklm';
-import type { AttackLogger } from '@blackunicorn/bonklm-logger';
 import type {
+  ErrorHandler,
   GuardrailsPluginOptions,
   GuardrailsRequest,
   PathMatcher,
-  ErrorHandler,
   ResponseExtractor,
 } from './types.js';
 
@@ -203,7 +202,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
 
   // S013-004: Register AttackLogger intercept callback if provided
   if (attackLogger) {
-    engine.onIntercept((attackLogger as AttackLogger).getInterceptCallback());
+    engine.onIntercept((attackLogger).getInterceptCallback());
   }
 
   // S013-005: Default session ID extractor
@@ -400,7 +399,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
           for (const finding of result.findings || []) {
             findings.push({
               category: finding.category,
-              weight: finding.weight || finding.severity === 'critical' ? 5 : finding.severity === 'blocked' ? 3 : 1,
+              weight: finding.weight ?? (finding.severity === Severity.CRITICAL ? 5 : finding.severity === Severity.BLOCKED ? 3 : 1),
               pattern_name: finding.pattern_name,
               timestamp: result.timestamp,
             });

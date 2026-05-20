@@ -1,22 +1,30 @@
 {
   "name": "@blackunicorn-bonklm",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "BonkLM - LLM Security Guardrails for prompt injection, jailbreak, and content validation",
   "private": true,
   "type": "module",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/adapters/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace=packages/core",
-    "test": "npm run test --workspace=packages/core",
-    "benchmark": "vitest bench --config vitest.config.ts team/performance/benchmark.bench.ts",
-    "lint": "npm run lint --workspace=packages/core",
+    "build": "pnpm -r --filter \"@blackunicorn/*\" run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "benchmark": "vitest bench --config vitest.config.ts packages/core/benchmarks/benchmark.bench.ts",
+    "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,js,mjs,cjs,json,md,yaml,yml}\"",
     "format:check": "prettier --check \"**/*.{ts,js,mjs,cjs,json,md,yaml,yml}\"",
-    "clean": "npm run clean --workspace=packages/core",
-    "dev": "npm run dev --workspace=packages/core",
-    "uat": "tsx team/uat/run-uat.ts"
+    "clean": "pnpm -r --filter \"@blackunicorn/*\" run clean",
+    "dev": "pnpm --filter ./packages/core run dev",
+    "uat": "tsx packages/core/uat/run-uat.ts",
+    "typecheck": "tsc --noEmit",
+    "changeset": "changeset",
+    "changeset:add": "changeset add",
+    "changeset:status": "changeset status",
+    "changeset:version": "changeset version && pnpm install --no-frozen-lockfile",
+    "changeset:publish": "pnpm run build && changeset publish"
   },
   "keywords": [
     "llm",
@@ -31,10 +39,11 @@
   "author": "Black Unicorn <security@blackunicorn.tech>",
   "license": "MIT",
   "devDependencies": {
+    "@changesets/cli": "^2.31.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^20.11.0",
-    "@vitest/coverage-istanbul": "^4.0.18",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/coverage-istanbul": "^4.1.7",
+    "@vitest/coverage-v8": "^4.1.7",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-n": "^17.24.0",
     "eslint-plugin-unicorn": "^63.0.0",
@@ -42,11 +51,12 @@
     "prettier": "^3.8.1",
     "typescript": "^5.3.3",
     "typescript-eslint": "^8.56.0",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.7"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
+  "packageManager": "pnpm@9.15.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/blackunicorn/bonklm"

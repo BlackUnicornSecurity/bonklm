@@ -28,16 +28,28 @@
 
     // Advanced
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    // NestJS module uses decorators; harmless for other packages
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "include": [
-    "packages/*/src/**/*"
+    "packages/*/src/**/*",
+    "packages/adapters/*/src/**/*"
   ],
   "exclude": [
     "node_modules",
+    "**/node_modules",
     "dist",
+    "**/dist",
     "**/*.test.ts",
     "**/*.spec.ts",
-    "reference"
+    "reference",
+    "**/examples/**",
+    "packages/examples/**",
+    "packages/core/uat/**",
+    "packages/core/benchmarks/**",
+    "**/vitest.config.ts",
+    "**/bin/**"
   ]
 }

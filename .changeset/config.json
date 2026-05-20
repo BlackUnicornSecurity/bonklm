@@ -1,0 +1,36 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.1.4/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [
+    [
+      "@blackunicorn/bonklm",
+      "@blackunicorn/bonklm-anthropic",
+      "@blackunicorn/bonklm-chroma",
+      "@blackunicorn/bonklm-copilotkit",
+      "@blackunicorn/bonklm-express",
+      "@blackunicorn/bonklm-fastify",
+      "@blackunicorn/bonklm-genkit",
+      "@blackunicorn/bonklm-huggingface",
+      "@blackunicorn/bonklm-langchain",
+      "@blackunicorn/bonklm-llamaindex",
+      "@blackunicorn/bonklm-logger",
+      "@blackunicorn/bonklm-mastra",
+      "@blackunicorn/bonklm-mcp",
+      "@blackunicorn/bonklm-nestjs",
+      "@blackunicorn/bonklm-ollama",
+      "@blackunicorn/bonklm-openai",
+      "@blackunicorn/bonklm-openclaw",
+      "@blackunicorn/bonklm-pinecone",
+      "@blackunicorn/bonklm-qdrant",
+      "@blackunicorn/bonklm-vercel",
+      "@blackunicorn/bonklm-weaviate",
+      "@blackunicorn/bonklm-wizard"
+    ]
+  ],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": []
+}
