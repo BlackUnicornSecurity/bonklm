@@ -39,6 +39,7 @@ import {
   StreamValidationError,
   VALIDATION_INTERVAL,
 } from './types.js';
+import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * Default logger instance.
@@ -96,13 +97,7 @@ export function messagesToText(messages: OllamaMessage[]): string {
  * @internal
  * @throws {TypeError} If value is not a positive finite number
  */
-function validatePositiveNumber(value: number, optionName: string): void {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    throw new TypeError(
-      `${optionName} must be a positive number. Received: ${value}`,
-    );
-  }
-}
+
 
 /**
  * Creates a guarded Ollama wrapper that intercepts and validates all API calls.

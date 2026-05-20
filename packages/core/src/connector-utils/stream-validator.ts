@@ -161,8 +161,13 @@ export function shouldValidateStream(
   state: StreamValidatorState,
   interval: number = DEFAULT_VALIDATION_INTERVAL
 ): boolean {
-  // Guard against `interval = 0` (would make `x % 0` produce NaN).
-  const safeInterval = interval >= 1 ? Math.floor(interval) : DEFAULT_VALIDATION_INTERVAL;
+  // Guard against `interval = 0` (would make `x % 0` produce NaN) AND
+  // `Infinity` (would make `x % Infinity === x`, so the modulo never hits 0
+  // and validation silently never runs).
+  const safeInterval =
+    Number.isFinite(interval) && interval >= 1
+      ? Math.floor(interval)
+      : DEFAULT_VALIDATION_INTERVAL;
   return !state.blocked && state.chunkCount > 0 && state.chunkCount % safeInterval === 0;
 }
 
@@ -193,7 +198,11 @@ export function hasUnvalidatedTail(
   state: StreamValidatorState,
   interval: number = DEFAULT_VALIDATION_INTERVAL
 ): boolean {
-  const safeInterval = interval >= 1 ? Math.floor(interval) : DEFAULT_VALIDATION_INTERVAL;
+  // Same Infinity/0 guard as shouldValidateStream.
+  const safeInterval =
+    Number.isFinite(interval) && interval >= 1
+      ? Math.floor(interval)
+      : DEFAULT_VALIDATION_INTERVAL;
   return !state.blocked && state.chunkCount > 0 && state.chunkCount % safeInterval !== 0;
 }
 
@@ -365,11 +374,20 @@ export class StreamValidator {
   private finalised = false;
 
   private constructor(engine: StreamValidatorEngine, options: StreamValidationOptions) {
+    // Symbol.asyncDispose is only present on Node >= 20.4.0. On earlier
+    // 20.x releases the `await using` lifecycle silently no-ops, so we
+    // fail loudly at construction time rather than ship a broken contract.
+    if (typeof Symbol.asyncDispose !== 'symbol') {
+      throw new Error(
+        'StreamValidator requires Node >= 20.4 (Symbol.asyncDispose). ' +
+        'Upgrade Node or use the lower-level processStreamChunk / hasUnvalidatedTail helpers.'
+      );
+    }
     this.engine = engine;
     this.options = options;
     this.interval =
-      options.validationInterval !== undefined && options.validationInterval >= 1
-        ? Math.floor(options.validationInterval)
+      Number.isFinite(options.validationInterval) && (options.validationInterval ?? 0) >= 1
+        ? Math.floor(options.validationInterval as number)
         : DEFAULT_VALIDATION_INTERVAL;
     this.state = createStreamValidatorState();
   }
@@ -427,15 +445,26 @@ export class StreamValidator {
   }
 
   private async runValidation(): Promise<StreamValidatorResult> {
-    const engineResult = await this.engine.validate(this.state.accumulated);
     const accumulated = this.state.accumulated;
-    if (!engineResult.allowed) {
-      const reason = engineResult.reason ?? 'stream_blocked';
+    try {
+      const engineResult = await this.engine.validate(accumulated);
+      if (!engineResult.allowed) {
+        const reason = engineResult.reason ?? 'stream_blocked';
+        this.options.onBlocked?.(accumulated, reason);
+        markStreamBlocked(this.state, reason);
+        return { allowed: false, reason, accumulated };
+      }
+      return { allowed: true, accumulated };
+    } catch (err) {
+      // Fail closed: if the engine throws (network error, timeout, etc.) we
+      // MUST NOT leave unvalidated content in the buffer that a subsequent
+      // call could mistake for validated. Mark the stream blocked and
+      // re-throw so the connector surfaces the failure to the caller.
+      const reason = err instanceof Error ? `engine_error: ${err.message}` : 'engine_error';
       this.options.onBlocked?.(accumulated, reason);
       markStreamBlocked(this.state, reason);
-      return { allowed: false, reason, accumulated };
+      throw err;
     }
-    return { allowed: true, accumulated };
   }
 
   // TC39 Stage 3 explicit-resource-management hook.

@@ -42,6 +42,7 @@ import {
   VALIDATION_INTERVAL,
 } from './types.js';
 import { messagesToText, toolCallsToText } from './messages-to-text.js';
+import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * Default logger instance.
@@ -56,13 +57,7 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  * @internal
  * @throws {TypeError} If value is not a positive finite number
  */
-function validatePositiveNumber(value: number, optionName: string): void {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    throw new TypeError(
-      `${optionName} must be a positive number. Received: ${value}`,
-    );
-  }
-}
+
 
 /**
  * Creates a Genkit plugin that wraps flows with guardrail validation.

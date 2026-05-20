@@ -28,7 +28,7 @@ export interface Logger {
  */
 export class ConsoleLogger implements Logger {
   private readonly level: LogLevel;
-  private readonly readonly: Record<LogLevel, number> = {
+  private readonly levelPriority: Record<LogLevel, number> = {
     [LogLevel.DEBUG]: 0,
     [LogLevel.INFO]: 1,
     [LogLevel.WARN]: 2,
@@ -40,7 +40,7 @@ export class ConsoleLogger implements Logger {
   }
 
   private shouldLog(level: LogLevel): boolean {
-    return this.readonly[level] >= this.readonly[this.level];
+    return this.levelPriority[level] >= this.levelPriority[this.level];
   }
 
   private formatMessage(message: string, context?: LogContext): string {

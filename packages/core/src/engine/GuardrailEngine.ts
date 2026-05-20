@@ -419,7 +419,7 @@ export class GuardrailEngine {
       this.logger.debug(`Running validator: ${name}`);
 
       try {
-        const result = validator.validate(content);
+        const result = await validator.validate(content);
         results.push({
           ...result,
           validatorName: name,
@@ -459,7 +459,7 @@ export class GuardrailEngine {
       this.logger.debug(`Running validator: ${name}`);
 
       try {
-        const result = validator.validate(content);
+        const result = await validator.validate(content);
         return {
           ...result,
           validatorName: name,
@@ -495,7 +495,7 @@ export class GuardrailEngine {
       this.logger.debug(`Running guard: ${name}`);
 
       try {
-        const result = guard.validate(content, context);
+        const result = await guard.validate(content, context);
         results.push({
           ...result,
           validatorName: name,

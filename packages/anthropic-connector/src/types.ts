@@ -69,13 +69,12 @@ export interface GuardedAnthropicOptions {
    *
    * @remarks
    * - 'incremental': Validates every N chunks during streaming, early terminates on violation
-   * - 'buffer': NOT YET IMPLEMENTED - Will accumulate entire stream before validating (less secure, faster)
    *
    * Addresses SEC-002: Post-hoc stream validation bypass.
    *
    * @defaultValue 'incremental'
    */
-  streamingMode?: 'incremental' | 'buffer';
+  streamingMode?: 'incremental';
 
   /**
    * Maximum buffer size for stream accumulation.
@@ -225,16 +224,7 @@ export interface GuardedMessage {
  * }
  * ```
  */
-export class StreamValidationError extends Error {
-  constructor(
-    message: string,
-    public readonly reason: string,
-    public readonly blocked: boolean = true,
-  ) {
-    super(message);
-    this.name = 'StreamValidationError';
-  }
-}
+export { StreamValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * Validation interval for incremental stream validation.

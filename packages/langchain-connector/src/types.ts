@@ -69,7 +69,7 @@ export interface GuardrailsCallbackHandlerOptions {
    *
    * @defaultValue 'incremental'
    */
-  streamingMode?: 'incremental' | 'buffer';
+  streamingMode?: 'incremental';
 
   /**
    * Maximum buffer size for stream accumulation.

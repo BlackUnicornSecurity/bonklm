@@ -53,7 +53,7 @@
     "vitest": "^4.1.7"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.4.0"
   },
   "packageManager": "pnpm@9.15.0",
   "repository": {

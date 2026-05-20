@@ -48,8 +48,9 @@ export const COMBINING_MARK_PATTERN = /[\u0300-\u036f\u1ab0-\u1aff\u1dc0-\u1dff\
 export const CONFUSABLE_MAP: Record<string, string> = {
   // Cyrillic lookalikes
   'а': 'a', 'е': 'e', 'і': 'i', 'о': 'o', 'р': 'p', 'с': 'c', 'у': 'y',
-  'х': 'x', 'А': 'A', 'В': 'B', 'Е': 'E', 'К': 'K', 'М': 'M', 'Н': 'H',
-  'О': 'O', 'Р': 'P', 'С': 'C', 'Т': 'T', 'Х': 'X',
+  'х': 'x', 'ѕ': 's', 'ј': 'j', 'ӏ': 'l', 'ԛ': 'q', 'ԝ': 'w',
+  'А': 'A', 'В': 'B', 'Е': 'E', 'К': 'K', 'М': 'M', 'Н': 'H',
+  'О': 'O', 'Р': 'P', 'С': 'C', 'Т': 'T', 'Х': 'X', 'Ѕ': 'S', 'Ј': 'J',
   // Greek lookalikes
   'Α': 'A', 'Β': 'B', 'Ε': 'E', 'Η': 'H', 'Ι': 'I', 'Κ': 'K', 'Μ': 'M',
   'Ν': 'N', 'Ο': 'O', 'Ρ': 'P', 'Τ': 'T', 'Υ': 'Y', 'Χ': 'X', 'Ζ': 'Z',
@@ -72,6 +73,17 @@ export const CONFUSABLE_MAP: Record<string, string> = {
   'ᴬ': 'A', 'ᴮ': 'B', 'ᴰ': 'D', 'ᴱ': 'E', 'ᴳ': 'G', 'ᴴ': 'H', 'ᵵ': 'I',
   'ᴶ': 'J', 'ᴷ': 'K', 'ᴸ': 'L', 'ᴹ': 'M', 'ᴺ': 'N', 'ᴼ': 'O', 'ᴾ': 'P',
   'ᴿ': 'R', 'ᵀ': 'T', 'ᵁ': 'U', 'ⱽ': 'V', 'ᵂ': 'W',
+  // Latin Letter Small Capitals (IPA / phonetic block) — NFKD does NOT decompose
+  // these to ASCII, so an attacker can spell `ɪɢɴᴏʀᴇ ᴀʟʟ ᴘʀᴇᴠɪᴏᴜѕ` and bypass
+  // every uppercase pattern unless we fold them here.
+  'ᴀ': 'a', 'ʙ': 'b', 'ᴄ': 'c', 'ᴅ': 'd', 'ᴇ': 'e', 'ꜰ': 'f', 'ɢ': 'g',
+  'ʜ': 'h', 'ɪ': 'i', 'ᴊ': 'j', 'ᴋ': 'k', 'ʟ': 'l', 'ᴍ': 'm', 'ɴ': 'n',
+  'ᴏ': 'o', 'ᴘ': 'p', 'ǫ': 'q', 'ʀ': 'r', 'ꜱ': 's', 'ᴛ': 't', 'ᴜ': 'u',
+  'ᴠ': 'v', 'ᴡ': 'w', 'ʏ': 'y', 'ᴢ': 'z',
+  // Cherokee letters that share glyph with Latin (case-confusable attacks)
+  'Ꭺ': 'A', 'Ꭱ': 'E', 'Ꭲ': 'T', 'Ꮃ': 'W', 'Ꮤ': 'W', 'Ꮯ': 'C', 'Ꮷ': 'd',
+  // Armenian uppercase shapes overlapping Latin
+  'Ա': 'U', 'Բ': 'F', 'Հ': 'Z', 'Տ': 'S',
   // Mathematical symbols (confusables)
   'ℝ': 'R', 'ℤ': 'Z', 'ℚ': 'Q', 'ℕ': 'N', 'ℂ': 'C', 'ℙ': 'P',
   '∞': 'infinity', '∂': 'd', '∆': 'delta', '∑': 'sum', '∏': 'product',

@@ -285,16 +285,7 @@ export interface GuardedChatResult {
  * }
  * ```
  */
-export class StreamValidationError extends Error {
-  constructor(
-    message: string,
-    public readonly reason: string,
-    public readonly blocked: boolean = true,
-  ) {
-    super(message);
-    this.name = 'StreamValidationError';
-  }
-}
+export { StreamValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * Validation interval for incremental stream validation.

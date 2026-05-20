@@ -44,6 +44,7 @@ import {
   DEFAULT_VALIDATION_TIMEOUT,
   VALIDATION_INTERVAL,
 } from './types.js';
+import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * Default logger instance.
@@ -133,13 +134,7 @@ export function messagesToText(messages: MessageParam[]): string {
  * @internal
  * @throws {TypeError} If value is not a positive finite number
  */
-function validatePositiveNumber(value: number, optionName: string): void {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    throw new TypeError(
-      `${optionName} must be a positive number. Received: ${value}`,
-    );
-  }
-}
+
 
 /**
  * Extracts text content from a Message object.
