@@ -16,8 +16,8 @@
  * @package @blackunicorn/bonklm-fastify
  */
 
-import type { FastifyRequest, FastifyReply } from 'fastify';
-import type { Validator, Guard, GuardrailResult, Logger } from '@blackunicorn/bonklm';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
 import type { AttackLogger } from '@blackunicorn/bonklm-logger';
 
 /**

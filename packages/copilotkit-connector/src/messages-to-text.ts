@@ -11,7 +11,7 @@
  * @package @blackunicorn/bonklm-copilotkit
  */
 
-import type { CopilotKitMessage, CopilotKitContentPart, CopilotKitAction } from './types.js';
+import type { CopilotKitAction, CopilotKitContentPart, CopilotKitMessage } from './types.js';
 
 /**
  * Extracts text content from CopilotKit messages.

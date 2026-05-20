@@ -21,7 +21,7 @@ Complete API documentation for BonkLM (`@blackunicorn/bonklm`).
 
 #### `PromptInjectionValidator`
 
-Detects prompt injection attempts using 35+ pattern categories with multi-layer encoding detection.
+Detects prompt injection attempts using 35+ patterns across 6 categories with multi-layer encoding detection.
 
 ```typescript
 import { PromptInjectionValidator } from '@blackunicorn/bonklm';

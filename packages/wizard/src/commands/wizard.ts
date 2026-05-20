@@ -18,7 +18,7 @@
 
 import { Command } from 'commander';
 import * as p from '@clack/prompts';
-import { getConnector, getAllConnectors } from '../connectors/registry.js';
+import { getAllConnectors, getConnector } from '../connectors/registry.js';
 import { detectFrameworks } from '../detection/framework.js';
 import { detectServices } from '../detection/services.js';
 import { detectCredentials } from '../detection/credentials.js';
@@ -382,7 +382,7 @@ export const wizardCommand = new Command('wizard')
 
       // JSON output if requested
       if (options.json) {
-        console.log('\n' + JSON.stringify({
+        console.log(`\n${  JSON.stringify({
           configured: successful.map(r => ({
             id: r.connectorId,
             name: r.connectorName,
@@ -394,9 +394,9 @@ export const wizardCommand = new Command('wizard')
             error: r.result.error,
           })),
           envEntries: Object.fromEntries(
-            Object.entries(envEntries).map(([k, v]) => [k, '***REDACTED***'])
+            Object.entries(envEntries).map(([k]) => [k, '***REDACTED***'])
           ),
-        }, null, 2));
+        }, null, 2)}`);
       }
 
       p.outro(

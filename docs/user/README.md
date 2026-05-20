@@ -120,7 +120,7 @@ npm install @blackunicorn/bonklm-mcp
 
 | Feature | Description |
 |---------|-------------|
-| **Prompt Injection Detection** | 35+ pattern categories with multi-layer encoding detection |
+| **Prompt Injection Detection** | 35+ patterns across 6 categories with multi-layer encoding detection |
 | **Jailbreak Detection** | 44 patterns across 10 categories |
 | **Secret Guard** | Detects 30+ types of API keys and credentials |
 | **PII Guard** | Personal information detection and redaction |

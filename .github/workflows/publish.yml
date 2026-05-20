@@ -27,10 +27,18 @@ jobs:
           echo "Publishing version: $VERSION"
 
       - name: Validate version format
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
         run: |
-          VERSION=${{ steps.get_version.outputs.version }}
           if ! [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
             echo "Error: Version '$VERSION' does not match semver format"
+            exit 1
+          fi
+          # Prerelease tags (containing `-`) require changesets to be in pre mode.
+          # Otherwise `changeset publish` ships a STABLE release while the tag claims prerelease.
+          if [[ $VERSION == *-* ]] && [ ! -f .changeset/pre.json ]; then
+            echo "Error: Prerelease tag '$VERSION' but .changeset/pre.json missing."
+            echo "Run 'pnpm exec changeset pre enter <tag>' on a branch and commit the file before tagging."
             exit 1
           fi
           echo "Version format validated: $VERSION"
@@ -41,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18, 20, 22]
+        node-version: [20, 22]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -106,18 +114,18 @@ jobs:
         run: |
           echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" > .npmrc
 
-      - name: Publish packages
+      - name: Publish packages via changesets
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          pnpm --filter @blackunicorn/bonklm publish --no-git-checks --access public
+          pnpm exec changeset publish
 
       - name: Create GitHub Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
+          generate_release_notes: true

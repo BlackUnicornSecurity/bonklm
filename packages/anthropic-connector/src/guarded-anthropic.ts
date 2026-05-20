@@ -18,32 +18,31 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import type {
+  ContentBlock,
+  Message,
   MessageCreateParamsNonStreaming,
   MessageCreateParamsStreaming,
-  MessageStreamEvent,
-  Message,
   MessageParam,
-  ContentBlock,
+  MessageStreamEvent,
 } from '@anthropic-ai/sdk/resources/messages.js';
 import {
-  GuardrailEngine,
   createLogger,
-  Severity,
   createResult,
   createRetryPolicy,
+  GuardrailEngine,
   type GuardrailResult,
   type Logger,
-  type EngineResult,
+  Severity,
 } from '@blackunicorn/bonklm';
 import type {
   GuardedAnthropicOptions,
-  GuardedMessageOptions,
   GuardedMessage,
+  GuardedMessageOptions,
 } from './types.js';
 import {
-  VALIDATION_INTERVAL,
   DEFAULT_MAX_BUFFER_SIZE,
   DEFAULT_VALIDATION_TIMEOUT,
+  VALIDATION_INTERVAL,
 } from './types.js';
 
 /**
@@ -286,7 +285,7 @@ export function createGuardedAnthropic(
       // Convert EngineResult to GuardrailResult[]
       if ('results' in engineResult) {
         // Multiple results returned (from EngineResult.results array)
-        const multiResult = engineResult as EngineResult;
+        const multiResult = engineResult;
         return multiResult.results || [engineResult as GuardrailResult];
       }
 
@@ -526,7 +525,9 @@ export function createGuardedAnthropic(
         const retryResult = await retryPolicy.execute(finalCall);
 
         if (!retryResult.success) {
-          throw retryResult.error;
+          throw retryResult.error instanceof Error
+            ? retryResult.error
+            : new Error(String(retryResult.error));
         }
 
         return retryResult.value ?? finalCall();

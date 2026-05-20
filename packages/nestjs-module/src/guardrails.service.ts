@@ -6,30 +6,27 @@
  * @package @blackunicorn/bonklm-nestjs
  */
 
-// @ts-ignore - Inject and Optional are used in decorator parameter but TypeScript doesn't recognize it
-import { Injectable, Inject, Optional } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import {
+  createLogger,
   GuardrailEngine,
   GuardrailResult,
+  isSessionEscalated,
   Logger,
-  createLogger,
   LogLevel,
-  Severity,
   RiskLevel,
   Schema,
-  Validators,
-  updateSessionState,
-  isSessionEscalated,
   type SessionPatternFinding,
+  Severity,
+  updateSessionState,
+  Validators,
 } from '@blackunicorn/bonklm';
-import type { AttackLogger } from '@blackunicorn/bonklm-logger';
 import type {
   GuardrailsModuleOptions,
 } from './types.js';
 import {
-  DEFAULT_VALIDATION_TIMEOUT,
   DEFAULT_MAX_CONTENT_LENGTH,
-  // @ts-ignore - GUARDRAILS_OPTIONS is used in decorator parameter but TypeScript doesn't recognize it
+  DEFAULT_VALIDATION_TIMEOUT,
   GUARDRAILS_OPTIONS,
 } from './constants.js';
 
@@ -98,7 +95,6 @@ export class GuardrailsService {
   private readonly responseExtractor?: (response: any) => string;
 
   constructor(
-    // @ts-ignore - Parameter decorators require special TypeScript handling
     @Optional() @Inject(GUARDRAILS_OPTIONS) options?: GuardrailsModuleOptions,
   ) {
     // S013-003: Validate configuration at initialization
@@ -137,7 +133,7 @@ export class GuardrailsService {
 
     // S013-004: Register AttackLogger intercept callback if provided
     if (attackLogger) {
-      this.engine.onIntercept((attackLogger as AttackLogger).getInterceptCallback());
+      this.engine.onIntercept((attackLogger).getInterceptCallback());
     }
 
     // S013-005: Set up session tracking
@@ -403,7 +399,7 @@ export class GuardrailsService {
       for (const finding of result.findings || []) {
         findings.push({
           category: finding.category,
-          weight: finding.weight || finding.severity === 'critical' ? 5 : finding.severity === 'blocked' ? 3 : 1,
+          weight: finding.weight ?? (finding.severity === Severity.CRITICAL ? 5 : finding.severity === Severity.BLOCKED ? 3 : 1),
           pattern_name: finding.pattern_name,
           timestamp: result.timestamp,
         });

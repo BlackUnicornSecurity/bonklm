@@ -1,14 +1,13 @@
 {
   "name": "@blackunicorn/bonklm",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "BonkLM - LLM Security Guardrails with Interactive Setup Wizard",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "bonklm": "./dist/bin/run.js",
-    "cli": "bin/run.ts"
+    "bonklm": "./dist/bin/run.js"
   },
   "exports": {
     ".": {
@@ -44,7 +43,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc && sed -i '' \"s|from '../cli/|from './cli/|g\" dist/bin/run.js && chmod +x dist/bin/run.js",
+    "build": "tsc && node -e \"const fs=require('fs');const f='dist/bin/run.js';fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace(/from '\\.\\.\\/cli\\//g,\\\"from './cli/\\\"));fs.chmodSync(f,0o755);\"",
     "dev": "tsc --watch",
     "test": "vitest",
     "lint": "eslint src",
@@ -75,9 +74,9 @@
     "@types/node": "^20.11.0",
     "@types/which": "^3.0.4",
     "typescript": "^5.3.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.7"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }

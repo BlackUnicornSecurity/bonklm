@@ -21,28 +21,25 @@ import type {
   ChatCompletion,
   ChatCompletionChunk,
   ChatCompletionMessageParam,
-  ChatCompletionCreateParamsNonStreaming,
-  ChatCompletionCreateParamsStreaming,
 } from 'openai/resources/chat/completions';
 import {
-  GuardrailEngine,
   createLogger,
-  Severity,
   createResult,
+  GuardrailEngine,
   type GuardrailResult,
   type Logger,
-  type EngineResult,
+  Severity,
 } from '@blackunicorn/bonklm';
 import type {
-  GuardedOpenAIOptions,
-  GuardedChatCompletionOptions,
   GuardedChatCompletion,
+  GuardedChatCompletionOptions,
+  GuardedOpenAIOptions,
   MessageContent,
 } from './types.js';
 import {
-  VALIDATION_INTERVAL,
   DEFAULT_MAX_BUFFER_SIZE,
   DEFAULT_VALIDATION_TIMEOUT,
+  VALIDATION_INTERVAL,
 } from './types.js';
 
 /**
@@ -202,7 +199,7 @@ export function createGuardedOpenAI(
       // Convert EngineResult to GuardrailResult[]
       if ('results' in engineResult) {
         // Multiple results returned (from EngineResult.results array)
-        const multiResult = engineResult as EngineResult;
+        const multiResult = engineResult;
         return multiResult.results || [engineResult as GuardrailResult];
       }
 
@@ -298,7 +295,7 @@ export function createGuardedOpenAI(
         if (isStreaming) {
           // Create streaming request
           const stream = await client.chat.completions.create(
-            opts as ChatCompletionCreateParamsStreaming,
+            opts,
           );
 
           // Wrap stream with validation if enabled
@@ -307,7 +304,7 @@ export function createGuardedOpenAI(
 
         // Non-streaming request
         const response = await client.chat.completions.create(
-          opts as ChatCompletionCreateParamsNonStreaming,
+          opts,
         );
 
         // Validate output content
@@ -334,9 +331,9 @@ export function createGuardedOpenAI(
               ...response,
               choices: [
                 {
-                  ...response.choices[0]!,
+                  ...response.choices[0],
                   message: {
-                    ...response.choices[0]!.message,
+                    ...response.choices[0].message,
                     content: filteredContent,
                   },
                 },

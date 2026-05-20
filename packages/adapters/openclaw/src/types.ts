@@ -3,7 +3,7 @@
  * =====================================
  */
 
-import type { GuardrailResult } from '@blackunicorn-llmguardrails/core';
+import type { GuardrailResult } from '@blackunicorn/bonklm';
 
 /**
  * OpenClaw message context

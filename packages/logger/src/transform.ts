@@ -355,7 +355,7 @@ export function truncateContent(content: string, maxLength = 200): string {
  * @returns Escaped content
  */
 export function escapeControlCharacters(content: string): string {
-  // eslint-disable-next-line no-control-regex
+   
   return content.replace(/[\x00-\x1F\x7F]/g, (char) => {
     const code = char.charCodeAt(0);
     return `\\x${code.toString(16).padStart(2, '0')}`;

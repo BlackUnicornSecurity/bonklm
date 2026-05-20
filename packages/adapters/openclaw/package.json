@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-openclaw",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "OpenClaw integration for BonkLM",
   "type": "module",
   "main": "./dist/index.js",
@@ -38,7 +38,7 @@
   "author": "Black Unicorn <security@blackunicorn.tech>",
   "license": "MIT",
   "dependencies": {
-    "@blackunicorn/bonklm": "file:../../core"
+    "@blackunicorn/bonklm": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
@@ -53,6 +53,6 @@
     }
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }

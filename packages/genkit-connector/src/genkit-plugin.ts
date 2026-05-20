@@ -20,26 +20,26 @@
  */
 
 import {
-  GuardrailEngine,
   createLogger,
-  Severity,
   createResult,
+  GuardrailEngine,
   type GuardrailResult,
   type Logger,
+  Severity,
 } from '@blackunicorn/bonklm';
 import type {
-  GuardedGenkitOptions,
+  FlowHookResult,
+  GenkitFlowContext,
   GenkitMessage,
   GenkitToolCall,
-  GenkitFlowContext,
-  FlowHookResult,
+  GuardedGenkitOptions,
 } from './types.js';
 import {
   DEFAULT_MAX_BUFFER_SIZE,
   DEFAULT_MAX_CONTENT_LENGTH,
   DEFAULT_VALIDATION_TIMEOUT,
-  VALIDATION_INTERVAL,
   StreamValidationError,
+  VALIDATION_INTERVAL,
 } from './types.js';
 import { messagesToText, toolCallsToText } from './messages-to-text.js';
 

@@ -16,19 +16,18 @@
 
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import {
-  GuardrailEngine,
   createLogger,
-  Severity,
   createResult,
+  GuardrailEngine,
   type GuardrailResult,
   type Logger,
-  type EngineResult,
+  Severity,
 } from '@blackunicorn/bonklm';
 import {
-  extractContentFromResponse,
   ConnectorValidationError,
-  logValidationFailure,
+  extractContentFromResponse,
   logTimeout,
+  logValidationFailure,
 } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
   GuardedMCPOptions,
@@ -39,8 +38,8 @@ import type {
 import {
   DEFAULT_MAX_ARGUMENT_SIZE,
   DEFAULT_VALIDATION_TIMEOUT,
-  VALID_TOOL_NAME_PATTERN,
   MAX_TOOL_NAME_LENGTH,
+  VALID_TOOL_NAME_PATTERN,
 } from './types.js';
 
 /**
@@ -246,7 +245,7 @@ export function createGuardedMCP(
       // Convert EngineResult to GuardrailResult[]
       if ('results' in engineResult) {
         // Multiple results returned (from EngineResult.results array)
-        const multiResult = engineResult as EngineResult;
+        const multiResult = engineResult;
         return multiResult.results || [engineResult as GuardrailResult];
       }
 

@@ -290,15 +290,16 @@ MHcCAQEEIFLu7LfVcWpL4M3baK4Yk4vLkhhGVxNL...
 
   describe('Specific Provider Tests', () => {
     it('should detect Slack tokens', () => {
+      // Pattern: /xox[baprs]-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24}/
       // TEST VALUE ONLY - NOT A REAL TOKEN
-      const result = validateSecrets('slack_token = "xoxb-TESTFAKEPLACEHOLDER-NOT-REAL-TOKEN"');
+      const result = validateSecrets('slack_token = "xoxb-1234567890-1234567890-' + 'a'.repeat(24) + '"');
       expect(result.blocked).toBe(true);
     });
 
     it('should detect Stripe keys', () => {
-      // Pattern: /sk_live_[A-Za-z0-9]{24,}/g - needs at least 24 chars after sk_live_
+      // Pattern: /sk_live_[A-Za-z0-9]{24,}/g - needs 24+ alphanumerics, no underscores
       // TEST VALUE ONLY - NOT A REAL KEY
-      const result = validateSecrets('stripe_key = "sk_live_TEST_FAKE_PLACEHOLDER_NOT_REAL_KEY"');
+      const result = validateSecrets('stripe_key = "sk_live_' + 'a'.repeat(24) + '"');
       expect(result.blocked).toBe(true);
     });
 
@@ -311,9 +312,10 @@ MHcCAQEEIFLu7LfVcWpL4M3baK4Yk4vLkhhGVxNL...
 
     it('should detect OpenAI keys', () => {
       // Pattern: /sk-proj-[A-Za-z0-9]{20,}T3BlbkFJ[A-Za-z0-9]{20,}/g
-      // T3BlbkFJ is base64 of "sk"
+      // T3BlbkFJ is the embedded marker in legacy/first-gen OpenAI project keys
       // TEST VALUE ONLY - NOT A REAL KEY
-      const result = validateSecrets('openai_key = "sk-proj-TEST-PLACEHOLDER-NOT-REAL-KEY-FOR-TESTING"');
+      const fakeKey = 'sk-proj-' + 'a'.repeat(20) + 'T3BlbkFJ' + 'b'.repeat(20);
+      const result = validateSecrets(`openai_key = "${fakeKey}"`);
       expect(result.blocked).toBe(true);
     });
 

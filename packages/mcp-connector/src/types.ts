@@ -13,12 +13,12 @@
  * - DEV-002: Logger type
  */
 
-import type { Validator, Guard, Logger, GuardrailResult } from '@blackunicorn/bonklm';
+import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
 import {
-  StreamValidationError,
-  ConnectorValidationError,
   ConnectorConfigurationError,
   ConnectorTimeoutError,
+  ConnectorValidationError,
+  StreamValidationError,
 } from '@blackunicorn/bonklm';
 
 /**

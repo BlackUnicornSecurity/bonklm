@@ -47,8 +47,8 @@ export function redactPIIValue(value: string, patternName?: string): string {
     Email: (v: string) => {
       const parts = v.split('@');
       if (parts.length === 2) {
-        const local = parts[0]!;
-        const domain = parts[1]!;
+        const local = parts[0];
+        const domain = parts[1];
         const localLen = local.length;
         if (localLen <= 2) {
           return `${'*'.repeat(localLen)}@${domain}`;
@@ -61,7 +61,7 @@ export function redactPIIValue(value: string, patternName?: string): string {
   };
 
   if (patternName && patternRedactions[patternName]) {
-    return patternRedactions[patternName]!(value);
+    return patternRedactions[patternName](value);
   }
 
   // Generic format-preserving redaction

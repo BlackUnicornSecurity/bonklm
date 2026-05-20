@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-pinecone",
-  "version": "1.1.0",
+  "version": "0.3.0",
   "description": "Pinecone vector database connector for BonkLM - Query and retrieval validation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -35,10 +35,10 @@
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/coverage-v8": "^4.1.7",
     "typescript": "^5.3.0",
     "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.7"
   },
   "files": [
     "dist",

@@ -12,9 +12,11 @@
  * - Pipe-to-bash detection (curl|bash, wget|bash)
  */
 
+import { resolve as resolvePath } from 'node:path';
 import { createResult, Severity as Sev } from '../base/GuardrailResult.js';
 import { mergeConfig, type ValidatorConfig } from '../base/ValidatorConfig.js';
 import type { Logger } from '../base/GenericLogger.js';
+import { normalizeText } from '../validators/text-normalizer.js';
 
 // =============================================================================
 // TYPES
@@ -71,8 +73,8 @@ const SHELL_OPERATORS = new Set(['|', '||', '&&', ';', '>', '>>', '2>', '2>>', '
  * Check if a path is within the current working directory (repo)
  */
 function isPathInRepo(target: string, cwd: string): boolean {
-  const resolvedTarget = require('path').resolve(cwd, target);
-  const resolvedCwd = require('path').resolve(cwd);
+  const resolvedTarget = resolvePath(cwd, target);
+  const resolvedCwd = resolvePath(cwd);
   return resolvedTarget.startsWith(resolvedCwd);
 }
 
@@ -442,6 +444,12 @@ export class BashSafetyGuard {
       return createResult(true, Sev.INFO, []);
     }
 
+    // Normalize before detection — defeats `r​m -rf /` and homoglyph bypass.
+    // Also normalize cwd so path-containment checks on `cd /home/иван` work for
+    // users whose home directory contains Cyrillic/Greek/precomposed characters.
+    command = normalizeText(command);
+    const normalizedCwd = this.config.cwd ? normalizeText(this.config.cwd) : this.config.cwd;
+
     const findings: BashFinding[] = [];
 
     // Check for command substitution
@@ -475,8 +483,8 @@ export class BashSafetyGuard {
       }
     }
 
-    // Check dangerous rm commands
-    const rmCheck = checkDangerousRm(command, this.config.cwd);
+    // Check dangerous rm commands (path containment uses normalized cwd)
+    const rmCheck = checkDangerousRm(command, normalizedCwd);
     if (rmCheck.isDangerous) {
       findings.push({
         category: 'dangerous_rm',
@@ -487,8 +495,8 @@ export class BashSafetyGuard {
       });
     }
 
-    // Check directory escape
-    const escapeCheck = checkDirectoryEscape(command, this.config.cwd);
+    // Check directory escape (path containment uses normalized cwd)
+    const escapeCheck = checkDirectoryEscape(command, normalizedCwd);
     if (escapeCheck.isEscape) {
       findings.push({
         category: 'directory_escape',

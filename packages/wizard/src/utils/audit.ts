@@ -12,7 +12,7 @@
  * The audit log uses JSONL format (one JSON object per line) with HMAC signatures.
  */
 
-import { readFile, appendFile, mkdir, chmod, stat } from 'fs/promises';
+import { appendFile, chmod, mkdir, readFile, stat } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { createHmac } from 'node:crypto';
@@ -181,7 +181,7 @@ function verifySignature(entry: AuditEntry): boolean {
  * @returns JSON string followed by newline
  */
 function formatAuditEntry(entry: AuditEntry): string {
-  return JSON.stringify(entry) + '\n';
+  return `${JSON.stringify(entry)  }\n`;
 }
 
 /**

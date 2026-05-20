@@ -6,7 +6,7 @@
  * and retrieval safety.
  */
 
-import type { Validator, Guard, Logger, GuardrailResult } from '@blackunicorn/bonklm';
+import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
 
 /**
  * Configuration options for the guarded LlamaIndex wrapper.

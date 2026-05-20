@@ -105,13 +105,13 @@ export const connectorAddCommand = new Command('add')
     const connector = getConnector(id);
     if (!connector) {
       p.cancel(`Unknown connector: ${id}`);
-      p.log.info('Available connectors: ' + [
+      p.log.info(`Available connectors: ${  [
         'openai',
         'anthropic',
         'ollama',
         'express',
         'langchain',
-      ].join(', '));
+      ].join(', ')}`);
       process.exit(1);
     }
 

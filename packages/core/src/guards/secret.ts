@@ -13,6 +13,7 @@ import { createResult, Finding, type GuardrailResult, RiskLevel, Severity } from
 import type { SecretGuardConfig, ValidatorConfig } from '../base/ValidatorConfig.js';
 import { createLogger, type Logger } from '../base/GenericLogger.js';
 import { isExampleContent, isExpectedSecretFile, isHighEntropy } from '../common/index.js';
+import { normalizeText } from '../validators/text-normalizer.js';
 
 const DEFAULT_CONFIG: Required<Pick<SecretGuardConfig, 'checkExamples' | 'entropyThreshold'>> = {
   checkExamples: true,
@@ -61,9 +62,10 @@ const CRITICAL_PATTERNS: SecretPattern[] = [
   // Google
   { pattern: /AIza[0-9A-Za-z\-_]{35}/g, secretType: 'Google API Key', confidence: 'critical' },
 
-  // OpenAI
-  { pattern: /sk-proj-[A-Za-z0-9]{20,}T3BlbkFJ[A-Za-z0-9]{20,}/g, secretType: 'OpenAI Project Key', confidence: 'critical' },
+  // OpenAI — legacy keys carry the T3BlbkFJ infix; 2024+ sk-proj- keys do not.
+  { pattern: /sk-proj-[A-Za-z0-9]{20,}T3BlbkFJ[A-Za-z0-9]{20,}/g, secretType: 'OpenAI Project Key (legacy format)', confidence: 'critical' },
   { pattern: /sk-[A-Za-z0-9]{20}T3BlbkFJ[A-Za-z0-9]{20}/g, secretType: 'OpenAI Legacy Key', confidence: 'critical' },
+  { pattern: /sk-proj-[A-Za-z0-9_-]{40,}/g, secretType: 'OpenAI Project Key', confidence: 'critical' },
 
   // Anthropic
   { pattern: /sk-ant-api03-[A-Za-z0-9\-_]{93}/g, secretType: 'Anthropic API Key', confidence: 'critical' },
@@ -74,8 +76,9 @@ const CRITICAL_PATTERNS: SecretPattern[] = [
   // SendGrid
   { pattern: /SG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}/g, secretType: 'SendGrid API Key', confidence: 'critical' },
 
-  // Mailgun
-  { pattern: /key-[A-Za-z0-9]{32}/g, secretType: 'Mailgun API Key', confidence: 'critical' },
+  // Mailgun — require a credential-assignment context to reduce false positives.
+  // Bare `key-XXX` 32-char strings matched too many feature-flag and config-key identifiers.
+  { pattern: /(?:mailgun|api[_-]?key|mg[_-]?key)\s*[=:]\s*["']?key-[A-Za-z0-9]{32}["']?/gi, secretType: 'Mailgun API Key', confidence: 'critical' },
 
   // Azure
   { pattern: /SharedAccessSignature\s+sr=[^\s&]+&sig=[A-Za-z0-9%+/=]+&/g, secretType: 'Azure Shared Access Signature', confidence: 'critical' },
@@ -137,6 +140,8 @@ export class SecretGuard {
    */
   detect(content: string, filePath: string = ''): SecretDetection[] {
     const detections: SecretDetection[] = [];
+    // Normalize before detection — defeats zero-width-char and homoglyph splitting.
+    content = normalizeText(content);
     const lines = content.split('\n');
 
     // Skip if this is an expected example file

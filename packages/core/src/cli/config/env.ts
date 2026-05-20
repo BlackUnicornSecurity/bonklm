@@ -335,12 +335,12 @@ export class EnvManager {
   private async setWindowsPermissions(filePath: string): Promise<void> {
     // SECURITY: Validate file path is within safe directory before execution
     // Resolve to absolute path to prevent path traversal
-    const { resolve } = await import('node:path');
-    const normalizedPath = resolve(filePath);
+    const pathModule = await import('node:path');
+    const normalizedPath = pathModule.resolve(filePath);
     const cwd = process.cwd();
 
     // Ensure the path is within the current working directory
-    if (!normalizedPath.startsWith(resolve(cwd))) {
+    if (!normalizedPath.startsWith(pathModule.resolve(cwd))) {
       throw new WizardError(
         'PATH_OUTSIDE_DIRECTORY',
         'File path is outside the allowed directory',

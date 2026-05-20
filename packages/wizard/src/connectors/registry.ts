@@ -5,7 +5,7 @@
  * Provides methods to retrieve connectors by ID, category, or get all connectors.
  */
 
-import type { ConnectorDefinition, ConnectorCategory } from './base.js';
+import type { ConnectorCategory, ConnectorDefinition } from './base.js';
 
 /** Default timeout in milliseconds for API-based connector tests */
 export const DEFAULT_API_TIMEOUT = 5000;

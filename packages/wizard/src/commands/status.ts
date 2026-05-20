@@ -100,9 +100,9 @@ export const statusCommand = new Command('status')
     }
 
     // Human-readable output
-    console.log('\n' + '═'.repeat(50));
+    console.log(`\n${  '═'.repeat(50)}`);
     console.log('  LLM-Guardrails Environment Status');
-    console.log('═'.repeat(50) + '\n');
+    console.log(`${'═'.repeat(50)  }\n`);
 
     // Frameworks
     console.log(formatStatusItem('Frameworks', frameworks, 'No frameworks detected'));
@@ -114,7 +114,7 @@ export const statusCommand = new Command('status')
     if (services.length > availableServices.length) {
       const unavailable = services.filter(s => !s.available);
       if (unavailable.length > 0) {
-        console.log('  (Unavailable: ' + unavailable.map(s => s.name).join(', ') + ')');
+        console.log(`  (Unavailable: ${  unavailable.map(s => s.name).join(', ')  })`);
       }
     }
     console.log('');
@@ -155,7 +155,7 @@ export const statusCommand = new Command('status')
       console.log(`  [${status}] ${connector.name} (${connector.id})`);
     }
 
-    console.log('\n' + '═'.repeat(50));
+    console.log(`\n${  '═'.repeat(50)}`);
     console.log(`  Run 'bonklm wizard' to set up connectors`);
-    console.log('═'.repeat(50) + '\n');
+    console.log(`${'═'.repeat(50)  }\n`);
   });

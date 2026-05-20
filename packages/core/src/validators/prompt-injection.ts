@@ -119,7 +119,8 @@ function detectMultiLayerEncoding(content: string, maxDepth: number = MAX_DECODE
       const result = iterativeDecode(encodedText, processedInputs, maxDepth);
 
       if (result.decodeLayers.length > 1) {
-        const containsInjection = /ignore|override|bypass|disable/i.test(result.finalDecoded);
+        // Run the full pattern suite on the decoded payload, not a 4-keyword grep.
+        const containsInjection = detectPatterns(result.finalDecoded).length > 0;
 
         findings.push({
           category: 'multi_layer_encoding',
@@ -285,7 +286,8 @@ function detectBase64Payloads(text: string): Base64Finding[] {
         continue;
       }
 
-      const containsInjection = /ignore|override|bypass|disable|jailbreak|DAN/i.test(decoded);
+      // Run the full pattern suite on the decoded payload, not a narrow keyword regex.
+      const containsInjection = detectPatterns(decoded).length > 0;
 
       findings.push({
         category: 'base64_payload',

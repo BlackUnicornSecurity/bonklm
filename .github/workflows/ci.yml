@@ -59,8 +59,14 @@ jobs:
         run: pnpm exec tsc --noEmit
 
   audit:
-    name: Security Audit
+    name: Security Audit (informational)
     runs-on: ubuntu-latest
+    # NOTE: This step is informational and does NOT fail the build.
+    # `pnpm audit` walks the whole workspace lockfile regardless of working-directory,
+    # so it surfaces advisories from connector peer deps (openclaw, mastra-related SDKs,
+    # llamaindex/vercel `ai` deps, etc.) that we cannot patch upstream from here.
+    # Auditing for advisories in the published packages happens at publish time
+    # (see publish.yml). Dependabot handles routine bumps for our direct deps.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -79,8 +85,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run npm audit
-        run: pnpm audit --audit-level=moderate || true
+      - name: Surface advisory summary (non-blocking)
+        run: pnpm audit --audit-level=high || true
 
   build:
     name: Build
@@ -88,7 +94,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [18, 20, 22]
+        node-version: [20, 22]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -123,7 +129,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [18, 20, 22]
+        node-version: [20, 22]
     steps:
       - name: Checkout
         uses: actions/checkout@v4

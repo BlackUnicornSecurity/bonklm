@@ -16,6 +16,7 @@
 
 import { createResult, Severity as Sev } from '../base/GuardrailResult.js';
 import { mergeConfig, type ValidatorConfig } from '../base/ValidatorConfig.js';
+import { normalizeText } from '../validators/text-normalizer.js';
 
 // =============================================================================
 // TYPES
@@ -171,7 +172,7 @@ function isLineSafe(line: string, context?: string): boolean {
     return true;
   }
 
-  if (line.trim().startsWith('```') || line.trim().startsWith('//')) {
+  if (line.trim().startsWith('```')) {
     return true;
   }
 
@@ -269,7 +270,10 @@ export class XSSGuard {
       return createResult(true, Sev.INFO, []);
     }
 
-    const result = detectXSS(content, this.config.context);
+    // Normalize before detection — strips zero-width chars, maps confusables.
+    // Defeats `<scr​ipt>` and homoglyph bypass.
+    const normalized = normalizeText(content);
+    const result = detectXSS(normalized, this.config.context);
 
     if (!result.hasXSS) {
       return createResult(true, Sev.INFO, []);
@@ -299,7 +303,9 @@ export class XSSGuard {
    * Get detailed XSS report
    */
   getXSSReport(content: string): string {
-    const result = detectXSS(content, this.config.context);
+    // Apply same normalization as validate() — without this, getXSSReport
+    // bypasses zero-width/homoglyph defences.
+    const result = detectXSS(normalizeText(content), this.config.context);
 
     if (!result.hasXSS) {
       return 'XSS Check: PASSED - No suspicious patterns detected.';

@@ -15,12 +15,12 @@
  */
 
 import {
-  GuardrailEngine,
   createLogger,
-  Severity,
-  RiskLevel,
-  type Logger,
   type EngineResult,
+  GuardrailEngine,
+  type Logger,
+  RiskLevel,
+  Severity,
 } from '@blackunicorn/bonklm';
 import {
   ConnectorValidationError,
@@ -33,8 +33,8 @@ import type {
   VectorQueryOptions,
 } from './types.js';
 import {
-  DEFAULT_VALIDATION_TIMEOUT,
   DEFAULT_MAX_TOP_K,
+  DEFAULT_VALIDATION_TIMEOUT,
 } from './types.js';
 
 /**

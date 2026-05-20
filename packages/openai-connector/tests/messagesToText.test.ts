@@ -214,7 +214,7 @@ describe('messagesToText', () => {
   it('should convert undefined content to empty string', () => {
     const messages = [
       { role: 'user', content: 'Hello' },
-      // @ts-ignore - testing undefined case
+      // @ts-expect-error - testing undefined case
       { role: 'assistant', content: undefined },
     ] as ChatCompletionMessageParam[];
     const text = messagesToText(messages);

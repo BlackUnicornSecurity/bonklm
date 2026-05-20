@@ -18,18 +18,18 @@
  */
 
 import {
-  readFile,
-  writeFile,
-  rename,
-  chmod,
-  rm,
   access,
+  chmod,
   constants,
+  readFile,
+  rename,
+  rm,
   stat,
+  writeFile,
 } from 'fs/promises';
 import { platform, tmpdir } from 'os';
 import { existsSync } from 'fs';
-import { join, dirname } from 'path';
+import { dirname, join } from 'path';
 import { mkdtemp } from 'fs/promises';
 import { parse as dotenvParse } from 'dotenv';
 import { WizardError } from '../utils/error.js';

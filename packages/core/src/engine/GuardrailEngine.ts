@@ -9,10 +9,10 @@
 import { createLogger, type Logger, LogLevel } from '../base/GenericLogger.js';
 import { createResult, type GuardrailResult, RiskLevel, Severity } from '../base/GuardrailResult.js';
 import {
-  OverrideTokenValidator,
   hashContent,
-  parseOverrideTokenConfig,
   type OverrideTokenConfigString,
+  OverrideTokenValidator,
+  parseOverrideTokenConfig,
 } from '../security/override-token.js';
 
 /**

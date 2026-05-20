@@ -20,28 +20,28 @@
  */
 
 import {
-  GuardrailEngine,
   createLogger,
-  Severity,
   createResult,
+  GuardrailEngine,
   type GuardrailResult,
   type Logger,
+  Severity,
 } from '@blackunicorn/bonklm';
 import type {
-  GuardedCopilotKitOptions,
-  CopilotKitMessage,
   CopilotKitAction,
   CopilotKitContext,
+  CopilotKitMessage,
+  GuardedCopilotKitOptions,
   HookResult,
 } from './types.js';
 import {
   DEFAULT_MAX_BUFFER_SIZE,
   DEFAULT_MAX_CONTENT_LENGTH,
   DEFAULT_VALIDATION_TIMEOUT,
-  VALIDATION_INTERVAL,
   StreamValidationError,
+  VALIDATION_INTERVAL,
 } from './types.js';
-import { messagesToText, actionsToText } from './messages-to-text.js';
+import { actionsToText, messagesToText } from './messages-to-text.js';
 
 /**
  * Default logger instance.

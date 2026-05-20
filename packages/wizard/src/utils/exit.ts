@@ -5,7 +5,7 @@
  * proper cleanup and logging.
  */
 
-import { WizardError, ExitCode, type ExitCodeType } from './error.js';
+import { ExitCode, type ExitCodeType, WizardError } from './error.js';
 
 /**
  * Exit handler options
@@ -22,7 +22,7 @@ export interface ExitOptions {
  */
 function log(message: string, useStderr = false): void {
   const stream = useStderr ? process.stderr : process.stdout;
-  stream.write(message + '\n');
+  stream.write(`${message  }\n`);
 }
 
 /**

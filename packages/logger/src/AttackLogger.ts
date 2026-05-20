@@ -26,7 +26,7 @@ import type {
   LogFilter,
 } from './types.js';
 import { promises as fs } from 'fs';
-import { resolve, dirname, isAbsolute } from 'path';
+import { dirname, isAbsolute, resolve } from 'path';
 import * as crypto from 'crypto';
 
 /**
@@ -251,7 +251,7 @@ export class AttackLogger {
       const truncatedBytes = Buffer.from(content).subarray(0, this.config.max_content_size);
       content = truncatedBytes.toString('utf8');
       // Add truncation indicator
-      content = content.slice(0, -3) + '...';
+      content = `${content.slice(0, -3)  }...`;
     }
 
     // Sanitize content at storage time to prevent log injection attacks

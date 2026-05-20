@@ -18,7 +18,7 @@
  * - DEV-002: Logger type
  */
 
-import type { Validator, Guard, Logger, GuardrailResult } from '@blackunicorn/bonklm';
+import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
 
 /**
  * Genkit message types (simplified for integration).

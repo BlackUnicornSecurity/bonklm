@@ -167,7 +167,7 @@ export async function testConnectorWithTimeout(
     // Handle timeout specifically
     // Note: AbortError can be either Error.name or DOMException name
     const isError = error instanceof Error;
-    const isErrorName = isError && (error as Error).name === 'AbortError';
+    const isErrorName = isError && (error).name === 'AbortError';
     const isDOMException = error instanceof DOMException && error.name === 'AbortError';
 
     if (isErrorName || isDOMException) {

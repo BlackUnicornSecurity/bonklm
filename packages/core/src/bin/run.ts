@@ -7,17 +7,26 @@
  * @package @blackunicorn/bonklm
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { wizardCommand } from '../cli/commands/wizard.js';
 import { connectorCommand } from '../cli/commands/connector.js';
 import { statusCommand } from '../cli/commands/status.js';
+
+// Read version from the package.json at runtime so CLI --version stays in lockstep
+// with the published package version (no manual bumps needed).
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const pkgJsonPath = join(__dirname, '..', '..', 'package.json');
+const pkgVersion = (JSON.parse(readFileSync(pkgJsonPath, 'utf8')) as { version: string }).version;
 
 const program = new Command();
 
 program
   .name('bonklm')
   .description('BonkLM - LLM Security Guardrails')
-  .version('0.1.0');
+  .version(pkgVersion);
 
 // Default to wizard if no command provided
 program.action(() => {

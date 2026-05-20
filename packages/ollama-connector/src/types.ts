@@ -16,12 +16,12 @@
  */
 
 import type {
-  Validator,
-  Guard,
-  Logger,
-  GuardrailResult,
-  TelemetryService,
   CircuitBreaker,
+  Guard,
+  GuardrailResult,
+  Logger,
+  TelemetryService,
+  Validator,
 } from '@blackunicorn/bonklm';
 
 // Re-export Ollama types from the SDK for convenience

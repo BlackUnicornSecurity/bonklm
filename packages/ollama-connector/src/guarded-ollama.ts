@@ -16,29 +16,28 @@
  * @package @blackunicorn/bonklm-ollama
  */
 
-import type { Ollama, ChatResponse, GenerateResponse } from 'ollama';
+import type { ChatResponse, GenerateResponse, Ollama } from 'ollama';
 import {
-  GuardrailEngine,
   createLogger,
-  Severity,
   createResult,
+  GuardrailEngine,
   type GuardrailResult,
   type Logger,
-  type EngineResult,
+  Severity,
 } from '@blackunicorn/bonklm';
 import type {
-  GuardedOllamaOptions,
   GuardedChatOptions,
-  GuardedGenerateOptions,
   GuardedChatResult,
+  GuardedGenerateOptions,
   GuardedGenerateResult,
+  GuardedOllamaOptions,
   OllamaMessage,
 } from './types.js';
 import {
-  VALIDATION_INTERVAL,
   DEFAULT_MAX_BUFFER_SIZE,
   DEFAULT_VALIDATION_TIMEOUT,
   StreamValidationError,
+  VALIDATION_INTERVAL,
 } from './types.js';
 
 /**
@@ -183,7 +182,7 @@ export function createGuardedOllama(
       // Convert EngineResult to GuardrailResult[]
       if ('results' in engineResult) {
         // Multiple results returned (from EngineResult.results array)
-        const multiResult = engineResult as EngineResult;
+        const multiResult = engineResult;
         return multiResult.results || [engineResult as GuardrailResult];
       }
 
@@ -333,7 +332,7 @@ export function createGuardedOllama(
       options: opts.options,
     };
 
-    const response = await client.chat(chatRequest) as ChatResponse;
+    const response = await client.chat(chatRequest);
 
     // Validate output content
     const content = response.message?.content || '';
@@ -420,7 +419,7 @@ export function createGuardedOllama(
       options: opts.options,
     };
 
-    const response = await client.generate(generateRequest) as GenerateResponse;
+    const response = await client.generate(generateRequest);
 
     // Validate output content
     const content = response.response || '';

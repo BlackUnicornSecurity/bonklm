@@ -16,12 +16,12 @@
  */
 
 import {
-  GuardrailEngine,
   createLogger,
-  Severity,
   createResult,
+  GuardrailEngine,
   type GuardrailResult,
   type Logger,
+  Severity,
 } from '@blackunicorn/bonklm';
 import type {
   GuardedWeaviateOptions,
@@ -29,8 +29,8 @@ import type {
   WeaviateQueryOptions,
 } from './types.js';
 import {
-  DEFAULT_VALIDATION_TIMEOUT,
   DEFAULT_MAX_LIMIT,
+  DEFAULT_VALIDATION_TIMEOUT,
 } from './types.js';
 
 /**
@@ -324,7 +324,7 @@ export function createGuardedClient(
       if (e instanceof Error) {
         throw e;
       }
-      throw new Error(productionMode ? 'Invalid filter' : 'Filter validation failed');
+      throw new Error(productionMode ? 'Invalid filter' : 'Filter validation failed', { cause: e });
     }
   };
 

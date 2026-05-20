@@ -1,13 +1,11 @@
-# Markdownlint configuration for BMAD-CYBERSEC
-# Matches v6 upstream patterns with project-specific ignores
+# Markdownlint configuration for BonkLM
 #
 # Active rules enforce: blanks-around-headings, blanks-around-lists,
 # blanks-around-fences, blanks-around-tables, trailing-newline,
 # no-multiple-blanks, no-bare-urls, no-empty-links, no-blanks-blockquote,
 # reference-links, descriptive-link-text, ordered-list-prefix
 #
-# Disabled rules: false positives from Handlebars templates, structural
-# patterns in workflow/agent docs, or too strict for documentation
+# Disabled rules are intentionally relaxed for project documentation.
 config:
   # --- Formatting preferences (too strict for docs) ---
   MD013: false            # Line length
@@ -30,5 +28,6 @@ config:
     style: "ordered"      # Enforce 1. 2. 3. ordered list prefix
 ignores:
   - "**/node_modules/**"
-  - "_bmad-output/**"
   - "CHANGELOG.md"
+  - "team/**"
+  - "_bmad/**"

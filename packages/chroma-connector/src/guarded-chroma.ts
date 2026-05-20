@@ -15,22 +15,22 @@
  */
 
 import {
-  GuardrailEngine,
-  createLogger,
-  Severity,
-  createResult,
   ConnectorValidationError,
+  createLogger,
+  createResult,
+  GuardrailEngine,
   type GuardrailResult,
   type Logger,
+  Severity,
 } from '@blackunicorn/bonklm';
 import type {
+  ChromaQueryOptions,
   GuardedChromaOptions,
   GuardedChromaQueryResult,
-  ChromaQueryOptions,
 } from './types.js';
 import {
-  DEFAULT_VALIDATION_TIMEOUT,
   DEFAULT_MAX_N_RESULTS,
+  DEFAULT_VALIDATION_TIMEOUT,
 } from './types.js';
 
 /**
@@ -442,10 +442,10 @@ export function createGuardedCollection(
         // Build content to validate (document + metadata + id)
         let contentToValidate = doc || '';
         if (metadata) {
-          contentToValidate += ' ' + JSON.stringify(metadata);
+          contentToValidate += ` ${  JSON.stringify(metadata)}`;
         }
         if (id) {
-          contentToValidate += ' ' + id;
+          contentToValidate += ` ${  id}`;
         }
 
         const result = await validateWithTimeout(contentToValidate, 'chroma_document');
