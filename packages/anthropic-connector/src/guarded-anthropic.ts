@@ -368,6 +368,12 @@ export function createGuardedAnthropic(
     stream: AsyncIterable<MessageStreamEvent>,
     runId: string,
   ): AsyncIterable<MessageStreamEvent> => {
+    if (validateStreaming && streamingMode === 'buffer') {
+      logger.warn(
+        '[Guardrails] streamingMode:"buffer" not implemented for anthropic connector — falling back to no stream validation. ' +
+        'Use streamingMode:"incremental" (default) for live validation.'
+      );
+    }
     if (validateStreaming && streamingMode === 'incremental') {
       // SEC-002: Incremental stream validation with early termination
       // SEC-003: Max buffer size enforcement

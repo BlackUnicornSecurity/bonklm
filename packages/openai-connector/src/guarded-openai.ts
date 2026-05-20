@@ -256,6 +256,15 @@ export function createGuardedOpenAI(
   const createValidatedStream = (
     stream: AsyncIterable<ChatCompletionChunk>,
   ): AsyncIterable<ChatCompletionChunk> => {
+    // openai-connector currently only implements 'incremental' mode. If a caller
+    // passes 'buffer', validation is silently skipped — surface that intent
+    // explicitly via a warning rather than a silent no-op.
+    if (validateStreaming && streamingMode === 'buffer') {
+      logger.warn(
+        '[Guardrails] streamingMode:"buffer" not implemented for openai connector — falling back to no stream validation. ' +
+        'Use streamingMode:"incremental" (default) for live validation.'
+      );
+    }
     if (validateStreaming && streamingMode === 'incremental') {
       // SEC-002: Incremental stream validation with early termination
       // SEC-003: Max buffer size enforcement

@@ -7,6 +7,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0] - 2026-05-20
 
+### Audit-loop hardening (post-initial 0.3.0 work, not yet tagged)
+
+Four iterative audit loops surfaced and closed additional issues on the v0.3.0
+work:
+
+- **IPA small-capitals bypass closed.** Attackers spelling `ɪɢɴᴏʀᴇ ᴀʟʟ ᴘʀᴇᴠɪᴏᴜѕ
+  ɪɴѕᴛʀᴜᴄᴛɪᴏɴѕ` with IPA small-capital letters (U+026A, U+0274, U+1D0F, etc.)
+  used to slip through every detection regex — NFKD has no canonical
+  decomposition for these codepoints. Extended `CONFUSABLE_MAP` with the IPA
+  small-cap block, Cherokee Latin-glyph lookalikes (Ꭺ→A, Ꭱ→E, Ꭲ→T, etc.),
+  and additional Armenian letters that mimic Latin uppercase. Regression
+  tests added.
+- **StreamValidator now fails closed on engine throw.** If the underlying
+  engine.validate() threw (e.g. moderation backend down), the prior code path
+  left unvalidated content in the buffer; the next `process()` call returned
+  `{ allowed: true }` for content that was never scanned. Now wrapped in
+  try/catch that calls `markStreamBlocked('engine_error')` before re-throwing.
+  Regression test added.
+- **Mailgun secret pattern reworked.** Previous "tightened" regex missed 4/5
+  real naming conventions (`MAILGUN_TOKEN`, `MG_AUTH_KEY`, yaml
+  `mailgun:\n  key: …`, `mailgun_secret`). Replaced with two complementary
+  patterns: one keyed on a Mailgun identifier within 120 chars of the value,
+  one keyed on any credential noun (key/token/secret/auth/api/mg-*) within
+  40 chars.
+- **Secret guard line context redacts the matched value.** Findings used to
+  capture the surrounding line verbatim (e.g.
+  `MAILGUN_API_KEY="key-abcdef…"`); now strips the matched substring with
+  `[REDACTED]` before slicing.
+- **Symbol.asyncDispose runtime check in `StreamValidator`.** Pre-Node-20.4
+  versions don't carry the symbol; the `await using` lifecycle silently
+  no-op'd, voiding the "impossible to skip" tail-validation contract. Bumped
+  `engines.node` to `>=20.4.0` across all 23 packages and added a constructor-
+  time runtime check that fails loudly on incompatible runtimes.
+- **Stream-validator `Infinity` interval guard.** Prior pass caught
+  `interval=0` (NaN); `Infinity` was still allowed (`x % Infinity === x`,
+  never zero, so validation never fired). Both `shouldValidateStream` and
+  `hasUnvalidatedTail` now require `Number.isFinite(interval) && interval >= 1`.
+- **`iterativeDecode` loop-detection Set scoped per match.** Sharing one Set
+  across encoding patterns let an attacker neutralise a later malicious
+  base64 by priming it with an earlier benign one that shared a decode
+  prefix (the second match short-circuited with LOOP_DETECTED).
+- **Decoded-content severity filter.** `detectPatterns()` results are now
+  filtered to `Severity.WARNING` or `CRITICAL` before flipping
+  `contains_injection` — INFO-only patterns (e.g. `priority_markers`) no
+  longer escalate the wrapping `multi_layer_encoding` finding to CRITICAL.
+- **`StreamValidationError` consolidated.** Was duplicated 7 times across
+  the monorepo; cross-package `instanceof` checks silently failed.
+  6 connector type files now re-export from
+  `@blackunicorn/bonklm/core/connector-utils` (single source of truth).
+- **`validatePositiveNumber` hoisted.** Was copy-pasted into 8 connectors.
+  Moved to `packages/core/src/connector-utils/validation-helpers.ts`; all
+  connectors import from there.
+- **Wizard package deprecated cleanly.** `@blackunicorn/bonklm-wizard`
+  package.json now carries `private: true` + `deprecated: …` field and
+  carries no source tree — changesets stops publishing it. The duplicate
+  5000-line CLI tree under `packages/wizard/src/` (1:1 mirror of
+  `packages/core/src/cli/`) was deleted.
+- **`streamingMode: 'buffer'` honesty.** The 3 connectors that never
+  implemented the mode (openai, anthropic, langchain) now log an explicit
+  warning instead of silently no-op'ing. Connectors that do implement
+  buffer mode (copilotkit, genkit, mastra, vercel) continue to work.
+- **`Validator` and `Guard` interfaces widened** to
+  `validate(content): GuardrailResult | Promise<GuardrailResult>` for
+  forward-compatibility with ML / remote-API validators.
+- **Adapter directory flattened.** `packages/adapters/openclaw/` →
+  `packages/openclaw-adapter/`. The single-occupant `adapters/` hierarchy
+  is gone.
+- **`GenericLogger` field renamed.** `private readonly readonly: …` (a foot-
+  gun where the field name shadowed the modifier) renamed to
+  `levelPriority`.
+- **openclaw adapter** now uses the shared `Logger` contract from core
+  instead of rolling its own `ConsoleLogger` class.
+- **Per-package coverage thresholds** added (global 60/50/60/60, strict
+  80/75/80/80 on `packages/core/src/**`).
+- **Publish CI hardening**: `--ignore-scripts` on the install step, explicit
+  prerelease tag gate so `v0.3.0-rc.1` can't accidentally publish a stable
+  release.
+- **CLI `--version`** reads from `package.json` at runtime (was hard-coded
+  to `0.1.0`).
+
+### Initial 0.3.0 work
+
+
 ### Removed
 - Dropped the internal BMAD development framework from the repo: deleted `_bmad/`, `.claude/validators-node/`, `tools/`, `tests/` (root-level), `examples/automation/`, `examples/installer/`, `examples/versioning/`, `.githooks/`, BMAD scripts, stale BMAD build artifacts under `dist/`.
 

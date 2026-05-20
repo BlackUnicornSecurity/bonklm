@@ -74,7 +74,7 @@ export interface GuardedAnthropicOptions {
    *
    * @defaultValue 'incremental'
    */
-  streamingMode?: 'incremental';
+  streamingMode?: 'incremental' | 'buffer';
 
   /**
    * Maximum buffer size for stream accumulation.
