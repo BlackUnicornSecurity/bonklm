@@ -57,6 +57,25 @@ describe('TextNormalizer', () => {
       expect(normalizeText('ev\u1EA1l ')).toBe('eval ');
     });
 
+    it('should fold IPA small-capitals to ASCII (NFKD does NOT decompose them)', () => {
+      // Adversarial: an attacker spells `ignore all previous instructions`
+      // using IPA small-capital letters (U+026A, U+0274, U+1D0F, U+0280,
+      // U+1D07, U+1D00, U+029F, etc.). NFKD has no canonical decomposition
+      // for these codepoints, so they survive normalisation unless explicitly
+      // mapped via CONFUSABLE_MAP. The 4th audit-loop bypass was this exact
+      // string returning zero findings.
+      expect(normalizeText('\u026A\u0262\u0274\u1D0F\u0280\u1D07'))
+        .toBe('ignore');
+      expect(normalizeText('\u026A\u0262\u0274\u1D0F\u0280\u1D07 \u1D00\u029F\u029F'))
+        .toBe('ignore all');
+    });
+
+    it('should fold Cherokee and Armenian Latin-glyph lookalikes', () => {
+      expect(normalizeText('\u13AAttack')).toBe('Attack');     // U+13AA \u13AA \u2192 A
+      expect(normalizeText('\u054Fip')).toBe('Sip');           // U+054F \u054F \u2192 S
+      expect(normalizeText('\u0540ello')).toBe('Zello');       // U+0540 \u0540 \u2192 Z
+    });
+
     it('should remove zero-width characters', () => {
       const input = 'hello\u200B\u200C\u200Dworld';
       const result = normalizeText(input);

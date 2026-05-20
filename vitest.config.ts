@@ -31,8 +31,7 @@ export default defineConfig({
         'packages/examples/**',
         'packages/core/uat/**',
         'packages/core/benchmarks/**',
-        // Wizard CLI is interactive / I/O-driven — hard to cover meaningfully in unit tests.
-        'packages/wizard/src/**',
+        // Wizard package was deprecated and merged into core (see CHANGELOG v0.3.x).
       ],
       all: true,
       extension: ['.js', '.ts', '.jsx', '.tsx'],

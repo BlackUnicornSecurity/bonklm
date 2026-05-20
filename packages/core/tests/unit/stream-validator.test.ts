@@ -116,6 +116,32 @@ describe('StreamValidator lifecycle', () => {
     // No throw, no NaN-driven loop
     expect(await v.process('hi')).toBeNull();
   });
+
+  it('treats Infinity interval safely (falls back to default)', async () => {
+    const engine = makeEngine(() => ({ allowed: true }));
+    const v = StreamValidator.create(engine, { validationInterval: Infinity });
+    expect(await v.process('hi')).toBeNull();
+  });
+
+  it('fails closed when engine.validate() throws (must NOT leave unvalidated content)', async () => {
+    let called = 0;
+    const engine: StreamValidatorEngine = {
+      validate() {
+        called++;
+        throw new Error('moderation backend down');
+      },
+    };
+    const v = StreamValidator.create(engine, { validationInterval: 2 });
+    await v.process('safe-prefix');
+    // Second chunk hits interval boundary, engine throws.
+    await expect(v.process('STOP-payload')).rejects.toThrow('moderation backend down');
+    // Stream MUST be marked blocked so subsequent process() calls are no-ops
+    // and accumulated content doesn't leak through as `allowed: true`.
+    expect(v.blocked).toBe(true);
+    expect(v.accumulated).toBe('');
+    expect(await v.process('more')).toBeNull();
+    expect(called).toBe(1);
+  });
 });
 
 describe('stream-validator interval=0 functional helpers', () => {

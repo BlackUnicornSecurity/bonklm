@@ -66,7 +66,7 @@ export interface GuardedOpenAIOptions {
    *
    * @defaultValue 'incremental'
    */
-  streamingMode?: 'incremental';
+  streamingMode?: 'incremental' | 'buffer';
 
   /**
    * Maximum buffer size for stream accumulation.
