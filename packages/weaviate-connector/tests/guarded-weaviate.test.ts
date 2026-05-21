@@ -114,6 +114,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedClasses: ['Document', 'Article'],
       });
 
@@ -130,6 +131,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedClasses: ['Doc*'],
       });
 
@@ -148,6 +150,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedFields: ['title', 'id'],
       });
 
@@ -165,6 +168,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedFields: ['safe'],
       });
 
@@ -182,6 +186,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         maxLimit: 10,
       });
 
@@ -199,6 +204,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         validateFilters: true,
       });
 
@@ -355,6 +361,7 @@ describe('Weaviate Connector', () => {
       const onClassNotAllowed = vi.fn();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedClasses: ['Document'],
         onClassNotAllowed,
       });
@@ -453,6 +460,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedFields: ['title*'],
       });
 
@@ -472,6 +480,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         validateFilters: true,
       });
 
@@ -511,6 +520,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         validateFilters: true,
       });
 
@@ -538,6 +548,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         validateFilters: true,
       });
 
@@ -584,6 +595,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         validateFilters: true,
       });
 
@@ -618,6 +630,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         validateFilters: true,
       });
 
@@ -641,6 +654,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         validateFilters: true,
       });
 
@@ -800,6 +814,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedClasses: ['Document*'],
       });
 
@@ -817,6 +832,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
       });
 
       // 100 character class name (at the limit)
@@ -836,6 +852,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
       });
 
       const tooLongClassName = 'A'.repeat(101);
@@ -856,6 +873,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedClasses: ['Doc*', 'Article*'],
       });
 
@@ -876,6 +894,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedFields: ['title*', 'content', 'id'],
       });
 
@@ -893,6 +912,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedFields: ['safe*'],
       });
 
@@ -910,6 +930,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedFields: ['title'],
       });
 
@@ -927,6 +948,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedFields: ['title*'],
       });
 
@@ -1131,6 +1153,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         validateFilters: true,
       });
 
@@ -1151,6 +1174,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         validateFilters: true,
       });
 
@@ -1169,6 +1193,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         validateFilters: true,
       });
 
@@ -1289,6 +1314,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         maxLimit: 10,
       });
 
@@ -1307,6 +1333,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         maxLimit: 100,
       });
 
@@ -1333,6 +1360,7 @@ describe('Weaviate Connector', () => {
       expect(() => {
         createGuardedClient(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           guards: [],
           productionMode: true,
           validationTimeout: 10000,
@@ -1419,6 +1447,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClientForResult(v4NestedResult);
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         validateRetrievedObjects: false, // Skip validation for this test to check extraction
       });
 
@@ -1448,6 +1477,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClientForResult(v4FlatResult);
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
       });
 
       const result = await guarded.query({
@@ -1472,6 +1502,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClientForResult(legacyResult);
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
       });
 
       const result = await guarded.query({
@@ -1497,6 +1528,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClientForResult(unknownFormatResult);
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
       });
 
       const result = await guarded.query({
@@ -1518,6 +1550,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClientForResult(emptyResult);
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
       });
 
       const result = await guarded.query({
@@ -1541,6 +1574,7 @@ describe('Weaviate Connector', () => {
       const mockClient = createMockClientForResult(malformedResult);
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
       });
 
       const result = await guarded.query({

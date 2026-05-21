@@ -156,6 +156,7 @@ describe('Genkit Guardrail Plugin', () => {
       it('should respect maxContentLength limit (SEC-010)', async () => {
         const guardedWithLimit = createGenkitGuardrailsPlugin({
           validators: [],
+          allowEmptyForTesting: true,
           maxContentLength: 100,
         });
 
@@ -275,6 +276,7 @@ describe('Genkit Guardrail Plugin', () => {
       const onStreamBlocked = vi.fn();
       const guardrails = createGenkitGuardrailsPlugin({
         validators: [],
+        allowEmptyForTesting: true,
         maxStreamBufferSize: 100, // Small limit for testing
         onStreamBlocked,
       });
@@ -297,6 +299,7 @@ describe('Genkit Guardrail Plugin', () => {
       const onStreamBlocked = vi.fn();
       const guardrails = createGenkitGuardrailsPlugin({
         validators: [],
+        allowEmptyForTesting: true,
         maxStreamBufferSize: 100,
         onStreamBlocked,
       });

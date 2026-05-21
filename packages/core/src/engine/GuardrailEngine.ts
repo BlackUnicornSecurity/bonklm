@@ -106,6 +106,19 @@ export class GuardrailEngine {
   constructor(config: GuardrailEngineConfig = {}) {
     this.validators = config.validators ?? [];
     this.guards = config.guards ?? [];
+
+    // Story 0.1 (R2-7) — empty-list fail-safe.
+    // An engine with neither validators nor guards has no protective layer;
+    // every input is silently allowed. Refuse at construction unless the
+    // caller explicitly opts in for testing purposes.
+    const isEmptyConfig = this.validators.length === 0 && this.guards.length === 0;
+    if (isEmptyConfig && config.allowEmptyForTesting !== true) {
+      throw new Error(
+        'Empty validator list is unsafe; use a no-op validator explicitly ' +
+        'or pass `allowEmptyForTesting: true`.'
+      );
+    }
+
     this.shortCircuit = config.shortCircuit ?? true;
     this.executionOrder = config.executionOrder ?? 'sequential';
     this.includeIndividualResults = config.includeIndividualResults ?? true;
@@ -117,6 +130,14 @@ export class GuardrailEngine {
     this.circuitBreakerThreshold = config.circuitBreakerThreshold ?? DEFAULT_CIRCUIT_BREAKER_THRESHOLD;
     this.circuitBreakerTimeout = config.circuitBreakerTimeout ?? 60000; // 1 minute
     this.logger = config.logger ?? createLogger('console', LogLevel.INFO);
+
+    if (isEmptyConfig && config.allowEmptyForTesting === true) {
+      this.logger.warn(
+        '[CRITICAL] GuardrailEngine constructed with no validators or guards ' +
+        '(allowEmptyForTesting=true). This engine performs NO security checks ' +
+        'and is intended for unit tests only. Do NOT deploy to production.'
+      );
+    }
 
     this.circuitBreaker = new CircuitBreaker({
       threshold: this.circuitBreakerThreshold,

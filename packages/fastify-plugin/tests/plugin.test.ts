@@ -58,6 +58,7 @@ describe('Fastify Guardrails Plugin', () => {
     it('should handle request with no validators', async () => {
       await fastify.register(guardrailsPlugin, {
         validators: [],
+        allowEmptyForTesting: true,
       });
 
       fastify.post('/test', async (request, reply) => {
@@ -145,6 +146,7 @@ describe('Fastify Guardrails Plugin', () => {
     it('should block requests exceeding maxContentLength', async () => {
       await fastify.register(guardrailsPlugin, {
         validators: [],
+        allowEmptyForTesting: true,
         maxContentLength: 1024, // 1KB
       });
 
@@ -165,6 +167,7 @@ describe('Fastify Guardrails Plugin', () => {
     it('should allow requests within maxContentLength', async () => {
       await fastify.register(guardrailsPlugin, {
         validators: [],
+        allowEmptyForTesting: true,
         maxContentLength: 1024 * 1024, // 1MB
       });
 
@@ -310,6 +313,7 @@ describe('Fastify Guardrails Plugin', () => {
     it('should normalize string[] to string (DEV-006)', async () => {
       await fastify.register(guardrailsPlugin, {
         validators: [],
+        allowEmptyForTesting: true,
       });
 
       fastify.post('/test', async (request, reply) => {
@@ -933,6 +937,7 @@ describe('Fastify Guardrails Plugin', () => {
     it('should enforce size limits with generic error in production', async () => {
       await fastify.register(guardrailsPlugin, {
         validators: [],
+        allowEmptyForTesting: true,
         productionMode: true,
         maxContentLength: 1024, // 1KB
       });
@@ -957,6 +962,7 @@ describe('Fastify Guardrails Plugin', () => {
     it('should include size details in development mode for oversized content', async () => {
       await fastify.register(guardrailsPlugin, {
         validators: [],
+        allowEmptyForTesting: true,
         productionMode: false,
         maxContentLength: 1024, // 1KB
       });
@@ -979,6 +985,7 @@ describe('Fastify Guardrails Plugin', () => {
     it('should not leak content size information in production', async () => {
       await fastify.register(guardrailsPlugin, {
         validators: [],
+        allowEmptyForTesting: true,
         productionMode: true,
         maxContentLength: 1024, // 1KB
       });
@@ -1004,6 +1011,7 @@ describe('Fastify Guardrails Plugin', () => {
     it('should normalize paths before validation in production mode', async () => {
       await fastify.register(guardrailsPlugin, {
         validators: [],
+        allowEmptyForTesting: true,
         paths: ['/api/chat'],
         productionMode: true,
       });
@@ -1072,6 +1080,7 @@ describe('Fastify Guardrails Plugin', () => {
     it('should handle encoded path traversal attempts', async () => {
       await fastify.register(guardrailsPlugin, {
         validators: [],
+        allowEmptyForTesting: true,
         paths: ['/api'],
         productionMode: true,
       });

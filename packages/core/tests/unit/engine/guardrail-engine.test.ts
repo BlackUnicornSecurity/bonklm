@@ -15,7 +15,10 @@ import { Severity, RiskLevel } from '../../../src/base/GuardrailResult.js';
 describe('GuardrailEngine', () => {
   describe('Constructor', () => {
     it('should create engine with default config', () => {
-      const defaultEngine = new GuardrailEngine();
+      // Story 0.1 (R2-7): an engine with neither validators nor guards needs
+      // the explicit opt-in. We're exercising the constructor's default-config
+      // path, not the security contract, so the escape hatch is appropriate.
+      const defaultEngine = new GuardrailEngine({ allowEmptyForTesting: true });
       expect(defaultEngine).toBeDefined();
       const stats = defaultEngine.getStats();
       expect(stats.validatorCount).toBe(0);
@@ -41,6 +44,7 @@ describe('GuardrailEngine', () => {
     it('should create engine with custom sensitivity', () => {
       const sensitiveEngine = new GuardrailEngine({
         sensitivity: 'strict',
+        allowEmptyForTesting: true,
       });
       const stats = sensitiveEngine.getStats();
       expect(stats.sensitivity).toBe('strict');
@@ -49,6 +53,7 @@ describe('GuardrailEngine', () => {
     it('should create engine with custom action', () => {
       const warnEngine = new GuardrailEngine({
         action: 'log',
+        allowEmptyForTesting: true,
       });
       const stats = warnEngine.getStats();
       expect(stats.action).toBe('log');
@@ -57,6 +62,7 @@ describe('GuardrailEngine', () => {
     it('should create engine with custom shortCircuit', () => {
       const shortCircuitEngine = new GuardrailEngine({
         shortCircuit: false,
+        allowEmptyForTesting: true,
       });
       const stats = shortCircuitEngine.getStats();
       expect(stats.shortCircuit).toBe(false);
@@ -65,20 +71,20 @@ describe('GuardrailEngine', () => {
 
   describe('GE-001: Pattern Timeout Configuration', () => {
     it('should have default pattern timeout', () => {
-      const engine = new GuardrailEngine();
+      const engine = new GuardrailEngine({ allowEmptyForTesting: true });
       const stats = engine.getStats();
       expect(stats).toBeDefined();
     });
 
     it('should accept custom pattern timeout', () => {
-      const engine = new GuardrailEngine({ patternTimeout: 50 });
+      const engine = new GuardrailEngine({ patternTimeout: 50, allowEmptyForTesting: true });
       expect(engine).toBeDefined();
     });
   });
 
   describe('GE-002: getValidators', () => {
     it('should return empty array when no validators', () => {
-      const engine = new GuardrailEngine();
+      const engine = new GuardrailEngine({ allowEmptyForTesting: true });
       const validators = engine.getValidators();
       expect(validators).toEqual([]);
       expect(validators).not.toBe(engine.getValidators()); // Should be a copy
@@ -112,7 +118,7 @@ describe('GuardrailEngine', () => {
 
   describe('GE-003: getGuards', () => {
     it('should return empty array when no guards', () => {
-      const engine = new GuardrailEngine();
+      const engine = new GuardrailEngine({ allowEmptyForTesting: true });
       const guards = engine.getGuards();
       expect(guards).toEqual([]);
       expect(guards).not.toBe(engine.getGuards()); // Should be a copy
@@ -146,7 +152,7 @@ describe('GuardrailEngine', () => {
 
   describe('GE-004: getStats', () => {
     it('should return default stats for empty engine', () => {
-      const engine = new GuardrailEngine();
+      const engine = new GuardrailEngine({ allowEmptyForTesting: true });
       const stats = engine.getStats();
       expect(stats).toEqual({
         validatorCount: 0,
@@ -175,7 +181,7 @@ describe('GuardrailEngine', () => {
     });
 
     it('should return shortCircuit setting', () => {
-      const engine = new GuardrailEngine({ shortCircuit: false });
+      const engine = new GuardrailEngine({ shortCircuit: false, allowEmptyForTesting: true });
       const stats = engine.getStats();
       expect(stats.shortCircuit).toBe(false);
     });
@@ -183,6 +189,7 @@ describe('GuardrailEngine', () => {
     it('should return executionOrder setting', () => {
       const engine = new GuardrailEngine({
         executionOrder: 'parallel',
+        allowEmptyForTesting: true,
       });
       const stats = engine.getStats();
       expect(stats.executionOrder).toBe('parallel');
@@ -210,10 +217,18 @@ describe('GuardrailEngine', () => {
       expect(result.blocked).toBe(true);
     });
 
-    it('should work with no validators or guards', async () => {
+    it('refuses construction when called with no validators or guards (Story 0.1)', async () => {
+      // Round-2 amendment R2-7: an engine with no protective layer is unsafe.
+      // The convenience wrapper inherits the same constructor contract — it
+      // must NOT silently allow content through an empty engine.
       const content = 'Any content';
-      const result = await validateWithEngine(content);
+      await expect(validateWithEngine(content)).rejects.toThrow(
+        /Empty validator list is unsafe/
+      );
+    });
 
+    it('accepts allowEmptyForTesting opt-out through the convenience wrapper', async () => {
+      const result = await validateWithEngine('Any content', { allowEmptyForTesting: true });
       expect(result).toBeDefined();
       expect(result.allowed).toBe(true);
     });

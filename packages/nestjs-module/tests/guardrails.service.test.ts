@@ -147,6 +147,7 @@ describe('GuardrailsService', () => {
     it('should block content exceeding max size', async () => {
       const largeService = new GuardrailsService({
         validators: [],
+        allowEmptyForTesting: true,
         guards: [],
         logger: mockLogger,
         maxContentLength: 100,
@@ -291,6 +292,7 @@ describe('GuardrailsService', () => {
     it('should return generic message in production mode', () => {
       const prodService = new GuardrailsService({
         validators: [],
+        allowEmptyForTesting: true,
         guards: [],
         logger: mockLogger,
         productionMode: true,
@@ -314,6 +316,7 @@ describe('GuardrailsService', () => {
     it('should return detailed message in development mode', () => {
       const devService = new GuardrailsService({
         validators: [],
+        allowEmptyForTesting: true,
         guards: [],
         logger: mockLogger,
         productionMode: false,

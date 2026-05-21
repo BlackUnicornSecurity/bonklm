@@ -82,7 +82,7 @@ describe('GuardrailsCallbackHandler', () => {
 
   describe('Basic Functionality', () => {
     it('should create a handler with default options', () => {
-      const handler = new GuardrailsCallbackHandler({});
+      const handler = new GuardrailsCallbackHandler({ allowEmptyForTesting: true });
       expect(handler).toBeDefined();
       expect(handler.name).toBe('guardrails_handler');
       expect(handler.awaitHandlers).toBe(true);

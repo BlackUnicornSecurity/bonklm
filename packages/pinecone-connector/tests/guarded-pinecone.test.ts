@@ -25,6 +25,7 @@ describe('Pinecone Connector', () => {
       const mockIndex = createMockPineconeIndex();
       const guardedIndex = createGuardedIndex(mockIndex, {
         validators: [],
+        allowEmptyForTesting: true,
       });
 
       const result = await guardedIndex.query({
@@ -39,7 +40,7 @@ describe('Pinecone Connector', () => {
 
     it('should validate vector format', async () => {
       const mockIndex = createMockPineconeIndex();
-      const guardedIndex = createGuardedIndex(mockIndex, {});
+      const guardedIndex = createGuardedIndex(mockIndex, { allowEmptyForTesting: true });
 
       await expect(
         guardedIndex.query({ vector: 'not-an-array' as any })
@@ -48,7 +49,7 @@ describe('Pinecone Connector', () => {
 
     it('should validate vector contains only numbers', async () => {
       const mockIndex = createMockPineconeIndex();
-      const guardedIndex = createGuardedIndex(mockIndex, {});
+      const guardedIndex = createGuardedIndex(mockIndex, { allowEmptyForTesting: true });
 
       await expect(
         guardedIndex.query({ vector: [0.1, 'invalid', 0.3] as any })
@@ -194,7 +195,7 @@ describe('Pinecone Connector', () => {
   describe('query options', () => {
     it('should support namespace option', async () => {
       const mockIndex = createMockPineconeIndex();
-      const guardedIndex = createGuardedIndex(mockIndex, {});
+      const guardedIndex = createGuardedIndex(mockIndex, { allowEmptyForTesting: true });
 
       await guardedIndex.query({
         vector: [0.1, 0.2],
@@ -211,7 +212,7 @@ describe('Pinecone Connector', () => {
 
     it('should support includeValues option', async () => {
       const mockIndex = createMockPineconeIndex();
-      const guardedIndex = createGuardedIndex(mockIndex, {});
+      const guardedIndex = createGuardedIndex(mockIndex, { allowEmptyForTesting: true });
 
       await guardedIndex.query({
         vector: [0.1, 0.2],

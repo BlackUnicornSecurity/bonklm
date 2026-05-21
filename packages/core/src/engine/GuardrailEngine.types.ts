@@ -143,6 +143,17 @@ export interface GuardrailEngineConfig {
    * How long to stay in OPEN state before attempting recovery. @default 60000ms (1 minute)
    */
   circuitBreakerTimeout?: number;
+
+  /**
+   * Story 0.1 (R2-7) escape hatch.
+   *
+   * An engine with neither validators nor guards has no protective layer:
+   * every input is silently allowed. The constructor refuses such a config
+   * by default. Set this to `true` to bypass the check — intended for unit
+   * tests that exercise the engine shell. Using the hatch logs a CRITICAL
+   * warning so it cannot be silently abused in production. @default false
+   */
+  allowEmptyForTesting?: boolean;
 }
 
 /**

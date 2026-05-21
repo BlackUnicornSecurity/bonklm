@@ -97,7 +97,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
   describe('Basic Functionality', () => {
     it('should create a guarded wrapper', () => {
-      const guardedAnthropic = createGuardedAnthropic(mockClient, {});
+      const guardedAnthropic = createGuardedAnthropic(mockClient, { allowEmptyForTesting: true });
       expect(guardedAnthropic).toBeDefined();
       expect(guardedAnthropic.messages).toBeDefined();
       expect(guardedAnthropic.messages.create).toBeInstanceOf(Function);
@@ -105,7 +105,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
     it('should preserve the original client methods', () => {
       const originalMethod = mockClient.messages.create;
-      const guardedAnthropic = createGuardedAnthropic(mockClient, {});
+      const guardedAnthropic = createGuardedAnthropic(mockClient, { allowEmptyForTesting: true });
 
       expect(guardedAnthropic.messages.create).toBeDefined();
       // The guarded version should be different (wrapped)
@@ -384,7 +384,7 @@ describe('Anthropic Guarded Wrapper', () => {
     }, 5000);
 
     it('should use default 30 second timeout when not specified', () => {
-      const guardedAnthropic = createGuardedAnthropic(mockClient, {});
+      const guardedAnthropic = createGuardedAnthropic(mockClient, { allowEmptyForTesting: true });
       // Just verify it doesn't throw on creation
       expect(guardedAnthropic).toBeDefined();
     });
@@ -675,7 +675,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
   describe('Type Safety', () => {
     it('should maintain correct return types', async () => {
-      const guardedAnthropic = createGuardedAnthropic(mockClient, {});
+      const guardedAnthropic = createGuardedAnthropic(mockClient, { allowEmptyForTesting: true });
 
       // Non-streaming should return Message
       const nonStreamingResult = await guardedAnthropic.messages.create({
@@ -713,6 +713,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
         const guardedAnthropic = createGuardedAnthropic(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
           maxStreamBufferSize: bufferSize,
@@ -752,6 +753,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
         const guardedAnthropic = createGuardedAnthropic(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
           maxStreamBufferSize: 500,
@@ -805,6 +807,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
         const guardedAnthropic = createGuardedAnthropic(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
           maxStreamBufferSize: bufferSize,
@@ -838,6 +841,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
         const guardedAnthropic = createGuardedAnthropic(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -875,6 +879,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
         const guardedAnthropic = createGuardedAnthropic(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -913,6 +918,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
         const guardedAnthropic = createGuardedAnthropic(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -1202,6 +1208,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
         const guardedAnthropic = createGuardedAnthropic(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
           maxStreamBufferSize: bufferSize,
@@ -1245,6 +1252,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
         const guardedAnthropic = createGuardedAnthropic(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -1282,6 +1290,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
         const guardedAnthropic = createGuardedAnthropic(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -1319,6 +1328,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
         const guardedAnthropic = createGuardedAnthropic(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -1356,6 +1366,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
         const guardedAnthropic = createGuardedAnthropic(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -1399,6 +1410,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
         const guardedAnthropic = createGuardedAnthropic(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -1445,6 +1457,7 @@ describe('Anthropic Guarded Wrapper', () => {
 
         const guardedAnthropic = createGuardedAnthropic(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });

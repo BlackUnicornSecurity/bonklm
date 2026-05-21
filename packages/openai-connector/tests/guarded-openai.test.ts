@@ -69,7 +69,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
   describe('Basic Functionality', () => {
     it('should create a guarded wrapper', () => {
-      const guardedOpenAI = createGuardedOpenAI(mockClient, {});
+      const guardedOpenAI = createGuardedOpenAI(mockClient, { allowEmptyForTesting: true });
       expect(guardedOpenAI).toBeDefined();
       expect(guardedOpenAI.chat).toBeDefined();
       expect(guardedOpenAI.chat.completions).toBeDefined();
@@ -78,7 +78,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
     it('should preserve the original client methods', () => {
       const originalMethod = mockClient.chat.completions.create;
-      const guardedOpenAI = createGuardedOpenAI(mockClient, {});
+      const guardedOpenAI = createGuardedOpenAI(mockClient, { allowEmptyForTesting: true });
 
       expect(guardedOpenAI.chat.completions.create).toBeDefined();
       // The guarded version should be different (wrapped)
@@ -156,6 +156,7 @@ describe('OpenAI Guarded Wrapper', () => {
     it('should validate and allow safe responses', async () => {
       const guardedOpenAI = createGuardedOpenAI(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         guards: [],
       });
 
@@ -270,6 +271,7 @@ describe('OpenAI Guarded Wrapper', () => {
       // support which varies in test environments.
       const guardedOpenAI = createGuardedOpenAI(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         validationTimeout: 1000,
       });
       expect(guardedOpenAI).toBeDefined();
@@ -553,6 +555,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
       const guardedOpenAI = createGuardedOpenAI(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         validateStreaming: true,
         streamingMode: 'incremental',
         maxStreamBufferSize: 1024 * 1024, // 1MB limit
@@ -624,6 +627,7 @@ describe('OpenAI Guarded Wrapper', () => {
     it('should handle empty messages array', async () => {
       const guardedOpenAI = createGuardedOpenAI(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
       });
 
       const result = await guardedOpenAI.chat.completions.create({
@@ -637,6 +641,7 @@ describe('OpenAI Guarded Wrapper', () => {
     it('should handle messages with null content', async () => {
       const guardedOpenAI = createGuardedOpenAI(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
       });
 
       const result = await guardedOpenAI.chat.completions.create({
@@ -650,6 +655,7 @@ describe('OpenAI Guarded Wrapper', () => {
     it('should handle tool call messages', async () => {
       const guardedOpenAI = createGuardedOpenAI(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
       });
 
       const result = await guardedOpenAI.chat.completions.create({
@@ -686,6 +692,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
         const guardedOpenAI = createGuardedOpenAI(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
           maxStreamBufferSize: bufferSize,
@@ -727,6 +734,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
         const guardedOpenAI = createGuardedOpenAI(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
           maxStreamBufferSize: 500, // Small buffer to trigger overflow
@@ -774,6 +782,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
         const guardedOpenAI = createGuardedOpenAI(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
           maxStreamBufferSize: bufferSize,
@@ -993,6 +1002,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
         const guardedOpenAI = createGuardedOpenAI(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -1024,6 +1034,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
         const guardedOpenAI = createGuardedOpenAI(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -1057,6 +1068,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
         const guardedOpenAI = createGuardedOpenAI(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -1295,6 +1307,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
         const guardedOpenAI = createGuardedOpenAI(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
           maxStreamBufferSize: bufferSize,
@@ -1339,6 +1352,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
         const guardedOpenAI = createGuardedOpenAI(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -1371,6 +1385,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
         const guardedOpenAI = createGuardedOpenAI(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -1403,6 +1418,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
         const guardedOpenAI = createGuardedOpenAI(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -1443,6 +1459,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
         const guardedOpenAI = createGuardedOpenAI(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -1477,6 +1494,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
         const guardedOpenAI = createGuardedOpenAI(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -1519,6 +1537,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
         const guardedOpenAI = createGuardedOpenAI(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });
@@ -1556,6 +1575,7 @@ describe('OpenAI Guarded Wrapper', () => {
 
         const guardedOpenAI = createGuardedOpenAI(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'incremental',
         });

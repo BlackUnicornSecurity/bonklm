@@ -215,6 +215,7 @@ describe('Mastra Guardrail Integration', () => {
       it('should respect maxContentLength limit (SEC-010)', async () => {
         const guardedWithLimit = createGuardedMastra({
           validators: [],
+          allowEmptyForTesting: true,
           maxContentLength: 100,
         });
 
@@ -315,6 +316,7 @@ describe('Mastra Guardrail Integration', () => {
       it('should accumulate chunks for buffer mode (SEC-002)', async () => {
         const guardedBuffer = createGuardedMastra({
           validators: [],
+          allowEmptyForTesting: true,
           validateStreaming: true,
           streamingMode: 'buffer',
         });
@@ -329,6 +331,7 @@ describe('Mastra Guardrail Integration', () => {
       it('should enforce maxStreamBufferSize (SEC-003)', async () => {
         const guardedSmall = createGuardedMastra({
           validators: [],
+          allowEmptyForTesting: true,
           maxStreamBufferSize: 100,
         });
 
@@ -383,6 +386,7 @@ describe('Mastra Guardrail Integration', () => {
         // For now, just verify the option is accepted
         const guardedTimeout = createGuardedMastra({
           validators: [],
+          allowEmptyForTesting: true,
           validationTimeout: 100,
         });
         expect(guardedTimeout).toBeDefined();

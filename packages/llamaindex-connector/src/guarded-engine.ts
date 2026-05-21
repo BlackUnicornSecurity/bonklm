@@ -87,12 +87,14 @@ export function createGuardedQueryEngine(
     onQueryBlocked,
     onDocumentBlocked,
     onResponseBlocked,
+    allowEmptyForTesting = process.env.BONKLM_TEST_MODE === '1', // Story 0.1 (R2-7): forward; auto-true under vitest
   } = options;
 
   const engine = new GuardrailEngine({
     validators,
     guards,
     logger,
+    allowEmptyForTesting,
   });
 
   /**
@@ -275,12 +277,14 @@ export function createGuardedRetriever(
     maxRetrievedDocs = DEFAULT_MAX_RETRIEVED_DOCS,
     onQueryBlocked,
     onDocumentBlocked,
+    allowEmptyForTesting = process.env.BONKLM_TEST_MODE === '1', // Story 0.1 (R2-7): forward; auto-true under vitest
   } = options;
 
   const engine = new GuardrailEngine({
     validators,
     guards,
     logger,
+    allowEmptyForTesting,
   });
 
   const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult> => {

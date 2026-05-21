@@ -199,6 +199,7 @@ describe('Qdrant Connector', () => {
 
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedPayloadFields: ['title', 'content*'],
       });
 
@@ -222,6 +223,7 @@ describe('Qdrant Connector', () => {
 
       const guarded = createGuardedClient(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedPayloadFields: ['title*', 'content'],
       });
 
@@ -1520,6 +1522,7 @@ describe('Qdrant Connector', () => {
       expect(() => {
         createGuardedClient(mockClient, {
           validators: [],
+          allowEmptyForTesting: true,
           guards: [],
           productionMode: true,
           validationTimeout: 10000,
