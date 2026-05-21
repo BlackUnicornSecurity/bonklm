@@ -65,17 +65,6 @@ export default defineConfig({
         },
       },
     },
-    // Story 0.1 (R2-7): under vitest, connectors auto-honor
-    // allowEmptyForTesting so existing tests that construct connectors with
-    // no validators/guards (testing wrapper plumbing, not the engine's
-    // security contract) keep working without per-site updates. Production
-    // code paths still see the fail-loud throw because BONKLM_TEST_MODE is
-    // unset there. The engine itself does NOT honor this env var — only
-    // connectors do — so direct GuardrailEngine throw tests still exercise
-    // the real contract.
-    env: {
-      BONKLM_TEST_MODE: '1',
-    },
     testTimeout: 30000,
     hookTimeout: 30000,
     pool: 'forks',

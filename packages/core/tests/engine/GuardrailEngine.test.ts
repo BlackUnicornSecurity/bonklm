@@ -10,6 +10,11 @@ import { PromptInjectionValidator } from '../../src/validators/prompt-injection.
 import { JailbreakValidator } from '../../src/validators/jailbreak.js';
 import { SecretGuard } from '../../src/guards/secret.js';
 import { Severity, RiskLevel } from '../../src/base/GuardrailResult.js';
+// Story 0.1 corrections PR 3: guards-only engine construction now throws
+// under spec-strict empty-list check. Tests that exercise guard behaviour
+// pair the guard with a no-op validator so the construction is permitted
+// without bypassing the safety net.
+import { noOpValidator } from '../../src/testing/no-op-validator.js';
 
 describe('GuardrailEngine', () => {
   describe('Basic Functionality', () => {
@@ -28,7 +33,7 @@ describe('GuardrailEngine', () => {
 
     it('should create an engine with guards', () => {
       const guards = [new SecretGuard()];
-      const engine = new GuardrailEngine({ guards });
+      const engine = new GuardrailEngine({ validators: [noOpValidator()], guards });
       expect(engine.getGuards()).toHaveLength(1);
     });
 
@@ -151,6 +156,7 @@ describe('GuardrailEngine', () => {
 
     it('should detect secrets in content', async () => {
       const engine = new GuardrailEngine({
+        validators: [noOpValidator()],
         guards: [new SecretGuard()],
       });
       const result = await engine.validate('const apiKey = "sk-test-1234567890abcdef"', 'config.js');
@@ -189,6 +195,7 @@ describe('GuardrailEngine', () => {
 
     it('should remove a guard by name', () => {
       const engine = new GuardrailEngine({
+        validators: [noOpValidator()],
         guards: [new SecretGuard()],
       });
       expect(engine.getGuards()).toHaveLength(1);
@@ -343,6 +350,7 @@ describe('GuardrailEngine', () => {
         },
       };
       const engine = new GuardrailEngine({
+        validators: [noOpValidator()],
         guards: [brokenGuard as any],
       });
       const result = await engine.validate('Hello', 'test.txt');

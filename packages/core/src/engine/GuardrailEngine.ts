@@ -104,14 +104,22 @@ export class GuardrailEngine {
   private readonly circuitBreaker: CircuitBreaker;
 
   constructor(config: GuardrailEngineConfig = {}) {
-    this.validators = config.validators ?? [];
-    this.guards = config.guards ?? [];
+    // Defensive copy (per Story 0.1 corrections PR 3 adversarial finding H1):
+    // store a copy of the input arrays so external mutation of the caller's
+    // array cannot silently drain the engine's protective layer after
+    // construction. `addValidator` / `removeValidator` still mutate the
+    // internal copy, but they go through methods we control.
+    this.validators = [...(config.validators ?? [])];
+    this.guards = [...(config.guards ?? [])];
 
-    // Story 0.1 (R2-7) — empty-list fail-safe.
-    // An engine with neither validators nor guards has no protective layer;
-    // every input is silently allowed. Refuse at construction unless the
-    // caller explicitly opts in for testing purposes.
-    const isEmptyConfig = this.validators.length === 0 && this.guards.length === 0;
+    // Story 0.1 (R2-7) — empty-list fail-safe (spec-strict).
+    // An engine with no validators has no primary protective layer; every
+    // text input is silently allowed regardless of any guards. Refuse at
+    // construction unless the caller explicitly opts in for testing
+    // purposes via `allowEmptyForTesting: true`. Guards-only configurations
+    // currently MUST also pass the opt-in flag; if that becomes a real
+    // user need we'll add a separate `allowGuardsOnlyValidation` field.
+    const isEmptyConfig = this.validators.length === 0;
     if (isEmptyConfig && config.allowEmptyForTesting !== true) {
       throw new Error(
         'Empty validator list is unsafe; use a no-op validator explicitly ' +
@@ -132,10 +140,21 @@ export class GuardrailEngine {
     this.logger = config.logger ?? createLogger('console', LogLevel.INFO);
 
     if (isEmptyConfig && config.allowEmptyForTesting === true) {
+      // Wording note (audit-loop): say "no validator-layer checks" not
+      // "no security checks" — when guards are wired (e.g. SecretGuard,
+      // BashSafetyGuard) the engine DOES still run them on the guards
+      // pipeline. Misleading users into thinking the engine is completely
+      // inert would invite suppression of this warning in observability.
+      const guardSuffix =
+        this.guards.length > 0
+          ? ` ${this.guards.length} guard(s) ARE wired and will still run.`
+          : ' No guards either.';
       this.logger.warn(
-        '[CRITICAL] GuardrailEngine constructed with no validators or guards ' +
-        '(allowEmptyForTesting=true). This engine performs NO security checks ' +
-        'and is intended for unit tests only. Do NOT deploy to production.'
+        `[CRITICAL] GuardrailEngine constructed with no validators ` +
+        `(allowEmptyForTesting=true). This engine performs NO ` +
+        `validator-layer checks and is intended for unit tests only.` +
+        `${guardSuffix}` +
+        ` Do NOT deploy to production.`
       );
     }
 

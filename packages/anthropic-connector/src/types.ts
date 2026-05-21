@@ -168,16 +168,6 @@ export interface GuardedAnthropicOptions {
    * @defaultValue 3
    */
   maxRetries?: number;
-
-  /**
-   * Story 0.1 (R2-7): bypass the core engine's empty-list fail-safe.
-   * An engine with no validators and no guards is normally rejected at
-   * construction; tests that need an empty engine can set this to true.
-   * Logs a CRITICAL warning when honored. Do NOT use in production.
-   *
-   * @defaultValue false
-   */
-  allowEmptyForTesting?: boolean;
 }
 
 /**
