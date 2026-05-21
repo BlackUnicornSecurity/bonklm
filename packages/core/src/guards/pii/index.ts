@@ -289,6 +289,43 @@ export class PIIGuard {
   }
 
   /**
+   * Story 1.3 (audit-loop BLOCK fix) — redact PII in place.
+   *
+   * `Finding.match` carries a *pre-redacted* form (e.g. `***-**-****`
+   * for SSN, `j****@example.com` for email) so PII findings don't
+   * carry the raw value through telemetry. That makes the standard
+   * "substring-replace Finding.match" path in
+   * `createRetrievedDocValidator` / `createMemoryWriteValidator`
+   * INCAPABLE of redacting PII from the original content — the doc
+   * contains the raw value, not the mask.
+   *
+   * `redactContent` re-runs the same pattern set against the input
+   * and replaces each match with `replacement`. Uses a replacer
+   * function (not a replacement string) so caller-supplied
+   * `$1` / `$&` / `$<name>` are treated literally rather than
+   * interpolated as regex backreferences.
+   *
+   * Patterns marked `contextRequired: true` (US_Phone, IBAN-like, etc.)
+   * are STILL applied here — we cannot afford to leave PII unredacted
+   * inside a `redact`-mode flow even if `detect()` wouldn't surface it
+   * outside a sensitive context.
+   *
+   * @param content     - Original content to redact.
+   * @param replacement - Substitution string. @default '[REDACTED]'
+   * @returns The content with each PII match replaced.
+   */
+  redactContent(content: string, replacement: string = '[REDACTED]'): string {
+    if (!content) return content;
+    let out = content;
+    const replacer = (): string => replacement;
+    for (const piiPattern of ALL_PATTERNS) {
+      piiPattern.regex.lastIndex = 0;
+      out = out.replace(piiPattern.regex, replacer);
+    }
+    return out;
+  }
+
+  /**
    * Get the guard's configuration
    */
   getConfig(): PIIGuardConfig {

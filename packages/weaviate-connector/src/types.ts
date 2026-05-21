@@ -8,6 +8,7 @@
  */
 
 import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
+import type { RetrievedDocValidator } from '@blackunicorn/bonklm';
 
 /**
  * Default validation timeout in milliseconds.
@@ -109,6 +110,13 @@ export interface GuardedWeaviateOptions {
    * Useful for restricting access to sensitive fields.
    */
   allowedFields?: string[];
+
+  /**
+   * Story 1.2 — opt-in batch retrieved-doc validator. Replaces the
+   * per-object validation loop with a single batch call supporting the
+   * `drop` / `block-all` / `redact` failure modes. NOT default-on.
+   */
+  retrievedDocValidator?: RetrievedDocValidator;
 
   /**
    * Whether to validate filter expressions.

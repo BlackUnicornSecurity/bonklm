@@ -10,6 +10,7 @@
 
 import type { Logger } from '../base/GenericLogger.js';
 import { StreamValidationError } from './errors.js';
+import { BufferedReleaseGate } from './buffered-release-gate.js';
 
 /**
  * Default maximum buffer size for streaming (1MB).
@@ -20,6 +21,13 @@ export const DEFAULT_MAX_BUFFER_SIZE = 1024 * 1024;
  * Default validation interval (number of chunks between validations).
  */
 export const DEFAULT_VALIDATION_INTERVAL = 10;
+
+/**
+ * Story 1.1b (R2-D1) — default `minBufferBeforeRelease` when neither
+ * Secret nor PII validators are detected in the chain. 256 chars or
+ * first sentence boundary (whichever fires first).
+ */
+export const DEFAULT_MIN_BUFFER_BEFORE_RELEASE = 256;
 
 /**
  * Stream validation options.
@@ -33,6 +41,38 @@ export interface StreamValidationOptions {
   logger?: Logger;
   /** Callback when stream is blocked */
   onBlocked?: (accumulated: string, reason: string) => void;
+  /**
+   * Story 1.1b (R2-D1) — `processForClient` release-gate threshold.
+   *
+   * When undefined: defaults to `Infinity` if `chainHasSecretOrPii` is
+   * `true`, else `256`. Pass `Infinity` for full-response mode (only
+   * 100% leak-prevention setting); pass `0` to release on every push.
+   */
+  minBufferBeforeRelease?: number;
+  /**
+   * Story 1.1b (R2-D1, R2-3) — build-time hint from the middleware
+   * layer indicating that Secret and/or PII validators are wired in
+   * the chain. When `true`, flips the `minBufferBeforeRelease` default
+   * to `Infinity`. Has no effect if `minBufferBeforeRelease` is set
+   * explicitly.
+   *
+   * **Evaluated once at construction.** Dynamically-assembled chains
+   * that change Secret/PII validator presence after the StreamValidator
+   * is built must pass `minBufferBeforeRelease` explicitly rather than
+   * relying on this hint.
+   */
+  chainHasSecretOrPii?: boolean;
+  /**
+   * Story 1.1b — sentence-boundary heuristic for the release gate.
+   * @default true
+   */
+  detectSentenceBoundary?: boolean;
+  /**
+   * Story 1.1b — minimum buffer length before a sentence terminator
+   * counts as a release point. Filters out abbreviation false-positives.
+   * @default 32
+   */
+  minSentenceLength?: number;
 }
 
 /**
@@ -329,7 +369,29 @@ export interface StreamValidatorResult {
 }
 
 /**
+ * Story 1.1b — return shape for `processForClient` / `finalizeForClient`.
+ * `released` is the substring the caller should forward to the client
+ * (empty string when the gate is still holding content). `allowed`/
+ * `reason` mirror the validator decision; on block the buffered content
+ * is dropped and `released` is empty.
+ */
+export interface StreamValidatorReleaseResult {
+  released: string;
+  allowed: boolean;
+  reason?: string;
+}
+
+/**
  * Enforced-lifecycle stream validator.
+ *
+ * **NOT concurrent-safe.** All methods mutate internal state; callers
+ * must serialise per-instance (one in-flight `process` / `processForClient`
+ * call at a time). Standard LLM-stream consumers process chunks
+ * sequentially via `for await (...)`, which is the supported pattern.
+ *
+ * **NOT mix-safe.** The legacy `process()` / `finalize()` lifecycle and
+ * the Story 1.1b `processForClient()` / `finalizeForClient()` lifecycle
+ * are mutually exclusive on a given instance. Calling both throws.
  *
  * Wraps the functional `processStreamChunk` / `shouldValidateStream` /
  * `hasUnvalidatedTail` primitives in a class that makes the "validate the
@@ -366,12 +428,25 @@ export interface StreamValidatorResult {
  * }
  * ```
  */
+/**
+ * Internal lifecycle mode. Set on the first call to `process()` or
+ * `processForClient()`. The two APIs MUST NOT be mixed on the same
+ * instance — the gate buffer and the accumulator drift otherwise (one
+ * gets fed only by `processForClient`, the other by both). Mixing
+ * throws at the second-mode call site.
+ */
+type StreamValidatorMode = 'legacy' | 'gated';
+
 export class StreamValidator {
   private readonly state: StreamValidatorState;
   private readonly engine: StreamValidatorEngine;
   private readonly options: StreamValidationOptions;
   private readonly interval: number;
+  private readonly releaseGate: BufferedReleaseGate;
+  private readonly minBufferBeforeRelease: number;
+  private mode: StreamValidatorMode | null = null;
   private finalised = false;
+  private finalisedForClient = false;
 
   private constructor(engine: StreamValidatorEngine, options: StreamValidationOptions) {
     // Symbol.asyncDispose is only present on Node >= 20.4.0. On earlier
@@ -390,6 +465,20 @@ export class StreamValidator {
         ? Math.floor(options.validationInterval as number)
         : DEFAULT_VALIDATION_INTERVAL;
     this.state = createStreamValidatorState();
+
+    // Story 1.1b (R2-D1) — release-gate default policy:
+    //   1. Explicit `minBufferBeforeRelease` wins.
+    //   2. `chainHasSecretOrPii: true` flips default to Infinity
+    //      (full-response mode — the only 100% leak-prevention).
+    //   3. Otherwise 256 chars or first sentence boundary.
+    this.minBufferBeforeRelease =
+      options.minBufferBeforeRelease ??
+      (options.chainHasSecretOrPii ? Infinity : DEFAULT_MIN_BUFFER_BEFORE_RELEASE);
+    this.releaseGate = new BufferedReleaseGate({
+      minCharsBeforeRelease: this.minBufferBeforeRelease,
+      detectSentenceBoundary: options.detectSentenceBoundary,
+      minSentenceLength: options.minSentenceLength,
+    });
   }
 
   static create(
@@ -414,8 +503,13 @@ export class StreamValidator {
    * reached. Returns the validation result on intervals, otherwise null.
    *
    * Throws `StreamValidationError` if the chunk would overflow the buffer.
+   *
+   * **NOT concurrent-safe**: callers must serialise calls per instance.
+   * **NOT mix-safe** with {@link processForClient}: call only one of
+   * `process` / `processForClient` on a given instance.
    */
   async process(chunk: string): Promise<StreamValidatorResult | null> {
+    this.assertMode('legacy');
     if (this.state.blocked) return null;
 
     processStreamChunk(this.state, chunk, this.options);
@@ -431,8 +525,17 @@ export class StreamValidator {
    * boundary. Idempotent: safe to call multiple times; subsequent calls return
    * null. Called automatically by `Symbol.asyncDispose` when used with
    * `await using`.
+   *
+   * No-op when the validator is in `'gated'` mode — the release-gate
+   * lifecycle uses {@link finalizeForClient} instead, and double-firing
+   * `runValidation` from both lifecycle paths would re-invoke the engine
+   * and any `onBlocked` callback twice on the same content.
    */
   async finalize(): Promise<StreamValidatorResult | null> {
+    if (this.mode === 'gated') {
+      this.finalised = true;
+      return null;
+    }
     if (this.finalised || this.state.blocked) {
       this.finalised = true;
       return null;
@@ -442,6 +545,26 @@ export class StreamValidator {
       return null;
     }
     return this.runValidation();
+  }
+
+  /**
+   * Lifecycle-mode guard. Records the first-call mode and throws on a
+   * subsequent attempt to use the OTHER API on the same instance.
+   * Audit-loop architect #1 + BLOCK #5 (asyncDispose double-validation):
+   * a sentinel here makes both `finalize` no-op in `gated` mode AND
+   * surfaces accidental mixing instead of letting the gate / accumulator
+   * drift silently.
+   */
+  private assertMode(target: StreamValidatorMode): void {
+    if (this.mode === null) {
+      this.mode = target;
+      return;
+    }
+    if (this.mode !== target) {
+      throw new Error(
+        `StreamValidator: cannot call ${target === 'legacy' ? 'process()' : 'processForClient()'} after ${this.mode === 'legacy' ? 'process()' : 'processForClient()'} on the same instance. Pick one lifecycle per stream.`
+      );
+    }
   }
 
   private async runValidation(): Promise<StreamValidatorResult> {
@@ -467,8 +590,114 @@ export class StreamValidator {
     }
   }
 
+  // ───────────────────────────────────────────────────────────────────────
+  // Story 1.1b — validate-before-release client gate
+  // ───────────────────────────────────────────────────────────────────────
+
+  /**
+   * Story 1.1b release-gate API. Append `chunk` to the accumulator and
+   * the release-gate buffer; when the gate signals ready-to-release,
+   * run validation against the full accumulator. On pass, drain the
+   * gate and return the buffered content as `released`. On block, drop
+   * the gate and return `{ released: '', allowed: false, reason }`.
+   *
+   * `processForClient` and the legacy `process()` SHOULD NOT be mixed
+   * on the same validator instance. Pick one per stream.
+   *
+   * @example
+   * ```ts
+   * await using validator = StreamValidator.create(engine, {
+   *   minBufferBeforeRelease: 256,
+   *   chainHasSecretOrPii: middleware.hasSecretValidators,
+   * });
+   * for await (const chunk of llmStream) {
+   *   const r = await validator.processForClient(chunk);
+   *   if (!r.allowed) {
+   *     sendErrorToClient(r.reason);
+   *     break;
+   *   }
+   *   if (r.released) clientSocket.write(r.released);
+   * }
+   * const tail = await validator.finalizeForClient();
+   * if (tail.allowed && tail.released) clientSocket.write(tail.released);
+   * ```
+   */
+  async processForClient(chunk: string): Promise<StreamValidatorReleaseResult> {
+    this.assertMode('gated');
+    if (this.state.blocked) {
+      return { released: '', allowed: false, reason: 'stream_already_blocked' };
+    }
+
+    processStreamChunk(this.state, chunk, this.options);
+    this.releaseGate.push(chunk);
+
+    if (!this.releaseGate.shouldRelease()) {
+      return { released: '', allowed: true };
+    }
+
+    try {
+      const validation = await this.runValidation();
+      if (!validation.allowed) {
+        this.releaseGate.drop();
+        return { released: '', allowed: false, reason: validation.reason };
+      }
+      return {
+        released: this.releaseGate.takePending(),
+        allowed: true,
+      };
+    } catch (err) {
+      // Audit-loop reviewer HIGH-1: convert engine throws to the
+      // documented release-result shape. `runValidation` already marked
+      // the stream blocked + fired `onBlocked` before rethrowing.
+      this.releaseGate.drop();
+      const reason = err instanceof Error ? `engine_error: ${err.message}` : 'engine_error';
+      return { released: '', allowed: false, reason };
+    }
+  }
+
+  /**
+   * Story 1.1b — final-flush release-gate API. Validate any content
+   * still held in the release-gate buffer and either release or drop it.
+   * Idempotent: subsequent calls return `{ released: '', allowed: true }`.
+   *
+   * MUST be called at end-of-stream to drain pending content under
+   * `minBufferBeforeRelease: Infinity` (full-response mode); otherwise
+   * the buffered response is silently dropped.
+   */
+  async finalizeForClient(): Promise<StreamValidatorReleaseResult> {
+    if (this.finalisedForClient) {
+      return {
+        released: '',
+        allowed: !this.state.blocked,
+        reason: this.state.blocked ? 'stream_already_blocked' : undefined,
+      };
+    }
+    this.finalisedForClient = true;
+    if (this.state.blocked) {
+      return { released: '', allowed: false, reason: 'stream_already_blocked' };
+    }
+    if (this.releaseGate.pendingSize === 0) {
+      return { released: '', allowed: true };
+    }
+    try {
+      const validation = await this.runValidation();
+      if (!validation.allowed) {
+        this.releaseGate.drop();
+        return { released: '', allowed: false, reason: validation.reason };
+      }
+      return { released: this.releaseGate.takePending(), allowed: true };
+    } catch (err) {
+      this.releaseGate.drop();
+      const reason = err instanceof Error ? `engine_error: ${err.message}` : 'engine_error';
+      return { released: '', allowed: false, reason };
+    }
+  }
+
   // TC39 Stage 3 explicit-resource-management hook.
   async [Symbol.asyncDispose](): Promise<void> {
     await this.finalize();
+    if (!this.finalisedForClient) {
+      await this.finalizeForClient();
+    }
   }
 }

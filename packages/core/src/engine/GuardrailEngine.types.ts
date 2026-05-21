@@ -10,17 +10,68 @@ import type { GuardrailResult } from '../base/GuardrailResult.js';
 import type { OverrideTokenConfigString } from '../security/override-token.js';
 
 /**
+ * Story 1.1 (R2-10) — canonical surface vocabulary lock.
+ *
+ * These seven strings are the ONLY accepted hook / validator surfaces.
+ * Synonyms ('prompt', 'output', 'tool_args', etc.) are forbidden — pick
+ * the canonical name when extending the engine, or add a new entry here
+ * with sprint-team approval. Story 3.11 OTel emits `bonklm.surface` using
+ * these exact strings.
+ */
+export type HookSurface =
+  | 'text_input'
+  | 'text_output'
+  | 'tool_call'
+  | 'retrieved_doc'
+  | 'memory_write'
+  | 'audio_partial'
+  | 'composed_context';
+
+/**
+ * Story 1.1 (R2-8) — ValidatorInput discriminated union.
+ *
+ * The five `kind` strings mirror the long-form surface vocabulary above
+ * (note: `retrieved_doc`/`retrieved_docs` and `memory_write` keep the
+ * canonical names — the singular/plural difference is intentional: the
+ * surface fires per-doc, the validator input carries the batch).
+ */
+export type ValidatorInput =
+  | { kind: 'text'; content: string }
+  | { kind: 'tool_call'; toolName: string; args: unknown }
+  | {
+      kind: 'retrieved_docs';
+      docs: Array<{ id?: string; content: string; metadata?: Record<string, unknown> }>;
+    }
+  | {
+      kind: 'memory_write';
+      payload: {
+        content: string;
+        userId?: string;
+        sessionId?: string;
+        metadata?: Record<string, unknown>;
+      };
+    }
+  | { kind: 'composed_context'; entries: string[] };
+
+/**
  * Validator instance interface.
- * All validators must implement a validate method that accepts content
- * and returns a GuardrailResult. The return type accepts either a
- * synchronous result or a Promise so future ML / remote-API validators
- * can plug in without breaking existing sync validators.
+ *
+ * Story 1.1 (R2-8): `validate` accepts the legacy `string` shape OR the
+ * new `ValidatorInput` discriminated union. The string-arg path is
+ * `@deprecated` in 0.4, will throw in 0.5, removed in 1.0.
+ *
+ * Return type accepts sync or async results so future ML / remote-API
+ * validators can plug in without breaking existing sync validators.
  */
 export interface Validator {
   /**
    * Validate content and return a result (sync or async).
+   *
+   * @param input - Legacy string OR a `ValidatorInput` union member.
+   *   The string overload is retained for backward compatibility with
+   *   pre-0.4 validators; new code should pass `{ kind, ... }` directly.
    */
-  validate(content: string): GuardrailResult | Promise<GuardrailResult>;
+  validate(input: string | ValidatorInput): GuardrailResult | Promise<GuardrailResult>;
 
   /**
    * Optional validator name for identification.

@@ -131,6 +131,7 @@ export function createGuardedClient(
     onQueryBlocked,
     onObjectBlocked,
     onClassNotAllowed,
+    retrievedDocValidator, // Story 1.2 opt-in batch validator
   } = options;
 
   const engine = new GuardrailEngine({
@@ -336,6 +337,26 @@ export function createGuardedClient(
   const validateObjects = async (objects: any[]): Promise<{ valid: any[]; blocked: number }> => {
     if (!validateRetrievedObjects) {
       return { valid: objects, blocked: 0 };
+    }
+
+    // Story 1.2 — batch validator path. Replaces per-object loop when set.
+    if (retrievedDocValidator) {
+      // Audit-loop fix: position-stable synthetic ids defeat attacker-
+      // influenced metadata from spoofing another object's id key.
+      const docs = objects.map((o, i) => ({
+        id: `__pos_${i}`,
+        content: JSON.stringify(o),
+        metadata: o,
+      }));
+      const batch = await retrievedDocValidator.validateBatch(docs);
+      if (batch.result.blocked) {
+        throw new Error(
+          productionMode ? 'Object batch blocked' : `Object batch blocked: ${batch.result.reason}`
+        );
+      }
+      const survivorPositions = new Set(batch.docs.map((d) => d.id));
+      const valid = objects.filter((_o, i) => survivorPositions.has(`__pos_${i}`));
+      return { valid, blocked: batch.filteredCount };
     }
 
     const valid: any[] = [];

@@ -208,6 +208,51 @@ export class SecretGuard {
   }
 
   /**
+   * Story 1.2 — redact secrets in place.
+   *
+   * Used by `createRetrievedDocValidator({ onPerDocFailure: 'redact' })`
+   * when a retrieved document carries a credential. Because
+   * `Finding.match` is deliberately masked to `'[REDACTED]'` (so the
+   * Finding objects themselves don't carry the secret through logs /
+   * telemetry), the standard "substring-replace Finding.match" path
+   * cannot redact secrets in the original content — only this method
+   * can, because it re-runs the same patterns and replaces what it
+   * matches.
+   *
+   * **Normalisation parity (audit-loop CRITICAL fix)**: `detect()`
+   * applies `normalizeText` before pattern matching so confusable /
+   * zero-width / homoglyph-mangled secrets still get flagged. This
+   * method MUST apply the same normalisation, otherwise a homoglyph-
+   * prefixed key would be detected (and routed into redact mode) but
+   * the raw-string pattern run here would fail to match — the secret
+   * would survive in the returned content. Returning the normalised
+   * + redacted form is the correct behaviour for RAG content reaching
+   * an LLM (the LLM sees the same normalised characters anyway).
+   *
+   * **Replacement string safety (audit-loop BLOCK fix)**: uses a
+   * replacer function rather than `String.replace(regex, string)` so
+   * a caller-supplied `replacement` containing `$1` / `$&` /
+   * `$<name>` is treated literally rather than being interpreted as
+   * a regex backreference. Without this, an attacker who controlled
+   * the replacement string could inject captured groups.
+   *
+   * @param content     - Original content to redact.
+   * @param replacement - Substitution string. @default '[REDACTED]'
+   * @returns The content with each detected secret replaced (and the
+   *   text normalised — see note above).
+   */
+  redactContent(content: string, replacement: string = '[REDACTED]'): string {
+    if (!content) return content;
+    let out = normalizeText(content);
+    const replacer = (): string => replacement;
+    for (const secretPattern of ALL_PATTERNS) {
+      secretPattern.pattern.lastIndex = 0;
+      out = out.replace(secretPattern.pattern, replacer);
+    }
+    return out;
+  }
+
+  /**
    * Validate content for secrets.
    */
   validate(content: string, filePath: string = ''): GuardrailResult {

@@ -5,9 +5,14 @@
  */
 
 import { createLogger, type Logger } from '../base/GenericLogger.js';
+import type { HookSurface } from '../engine/GuardrailEngine.types.js';
 
 // Export HookSandbox
 export * from './HookSandbox.js';
+
+// Re-export the canonical surface vocabulary so consumers can import it
+// from `@blackunicorn/bonklm/hooks` without reaching into engine internals.
+export type { HookSurface } from '../engine/GuardrailEngine.types.js';
 
 /**
  * Hook execution phases
@@ -20,10 +25,26 @@ export enum HookPhase {
 }
 
 /**
+ * Story 1.1 (R2-D3 + R2-9 + R2-10): default surface when callers omit
+ * `surface` from `registerHook`. Will THROW in 0.5; CHANGELOG marks
+ * BREAKING for v0.4 and BREAKING-HARD for v0.5.
+ */
+export const DEFAULT_HOOK_SURFACE: HookSurface = 'text_input';
+
+/**
  * Hook handler context
  */
 export interface HookContext {
   phase: HookPhase;
+  /**
+   * Story 1.1 (R2-9/R2-10): the surface this hook is firing for.
+   *
+   * Optional in 0.4 so legacy callers of `executeHooks(...)` still
+   * type-check; the surface is also available on the `HookDefinition`
+   * (set by `registerHook`) and is the authoritative source. Required
+   * in 0.5 once the registerHook default is removed.
+   */
+  surface?: HookSurface;
   content: string;
   metadata?: Record<string, unknown>;
 }
@@ -62,6 +83,12 @@ export interface HookDefinition<TContext = HookContext> {
   id: string;
   name: string;
   phase: HookPhase;
+  /**
+   * Story 1.1 (R2-9/R2-10): the surface this hook applies to.
+   * Optional in 0.4 (defaults to `'text_input'` with a deprecation
+   * warning); required in 0.5 (the default will be removed).
+   */
+  surface?: HookSurface;
   handler: HookHandler<TContext>;
   priority: number;
   enabled: boolean;
@@ -92,6 +119,8 @@ export class HookManager<TContext extends HookContext = HookContext> {
   // S011-007: Rate limiting state
   private readonly rateLimitConfig?: { maxCalls: number; windowMs: number; perPhase?: boolean };
   private readonly rateLimitTracking: Map<string, number[]> = new Map();
+  // Story 1.1 (R2-D3): one-shot deprecation warning when `surface` omitted.
+  private surfaceDefaultWarned = false;
 
   constructor(config: HookManagerConfig = {}) {
     this.logger = config.logger ?? createLogger('console');
@@ -104,9 +133,22 @@ export class HookManager<TContext extends HookContext = HookContext> {
    */
   registerHook(definition: Omit<HookDefinition<TContext>, 'id'>): string {
     const id = `hook_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+    const surface: HookSurface = definition.surface ?? DEFAULT_HOOK_SURFACE;
+
+    if (definition.surface === undefined && !this.surfaceDefaultWarned) {
+      this.surfaceDefaultWarned = true;
+      this.logger.warn(
+        `[deprecated] registerHook() called without an explicit \`surface\` — ` +
+        `defaulting to '${DEFAULT_HOOK_SURFACE}'. This default is REMOVED ` +
+        `in BonkLM 0.5 and \`surface\` becomes required. Update your ` +
+        `registerHook({phase, surface, handler}) callsites now.`
+      );
+    }
+
     const hook: HookDefinition<TContext> = {
       ...definition,
       id,
+      surface,
       priority: definition.priority ?? 0,
       enabled: definition.enabled !== false,
     };
@@ -118,7 +160,7 @@ export class HookManager<TContext extends HookContext = HookContext> {
     this.hooks.get(hook.phase)!.push(hook);
     this.hooks.get(hook.phase)!.sort((a, b) => a.priority - b.priority);
 
-    this.logger.info('Hook registered', { id, name: hook.name, phase: hook.phase });
+    this.logger.info('Hook registered', { id, name: hook.name, phase: hook.phase, surface });
     return id;
   }
 
