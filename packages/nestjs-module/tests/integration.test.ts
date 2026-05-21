@@ -5,25 +5,12 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import {
-  Test,
-  TestingModule,
-} from '@nestjs/testing';
-import {
-  Controller,
-  Post,
-  Body,
-  Module,
-} from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import { Controller, Post, Body, Module } from '@nestjs/common';
 import { GuardrailsModule, UseGuardrails } from '../src/index.js';
 import { GuardrailsModule as GuardrailsModuleClass } from '../src/guardrails.module.js';
 import { GuardrailsService } from '../src/guardrails.service.js';
-import {
-  PromptInjectionValidator,
-  JailbreakValidator,
-  SecretGuard,
-  PIIGuard,
-} from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, JailbreakValidator, SecretGuard, PIIGuard } from '@blackunicorn/bonklm';
 
 // Helper function to create a fresh GuardrailsService instance for testing
 // This directly instantiates the service to bypass NestJS DI issues
@@ -48,7 +35,7 @@ function createGuardrailsService(options: {
       return {
         productionMode: this.productionMode,
         validationTimeout: this.validationTimeout,
-        maxContentLength: this.maxContentLength,
+        maxContentLength: this.maxContentLength
       };
     },
 
@@ -57,7 +44,7 @@ function createGuardrailsService(options: {
         return 'Content blocked by security policy';
       }
       return result.reason || 'Content blocked by guardrails';
-    },
+    }
   } as any;
 
   return mockService as GuardrailsService;
@@ -89,18 +76,12 @@ class TestController {
 @Module({
   imports: [
     GuardrailsModule.forFeature({
-      validators: [
-        new PromptInjectionValidator(),
-        new JailbreakValidator(),
-      ],
-      guards: [
-        new SecretGuard(),
-        new PIIGuard(),
-      ],
-      productionMode: false,
-    }),
+      validators: [new PromptInjectionValidator(), new JailbreakValidator()],
+      guards: [new SecretGuard(), new PIIGuard()],
+      productionMode: false
+    })
   ],
-  controllers: [TestController],
+  controllers: [TestController]
 })
 class TestAppModule {}
 
@@ -109,7 +90,7 @@ describe('Integration Tests', () => {
 
   beforeAll(async () => {
     module = await Test.createTestingModule({
-      imports: [TestAppModule],
+      imports: [TestAppModule]
     }).compile();
   }, 15000);
 
@@ -145,7 +126,7 @@ function createMockService(productionMode: boolean) {
         return 'Content blocked by security policy';
       }
       return result.reason || 'Content blocked by guardrails';
-    },
+    }
   };
 }
 
@@ -174,7 +155,7 @@ describe('Production Mode Security Tests', () => {
         risk_score: 100,
         findings: [],
         timestamp: Date.now(),
-        reason: 'Prompt injection detected - specific details',
+        reason: 'Prompt injection detected - specific details'
       };
 
       const errorMessage = service.getErrorMessage(blockedResult);
@@ -196,7 +177,7 @@ describe('Production Mode Security Tests', () => {
         risk_score: 100,
         findings: [],
         timestamp: Date.now(),
-        reason: 'Prompt injection detected - specific details',
+        reason: 'Prompt injection detected - specific details'
       };
 
       const errorMessage = service.getErrorMessage(blockedResult);

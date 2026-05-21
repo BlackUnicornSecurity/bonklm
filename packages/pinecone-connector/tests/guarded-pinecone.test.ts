@@ -8,15 +8,16 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createGuardedIndex } from '../src/guarded-pinecone.js';
 import { PromptInjectionValidator, PIIGuard } from '@blackunicorn/bonklm';
+import { noOpValidator } from '@blackunicorn/bonklm/testing';
 
 // Mock Pinecone Index
 const createMockPineconeIndex = () => ({
   query: vi.fn().mockResolvedValue({
     matches: [
       { id: 'vec1', score: 0.95, metadata: { text: 'Safe vector content' } },
-      { id: 'vec2', score: 0.85, metadata: { text: 'Another safe vector' } },
-    ],
-  }),
+      { id: 'vec2', score: 0.85, metadata: { text: 'Another safe vector' } }
+    ]
+  })
 });
 
 describe('Pinecone Connector', () => {
@@ -24,13 +25,12 @@ describe('Pinecone Connector', () => {
     it('should allow valid queries', async () => {
       const mockIndex = createMockPineconeIndex();
       const guardedIndex = createGuardedIndex(mockIndex, {
-        validators: [],
-        allowEmptyForTesting: true,
+        validators: [noOpValidator()]
       });
 
       const result = await guardedIndex.query({
         vector: [0.1, 0.2, 0.3],
-        topK: 10,
+        topK: 10
       });
 
       expect(result.filtered).toBe(false);
@@ -40,33 +40,36 @@ describe('Pinecone Connector', () => {
 
     it('should validate vector format', async () => {
       const mockIndex = createMockPineconeIndex();
-      const guardedIndex = createGuardedIndex(mockIndex, { allowEmptyForTesting: true });
+      const guardedIndex = createGuardedIndex(mockIndex, {
+        validators: [noOpValidator()]
+      });
 
-      await expect(
-        guardedIndex.query({ vector: 'not-an-array' as any })
-      ).rejects.toThrow('Vector must be an array');
+      await expect(guardedIndex.query({ vector: 'not-an-array' as any })).rejects.toThrow('Vector must be an array');
     });
 
     it('should validate vector contains only numbers', async () => {
       const mockIndex = createMockPineconeIndex();
-      const guardedIndex = createGuardedIndex(mockIndex, { allowEmptyForTesting: true });
+      const guardedIndex = createGuardedIndex(mockIndex, {
+        validators: [noOpValidator()]
+      });
 
-      await expect(
-        guardedIndex.query({ vector: [0.1, 'invalid', 0.3] as any })
-      ).rejects.toThrow('Vector must contain only valid numbers');
+      await expect(guardedIndex.query({ vector: [0.1, 'invalid', 0.3] as any })).rejects.toThrow(
+        'Vector must contain only valid numbers'
+      );
     });
 
     it('should enforce maxTopK limit', async () => {
       const mockIndex = createMockPineconeIndex();
       const guardedIndex = createGuardedIndex(mockIndex, {
-        maxTopK: 50,
+        validators: [noOpValidator()],
+        maxTopK: 50
       });
 
       await guardedIndex.query({ vector: [0.1, 0.2], topK: 100 });
 
       expect(mockIndex.query).toHaveBeenCalledWith(
         expect.objectContaining({
-          topK: 50,
+          topK: 50
         })
       );
     });
@@ -74,13 +77,14 @@ describe('Pinecone Connector', () => {
     it('should sanitize dangerous filter patterns', async () => {
       const mockIndex = createMockPineconeIndex();
       const guardedIndex = createGuardedIndex(mockIndex, {
-        sanitizeMetadataFilters: true,
+        validators: [noOpValidator()],
+        sanitizeMetadataFilters: true
       });
 
       await expect(
         guardedIndex.query({
           vector: [0.1, 0.2],
-          filter: { ['$..']: 'path-traversal' },
+          filter: { ['$..']: 'path-traversal' }
         })
       ).rejects.toThrow();
     });
@@ -88,13 +92,14 @@ describe('Pinecone Connector', () => {
     it('should validate retrieved vectors', async () => {
       const mockIndex = createMockPineconeIndex();
       const guardedIndex = createGuardedIndex(mockIndex, {
+        validators: [noOpValidator()],
         guards: [new PIIGuard()],
-        validateRetrievedVectors: true,
+        validateRetrievedVectors: true
       });
 
       const result = await guardedIndex.query({
         vector: [0.1, 0.2],
-        topK: 10,
+        topK: 10
       });
 
       expect(result).toBeDefined();
@@ -103,14 +108,15 @@ describe('Pinecone Connector', () => {
     it('should filter blocked vectors', async () => {
       const mockIndex = createMockPineconeIndex();
       const guardedIndex = createGuardedIndex(mockIndex, {
+        validators: [noOpValidator()],
         guards: [new PIIGuard()],
         validateRetrievedVectors: true,
-        onBlockedVector: 'filter',
+        onBlockedVector: 'filter'
       });
 
       const result = await guardedIndex.query({
         vector: [0.1, 0.2],
-        topK: 10,
+        topK: 10
       });
 
       expect(result).toBeDefined();
@@ -119,14 +125,15 @@ describe('Pinecone Connector', () => {
     it('should use production mode error messages', async () => {
       const mockIndex = createMockPineconeIndex();
       const guardedIndex = createGuardedIndex(mockIndex, {
+        validators: [noOpValidator()],
         productionMode: true,
-        sanitizeMetadataFilters: true,
+        sanitizeMetadataFilters: true
       });
 
       await expect(
         guardedIndex.query({
           vector: [0.1, 0.2],
-          filter: { eval: 'malicious' },
+          filter: { eval: 'malicious' }
         })
       ).rejects.toThrow('Invalid filter');
     });
@@ -136,9 +143,10 @@ describe('Pinecone Connector', () => {
       const onBlocked = vi.fn();
 
       const guardedIndex = createGuardedIndex(mockIndex, {
+        validators: [noOpValidator()],
         guards: [new PIIGuard()],
         validateRetrievedVectors: true,
-        onVectorBlocked: onBlocked,
+        onVectorBlocked: onBlocked
       });
 
       await guardedIndex.query({ vector: [0.1, 0.2], topK: 10 });
@@ -152,13 +160,14 @@ describe('Pinecone Connector', () => {
     it('should block eval pattern', async () => {
       const mockIndex = createMockPineconeIndex();
       const guardedIndex = createGuardedIndex(mockIndex, {
-        sanitizeMetadataFilters: true,
+        validators: [noOpValidator()],
+        sanitizeMetadataFilters: true
       });
 
       await expect(
         guardedIndex.query({
           vector: [0.1, 0.2],
-          filter: { field: { eval: 'malicious' } },
+          filter: { field: { eval: 'malicious' } }
         })
       ).rejects.toThrow();
     });
@@ -166,13 +175,14 @@ describe('Pinecone Connector', () => {
     it('should block path traversal', async () => {
       const mockIndex = createMockPineconeIndex();
       const guardedIndex = createGuardedIndex(mockIndex, {
-        sanitizeMetadataFilters: true,
+        validators: [noOpValidator()],
+        sanitizeMetadataFilters: true
       });
 
       await expect(
         guardedIndex.query({
           vector: [0.1, 0.2],
-          filter: { ['$..']: 'attack' },
+          filter: { ['$..']: 'attack' }
         })
       ).rejects.toThrow();
     });
@@ -180,13 +190,14 @@ describe('Pinecone Connector', () => {
     it('should block constructor access', async () => {
       const mockIndex = createMockPineconeIndex();
       const guardedIndex = createGuardedIndex(mockIndex, {
-        sanitizeMetadataFilters: true,
+        validators: [noOpValidator()],
+        sanitizeMetadataFilters: true
       });
 
       await expect(
         guardedIndex.query({
           vector: [0.1, 0.2],
-          filter: { constructor: {} },
+          filter: { constructor: {} }
         })
       ).rejects.toThrow();
     });
@@ -195,33 +206,37 @@ describe('Pinecone Connector', () => {
   describe('query options', () => {
     it('should support namespace option', async () => {
       const mockIndex = createMockPineconeIndex();
-      const guardedIndex = createGuardedIndex(mockIndex, { allowEmptyForTesting: true });
+      const guardedIndex = createGuardedIndex(mockIndex, {
+        validators: [noOpValidator()]
+      });
 
       await guardedIndex.query({
         vector: [0.1, 0.2],
         topK: 10,
-        namespace: 'test-ns',
+        namespace: 'test-ns'
       });
 
       expect(mockIndex.query).toHaveBeenCalledWith(
         expect.objectContaining({
-          namespace: 'test-ns',
+          namespace: 'test-ns'
         })
       );
     });
 
     it('should support includeValues option', async () => {
       const mockIndex = createMockPineconeIndex();
-      const guardedIndex = createGuardedIndex(mockIndex, { allowEmptyForTesting: true });
+      const guardedIndex = createGuardedIndex(mockIndex, {
+        validators: [noOpValidator()]
+      });
 
       await guardedIndex.query({
         vector: [0.1, 0.2],
-        includeValues: true,
+        includeValues: true
       });
 
       expect(mockIndex.query).toHaveBeenCalledWith(
         expect.objectContaining({
-          includeValues: true,
+          includeValues: true
         })
       );
     });

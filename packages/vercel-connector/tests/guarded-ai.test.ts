@@ -16,6 +16,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { messagesToText } from '../src/guarded-ai.js';
 import { PromptInjectionValidator } from '@blackunicorn/bonklm';
 import type { CoreMessage } from 'ai';
+import { noOpValidator } from '@blackunicorn/bonklm/testing';
 
 describe('messagesToText utility', () => {
   it('should extract text from complex messages', () => {
@@ -26,9 +27,9 @@ describe('messagesToText utility', () => {
         content: [
           { type: 'text', text: 'Check this image:' },
           { type: 'image', image: 'https://example.com/image.png' },
-          { type: 'text', text: 'What do you see?' },
-        ],
-      },
+          { type: 'text', text: 'What do you see?' }
+        ]
+      }
     ];
 
     const result = messagesToText(messages);
@@ -39,9 +40,7 @@ describe('messagesToText utility', () => {
   });
 
   it('should handle string content in messages', () => {
-    const messages: CoreMessage[] = [
-      { role: 'user', content: 'Hello, how are you?' },
-    ];
+    const messages: CoreMessage[] = [{ role: 'user', content: 'Hello, how are you?' }];
 
     const text = messagesToText(messages);
     expect(text).toBe('Hello, how are you?');
@@ -53,9 +52,9 @@ describe('messagesToText utility', () => {
         role: 'user',
         content: [
           { type: 'text', text: 'Hello' },
-          { type: 'text', text: 'How are you?' },
-        ],
-      },
+          { type: 'text', text: 'How are you?' }
+        ]
+      }
     ];
 
     const text = messagesToText(messages);
@@ -69,9 +68,9 @@ describe('messagesToText utility', () => {
         content: [
           { type: 'text', text: 'Look at this image:' },
           { type: 'image', image: 'base64...' },
-          { type: 'text', text: 'What do you see?' },
-        ],
-      },
+          { type: 'text', text: 'What do you see?' }
+        ]
+      }
     ];
 
     const text = messagesToText(messages);
@@ -84,9 +83,9 @@ describe('messagesToText utility', () => {
       { role: 'user', content: 'First message' },
       {
         role: 'assistant',
-        content: [{ type: 'text', text: 'Response with text parts' }],
+        content: [{ type: 'text', text: 'Response with text parts' }]
       },
-      { role: 'user', content: 'Follow up' },
+      { role: 'user', content: 'Follow up' }
     ];
 
     const text = messagesToText(messages);
@@ -96,9 +95,7 @@ describe('messagesToText utility', () => {
   });
 
   it('should handle empty content', () => {
-    const messages: CoreMessage[] = [
-      { role: 'user', content: '' },
-    ];
+    const messages: CoreMessage[] = [{ role: 'user', content: '' }];
 
     const result = messagesToText(messages);
     expect(result).toBe('');
@@ -108,10 +105,8 @@ describe('messagesToText utility', () => {
     const messages: CoreMessage[] = [
       {
         role: 'user',
-        content: [
-          { type: 'image', image: 'data:image/png;base64,abc' },
-        ],
-      },
+        content: [{ type: 'image', image: 'data:image/png;base64,abc' }]
+      }
     ];
 
     const result = messagesToText(messages);
@@ -125,7 +120,7 @@ describe('createGuardedAI - Basic functionality', () => {
     const { createGuardedAI } = require('../src/guarded-ai.js');
 
     const guardedAI = createGuardedAI({
-      validators: [new PromptInjectionValidator()],
+      validators: [new PromptInjectionValidator()]
     });
 
     expect(guardedAI).toBeDefined();
@@ -139,8 +134,7 @@ describe('createGuardedAI - Basic functionality', () => {
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const guardedAI = createGuardedAI({
-      validators: [],
-      allowEmptyForTesting: true,
+      validators: [noOpValidator()]
     });
 
     expect(guardedAI).toBeDefined();
@@ -150,7 +144,9 @@ describe('createGuardedAI - Basic functionality', () => {
   it('should apply default configuration values', () => {
     const { createGuardedAI } = require('../src/guarded-ai.js');
 
-    const guardedAI = createGuardedAI({});
+    const guardedAI = createGuardedAI({
+      validators: [noOpValidator()]
+    });
 
     expect(guardedAI).toBeDefined();
   });
@@ -163,9 +159,9 @@ describe('SEC-006: Complex Message Content', () => {
         role: 'user',
         content: [
           { type: 'text', text: 'Hello' },
-          { type: 'text', text: 'World' },
-        ],
-      },
+          { type: 'text', text: 'World' }
+        ]
+      }
     ];
 
     const text = messagesToText(messages);
@@ -179,9 +175,9 @@ describe('SEC-006: Complex Message Content', () => {
         content: [
           { type: 'text', text: 'Describe this:' },
           { type: 'image', image: 'data:image/png;base64,ABC123' },
-          { type: 'text', text: 'End' },
-        ],
-      },
+          { type: 'text', text: 'End' }
+        ]
+      }
     ];
 
     const text = messagesToText(messages);
@@ -195,7 +191,8 @@ describe('Configuration options', () => {
     const { createGuardedAI } = require('../src/guarded-ai.js');
 
     const guardedAI = createGuardedAI({
-      validationTimeout: 5000,
+      validators: [noOpValidator()],
+      validationTimeout: 5000
     });
 
     expect(guardedAI).toBeDefined();
@@ -205,7 +202,8 @@ describe('Configuration options', () => {
     const { createGuardedAI } = require('../src/guarded-ai.js');
 
     const guardedAI = createGuardedAI({
-      maxStreamBufferSize: 2048,
+      validators: [noOpValidator()],
+      maxStreamBufferSize: 2048
     });
 
     expect(guardedAI).toBeDefined();
@@ -215,7 +213,8 @@ describe('Configuration options', () => {
     const { createGuardedAI } = require('../src/guarded-ai.js');
 
     const guardedAI = createGuardedAI({
-      productionMode: true,
+      validators: [noOpValidator()],
+      productionMode: true
     });
 
     expect(guardedAI).toBeDefined();
@@ -225,8 +224,9 @@ describe('Configuration options', () => {
     const { createGuardedAI } = require('../src/guarded-ai.js');
 
     const guardedAI = createGuardedAI({
+      validators: [noOpValidator()],
       validateStreaming: true,
-      streamingMode: 'incremental',
+      streamingMode: 'incremental'
     });
 
     expect(guardedAI).toBeDefined();
@@ -239,8 +239,9 @@ describe('Configuration options', () => {
     const onStreamBlocked = vi.fn();
 
     const guardedAI = createGuardedAI({
+      validators: [noOpValidator()],
       onBlocked,
-      onStreamBlocked,
+      onStreamBlocked
     });
 
     expect(guardedAI).toBeDefined();
