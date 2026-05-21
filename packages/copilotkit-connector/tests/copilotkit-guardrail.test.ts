@@ -111,6 +111,7 @@ describe('CopilotKit Guardrail Integration', () => {
       it('should respect maxContentLength limit (SEC-010)', async () => {
         const guardedWithLimit = createGuardedCopilotKit({
           validators: [],
+          allowEmptyForTesting: true,
           maxContentLength: 100,
         });
 
@@ -164,6 +165,7 @@ describe('CopilotKit Guardrail Integration', () => {
       it('should block dangerous action names from default blacklist', async () => {
         const guardrails = createGuardedCopilotKit({
           validators: [],
+          allowEmptyForTesting: true,
           validateActionCalls: true,
         });
 
@@ -187,6 +189,7 @@ describe('CopilotKit Guardrail Integration', () => {
       it('should block action names exceeding maximum length', async () => {
         const guardrails = createGuardedCopilotKit({
           validators: [],
+          allowEmptyForTesting: true,
           maxActionNameLength: 50,
         });
 
@@ -202,6 +205,7 @@ describe('CopilotKit Guardrail Integration', () => {
       it('should block action arguments exceeding maximum size', async () => {
         const guardrails = createGuardedCopilotKit({
           validators: [],
+          allowEmptyForTesting: true,
           maxArgumentsSize: 100,
         });
 
@@ -218,6 +222,7 @@ describe('CopilotKit Guardrail Integration', () => {
       it('should block dangerous patterns in action arguments', async () => {
         const guardrails = createGuardedCopilotKit({
           validators: [],
+          allowEmptyForTesting: true,
         });
 
         const dangerousArgsActions: CopilotKitAction[] = [
@@ -237,6 +242,7 @@ describe('CopilotKit Guardrail Integration', () => {
       it('should allow actions from whitelist when specified', async () => {
         const guardrails = createGuardedCopilotKit({
           validators: [],
+          allowEmptyForTesting: true,
           allowedActionNames: ['search*', 'get*'],
         });
 
@@ -256,6 +262,7 @@ describe('CopilotKit Guardrail Integration', () => {
       it('should block actions not in whitelist when whitelist is specified', async () => {
         const guardrails = createGuardedCopilotKit({
           validators: [],
+          allowEmptyForTesting: true,
           allowedActionNames: ['search', 'getUser'],
         });
 
@@ -274,6 +281,7 @@ describe('CopilotKit Guardrail Integration', () => {
       it('should respect custom blocked action names', async () => {
         const guardrails = createGuardedCopilotKit({
           validators: [],
+          allowEmptyForTesting: true,
           blockedActionNames: ['admin*', 'root*'],
         });
 
@@ -292,6 +300,7 @@ describe('CopilotKit Guardrail Integration', () => {
         const onActionCallBlocked = vi.fn();
         const guardrails = createGuardedCopilotKit({
           validators: [],
+          allowEmptyForTesting: true,
           onActionCallBlocked,
         });
 
@@ -314,6 +323,7 @@ describe('CopilotKit Guardrail Integration', () => {
       it('should allow safe actions with all validations passing', async () => {
         const guardrails = createGuardedCopilotKit({
           validators: [],
+          allowEmptyForTesting: true,
           allowedActionNames: ['search', 'getData'],
         });
 

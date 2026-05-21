@@ -144,7 +144,7 @@ describe('Ollama Guarded Wrapper', () => {
 
   describe('Basic Functionality', () => {
     it('should create a guarded wrapper', () => {
-      const guardedOllama = createGuardedOllama(mockClient, {});
+      const guardedOllama = createGuardedOllama(mockClient, { allowEmptyForTesting: true });
       expect(guardedOllama).toBeDefined();
       expect(guardedOllama.chat).toBeDefined();
       expect(guardedOllama.generate).toBeDefined();
@@ -155,7 +155,7 @@ describe('Ollama Guarded Wrapper', () => {
     it('should preserve the original client methods', () => {
       const originalChat = mockClient.chat;
       const originalGenerate = mockClient.generate;
-      const guardedOllama = createGuardedOllama(mockClient, {});
+      const guardedOllama = createGuardedOllama(mockClient, { allowEmptyForTesting: true });
 
       expect(guardedOllama.chat).toBeDefined();
       expect(guardedOllama.generate).toBeDefined();
@@ -569,7 +569,7 @@ describe('Ollama Guarded Wrapper', () => {
     });
 
     it('should use default validation timeout', () => {
-      const guardedOllama = createGuardedOllama(mockClient, {});
+      const guardedOllama = createGuardedOllama(mockClient, { allowEmptyForTesting: true });
       expect(guardedOllama).toBeDefined();
     });
   });
@@ -802,7 +802,7 @@ describe('Ollama Guarded Wrapper', () => {
 
   describe('Type Safety', () => {
     it('should maintain type safety for chat result', async () => {
-      const guardedOllama = createGuardedOllama(mockClient, {});
+      const guardedOllama = createGuardedOllama(mockClient, { allowEmptyForTesting: true });
 
       const result = await guardedOllama.chat({
         model: 'llama3.1',
@@ -817,7 +817,7 @@ describe('Ollama Guarded Wrapper', () => {
     });
 
     it('should maintain type safety for generate result', async () => {
-      const guardedOllama = createGuardedOllama(mockClient, {});
+      const guardedOllama = createGuardedOllama(mockClient, { allowEmptyForTesting: true });
 
       const result = await guardedOllama.generate({
         model: 'llama3.1',

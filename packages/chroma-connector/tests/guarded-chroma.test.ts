@@ -209,6 +209,7 @@ describe('ChromaDB Connector', () => {
 
       const guarded = createGuardedCollection(mockCollection, {
         validators: [],
+        allowEmptyForTesting: true,
         sanitizeFilters: true,
       });
 
@@ -1117,6 +1118,7 @@ describe('ChromaDB Connector', () => {
       expect(() => {
         createGuardedCollection(mockCollection, {
           validators: [],
+          allowEmptyForTesting: true,
           guards: [],
           productionMode: true,
           validationTimeout: 10000,

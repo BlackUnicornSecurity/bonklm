@@ -126,6 +126,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
     blockedActionNames = ['eval', 'exec', 'deleteDatabase', 'dropTable', 'system', 'cmd', 'shell'], // S012-008: Default dangerous actions
     maxActionNameLength = 100, // S012-008: Prevent excessively long action names
     maxArgumentsSize = 100_000, // S012-008: Prevent oversized arguments
+    allowEmptyForTesting = process.env.BONKLM_TEST_MODE === '1', // Story 0.1 (R2-7): forward; auto-true under vitest
   } = options;
 
   // Validate critical security options
@@ -139,6 +140,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
     validators,
     guards,
     logger,
+    allowEmptyForTesting,
   });
 
   /**

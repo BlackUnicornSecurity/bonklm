@@ -14,7 +14,8 @@ import { Severity, RiskLevel } from '../../src/base/GuardrailResult.js';
 describe('GuardrailEngine', () => {
   describe('Basic Functionality', () => {
     it('should create an engine with no validators', () => {
-      const engine = new GuardrailEngine();
+      // Story 0.1 (R2-7): explicit opt-in required for the empty-engine shape.
+      const engine = new GuardrailEngine({ allowEmptyForTesting: true });
       expect(engine.getValidators()).toHaveLength(0);
       expect(engine.getGuards()).toHaveLength(0);
     });
@@ -160,7 +161,7 @@ describe('GuardrailEngine', () => {
 
   describe('Adding and Removing Validators', () => {
     it('should add a validator', () => {
-      const engine = new GuardrailEngine();
+      const engine = new GuardrailEngine({ allowEmptyForTesting: true });
       expect(engine.getValidators()).toHaveLength(0);
 
       engine.addValidator(new PromptInjectionValidator());
@@ -168,7 +169,7 @@ describe('GuardrailEngine', () => {
     });
 
     it('should add a guard', () => {
-      const engine = new GuardrailEngine();
+      const engine = new GuardrailEngine({ allowEmptyForTesting: true });
       expect(engine.getGuards()).toHaveLength(0);
 
       engine.addGuard(new SecretGuard());
@@ -198,7 +199,7 @@ describe('GuardrailEngine', () => {
     });
 
     it('should return false when removing non-existent validator', () => {
-      const engine = new GuardrailEngine();
+      const engine = new GuardrailEngine({ allowEmptyForTesting: true });
       const removed = engine.removeValidator('NonExistent');
       expect(removed).toBe(false);
     });

@@ -204,6 +204,7 @@ describe('Express Middleware Integration Tests', () => {
         '/api/chat',
         createGuardrailsMiddleware({
           validators: [],
+          allowEmptyForTesting: true,
           maxContentLength: 100, // 100 bytes
         })
       );

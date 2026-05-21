@@ -182,6 +182,14 @@ export interface GuardrailsCallbackHandlerOptions {
    * @defaultValue 3
    */
   maxRetries?: number;
+
+  /**
+   * Story 0.1 (R2-7): bypass the core engine's empty-list fail-safe.
+   * Test-only escape hatch; logs a CRITICAL warning when honored.
+   *
+   * @defaultValue false
+   */
+  allowEmptyForTesting?: boolean;
 }
 
 /**

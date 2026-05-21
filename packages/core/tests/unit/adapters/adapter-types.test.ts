@@ -331,7 +331,7 @@ describe('Adapter Types', () => {
         version: '1.0.0',
       });
 
-      const engine = new GuardrailEngine();
+      const engine = new GuardrailEngine({ allowEmptyForTesting: true });
       await adapter.initialize({ engine });
 
       adapter.destroy();
@@ -368,7 +368,7 @@ describe('Adapter Types', () => {
         version: '1.0.0',
       });
 
-      const engine = new GuardrailEngine();
+      const engine = new GuardrailEngine({ allowEmptyForTesting: true });
       await adapter.initialize({ engine });
 
       const result = await adapter.validate({ content: '' });
@@ -381,7 +381,7 @@ describe('Adapter Types', () => {
         version: '1.0.0',
       });
 
-      const engine = new GuardrailEngine();
+      const engine = new GuardrailEngine({ allowEmptyForTesting: true });
       await adapter.initialize({ engine });
 
       const input: AdapterInput<{ userId: string }> = {

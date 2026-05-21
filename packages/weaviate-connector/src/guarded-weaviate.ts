@@ -131,12 +131,14 @@ export function createGuardedClient(
     onQueryBlocked,
     onObjectBlocked,
     onClassNotAllowed,
+    allowEmptyForTesting = process.env.BONKLM_TEST_MODE === '1', // Story 0.1 (R2-7): forward; auto-true under vitest
   } = options;
 
   const engine = new GuardrailEngine({
     validators,
     guards,
     logger,
+    allowEmptyForTesting,
   });
 
   /**

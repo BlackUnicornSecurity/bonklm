@@ -94,6 +94,7 @@ export function createGuardedCollection(
     sanitizeFilters = true,
     onQueryBlocked,
     onDocumentBlocked,
+    allowEmptyForTesting = process.env.BONKLM_TEST_MODE === '1', // Story 0.1 (R2-7): forward; auto-true under vitest
   } = options;
 
   // Default onBlockedDocument to 'filter' if not provided (fixes issue where function parameter was overridden)
@@ -103,6 +104,7 @@ export function createGuardedCollection(
     validators,
     guards,
     logger,
+    allowEmptyForTesting,
   });
 
   /**

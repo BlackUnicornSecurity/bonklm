@@ -149,6 +149,7 @@ describe('Express Guardrails Middleware', () => {
 
       const middleware = createGuardrailsMiddleware({
         validators: [],
+        allowEmptyForTesting: true,
         maxContentLength: 1024 * 1024, // 1MB
       });
 
@@ -166,6 +167,7 @@ describe('Express Guardrails Middleware', () => {
 
       const middleware = createGuardrailsMiddleware({
         validators: [],
+        allowEmptyForTesting: true,
         maxContentLength: 1024 * 1024, // 1MB
       });
 
@@ -278,6 +280,7 @@ describe('Express Guardrails Middleware', () => {
 
       const middleware = createGuardrailsMiddleware({
         validators: [],
+        allowEmptyForTesting: true,
         bodyExtractor: customExtractor,
       });
 
@@ -295,6 +298,7 @@ describe('Express Guardrails Middleware', () => {
 
       const middleware = createGuardrailsMiddleware({
         validators: [],
+        allowEmptyForTesting: true,
         bodyExtractor: arrayExtractor,
       });
 
@@ -341,6 +345,7 @@ describe('Express Guardrails Middleware', () => {
     it('should skip response validation in onRequestOnly mode', async () => {
       const middleware = createGuardrailsMiddleware({
         validators: [],
+        allowEmptyForTesting: true,
         validateRequest: false,
         validateResponse: true,
         onRequestOnly: true,
@@ -755,6 +760,7 @@ describe('Express Guardrails Middleware', () => {
 
       const middleware = createGuardrailsMiddleware({
         validators: [],
+        allowEmptyForTesting: true,
         productionMode: true,
         maxContentLength: 1024 * 1024, // 1MB
       });
@@ -775,6 +781,7 @@ describe('Express Guardrails Middleware', () => {
 
       const middleware = createGuardrailsMiddleware({
         validators: [],
+        allowEmptyForTesting: true,
         productionMode: false,
         maxContentLength: 1024 * 1024, // 1MB
       });
@@ -793,6 +800,7 @@ describe('Express Guardrails Middleware', () => {
 
       const middleware = createGuardrailsMiddleware({
         validators: [],
+        allowEmptyForTesting: true,
         productionMode: true,
         maxContentLength: 1024 * 1024, // 1MB
       });
@@ -817,6 +825,7 @@ describe('Express Guardrails Middleware', () => {
 
       const middleware = createGuardrailsMiddleware({
         validators: [],
+        allowEmptyForTesting: true,
         paths: ['/api/chat'],
         productionMode: true,
       });
@@ -879,6 +888,7 @@ describe('Express Guardrails Middleware', () => {
 
       const middleware = createGuardrailsMiddleware({
         validators: [],
+        allowEmptyForTesting: true,
         paths: ['/api'],
         productionMode: true,
       });

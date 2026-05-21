@@ -102,7 +102,7 @@ describe('MCP Guarded Wrapper', () => {
 
   describe('Basic Functionality', () => {
     it('should create a guarded wrapper', () => {
-      const guardedMCP = createGuardedMCP(mockClient, {});
+      const guardedMCP = createGuardedMCP(mockClient, { allowEmptyForTesting: true });
       expect(guardedMCP).toBeDefined();
       expect(guardedMCP.callTool).toBeInstanceOf(Function);
       expect(guardedMCP.listTools).toBeInstanceOf(Function);
@@ -111,7 +111,7 @@ describe('MCP Guarded Wrapper', () => {
 
     it('should preserve the original client methods', () => {
       const originalMethod = mockClient.callTool;
-      const guardedMCP = createGuardedMCP(mockClient, {});
+      const guardedMCP = createGuardedMCP(mockClient, { allowEmptyForTesting: true });
 
       expect(guardedMCP.callTool).toBeDefined();
       // The guarded version should be different (wrapped)
@@ -199,6 +199,7 @@ describe('MCP Guarded Wrapper', () => {
 
       const guardedMCP = createGuardedMCP(mockClient, {
         validators: [],
+        allowEmptyForTesting: true,
         guards: [],
         validateToolResults: true,
       });
@@ -356,7 +357,7 @@ describe('MCP Guarded Wrapper', () => {
     });
 
     it('should validate tool name format', async () => {
-      const guardedMCP = createGuardedMCP(mockClient, {});
+      const guardedMCP = createGuardedMCP(mockClient, { allowEmptyForTesting: true });
 
       await expect(
         guardedMCP.callTool({
@@ -374,7 +375,7 @@ describe('MCP Guarded Wrapper', () => {
     });
 
     it('should enforce maximum tool name length', async () => {
-      const guardedMCP = createGuardedMCP(mockClient, {});
+      const guardedMCP = createGuardedMCP(mockClient, { allowEmptyForTesting: true });
 
       const longName = 'a'.repeat(200);
 
@@ -656,7 +657,7 @@ describe('MCP Guarded Wrapper', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty tool arguments', async () => {
-      const guardedMCP = createGuardedMCP(mockClient, {});
+      const guardedMCP = createGuardedMCP(mockClient, { allowEmptyForTesting: true });
 
       const result = await guardedMCP.callTool({
         name: 'calculator',
@@ -755,7 +756,7 @@ describe('MCP Guarded Wrapper', () => {
     });
 
     it('should properly close the client connection', async () => {
-      const guardedMCP = createGuardedMCP(mockClient, {});
+      const guardedMCP = createGuardedMCP(mockClient, { allowEmptyForTesting: true });
 
       await guardedMCP.close();
 

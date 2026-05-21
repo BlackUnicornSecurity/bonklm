@@ -58,6 +58,7 @@ describe('LlamaIndex Connector', () => {
       const mockEngine = createMockQueryEngine();
       const guardedEngine = createGuardedQueryEngine(mockEngine, {
         validators: [],
+        allowEmptyForTesting: true,
         guards: [new PIIGuard()],
         validateRetrievedDocs: true,
       });
@@ -71,6 +72,7 @@ describe('LlamaIndex Connector', () => {
       const mockEngine = createMockQueryEngine();
       const guardedEngine = createGuardedQueryEngine(mockEngine, {
         validators: [],
+        allowEmptyForTesting: true,
         guards: [new PIIGuard()],
         validateRetrievedDocs: true,
         onBlockedDocument: 'filter',
@@ -85,6 +87,7 @@ describe('LlamaIndex Connector', () => {
       const mockEngine = createMockQueryEngine();
       const guardedEngine = createGuardedQueryEngine(mockEngine, {
         validators: [],
+        allowEmptyForTesting: true,
         maxRetrievedDocs: 5,
       });
 

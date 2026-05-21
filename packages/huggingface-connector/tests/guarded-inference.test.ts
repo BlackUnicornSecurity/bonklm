@@ -34,6 +34,7 @@ describe('HuggingFace Connector', () => {
       const mockHF = createMockHFClient();
       const guardedHF = createGuardedInference(mockHF, {
         validators: [],
+        allowEmptyForTesting: true,
       });
 
       const result = await guardedHF.textGeneration({
@@ -63,6 +64,7 @@ describe('HuggingFace Connector', () => {
       const mockHF = createMockHFClient();
       const guardedHF = createGuardedInference(mockHF, {
         validators: [],
+        allowEmptyForTesting: true,
         maxInputLength: 100,
       });
 
@@ -80,6 +82,7 @@ describe('HuggingFace Connector', () => {
       const mockHF = createMockHFClient();
       const guardedHF = createGuardedInference(mockHF, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedModels: ['meta-llama/*'],
       });
 
@@ -95,6 +98,7 @@ describe('HuggingFace Connector', () => {
       const mockHF = createMockHFClient();
       const guardedHF = createGuardedInference(mockHF, {
         validators: [],
+        allowEmptyForTesting: true,
         allowedModels: ['meta-llama/Llama-*'],
       });
 
@@ -265,7 +269,7 @@ describe('HuggingFace Connector', () => {
   describe('model validation', () => {
     it('should reject empty model string', async () => {
       const mockHF = createMockHFClient();
-      const guardedHF = createGuardedInference(mockHF, {});
+      const guardedHF = createGuardedInference(mockHF, { allowEmptyForTesting: true });
 
       await expect(
         guardedHF.textGeneration({

@@ -101,12 +101,14 @@ export function createGuardedClient(
     maxFilterLength = DEFAULT_MAX_FILTER_LENGTH,
     maxPayloadSize = DEFAULT_MAX_PAYLOAD_SIZE,
     regexTimeout = DEFAULT_REGEX_TIMEOUT,
+    allowEmptyForTesting = process.env.BONKLM_TEST_MODE === '1', // Story 0.1 (R2-7): forward; auto-true under vitest
   } = options;
 
   const engine = new GuardrailEngine({
     validators,
     guards,
     logger,
+    allowEmptyForTesting,
   });
 
   /**

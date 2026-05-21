@@ -114,6 +114,7 @@ export class GuardrailsService {
       attackLogger, // S013-004: Optional AttackLogger instance
       enableSessionTracking = false, // S013-005: Session tracking disabled by default
       sessionIdExtractor, // S013-005: Optional custom session ID extractor
+      allowEmptyForTesting = process.env.BONKLM_TEST_MODE === '1', // Story 0.1 (R2-7): forward; auto-true under vitest
     } = options || {};
 
     this.productionMode = productionMode;
@@ -129,6 +130,7 @@ export class GuardrailsService {
       validators,
       guards,
       logger: this.logger,
+      allowEmptyForTesting,
     });
 
     // S013-004: Register AttackLogger intercept callback if provided

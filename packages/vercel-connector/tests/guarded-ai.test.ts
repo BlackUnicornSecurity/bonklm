@@ -140,6 +140,7 @@ describe('createGuardedAI - Basic functionality', () => {
 
     const guardedAI = createGuardedAI({
       validators: [],
+      allowEmptyForTesting: true,
     });
 
     expect(guardedAI).toBeDefined();

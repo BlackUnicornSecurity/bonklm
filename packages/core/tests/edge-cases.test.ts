@@ -218,7 +218,7 @@ describe('Edge Case Coverage', () => {
 
   describe('Error Recovery Edge Cases', () => {
     it('should handle malformed input gracefully', async () => {
-      const engine = new GuardrailEngine({ validators: [], logger });
+      const engine = new GuardrailEngine({ validators: [], logger, allowEmptyForTesting: true });
       const malformedInputs = [
         undefined as any,
         null as any,
