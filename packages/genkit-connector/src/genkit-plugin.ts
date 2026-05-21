@@ -120,7 +120,6 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
     onBlocked,
     onStreamBlocked,
     onToolCallBlocked,
-    allowEmptyForTesting = process.env.BONKLM_TEST_MODE === '1', // Story 0.1 (R2-7): forward; auto-true under vitest
   } = options;
 
   // Validate critical security options
@@ -132,7 +131,6 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
     validators,
     guards,
     logger,
-    allowEmptyForTesting,
   });
 
   /**

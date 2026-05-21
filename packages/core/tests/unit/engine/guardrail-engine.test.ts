@@ -11,6 +11,10 @@ import { JailbreakValidator } from '../../../src/validators/jailbreak.js';
 import { BashSafetyGuard } from '../../../src/guards/bash-safety.js';
 import { SecretGuard } from '../../../src/guards/secret.js';
 import { Severity, RiskLevel } from '../../../src/base/GuardrailResult.js';
+// Story 0.1 corrections PR 3: guards-only engine construction now throws.
+// Tests that exercise guard behaviour pair the guard with a no-op
+// validator so construction is permitted without bypassing the safety net.
+import { noOpValidator } from '../../../src/testing/no-op-validator.js';
 
 describe('GuardrailEngine', () => {
   describe('Constructor', () => {
@@ -35,6 +39,7 @@ describe('GuardrailEngine', () => {
 
     it('should create engine with guards', () => {
       const engineWithGuards = new GuardrailEngine({
+        validators: [noOpValidator()],
         guards: [new BashSafetyGuard()],
       });
       const stats = engineWithGuards.getStats();
@@ -128,6 +133,7 @@ describe('GuardrailEngine', () => {
       const guard1 = new BashSafetyGuard();
       const guard2 = new SecretGuard();
       const engine = new GuardrailEngine({
+        validators: [noOpValidator()],
         guards: [guard1, guard2],
       });
 
@@ -140,6 +146,7 @@ describe('GuardrailEngine', () => {
     it('should return a copy, not the internal array', () => {
       const guard = new BashSafetyGuard();
       const engine = new GuardrailEngine({
+        validators: [noOpValidator()],
         guards: [guard],
       });
 
@@ -174,6 +181,7 @@ describe('GuardrailEngine', () => {
 
     it('should return correct guard count', () => {
       const engine = new GuardrailEngine({
+        validators: [noOpValidator()],
         guards: [new BashSafetyGuard(), new SecretGuard()],
       });
       const stats = engine.getStats();
@@ -286,6 +294,7 @@ describe('GuardrailEngine', () => {
   describe('GE-007: Guard Execution', () => {
     it('should run guards with context', async () => {
       const engine = new GuardrailEngine({
+        validators: [noOpValidator()],
         guards: [new BashSafetyGuard()],
       });
       const result = await engine.validate('echo hello', '/path/to/file.sh');
@@ -295,6 +304,7 @@ describe('GuardrailEngine', () => {
 
     it('should block dangerous bash commands', async () => {
       const engine = new GuardrailEngine({
+        validators: [noOpValidator()],
         guards: [new BashSafetyGuard()],
       });
       const result = await engine.validate('rm -rf /');

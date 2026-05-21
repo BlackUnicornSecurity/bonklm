@@ -101,14 +101,6 @@ export interface GuardrailsModuleOptions {
    * Defaults to extracting from `session.id`, `req.sessionID`, or a generated ID.
    */
   sessionIdExtractor?: (request: any) => string;
-
-  /**
-   * Story 0.1 (R2-7): bypass the core engine's empty-list fail-safe.
-   * Test-only escape hatch; logs a CRITICAL warning when honored.
-   *
-   * @defaultValue false
-   */
-  allowEmptyForTesting?: boolean;
 }
 
 /**
