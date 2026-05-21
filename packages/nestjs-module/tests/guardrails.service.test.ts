@@ -18,8 +18,9 @@ import {
   type Guard,
   type GuardrailResult,
   Severity,
-  RiskLevel,
+  RiskLevel
 } from '@blackunicorn/bonklm';
+import { noOpValidator } from '@blackunicorn/bonklm/testing';
 
 // Mock validator for testing
 class MockValidator implements Validator {
@@ -40,10 +41,10 @@ class MockValidator implements Validator {
           {
             category: 'mock',
             severity: Severity.CRITICAL,
-            description: 'Mock finding',
-          },
+            description: 'Mock finding'
+          }
         ],
-        timestamp: Date.now(),
+        timestamp: Date.now()
       };
     }
 
@@ -54,7 +55,7 @@ class MockValidator implements Validator {
       risk_level: RiskLevel.LOW,
       risk_score: 0,
       findings: [],
-      timestamp: Date.now(),
+      timestamp: Date.now()
     };
   }
 }
@@ -73,7 +74,7 @@ class MockGuard implements Guard {
         risk_score: 30,
         reason: 'Guard blocked content',
         findings: [],
-        timestamp: Date.now(),
+        timestamp: Date.now()
       };
     }
 
@@ -84,7 +85,7 @@ class MockGuard implements Guard {
       risk_level: RiskLevel.LOW,
       risk_score: 0,
       findings: [],
-      timestamp: Date.now(),
+      timestamp: Date.now()
     };
   }
 }
@@ -110,10 +111,10 @@ describe('GuardrailsService', () => {
             logger: mockLogger,
             productionMode: false,
             validationTimeout: 5000,
-            maxContentLength: 1024 * 1024,
-          },
-        },
-      ],
+            maxContentLength: 1024 * 1024
+          }
+        }
+      ]
     }).compile();
 
     service = module.get<GuardrailsService>(GuardrailsService);
@@ -138,7 +139,7 @@ describe('GuardrailsService', () => {
       const blockingService = new GuardrailsService({
         validators: [new MockValidator()],
         guards: [new MockGuard()],
-        logger: mockLogger,
+        logger: mockLogger
       });
       const results = await blockingService.validateInput('block this content');
       expect(blockingService.isAllowed(results)).toBe(false);
@@ -146,11 +147,10 @@ describe('GuardrailsService', () => {
 
     it('should block content exceeding max size', async () => {
       const largeService = new GuardrailsService({
-        validators: [],
-        allowEmptyForTesting: true,
+        validators: [noOpValidator()],
         guards: [],
         logger: mockLogger,
-        maxContentLength: 100,
+        maxContentLength: 100
       });
 
       const largeContent = 'a'.repeat(101);
@@ -171,7 +171,7 @@ describe('GuardrailsService', () => {
       const blockingService = new GuardrailsService({
         validators: [new MockValidator()],
         guards: [new MockGuard()],
-        logger: mockLogger,
+        logger: mockLogger
       });
       const results = await blockingService.validateOutput('block this output');
       expect(blockingService.isAllowed(results)).toBe(false);
@@ -188,7 +188,7 @@ describe('GuardrailsService', () => {
           risk_level: RiskLevel.LOW,
           risk_score: 0,
           findings: [],
-          timestamp: Date.now(),
+          timestamp: Date.now()
         },
         {
           allowed: true,
@@ -197,8 +197,8 @@ describe('GuardrailsService', () => {
           risk_level: RiskLevel.LOW,
           risk_score: 0,
           findings: [],
-          timestamp: Date.now(),
-        },
+          timestamp: Date.now()
+        }
       ];
 
       expect(service.isAllowed(results)).toBe(true);
@@ -213,7 +213,7 @@ describe('GuardrailsService', () => {
           risk_level: RiskLevel.LOW,
           risk_score: 0,
           findings: [],
-          timestamp: Date.now(),
+          timestamp: Date.now()
         },
         {
           allowed: false,
@@ -223,8 +223,8 @@ describe('GuardrailsService', () => {
           risk_score: 25,
           reason: 'Blocked',
           findings: [],
-          timestamp: Date.now(),
-        },
+          timestamp: Date.now()
+        }
       ];
 
       expect(service.isAllowed(results)).toBe(false);
@@ -241,7 +241,7 @@ describe('GuardrailsService', () => {
           risk_level: RiskLevel.LOW,
           risk_score: 0,
           findings: [],
-          timestamp: Date.now(),
+          timestamp: Date.now()
         },
         {
           allowed: false,
@@ -251,7 +251,7 @@ describe('GuardrailsService', () => {
           risk_score: 25,
           reason: 'First blocked',
           findings: [],
-          timestamp: Date.now(),
+          timestamp: Date.now()
         },
         {
           allowed: false,
@@ -261,8 +261,8 @@ describe('GuardrailsService', () => {
           risk_score: 15,
           reason: 'Second blocked',
           findings: [],
-          timestamp: Date.now(),
-        },
+          timestamp: Date.now()
+        }
       ];
 
       const blocked = service.getBlockedResult(results);
@@ -279,8 +279,8 @@ describe('GuardrailsService', () => {
           risk_level: RiskLevel.LOW,
           risk_score: 0,
           findings: [],
-          timestamp: Date.now(),
-        },
+          timestamp: Date.now()
+        }
       ];
 
       const blocked = service.getBlockedResult(results);
@@ -291,11 +291,10 @@ describe('GuardrailsService', () => {
   describe('getErrorMessage', () => {
     it('should return generic message in production mode', () => {
       const prodService = new GuardrailsService({
-        validators: [],
-        allowEmptyForTesting: true,
+        validators: [noOpValidator()],
         guards: [],
         logger: mockLogger,
-        productionMode: true,
+        productionMode: true
       });
 
       const result: GuardrailResult = {
@@ -306,7 +305,7 @@ describe('GuardrailsService', () => {
         risk_score: 25,
         reason: 'Detailed security reason',
         findings: [],
-        timestamp: Date.now(),
+        timestamp: Date.now()
       };
 
       const message = prodService.getErrorMessage(result);
@@ -315,11 +314,10 @@ describe('GuardrailsService', () => {
 
     it('should return detailed message in development mode', () => {
       const devService = new GuardrailsService({
-        validators: [],
-        allowEmptyForTesting: true,
+        validators: [noOpValidator()],
         guards: [],
         logger: mockLogger,
-        productionMode: false,
+        productionMode: false
       });
 
       const result: GuardrailResult = {
@@ -330,7 +328,7 @@ describe('GuardrailsService', () => {
         risk_score: 25,
         reason: 'Detailed security reason',
         findings: [],
-        timestamp: Date.now(),
+        timestamp: Date.now()
       };
 
       const message = devService.getErrorMessage(result);

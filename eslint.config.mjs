@@ -49,6 +49,15 @@ export default tseslint.config(
       // tests/ subdirs that contain setup files only (test cases themselves caught by **/*.test.ts)
       'packages/*/tests/setup.ts',
       'packages/*/tests/vitest-setup.ts',
+      // One-off migration tooling at repo root — not part of any tsconfig
+      // project. Lives here per plan v2 D-G for audit-trail reviewability.
+      // Narrow glob (NOT `scripts/`) so any future script that doesn't
+      // match the codemod-*.ts pattern still gets lint coverage.
+      'scripts/codemod-*.ts',
+      // Local demo + playwright-mcp artefacts — untracked, not part of the
+      // library build, follow their own conventions.
+      'demo/',
+      '.playwright-mcp/',
     ]
   },
 
