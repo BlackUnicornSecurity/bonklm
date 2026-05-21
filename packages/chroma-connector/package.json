@@ -29,7 +29,7 @@
     "@blackunicorn/bonklm": "workspace:*"
   },
   "peerDependencies": {
-    "chromadb": "^1.0.0"
+    "chromadb": "^1.0.0 || ^2.0.0 || ^3.0.0"
   },
   "peerDependenciesMeta": {
     "chromadb": {
