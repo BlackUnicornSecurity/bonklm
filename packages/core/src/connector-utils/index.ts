@@ -48,12 +48,20 @@ export {
   createStreamValidatorState,
   DEFAULT_MAX_BUFFER_SIZE,
   DEFAULT_VALIDATION_INTERVAL,
+  DEFAULT_MIN_BUFFER_BEFORE_RELEASE,
   StreamValidator,
   type StreamValidationOptions,
   type StreamValidatorEngine,
   type StreamValidatorResult,
+  type StreamValidatorReleaseResult,
   type StreamValidatorState,
 } from './stream-validator.js';
+
+// Story 1.1b — release-gate primitive (also reused by Story 3.1 audio).
+export {
+  BufferedReleaseGate,
+  type BufferedReleaseGateConfig,
+} from './buffered-release-gate.js';
 
 // Logger utilities
 export {

@@ -8,6 +8,7 @@
  */
 
 import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
+import type { RetrievedDocValidator } from '@blackunicorn/bonklm';
 
 /**
  * Default validation timeout in milliseconds.
@@ -115,6 +116,13 @@ export interface GuardedQdrantOptions {
    * @defaultValue true
    */
   validateFilters?: boolean;
+
+  /**
+   * Story 1.2 — opt-in batch retrieved-doc validator. Replaces the
+   * per-point validation loop with a single batch call supporting the
+   * `drop` / `block-all` / `redact` failure modes. NOT default-on.
+   */
+  retrievedDocValidator?: RetrievedDocValidator;
 
   /**
    * Allowed payload fields (empty = all allowed).

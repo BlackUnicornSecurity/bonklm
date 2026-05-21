@@ -37,6 +37,38 @@ export interface GuardrailResult {
   risk_score: number;
   findings: Finding[];
   timestamp: number;
+  /**
+   * Story 1.1 (R2-8): optional per-sub-input breakdown.
+   *
+   * Used by composite validators (tool-call args, retrieved-doc batch,
+   * composed-context) to expose the underlying decision per key (string
+   * leaf identifier, document id, entry index, etc.) without inventing a
+   * bespoke result schema. Top-level `blocked`/`severity` still
+   * summarize the aggregate; consumers needing detail consult `subResults`.
+   *
+   * **Double-count warning** (audit-loop): the top-level `findings`
+   * array already aggregates all per-leaf findings from
+   * `subResults[*].result.findings`. Consumers iterating both for
+   * telemetry, scoring, or display MUST pick ONE source — either the
+   * flat `findings` list OR `subResults[*].result.findings`, never sum
+   * across them.
+   */
+  subResults?: Array<{ key: string; result: GuardrailResult }>;
+
+  /**
+   * Story 1.3: optional surface-specific metadata.
+   *
+   * Carries lightweight context that downstream consumers (audit trail,
+   * OTel telemetry) correlate the result against. Examples:
+   *  - `{ memorySessionId, userId }` for `memory_write` surface
+   *  - `{ documentId, indexName }` for `retrieved_doc` surface
+   *  - `{ toolName, toolCallId }` for `tool_call` surface
+   *
+   * Do NOT use this field to smuggle large payloads through the result —
+   * keep entries primitive and bounded. Composite validators are
+   * responsible for populating their own keys.
+   */
+  metadata?: Record<string, unknown>;
 }
 
 export interface ValidationResult extends GuardrailResult {
@@ -89,6 +121,15 @@ export function mergeResults(...results: GuardrailResult[]): GuardrailResult {
     riskLevel = RiskLevel.MEDIUM;
   }
 
+  // Story 1.3 — propagate per-input `metadata` into the merged result.
+  // Later inputs win on key collision (documented contract).
+  let mergedMetadata: Record<string, unknown> | undefined;
+  for (const r of results) {
+    if (r.metadata) {
+      mergedMetadata = { ...(mergedMetadata ?? {}), ...r.metadata };
+    }
+  }
+
   return {
     allowed: !anyBlocked,
     blocked: anyBlocked,
@@ -97,6 +138,7 @@ export function mergeResults(...results: GuardrailResult[]): GuardrailResult {
     risk_level: riskLevel,
     risk_score: totalRiskScore,
     findings: allFindings,
+    ...(mergedMetadata !== undefined ? { metadata: mergedMetadata } : {}),
     timestamp: Date.now(),
   };
 }

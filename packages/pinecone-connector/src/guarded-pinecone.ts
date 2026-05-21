@@ -95,6 +95,7 @@ export function createGuardedIndex(
     sanitizeMetadataFilters = true,
     onQueryBlocked,
     onVectorBlocked,
+    retrievedDocValidator, // Story 1.2 opt-in batch validator
   } = options;
 
   const engine = new GuardrailEngine({
@@ -242,6 +243,34 @@ export function createGuardedIndex(
   const validateVectors = async (matches: any[]): Promise<{ valid: any[]; blocked: number }> => {
     if (!validateRetrievedVectors) {
       return { valid: matches, blocked: 0 };
+    }
+
+    // Story 1.2 — batch validator path. When set, replaces per-vector loop.
+    if (retrievedDocValidator) {
+      // Audit-loop fix: position-stable synthetic ids. The doc id is the
+      // ARRAY INDEX, not a derived string. This defeats attacker-influenced
+      // metadata from spoofing another match's synthetic id (e.g. metadata
+      // containing the literal string `match[3]`) — the validator returns
+      // surviving docs keyed by these synthetic ids; the original-array
+      // re-projection uses the same position key so collisions are impossible.
+      const docs = matches.map((m, i) => ({
+        id: `__pos_${i}`,
+        content: [
+          m.metadata ? JSON.stringify(m.metadata) : '',
+          m.id ?? '',
+        ].filter(Boolean).join(' '),
+        metadata: m.metadata,
+      }));
+      const batch = await retrievedDocValidator.validateBatch(docs);
+      if (batch.result.blocked) {
+        throw new ConnectorValidationError(
+          productionMode ? 'Vector batch blocked' : `Vector batch blocked: ${batch.result.reason}`,
+          'validation_failed',
+        );
+      }
+      const survivorPositions = new Set(batch.docs.map((d) => d.id));
+      const valid = matches.filter((_m, i) => survivorPositions.has(`__pos_${i}`));
+      return { valid, blocked: batch.filteredCount };
     }
 
     const valid: any[] = [];

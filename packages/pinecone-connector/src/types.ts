@@ -6,6 +6,7 @@
  */
 
 import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
+import type { RetrievedDocValidator } from '@blackunicorn/bonklm';
 
 /**
  * Configuration options for the guarded Pinecone wrapper.
@@ -87,6 +88,20 @@ export interface GuardedPineconeOptions {
    * @defaultValue true
    */
   sanitizeMetadataFilters?: boolean;
+
+  /**
+   * Story 1.2 — opt-in batch retrieved-doc validator.
+   *
+   * When set, replaces the per-vector validation loop with a single
+   * call to `retrievedDocValidator.validateBatch(...)`. Supports the
+   * `drop` / `block-all` / `redact` failure modes.
+   *
+   * NOT default-on — existing per-vector behaviour is preserved when
+   * this option is absent.
+   *
+   * @defaultValue undefined (use legacy per-vector loop)
+   */
+  retrievedDocValidator?: RetrievedDocValidator;
 
   /**
    * Callback invoked when query is blocked.

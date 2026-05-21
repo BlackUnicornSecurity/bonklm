@@ -8,6 +8,7 @@
  */
 
 import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
+import type { RetrievedDocValidator } from '@blackunicorn/bonklm';
 
 /**
  * Default validation timeout in milliseconds.
@@ -131,6 +132,15 @@ export interface GuardedChromaOptions {
    * Validates that filter expressions don't contain injection patterns.
    */
   sanitizeFilters?: boolean;
+
+  /**
+   * Story 1.2 — opt-in batch retrieved-doc validator. When set, replaces
+   * the per-document validation loop (run once per query batch) with a
+   * single call to `retrievedDocValidator.validateBatch(...)`. Supports
+   * `drop` / `block-all` / `redact` failure modes. NOT default-on; legacy
+   * per-document behavior is preserved when absent.
+   */
+  retrievedDocValidator?: RetrievedDocValidator;
 
   /**
    * Callback when query is blocked.

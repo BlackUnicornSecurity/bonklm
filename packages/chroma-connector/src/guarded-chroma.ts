@@ -94,6 +94,7 @@ export function createGuardedCollection(
     sanitizeFilters = true,
     onQueryBlocked,
     onDocumentBlocked,
+    retrievedDocValidator, // Story 1.2 opt-in batch validator
   } = options;
 
   // Default onBlockedDocument to 'filter' if not provided (fixes issue where function parameter was overridden)
@@ -394,6 +395,55 @@ export function createGuardedCollection(
       // Return all indices as valid when validation is disabled
       const validIndices = documents.map((docArray) => docArray.map((_, idx) => idx));
       return { validDocuments: documents, validMetadatas: metadatas, validIds: ids, blocked: 0, validIndices };
+    }
+
+    // Story 1.2 — batch validator path. Iterate per-query batch (Chroma
+    // returns 2D arrays), feed each batch through validateBatch, and
+    // re-shape the surviving docs back into the 2D structure. Doc
+    // content uses the optionally-redacted `docs[i].content` returned by
+    // the validator so redact mode propagates to the caller.
+    if (retrievedDocValidator) {
+      const outDocs: string[][] = [];
+      const outMeta: Record<string, any>[][] = [];
+      const outIds: string[][] = [];
+      const outIndices: number[][] = [];
+      let blocked = 0;
+      for (let q = 0; q < documents.length; q++) {
+        // Audit-loop fix: position-stable synthetic ids (per-batch).
+        // Defeats attacker-controlled content from spoofing another
+        // doc's id within the same batch.
+        const queryDocs = documents[q].map((content, j) => ({
+          id: `__pos_${j}`,
+          content: content ?? '',
+          metadata: metadatas[q]?.[j],
+        }));
+        const batch = await retrievedDocValidator.validateBatch(queryDocs);
+        if (batch.result.blocked) {
+          throw new ConnectorValidationError(
+            productionMode ? 'Document batch blocked' : `Document batch blocked: ${batch.result.reason}`,
+            'validation_failed',
+          );
+        }
+        const survivorContentByPos = new Map(batch.docs.map((d) => [d.id, d.content]));
+        const qDocs: string[] = [];
+        const qMeta: Record<string, any>[] = [];
+        const qIds: string[] = [];
+        const qIdx: number[] = [];
+        for (let j = 0; j < queryDocs.length; j++) {
+          const posKey = `__pos_${j}`;
+          if (!survivorContentByPos.has(posKey)) continue;
+          qDocs.push(survivorContentByPos.get(posKey) ?? '');
+          qMeta.push(metadatas[q]?.[j] ?? {});
+          qIds.push(ids[q]?.[j] ?? '');
+          qIdx.push(j);
+        }
+        blocked += batch.filteredCount;
+        outDocs.push(qDocs);
+        outMeta.push(qMeta);
+        outIds.push(qIds);
+        outIndices.push(qIdx);
+      }
+      return { validDocuments: outDocs, validMetadatas: outMeta, validIds: outIds, blocked, validIndices: outIndices };
     }
 
     const validDocuments: string[][] = [];

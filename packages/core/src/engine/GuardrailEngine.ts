@@ -601,6 +601,19 @@ export class GuardrailEngine {
       this.logger.info('Content logged (action: log)', { findings: allFindings.length });
     }
 
+    // Story 1.3 (audit-loop fix) — merge per-validator metadata into the
+    // aggregate so surface-specific context (e.g. memory_write's
+    // memorySessionId / userId) survives the engine boundary. Later
+    // results win on key collision; if two composite validators populate
+    // the same key, the second one's value wins — document this
+    // contract on `GuardrailResult.metadata`.
+    let mergedMetadata: Record<string, unknown> | undefined;
+    for (const r of results) {
+      if (r.metadata) {
+        mergedMetadata = { ...(mergedMetadata ?? {}), ...r.metadata };
+      }
+    }
+
     return {
       allowed,
       blocked: !allowed,
@@ -609,6 +622,7 @@ export class GuardrailEngine {
       risk_level: riskLevel,
       risk_score: totalRiskScore,
       findings: allFindings,
+      ...(mergedMetadata !== undefined ? { metadata: mergedMetadata } : {}),
       results: this.includeIndividualResults ? results : [],
       validatorCount: this.validators.length,
       guardCount: this.guards.length,

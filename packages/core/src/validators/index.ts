@@ -11,3 +11,6 @@ export * from './jailbreak.js';
 export * from './reformulation-detector.js';
 export * from './boundary-detector.js';
 export * from './multilingual-patterns.js';
+export * from './tool-call-args.js';
+export * from './retrieved-doc.js';
+export * from './memory-write.js';
