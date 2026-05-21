@@ -25,7 +25,7 @@
     "@blackunicorn/bonklm": "workspace:*"
   },
   "peerDependencies": {
-    "@huggingface/inference": "^2.0.0"
+    "@huggingface/inference": "^2.0.0 || ^3.0.0 || ^4.0.0"
   },
   "peerDependenciesMeta": {
     "@huggingface/inference": {
