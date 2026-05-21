@@ -442,7 +442,28 @@ export class PromptInjectionValidator {
       }
     }
 
-    const shouldBlock = highestSeverity === Severity.WARNING || highestSeverity === Severity.CRITICAL;
+    // Story 1.1c: the `web3_preference_setting` category fires WARNING
+    // findings but MUST NOT auto-block on its own (block decision belongs
+    // to Story 1.8's `ToolCallArgsValidator` two-condition gate). Recompute
+    // the highest severity across BLOCK-eligible findings — pattern findings
+    // EXCLUDING the web3 category, PLUS every non-pattern finding (unicode,
+    // base64, html, multi-layer don't carry the web3 category so they're
+    // all block-eligible). Mixed findings (web3 + real injection / other
+    // sources) still block via the non-web3 contribution.
+    const blockEligibleSeverities: Severity[] = [
+      ...findings.filter((f) => f.category !== 'web3_preference_setting').map((f) => f.severity),
+      ...unicodeFindings.map((f) => f.severity),
+      ...base64Findings.map((f) => f.severity),
+      ...htmlFindings.map((f) => f.severity),
+      ...multiLayerFindings.map((f) => f.severity),
+    ];
+    let blockEligibleSeverity: Severity = Severity.INFO;
+    for (const s of blockEligibleSeverities) {
+      if (severityOrder[s] > severityOrder[blockEligibleSeverity]) {
+        blockEligibleSeverity = s;
+      }
+    }
+    const shouldBlock = blockEligibleSeverity === Severity.WARNING || blockEligibleSeverity === Severity.CRITICAL;
 
     return {
       findings,
