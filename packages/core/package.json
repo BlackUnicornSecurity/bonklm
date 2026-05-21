@@ -34,6 +34,10 @@
     "./core/connector-utils": {
       "import": "./dist/connector-utils/index.js",
       "types": "./dist/connector-utils/index.d.ts"
+    },
+    "./testing": {
+      "import": "./dist/testing/index.js",
+      "types": "./dist/testing/index.d.ts"
     }
   },
   "files": [

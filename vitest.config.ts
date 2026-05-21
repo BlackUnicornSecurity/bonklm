@@ -53,6 +53,16 @@ export default defineConfig({
           branches: 75,
           statements: 80,
         },
+        // Story 0.1 corrections D-H: the `/testing` subpath holds test-only
+        // helpers (noOpValidator and future siblings), not security-critical
+        // code. The global 60% floor still applies via the wildcard above;
+        // the strict 80% per-file gate would over-constrain a 1-line barrel.
+        'packages/core/src/testing/**/*.ts': {
+          lines: 60,
+          functions: 60,
+          branches: 50,
+          statements: 60,
+        },
       },
     },
     // Story 0.1 (R2-7): under vitest, connectors auto-honor
