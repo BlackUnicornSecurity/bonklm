@@ -14,3 +14,4 @@ export * from './multilingual-patterns.js';
 export * from './tool-call-args.js';
 export * from './retrieved-doc.js';
 export * from './memory-write.js';
+export * from './composed-context.js';
