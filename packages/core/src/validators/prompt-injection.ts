@@ -442,16 +442,20 @@ export class PromptInjectionValidator {
       }
     }
 
-    // Story 1.1c: the `web3_preference_setting` category fires WARNING
-    // findings but MUST NOT auto-block on its own (block decision belongs
-    // to Story 1.8's `ToolCallArgsValidator` two-condition gate). Recompute
-    // the highest severity across BLOCK-eligible findings — pattern findings
-    // EXCLUDING the web3 category, PLUS every non-pattern finding (unicode,
-    // base64, html, multi-layer don't carry the web3 category so they're
-    // all block-eligible). Mixed findings (web3 + real injection / other
-    // sources) still block via the non-web3 contribution.
+    // Cumulative-audit refactor: tripwire-style patterns (web3
+    // preference-setting + any future WARN-only category) opt out of
+    // auto-blocking via `PatternDefinition.blockEligible: false`.
+    // `detectPatterns` propagates the flag onto each `PatternFinding`
+    // as `f.blockEligible`. Findings default to block-eligible when the
+    // flag is omitted. Non-pattern findings (unicode, base64, html,
+    // multi-layer) are always block-eligible — they have no
+    // PatternDefinition to opt out from.
+    //
+    // Previously this was a hardcoded category-string check
+    // (`f.category !== 'web3_preference_setting'`). Generalised so
+    // future categories opt in without modifying this file.
     const blockEligibleSeverities: Severity[] = [
-      ...findings.filter((f) => f.category !== 'web3_preference_setting').map((f) => f.severity),
+      ...findings.filter((f) => f.blockEligible !== false).map((f) => f.severity),
       ...unicodeFindings.map((f) => f.severity),
       ...base64Findings.map((f) => f.severity),
       ...htmlFindings.map((f) => f.severity),

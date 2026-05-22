@@ -603,10 +603,16 @@ export class GuardrailEngine {
 
     // Story 1.3 (audit-loop fix) — merge per-validator metadata into the
     // aggregate so surface-specific context (e.g. memory_write's
-    // memorySessionId / userId) survives the engine boundary. Later
-    // results win on key collision; if two composite validators populate
-    // the same key, the second one's value wins — document this
-    // contract on `GuardrailResult.metadata`.
+    // memorySessionId / userId) survives the engine boundary.
+    //
+    // **Last-writer-wins merge** (cumulative-audit BLOCK fix):
+    // composite validators MUST follow the metadata-key naming
+    // convention documented on `GuardrailResult.metadata` (each
+    // surface prefixes its keys with the surface name) to prevent
+    // silent collisions. The `memory_write` surface's `sourceMetadata`
+    // carries USER-SUPPLIED values and is namespaced into a nested
+    // object precisely so it can't collide with sibling engine-internal
+    // keys at the top level.
     let mergedMetadata: Record<string, unknown> | undefined;
     for (const r of results) {
       if (r.metadata) {

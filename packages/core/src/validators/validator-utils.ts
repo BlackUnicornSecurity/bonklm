@@ -29,6 +29,23 @@ import {
 } from '../base/GuardrailResult.js';
 
 /**
+ * Cumulative-audit export — the per-composite error-category strings
+ * surfaced when an underlying validator throws inside
+ * `runValidatorChain`. Previously inlined as literal strings at each
+ * call site; exporting as constants lets OTel / SIEM rules key off
+ * them stably.
+ */
+export const VALIDATOR_ERROR_CATEGORIES = {
+  toolCallArgs: 'tool_call_args_validator_error',
+  retrievedDoc: 'retrieved_doc_validator_error',
+  memoryWrite: 'memory_write_validator_error',
+  composedContext: 'composed_context_validator_error',
+} as const;
+
+export type ValidatorErrorCategory =
+  (typeof VALIDATOR_ERROR_CATEGORIES)[keyof typeof VALIDATOR_ERROR_CATEGORIES];
+
+/**
  * Capability interface for validators that own a pattern dictionary
  * and can apply substring-level redaction on the original content.
  * `SecretGuard` and `PIIGuard` implement this; PromptInjection-style

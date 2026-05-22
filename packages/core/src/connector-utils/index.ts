@@ -63,6 +63,14 @@ export {
   type BufferedReleaseGateConfig,
 } from './buffered-release-gate.js';
 
+// Cumulative-audit extraction — shared retrieved-doc batch helper
+// (consolidates the 1D vector-DB retrofit pattern from 4 connectors).
+export {
+  applyRetrievedDocValidatorToMatches,
+  BATCH_POS_PREFIX,
+  type ApplyRetrievedDocValidatorOptions,
+} from './retrieved-doc-batch.js';
+
 // Logger utilities
 export {
   createStandardLogger,

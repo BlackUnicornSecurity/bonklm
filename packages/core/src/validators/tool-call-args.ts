@@ -41,7 +41,12 @@ import {
   type GuardrailResult,
   Severity,
 } from '../base/GuardrailResult.js';
-import { maxSeverity, riskFromScore, runValidatorChain } from './validator-utils.js';
+import {
+  maxSeverity,
+  riskFromScore,
+  runValidatorChain,
+  VALIDATOR_ERROR_CATEGORIES,
+} from './validator-utils.js';
 
 const DEFAULT_PER_FIELD_DEPTH = 5;
 const MAX_PATH_PREVIEW = 80;
@@ -263,14 +268,14 @@ export function createToolCallArgsValidator(
         // behaviour: scan raw + humanised forms so snake_case names are
         // not silently exempt from the prompt-injection patterns.
         const humanized = humanizeToolName(input);
-        const raw = await runValidatorChain(validators, input, 'tool_call_args_validator_error');
+        const raw = await runValidatorChain(validators, input, VALIDATOR_ERROR_CATEGORIES.toolCallArgs);
         if (raw.blocked || !humanized || humanized === input.toLowerCase()) {
           return raw;
         }
         const humanizedResult = await runValidatorChain(
           validators,
           humanized,
-          'tool_call_args_validator_error'
+          VALIDATOR_ERROR_CATEGORIES.toolCallArgs
         );
         return humanizedResult.blocked ? humanizedResult : raw;
       }
@@ -322,7 +327,7 @@ export function createToolCallArgsValidator(
         const leafResult = await runValidatorChain(
           validators,
           leaf.value,
-          'tool_call_args_validator_error'
+          VALIDATOR_ERROR_CATEGORIES.toolCallArgs
         );
         subResults.push({ key: leaf.key, result: leafResult });
         // Aggregate findings up to the top-level for callers that

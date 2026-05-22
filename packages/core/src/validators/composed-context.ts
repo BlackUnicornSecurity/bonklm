@@ -38,7 +38,12 @@ import {
   Severity,
 } from '../base/GuardrailResult.js';
 import type { Logger } from '../base/GenericLogger.js';
-import { maxSeverity, riskFromScore, runValidatorChain } from './validator-utils.js';
+import {
+  maxSeverity,
+  riskFromScore,
+  runValidatorChain,
+  VALIDATOR_ERROR_CATEGORIES,
+} from './validator-utils.js';
 
 /** Default soft cap (32KB) — exceeding it warns via telemetry. */
 export const DEFAULT_COMPOSED_CONTEXT_SOFT_CAP_BYTES = 32 * 1024;
@@ -273,7 +278,7 @@ export function createComposedContextValidator(
     const forwardResult = await runValidatorChain(
       config.validators,
       forwardBlob,
-      'composed_context_validator_error'
+      VALIDATOR_ERROR_CATEGORIES.composedContext
     );
     // Short-circuit if the forward scan already blocked — the reverse
     // pass is only needed to catch attacks the forward pass would have
@@ -283,7 +288,7 @@ export function createComposedContextValidator(
       : await runValidatorChain(
           config.validators,
           reverseBlob,
-          'composed_context_validator_error'
+          VALIDATOR_ERROR_CATEGORIES.composedContext
         );
 
     const blocked = forwardResult.blocked || reverseResult.blocked;

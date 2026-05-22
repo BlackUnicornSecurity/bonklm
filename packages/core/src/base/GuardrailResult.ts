@@ -59,14 +59,32 @@ export interface GuardrailResult {
    * Story 1.3: optional surface-specific metadata.
    *
    * Carries lightweight context that downstream consumers (audit trail,
-   * OTel telemetry) correlate the result against. Examples:
-   *  - `{ memorySessionId, userId }` for `memory_write` surface
-   *  - `{ documentId, indexName }` for `retrieved_doc` surface
-   *  - `{ toolName, toolCallId }` for `tool_call` surface
+   * OTel telemetry) correlate the result against.
+   *
+   * **Last-writer-wins merge** (cumulative-audit BLOCK fix):
+   * `GuardrailEngine.aggregateResults` and `mergeResults` both merge
+   * per-validator `metadata` via shallow `{ ...a, ...b }` spread. If
+   * two validators populate the same key, the SECOND one's value
+   * silently overwrites the first. This is documented contract; the
+   * naming convention below MUST be followed by all composite
+   * validators to prevent collisions.
+   *
+   * **Naming convention** (enforced by code review):
+   *
+   *  - `memorySessionId`, `userId`, `sourceMetadata` → `memory_write` surface
+   *    (populated by `MemoryWriteValidator`). NOTE: `sourceMetadata`
+   *    is USER-SUPPLIED — its keys are NOT trusted-engine values; a
+   *    consumer iterating `result.metadata` MUST treat
+   *    `sourceMetadata.*` differently from engine-produced sibling keys.
+   *  - `composedContextBytesScanned`, `composedContextTruncated`,
+   *    `composedContextSoftCapExceeded` → `composed_context` surface
+   *    (populated by `ComposedContextValidator`).
+   *  - Future composites: prefix every key with the surface name
+   *    (e.g. `toolCallArgsLeafCount`, `retrievedDocFilteredCount`) so
+   *    cross-composite key collisions are structurally prevented.
    *
    * Do NOT use this field to smuggle large payloads through the result —
-   * keep entries primitive and bounded. Composite validators are
-   * responsible for populating their own keys.
+   * keep entries primitive and bounded.
    */
   metadata?: Record<string, unknown>;
 }

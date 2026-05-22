@@ -39,7 +39,11 @@ import {
   Severity,
 } from '../base/GuardrailResult.js';
 import type { Logger } from '../base/GenericLogger.js';
-import { applyRedaction, runValidatorChain } from './validator-utils.js';
+import {
+  applyRedaction,
+  runValidatorChain,
+  VALIDATOR_ERROR_CATEGORIES,
+} from './validator-utils.js';
 
 const DEFAULT_REDACT_REPLACEMENT = '[REDACTED]';
 
@@ -153,7 +157,7 @@ export function createMemoryWriteValidator(
     const leafResult = await runValidatorChain(
       config.validators,
       payload.content,
-      'memory_write_validator_error'
+      VALIDATOR_ERROR_CATEGORIES.memoryWrite
     );
 
     // No findings → straight pass-through.

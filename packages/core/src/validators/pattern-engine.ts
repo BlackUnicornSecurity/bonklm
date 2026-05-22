@@ -150,6 +150,15 @@ export interface PatternFinding {
   match?: string;
   description: string;
   line_number?: number;
+  /**
+   * Cumulative-audit refactor: mirror of `PatternDefinition.blockEligible`.
+   * `PromptInjectionValidator.analyze` reads this flag when computing
+   * `shouldBlock` so tripwire-style WARN-only patterns (web3
+   * preference-setting, etc.) don't auto-block on their own.
+   * Default `true` (block-eligible) — only the patterns that opt out
+   * via `blockEligible: false` carry `false`.
+   */
+  blockEligible?: boolean;
 }
 
 /**
@@ -160,6 +169,24 @@ export interface PatternDefinition {
   pattern: RegExp;
   severity: Severity;
   description: string;
+  /**
+   * Cumulative-audit refactor: opt-out flag for patterns that produce
+   * an observable WARNING/INFO finding but should NEVER auto-block in
+   * `PromptInjectionValidator.analyze`. Default `true` (block-eligible).
+   *
+   * Set to `false` for tripwire-style heuristic patterns whose block
+   * decision lives in a downstream two-condition gate — e.g. the
+   * `WEB3_PREFERENCE_PATTERNS` set, where Story 1.8's
+   * `ToolCallArgsValidator` performs the actual block check by
+   * combining the pattern firing with an address-isolation signal.
+   *
+   * Previously the carve-out was hardcoded as a category-string check
+   * (`category !== 'web3_preference_setting'`) inside `analyze`. This
+   * flag generalises the mechanism so future WARN-only categories
+   * (brand-safety tripwires, etc.) opt in without modifying
+   * `prompt-injection.ts`.
+   */
+  blockEligible?: boolean;
 }
 
 // =============================================================================
@@ -370,6 +397,7 @@ export const WEB3_PREFERENCE_PATTERNS: PatternDefinition[] = [
     name: 'web3_default_recipient',
     pattern: /\b(?:my|your|the\s+user(?:'s)?)\s+default[-\s]+(?:recipients?|address(?:es)?|wallets?)\b/i,
     severity: Severity.WARNING,
+    blockEligible: false,
     description: 'Web3 preference-setting: default recipient/address/wallet',
   },
   {
@@ -378,12 +406,14 @@ export const WEB3_PREFERENCE_PATTERNS: PatternDefinition[] = [
     name: 'web3_always_use_send',
     pattern: /\balways\s+(?:use|send\s+to)\s+my\s+(?:wallets?|address(?:es)?|recipients?|accounts?|keys?|seeds?)\b/i,
     severity: Severity.WARNING,
+    blockEligible: false,
     description: 'Web3 preference-setting: always use / send to my <wallet/address>',
   },
   {
     name: 'web3_standing_instruction',
     pattern: /\bstanding\s+instructions?\b/i,
     severity: Severity.WARNING,
+    blockEligible: false,
     description: 'Web3 preference-setting: standing instruction',
   },
   {
@@ -393,18 +423,21 @@ export const WEB3_PREFERENCE_PATTERNS: PatternDefinition[] = [
     name: 'web3_remember_my',
     pattern: /\bremember\s+my\s+(?:wallets?|address(?:es)?|recipients?|preferences?|keys?|seeds?|accounts?)\b/i,
     severity: Severity.WARNING,
+    blockEligible: false,
     description: 'Web3 preference-setting: remember my <wallet/address/preference>',
   },
   {
     name: 'web3_saved_preference',
     pattern: /\b(?:saved\s+preference|my\s+saved\s+(?:recipients?|wallets?|address(?:es)?))\b/i,
     severity: Severity.WARNING,
+    blockEligible: false,
     description: 'Web3 preference-setting: saved preference / my saved recipient',
   },
   {
     name: 'web3_treasury_phrasing',
     pattern: /\b(?:treasury\s+escrow|verified\s+treasury|safety\s+treasury|official\s+treasury|secure\s+treasury)\b/i,
     severity: Severity.WARNING,
+    blockEligible: false,
     description: 'Web3 preference-setting: treasury / escrow impersonation',
   },
   {
@@ -414,12 +447,14 @@ export const WEB3_PREFERENCE_PATTERNS: PatternDefinition[] = [
     name: 'web3_approved_recipient',
     pattern: /\b(?:approved[-\s]+recipients?(?:\s+list)?|audited\s+recipients?|(?:whitelist(?:ed)?|allow[-\s]?list(?:ed)?)\s+(?:address(?:es)?|recipients?|wallets?))\b/i,
     severity: Severity.WARNING,
+    blockEligible: false,
     description: 'Web3 preference-setting: approved/whitelisted recipient',
   },
   {
     name: 'web3_compliance_directive',
     pattern: /\bcompliance\s+directives?\b/i,
     severity: Severity.WARNING,
+    blockEligible: false,
     description: 'Web3 preference-setting: compliance directive (impersonation)',
   },
 ];
@@ -539,6 +574,11 @@ export function detectPatterns(content: string): PatternFinding[] {
           match: match[0].slice(0, 100),
           description: patternDef.description,
           line_number: getLineNumber(content, match.index || 0),
+          // Propagate the block-eligibility flag from the pattern
+          // definition (default true when omitted). Consumed by
+          // `PromptInjectionValidator.analyze` to compute
+          // `shouldBlock`.
+          blockEligible: patternDef.blockEligible !== false,
         });
       }
     }
