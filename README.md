@@ -256,6 +256,22 @@ npm install @blackunicorn/bonklm-logger       # Structured logging utilities
 
 ---
 
+## 📊 Comparison
+
+| Project | Surface coverage | Approach | Strengths | Honest caveats |
+|---|---|---|---|---|
+| **BonkLM** (this) | **6 surfaces** (`text_input` / `text_output` / `tool_call` / `retrieved_doc` / `memory_write` / `composed_context`; `audio_partial` in Story 3.1) via composable factories | Deterministic pattern + structural defence | TS-native, zero-deps core, framework / provider / platform agnostic, dedicated `tool_call` walker + handoff `inputFilter` + sealed `wrapMemory` for web3 agents | Pattern engine (not ML) — multilingual coverage is regex breadth, not depth. Stream partial-leak prevention requires full-response mode. See [`docs/user/known-limitations.md`](docs/user/known-limitations.md). |
+| **Lakera** | 8 categories (prompt injection, harmful content, PII, etc.) | Trained ML models | Stronger multilingual recall, cloud-managed | Network round-trip per call, vendor lock-in, per-request pricing |
+| **LLM Guard** | 35 scanners | Python ecosystem, hybrid ML + rules | Broad scanner catalogue, Python-first | Not Node.js / TypeScript native; primarily input/output, fewer surface-specific factories |
+| **NeMo Guardrails** | Colang DSL | Programmable conversation flow | Excellent for conversational policy + rails, NVIDIA-backed | Domain-specific DSL learning curve, less deterministic, Python-first |
+
+BonkLM is the **deterministic Node.js-native pick** for applications
+that need fast, predictable, composable guardrails wired into a
+specific connector / framework. It complements ML-based services
+(layer both: BonkLM for short-circuit, ML for what regex doesn't catch).
+
+---
+
 ## 📦 CLI Commands
 
 BonkLM includes a built-in CLI for project setup and management:
