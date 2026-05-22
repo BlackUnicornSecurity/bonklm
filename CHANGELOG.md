@@ -5,6 +5,101 @@ All notable changes to BonkLM (`@blackunicorn/bonklm`) will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-05-22
+
+### Highlights
+
+**Epic 1 — Threat-Surface Foundation**. v0.4.0 closes BonkLM's
+3-surface coverage gap (tool-call args, retrieved-doc, memory-write,
+composed-context) and ships 5 new / retrofitted connector packages
+(Vercel v5/v6, LangChain v1, OpenAI Agents, Google GenAI, ElizaOS).
+11 Epic-1 stories + 2 cumulative-audit passes. **+385 net new
+passing tests** (2898 → 3283). Zero new test failures introduced.
+
+> **Phase-1 connectors**. Stories 1.4 (Vercel v6), 1.5 (LangChain
+> v1), 1.6 (OpenAI Agents), 1.8 (ElizaOS) ship a Phase-1 surface in
+> v0.4.0. The roadmap's full AC is split across Phase-2+ PRs
+> shipping in v0.5.0 (per-connector follow-ups documented inline at
+> each story's commit).
+
+### Added
+
+**`ValidatorInput` discriminated union + `HookSurface` 7-string vocabulary lock** (Story 1.1, R2-8/9/10):
+- 5 ValidatorInput kinds (`text` / `tool_call` / `retrieved_docs` / `memory_write` / `composed_context`); 7 canonical HookSurface strings.
+- `Validator.validate(input: string | ValidatorInput)` overload — every existing validator compiles unchanged.
+- `HookManager.registerHook` defaults `surface: 'text_input'` with one-shot deprecation warning; throws in 0.5.
+- `GuardrailResult` gains optional `subResults?` and `metadata?` fields; engine propagates `metadata` through `aggregateResults` + `mergeResults`.
+
+**Composite validator factories**:
+- `createToolCallArgsValidator` (Story 1.1) — tree walker over `args` with Map/Set/Buffer/URL/Date support, WeakSet cycle protection, depth cap 5, ALWAYS-scanned tool name (raw + humanised).
+- `createRetrievedDocValidator` (Story 1.2) — drop / block-all / redact modes; index-aligned `subResults`.
+- `createMemoryWriteValidator` (Story 1.3) — block-write / redact modes; `validateWrite(payload)` connector convenience.
+- `createComposedContextValidator` (Story 1.3a) — wake-up attack defence; bidirectional concat scan; 32KB soft / 200KB hard caps; P99 < 200ms on 32KB benchmark gate.
+
+**Stream release-gate primitive** (Story 1.1b, R2-12, R2-D1):
+- `BufferedReleaseGate` standalone primitive.
+- `StreamValidator.processForClient` / `finalizeForClient` per-cycle validate-before-release with mode-mixing guard.
+- `minBufferBeforeRelease: Infinity` (full-response mode) auto-selected when `chainHasSecretOrPii: true`.
+
+**Web3 preference-setting patterns** (Story 1.1c):
+- 8 phishing tripwires under `web3_preference_setting` category. All severity WARNING + `blockEligible: false` (does NOT auto-block on its own).
+
+**Shared utilities**:
+- `validator-utils.ts` consolidates `runValidatorChain`, `applyRedaction`, `RedactingValidator`, `VALIDATOR_ERROR_CATEGORIES`.
+- `RedactingValidator` capability — `SecretGuard.redactContent` + `PIIGuard.redactContent` parity-aware with detection normalisation.
+- `applyRetrievedDocValidatorToMatches` connector helper with position-stable synthetic IDs (`__pos_${i}`).
+- `stripLogControlChars` — defeats log-injection via attacker-controlled names.
+
+**Connector retrofits + new packages**:
+- 4 vector-DB connectors (`pinecone`, `qdrant`, `weaviate`, `chroma`) gain opt-in `retrievedDocValidator` option (Story 1.2).
+- NEW `@blackunicorn/bonklm-vercel` Phase-1 — `bonkMiddleware(engine, options)` for `ai ^5 || ^6` `wrapLanguageModel` (Story 1.4).
+- NEW `@blackunicorn/bonklm-langchain` Phase-1 — `createBonklmMiddleware(engine, options?)`, `withRetrieverGuardrails`, `createBonklmLangGraphNode` (Story 1.5).
+- NEW `@blackunicorn/bonklm-google-genai` — full `wrapGenerateContent` / `wrapGenerateContentStream` / `wrapChat` / `wrapLive` (Story 1.7).
+- NEW `@blackunicorn/bonklm-openai-agents` Phase-1 — `wrapAgent` / `wrapHandoff` / `wrapRealtime` with tool-result-as-carrier handoff defence (Story 1.6).
+- NEW `@blackunicorn/bonklm-elizaos` Phase-1 — sealed `wrapMemory` with `Object.defineProperty` + closure-captured `currentCallContext` + verified-publisher allowlist + two-condition recipient gate + `bonklm doctor` static-audit CLI (Story 1.8).
+
+**Peer-dep sweep** (Story 1.9):
+- `anthropic` peer covers SDK majors through 0.98; `huggingface` covers `^2 || ^3 || ^4`; `llamaindex` covers `^0.11 || ^0.12`; `chromadb` covers `^1 || ^2 || ^3`.
+
+**Documentation pass** (Story 1.11):
+- NEW `docs/user/threat-surfaces.md` — canonical 7-surface taxonomy + validator coverage map.
+- NEW `docs/user/known-limitations.md` — 9 honest carve-outs.
+- NEW migration guides at `docs/user/connectors/vercel-v6-migration.md` and `docs/user/connectors/langchain-v1-migration.md`.
+- README ecosystem comparison vs Lakera / LLM Guard / NeMo Guardrails with honest caveats.
+
+**Deprecations announced** (Story 1.10):
+- `@blackunicorn/bonklm-openclaw` deprecated at v0.4.0-rc1, removal in v0.6.0 (Sprint 16).
+
+### Security
+
+**12 BLOCK + 13 HIGH security findings** caught by the audit-loop methodology (architect + code-reviewer + adversarial lanes in parallel) and patched before merge. Highlights:
+
+- `__depth_capped__` sentinel collision in `createToolCallArgsValidator`.
+- Dot/Unicode-separator humanizer hole (`disable.safety.filter`).
+- `Map` / `Set` / `Buffer` walker silent skip.
+- Custom serializer dropping toolName scan (R2-2).
+- `SecretGuard.redactContent` and `PIIGuard.redactContent` normalisation parity (homoglyph PII bypass).
+- `block-all` `subResults` truncation index-alignment.
+- `acknowledgeClass4Risk: true` silent no-op (now throws).
+- `runtime.bonklm` namespace seal closing post-init mutation defence bypass.
+- Non-string `args.recipient` silent gate skip.
+- Cyrillic-mangled preference-setting pattern bypass.
+- `bonklm doctor` SECRET_PATTERN expanded (ASIA / rk_live_ / pk_live_ / sk-ant- / eyJ JWT).
+- Log-injection via attacker-controlled names. Fixed via `stripLogControlChars` in `sanitizeLogMetadata`.
+- `bonkMiddleware.wrapStream` extended to cover all v5/v6 text-carrying event types.
+
+### Changed
+
+- All 25 BonkLM packages bumped to `0.4.0`. Example packages remain at `1.0.0`.
+- `vercel-connector` devDep `ai` pinned to `^4.0.0` so the legacy v3/v4-typed `guarded-ai.ts` typechecks while the new `bonkMiddleware` duck-types v5/v6 shapes.
+
+### Known limitations
+
+See [`docs/user/known-limitations.md`](docs/user/known-limitations.md) for the 9 honest carve-outs. Notable:
+- Phase-1 connectors defer full AC to Phase-2+ PRs.
+- ElizaOS Class-4 PATCH-route attack window is deploy-time detected; structural shadow-log fix lands in v0.5.0 / Story 2.4a.
+- 127 pre-existing test failures (express / fastify / nestjs schema rejections + SEC-008 timeout flakes) remain unfixed in v0.4.0.
+
 ## [0.3.0] - 2026-05-20
 
 ### Audit-loop hardening (post-initial 0.3.0 work, not yet tagged)

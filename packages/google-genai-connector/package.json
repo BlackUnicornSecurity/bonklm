@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-google-genai",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Google GenAI SDK (@google/genai) connector for BonkLM — covers Gemini Developer API, Vertex AI, and Live API",
   "type": "module",
   "main": "dist/index.js",
