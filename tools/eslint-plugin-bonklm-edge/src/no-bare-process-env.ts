@@ -71,19 +71,39 @@ function unwrapChain(node: Node): Node {
 
 /**
  * Detect whether `node` references the `process` global object.
- * Accepts the bare Identifier `process` AND the property access
- * `globalThis.process` (T1 bypass closure). ChainExpression
- * wrappers (`globalThis?.process`) are unwrapped first.
+ * Accepts the bare Identifier `process` AND property access via
+ * `globalThis.process` / `globalThis['process']` / `global.process`
+ * (T1 bypass closure — both dot and computed-bracket forms).
+ * ChainExpression wrappers (`globalThis?.process`) are unwrapped first.
  */
 function isProcessReference(node: Node): boolean {
   const inner = unwrapChain(node);
   if (inner.type === 'Identifier' && inner.name === 'process') return true;
   if (
     inner.type === 'MemberExpression' &&
-    !inner.computed &&
     isGlobalThisReference(inner.object as Node) &&
-    inner.property.type === 'Identifier' &&
-    (inner.property as Identifier).name === 'process'
+    propertyIsName(inner, 'process')
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Match a MemberExpression's property against a string `name` for
+ * BOTH dot-access (`obj.name`, Identifier) and computed-bracket
+ * (`obj['name']`, string Literal) forms. Closes the computed-bracket
+ * bypass identified by the post-commit security audit.
+ */
+function propertyIsName(me: { computed: boolean; property: Node }, name: string): boolean {
+  const prop = me.property;
+  if (!me.computed && prop.type === 'Identifier' && (prop as Identifier).name === name) {
+    return true;
+  }
+  if (
+    me.computed &&
+    prop.type === 'Literal' &&
+    (prop as { value: unknown }).value === name
   ) {
     return true;
   }
@@ -105,17 +125,21 @@ function isGlobalThisReference(node: Node): boolean {
 
 /**
  * Detect whether `node` is `process.env` — a MemberExpression whose
- * object is a `process` reference and whose property is the Identifier
- * `env`. Unwraps ChainExpression for optional-chain forms.
+ * object is a `process` reference and whose property is `env` (either
+ * Identifier or computed string Literal). Unwraps ChainExpression
+ * for optional-chain forms.
+ *
+ * Post-commit security audit BLOCK-1: the computed-bracket form
+ * `process['env'].SECRET` is semantically identical to `process.env.SECRET`
+ * and MUST trigger the rule. Handled by `propertyIsName` accepting
+ * both forms.
  */
 function isProcessEnvReference(node: Node): boolean {
   const inner = unwrapChain(node);
   return (
     inner.type === 'MemberExpression' &&
-    !inner.computed &&
     isProcessReference(inner.object as Node) &&
-    inner.property.type === 'Identifier' &&
-    (inner.property as Identifier).name === 'env'
+    propertyIsName(inner, 'env')
   );
 }
 

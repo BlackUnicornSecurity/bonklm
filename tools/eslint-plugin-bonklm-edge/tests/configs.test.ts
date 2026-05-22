@@ -56,12 +56,16 @@ describe('plugin exports', () => {
     expect(warnPhase[1].files).toEqual(grandfatherAllowlist.files);
   });
 
-  it('grandfatherAllowlist export matches the on-disk JSON', () => {
+  it('grandfatherAllowlist export matches the on-disk JSON shape', () => {
+    // Loader sanity — assert structure, NOT specific contents. Specific
+    // entries churn as files migrate off process.env; pinning a known
+    // entry created false failures during normal Sprint-13 cleanup.
+    expect(Array.isArray(grandfatherAllowlist.files)).toBe(true);
     expect(grandfatherAllowlist.files.length).toBeGreaterThan(0);
-    // Spot-check a known entry from the initial enumeration.
-    expect(grandfatherAllowlist.files).toContain(
-      'packages/elizaos-connector/src/plugin.ts'
-    );
+    for (const f of grandfatherAllowlist.files) {
+      expect(typeof f).toBe('string');
+      expect(f.length).toBeGreaterThan(0);
+    }
     expect(grandfatherAllowlist.sprint13DeadlineUtc).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 });

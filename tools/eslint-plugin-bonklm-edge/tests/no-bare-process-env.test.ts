@@ -138,5 +138,33 @@ ruleTester.run('no-bare-process-env', noBareProcessEnvRule, {
       code: `if (typeof process !== 'undefined') { console.log(process.env.X); }`,
       errors: [{ messageId: 'bareProcessEnv', data: { key: 'X' } }],
     },
+    // Computed-bracket bypass `process['env'].X` — post-commit security
+    // audit BLOCK-1. Semantically identical to `process.env.X`, MUST
+    // trigger the rule.
+    {
+      code: `const v = process['env'].SECRET;`,
+      errors: [{ messageId: 'bareProcessEnv', data: { key: 'SECRET' } }],
+    },
+    // Both levels computed: `process['env']['X']`.
+    {
+      code: `const v = process['env']['MY_KEY'];`,
+      errors: [{ messageId: 'bareProcessEnv', data: { key: 'MY_KEY' } }],
+    },
+    // Computed-bracket via globalThis: `globalThis['process'].env.X`.
+    {
+      code: `const v = globalThis['process'].env.API_KEY;`,
+      errors: [{ messageId: 'bareProcessEnv', data: { key: 'API_KEY' } }],
+    },
+    // Bare ExpressionStatement `process.env;` — whole-env report.
+    {
+      code: `process.env;`,
+      errors: [{ messageId: 'bareProcessEnvWhole' }],
+    },
+    // Deep-chain `process.env.X.Y` — reports ONCE at the
+    // `process.env.X` access (Case 1), not at .Y.
+    {
+      code: `const v = process.env.NESTED.deeper;`,
+      errors: [{ messageId: 'bareProcessEnv', data: { key: 'NESTED' } }],
+    },
   ],
 });

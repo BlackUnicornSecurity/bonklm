@@ -77,6 +77,19 @@ function validateToolsPackage(pkgPath) {
   const pkg = readJson(pkgJsonPath);
   const violations = [];
 
+  // Defensive null-guard against TOCTOU between enumerateToolPackages's
+  // existsSync probe and this readJson call. If the file vanished
+  // between checks, surface a precise diagnostic rather than letting
+  // a later property access raise an opaque TypeError. Treated as
+  // Tier A with no name so consumer-link validation skips it.
+  if (pkg === null) {
+    return {
+      tier: 'A',
+      name: undefined,
+      violations: [`${pkgJsonPath}: package.json missing or unreadable.`],
+    };
+  }
+
   const tier = pkg.workspacePolicy === 'tier-b-publishable' ? 'B' : 'A';
 
   if (tier === 'A') {
