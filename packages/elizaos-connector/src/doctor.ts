@@ -27,7 +27,19 @@
 import type { DoctorFinding, DoctorReport, PluginLike } from './types.js';
 import { VERIFIED_PUBLISHER_ALLOWLIST } from './types.js';
 
-const SECRET_PATTERN = /(sk-proj-|sk_live_|ghp_|xoxb-|AKIA[0-9A-Z]{16}|AIzaSy)/i;
+/**
+ * Audit-loop HIGH fix #5 (adversarial): expanded credential-prefix
+ * coverage. Previous pattern missed six real-world classes:
+ *   - AWS STS temporary tokens (`ASIA...`)
+ *   - Stripe restricted-key (`rk_live_`)
+ *   - Stripe publishable-key (`pk_live_` — legitimately public but
+ *     flags misconfigured secrets handler)
+ *   - OpenAI legacy (`sk-` non-`proj-` orgs, still in wide pre-2024 use)
+ *   - Anthropic (`sk-ant-`)
+ *   - JWT signing tokens (`eyJ` header)
+ */
+const SECRET_PATTERN =
+  /(sk-proj-|sk-ant-|sk-[a-zA-Z0-9]{10}|sk_live_|rk_live_|pk_live_|ghp_|xox[baprs]-|AKIA[0-9A-Z]{16}|ASIA[0-9A-Z]{16}|AIzaSy|eyJ[a-zA-Z0-9]{10})/i;
 
 /**
  * Run the character-file audit. The character file is opaque to this

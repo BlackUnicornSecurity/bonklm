@@ -200,9 +200,43 @@ function extractResponseText(r: BonklmModelResponse | undefined): string {
  * // Wire into a langchain v1 agent / runnable per the SDK docs.
  * ```
  */
+/**
+ * Audit-loop BLOCK fix #2: align the LangChain middleware factory API
+ * with `bonkMiddleware(engine, options)` in the Vercel connector. Both
+ * signatures are supported:
+ *
+ *  - `createBonklmMiddleware(engine, options?)` — positional-engine form
+ *    matching `bonkMiddleware` so callers using both connectors hit a
+ *    coherent call shape.
+ *  - `createBonklmMiddleware(config)` — original options-bag form.
+ *    Retained for backward compatibility with the engine-less ad-hoc
+ *    validator-chain path that the positional form does not expose.
+ */
+export function createBonklmMiddleware(
+  engine: GuardrailEngine,
+  options?: Omit<BonklmMiddlewareConfig, 'engine'>
+): BonklmLangchainMiddleware;
 export function createBonklmMiddleware(
   config: BonklmMiddlewareConfig
+): BonklmLangchainMiddleware;
+export function createBonklmMiddleware(
+  engineOrConfig: GuardrailEngine | BonklmMiddlewareConfig,
+  options?: Omit<BonklmMiddlewareConfig, 'engine'>
 ): BonklmLangchainMiddleware {
+  // Resolve the call shape. The `BonklmMiddlewareConfig` form has a
+  // `scope` field; the engine form has a `.validate` method. In the
+  // engine form, `validators` defaults to `[]` because the engine
+  // handles validation downstream.
+  const config: BonklmMiddlewareConfig =
+    typeof (engineOrConfig as GuardrailEngine).validate === 'function'
+      ? {
+          scope: 'text_input',
+          validators: [],
+          ...(options ?? {}),
+          engine: engineOrConfig as GuardrailEngine,
+        }
+      : (engineOrConfig as BonklmMiddlewareConfig);
+
   const scopes = Array.isArray(config.scope) ? config.scope : [config.scope];
   const logger = config.logger ?? createLogger('console');
   const productionMode = config.productionMode ?? false;
@@ -421,12 +455,24 @@ export interface BonklmLangGraphState {
  * available (e.g. a raw `StateGraph` not running under
  * `createReactAgent` / `createAgent`).
  *
+ * **Two call shapes** (audit-loop BLOCK fix #10):
+ *  - Raw 3-arg: `bonklmLangGraphNode(state, engine, options?)` — call
+ *    from inside a lambda when wiring into a graph.
+ *  - Factory: `createBonklmLangGraphNode(engine, options?)` returns a
+ *    LangGraph-compatible 1-arg handler `(state) => Promise<state>`
+ *    that can be passed DIRECTLY to `graph.addNode(...)` without an
+ *    intermediate lambda.
+ *
  * @example
  * ```ts
- * import { bonklmLangGraphNode } from '@blackunicorn/bonklm-langchain';
- *
- * graph.addNode('bonklm', (state) => bonklmLangGraphNode(state, engine));
+ * // Factory form (matches LangGraph node-handler contract):
+ * import { createBonklmLangGraphNode } from '@blackunicorn/bonklm-langchain';
+ * graph.addNode('bonklm', createBonklmLangGraphNode(engine));
  * graph.addEdge('start', 'bonklm');
+ *
+ * // Raw form (inside a lambda):
+ * import { bonklmLangGraphNode } from '@blackunicorn/bonklm-langchain';
+ * graph.addNode('bonklm', (state) => bonklmLangGraphNode(state, engine));
  * ```
  */
 export async function bonklmLangGraphNode(
@@ -444,4 +490,26 @@ export async function bonklmLangGraphNode(
     );
   }
   return state;
+}
+
+/**
+ * Factory that returns a LangGraph-compatible 1-arg node handler
+ * pre-bound to the supplied engine + options. Matches the
+ * `StateGraph.addNode` contract `(state, config?) => state |
+ * Promise<state>` so the returned function can be passed DIRECTLY to
+ * `graph.addNode(...)`.
+ *
+ * Audit-loop BLOCK fix #10: previously the only entry point was the
+ * 3-arg `bonklmLangGraphNode(state, engine, options)`. Passing that
+ * function reference directly to `graph.addNode('bonklm',
+ * bonklmLangGraphNode)` would crash at run-time because LangGraph
+ * invokes the node with `(state, config)` — `engine` would receive
+ * the RunnableConfig object instead of a real engine.
+ */
+export function createBonklmLangGraphNode(
+  engine: GuardrailEngine,
+  options: { productionMode?: boolean } = {}
+): (state: BonklmLangGraphState) => Promise<BonklmLangGraphState> {
+  return (state: BonklmLangGraphState): Promise<BonklmLangGraphState> =>
+    bonklmLangGraphNode(state, engine, options);
 }

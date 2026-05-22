@@ -227,14 +227,16 @@ export function defineOutputGuardrail(
  * `defineToolInputGuardrail`. Scans tool-call args (both names and
  * values) via `createToolCallArgsValidator` so the per-leaf walker
  * + position-stable bypass-resistance from Story 1.1 applies.
+ *
+ * @param _engine Reserved for Phase-2 per-leaf engine-guard pass.
+ *   Currently tool-call args validation runs via
+ *   `createToolCallArgsValidator` which consumes `options.validators`
+ *   directly; the engine's `guards` chain is NOT applied at the leaf
+ *   level. Keep the parameter in the signature for symmetry with the
+ *   other guardrail factories AND for forward-compatibility when the
+ *   Phase-2 enhancement lands.
  */
 export function defineToolInputGuardrail(
-  // `engine` is currently unused — tool-call args are scanned via the
-  // standalone `createToolCallArgsValidator` factory which takes the
-  // validator list directly. Keeping the parameter in the signature
-  // for symmetry with the other guardrail factories AND because a
-  // future enhancement (e.g. running the engine's `guards` against
-  // each leaf) will need it.
   _engine: GuardrailEngine,
   options: GuardedAgentsOptions = {},
   name: string = 'bonklm_tool_input'

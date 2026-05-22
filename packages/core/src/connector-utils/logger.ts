@@ -156,7 +156,32 @@ export function sanitizeLogMetadata(
     }
   }
 
+  // Audit-loop HIGH fix #6 (adversarial): every string value in
+  // metadata gets ASCII-control / newline / ANSI stripped + truncated.
+  // Attacker-influenced names (handoff names, tool names, plugin
+  // names) flow into structured logs unsanitised; a name carrying
+  // `\nCRITICAL [BonkLM] Admin override: validation=disabled` injects
+  // a fake log line into any structured logger that splits on
+  // newlines or any SIEM parsing the stream. Strips the entire C0
+  // control range + DEL.
+  for (const key of Object.keys(sanitized)) {
+    const value = sanitized[key];
+    if (typeof value === 'string') {
+      sanitized[key] = stripLogControlChars(value);
+    }
+  }
+
   return sanitized;
+}
+
+/**
+ * Strip ASCII control characters (0x00-0x1F + DEL 0x7F) from a
+ * string and truncate to 256 chars. Used by `sanitizeLogMetadata`
+ * to defeat log-injection via attacker-controlled names.
+ */
+export function stripLogControlChars(value: string): string {
+  // eslint-disable-next-line no-control-regex
+  return value.replace(/[\x00-\x1f\x7f]/g, ' ').slice(0, 256);
 }
 
 /**
@@ -179,8 +204,11 @@ export function logValidationFailure(
   reason: string,
   context?: Record<string, unknown>
 ): void {
+  // Audit-loop HIGH fix #6: `reason` originates from validator output
+  // which can carry attacker-influenced text (e.g. matched pattern
+  // content); strip control chars + truncate before logging.
   logger.warn('Validation blocked', {
-    reason,
+    reason: stripLogControlChars(reason),
     ...sanitizeLogMetadata(context ?? {}),
   });
 }
