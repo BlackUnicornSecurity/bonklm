@@ -279,7 +279,9 @@ export async function cachedValidate(
     } catch (err) {
       logger?.warn?.('cachedValidate: cache.get failed; treating as miss', {
         error: err instanceof Error ? err.message : String(err),
-        key,
+        // Truncated to avoid leaking the full cacheNamespace prefix
+        // into downstream log aggregators (sec-audit F-2).
+        key: truncateKeyForLog(key),
       });
       cached = undefined;
     }
@@ -297,7 +299,7 @@ export async function cachedValidate(
       }
       logger?.warn?.(
         'cachedValidate: cached entry validatorName mismatch; treating as miss',
-        { expected: name, stored: storedName, key }
+        { expected: name, stored: storedName, key: truncateKeyForLog(key) }
       );
     }
 
@@ -308,7 +310,7 @@ export async function cachedValidate(
     if (!isWellFormedGuardrailResult(fresh)) {
       logger?.warn?.(
         'cachedValidate: validator returned a malformed GuardrailResult; not caching',
-        { validatorName: name, key }
+        { validatorName: name, key: truncateKeyForLog(key) }
       );
       results.push({ ...fresh, validatorName: name, fromCache: false });
       continue;
@@ -330,7 +332,7 @@ export async function cachedValidate(
         {
           error: err instanceof Error ? err.message : String(err),
           validatorName: name,
-          key,
+          key: truncateKeyForLog(key),
         }
       );
     }
@@ -670,4 +672,26 @@ export class InMemoryLRUCache implements ValidatorCache {
   size(): number {
     return this.entries.size;
   }
+}
+
+/**
+ * Truncate a cache key for log emission. The full key contains the
+ * outer `cacheNamespace::` prefix + the engineInstanceId salt + the
+ * canonical hash. Logging the whole string at WARN leaks the
+ * namespace (consumer-configured, may contain env/topology hints)
+ * into downstream log aggregators with potentially wider read
+ * access than the cache backend.
+ *
+ * Format: `<first-12-of-hash>...`. Length-preserving observability
+ * (operators can still bucket warns by prefix) without disclosing
+ * the namespace string. (sec-audit Story 2.7 F-2 closure.)
+ */
+function truncateKeyForLog(key: string): string {
+  // Pull the canonical-hash trailing segment after the LAST `::`
+  // separator (the namespace prefix is `<ns>::<rawKey>`). Then
+  // truncate the hash itself to 12 chars + ellipsis so observability
+  // can still bucket entries without leaking the hash content.
+  const lastSep = key.lastIndexOf('::');
+  const tail = lastSep >= 0 ? key.slice(lastSep + 2) : key;
+  return tail.length > 12 ? `${tail.slice(0, 12)}...` : tail;
 }
