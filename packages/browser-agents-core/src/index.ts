@@ -23,3 +23,12 @@ export type {
   BrowserAgentLogger,
   BrowserAgentValidateResult,
 } from './types.js';
+export {
+  CUA_MODE_PATTERN,
+  assertNonCuaMode,
+  detectVendorMode,
+  emitWarning,
+  isUnsafeBinaryResult,
+  normaliseActArg,
+  sanitizeReasonText,
+} from './shared-helpers.js';

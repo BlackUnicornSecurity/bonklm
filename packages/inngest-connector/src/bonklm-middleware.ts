@@ -61,6 +61,7 @@ import {
   type Validator,
   type ValidatorInput,
 } from '@blackunicorn/bonklm';
+import { sanitizeReasonText } from '@blackunicorn/bonklm-browser-agents-core';
 import type {
   BonklmInngestContextSurface,
   BonklmInngestMiddlewareOptions,
@@ -218,7 +219,11 @@ function surfaceFromBundle(
       return {
         blocked,
         allowed: !blocked,
-        reason: firstBlock?.reason,
+        // Sprint-13 cumulative-audit sec CS3 closure: `reason` is
+        // consumer-readable from the result (not just inside an error
+        // message), so attacker-controlled validator output must NOT
+        // pass into Inngest step history / OTel spans / logs raw.
+        reason: sanitizeReasonText(firstBlock?.reason),
         results,
       };
     });
@@ -301,7 +306,7 @@ function blockedAt(reason: string): BonklmInngestValidateResult {
   return {
     blocked: true,
     allowed: false,
-    reason,
+    reason: sanitizeReasonText(reason),
     results: [],
   };
 }

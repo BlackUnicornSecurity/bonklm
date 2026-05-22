@@ -141,6 +141,36 @@ because per-chunk forwarding is already disabled at the engine level.
 For partial-buffer mode, Phase-2 will migrate each connector to
 `processForClient`.
 
+## 10. Guards do NOT fire on browser-agent / Inngest / Eko surfaces
+
+`SecretGuard`, `BashSafetyGuard`, and any other `Guard`-shaped check
+attached to `GuardrailEngine` via `guards: [...]` **only fire on
+`engine.validate(content: string)` call paths**. The connectors added
+in v0.5.0 — `@blackunicorn/bonklm-stagehand`, `@blackunicorn/bonklm-eko`,
+`@blackunicorn/bonklm-browser-agents-core`, `@blackunicorn/bonklm-inngest` —
+route validation through `engine.validateInput(input: ValidatorInput)`
+which deliberately skips the guards pipeline (guards take a `string`
++ optional `context`; the discriminated-union doesn't map cleanly).
+
+**Concrete impact**: a consumer wiring `SecretGuard` expecting it
+to fire on a Stagehand `act` tool-call args, an Eko `file.write`
+payload, or an Inngest `validateToolArgs` invocation will get
+**zero** guard coverage. Only `Validator`-shaped checks (e.g.
+`SecretValidator`, `BashSafetyValidator` if you build them) run on
+these surfaces.
+
+**Mitigation**:
+  1. Re-implement security-critical guards AS validators (subclass
+     `Validator` rather than `Guard`). Validators receive the
+     discriminated-union ValidatorInput and run on every surface.
+  2. For high-blast-radius surfaces (file.write content, MCP tool
+     args), additionally invoke `engine.validate(JSON.stringify(args))`
+     yourself before dispatch so guards fire on the stringified form.
+
+A future release (Sprint 14+) may unify the two pipelines so guards
+fire on `validateInput` too — but the type-safety + result-shape
+unification is non-trivial and currently a known gap.
+
 ## See also
 
 - [`threat-surfaces.md`](./threat-surfaces.md) — what BonkLM DOES

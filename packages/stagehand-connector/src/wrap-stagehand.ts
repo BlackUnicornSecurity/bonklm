@@ -44,6 +44,9 @@
 import type { GuardrailEngine } from '@blackunicorn/bonklm';
 import {
   BrowserAgentGuardrailBlockedError,
+  assertNonCuaMode,
+  isUnsafeBinaryResult,
+  normaliseActArg,
   withBrowserAgentGuardrails,
   type BrowserAgentValidateResult,
 } from '@blackunicorn/bonklm-browser-agents-core';
@@ -68,26 +71,18 @@ export class StagehandGuardrailBlockedError extends BrowserAgentGuardrailBlocked
   }
 }
 
-/**
- * CUA-mode detection regex. Matches `cua`, `computer-use`,
- * `computer_use`, `computeruse`. Case-insensitive.
- */
-const CUA_MODE_PATTERN = /^(cua|computer[-_]?use)$/i;
-
-/**
- * Sentinel marking that an `act` invocation already flowed through
- * the BonkLM validator at the outer-call boundary. Set on a per-call
- * basis via the second positional arg (an internal options object)
- * so monkey-patched + non-patched call paths converge cleanly.
- *
- * Why a sentinel? After Story 2.3 BLOCK-8 we monkey-patch
- * `client.act` so sub-actions (`agent.execute` planner output) ALSO
- * run through the validator. But the outer wrapper still validates
- * AT the outer call. Without a sentinel, every outer `act` validates
- * twice. The sentinel short-circuits the inner validation when the
- * outer one already happened.
- */
-const ALREADY_VALIDATED_SENTINEL = Symbol('bonklm:already-validated');
+// Note: Sprint-13 cumulative-audit rev HIGH-1 removed an unused
+// ALREADY_VALIDATED_SENTINEL here for parity with the Eko connector.
+// The sentinel was never written onto any args object, so the guard
+// at the start of `validatedAct` could not fire — it was dead code.
+// The current architecture (single replaced `client.act` reference
+// used by both direct callers + the Stagehand planner's sub-actions)
+// means re-entry isn't a real path, so the sentinel was unnecessary.
+//
+// Note: CUA_MODE_PATTERN + detectStagehandMode + normaliseActArg
+// + isUnsafeBinaryResult were ALL hoisted to
+// `@blackunicorn/bonklm-browser-agents-core` (sprint-13 audit arch X4,
+// X5 + rev MED-4 closures). The connector now imports them.
 
 /**
  * Wrap a Stagehand client. Returns the SAME client surface (typed
@@ -125,21 +120,15 @@ export function wrapStagehand<T extends StagehandLike>(
 
   const { allowCuaMode = false, logger, stagehandConfig } = options;
 
-  // B2 + sec T1 closure: read mode from BOTH the explicit options AND
-  // the client's own state (structural fields `modelName`, `config.mode`).
-  // Refuse if a CUA signature is detected anywhere unless allowCuaMode.
-  const detectedMode = detectStagehandMode(client, stagehandConfig);
-  if (
-    detectedMode !== undefined &&
-    CUA_MODE_PATTERN.test(detectedMode) &&
-    allowCuaMode !== true
-  ) {
-    throw new Error(
-      'wrapStagehand: Stagehand `mode: "cua"` (computer-use, screenshot-based) ' +
-        'is refused by default. Screenshots are NOT inspected by BonkLM validators. ' +
-        'Pass `allowCuaMode: true` to explicitly accept the bypass risk.'
-    );
-  }
+  // B2 closure via shared helper: refuse CUA mode by default. Reads
+  // `stagehandConfig.mode` → `client.config.mode` → `client.mode`.
+  // Sprint-13 cumulative-audit sec CS2: REMOVED `modelName` from
+  // the fallback chain — it's a model identifier, not a mode field
+  // (false-positive risk for names like `"gpt-computer-use"`).
+  assertNonCuaMode('wrapStagehand', client, {
+    allowCuaMode,
+    configOverride: stagehandConfig,
+  });
 
   const guarded = withBrowserAgentGuardrails(client as object, {
     engine,
@@ -157,14 +146,6 @@ export function wrapStagehand<T extends StagehandLike>(
   const validatedAct = async (
     actionArg: string | { action: string; [k: string]: unknown }
   ): Promise<unknown> => {
-    if (
-      typeof actionArg === 'object' &&
-      actionArg !== null &&
-      (actionArg as { [k: symbol]: unknown })[ALREADY_VALIDATED_SENTINEL] === true
-    ) {
-      // Outer path already validated; just dispatch.
-      return originalAct(actionArg);
-    }
     const { actionString, args } = normaliseActArg(actionArg);
     const r = await (
       guarded as { bonklm: { validateEvent: typeof guarded.bonklm.validateEvent } }
@@ -195,6 +176,7 @@ export function wrapStagehand<T extends StagehandLike>(
     try {
       result = (await originalExtract(opts as never)) as U;
     } catch (sdkErr) {
+      // (See B7 closure below for SDK-error path.)
       // The error may contain page-derived text — validate it as a
       // retrieved_doc before re-throwing.
       const errText = sdkErr instanceof Error ? sdkErr.message : String(sdkErr);
@@ -217,6 +199,20 @@ export function wrapStagehand<T extends StagehandLike>(
       }
       throw sdkErr;
     }
+
+    // Sprint-13 cumulative-audit arch X5 closure: binary /
+    // async-iterable extract results bypass text-based validators
+    // (they JSON.stringify to `"{}"` or similar — meaningless
+    // content for downstream pattern matching). Refuse explicitly.
+    if (isUnsafeBinaryResult(result)) {
+      throw new StagehandGuardrailBlockedError(
+        'extract',
+        'retrieved_doc',
+        'binary or streaming extract result cannot be inspected — BonkLM ' +
+          'validators are text-only. Convert to UTF-8 upstream.'
+      );
+    }
+
     const r = await (
       guarded as { bonklm: { validateEvent: typeof guarded.bonklm.validateEvent } }
     ).bonklm.validateEvent({ kind: 'extract', schema, result });
@@ -271,42 +267,7 @@ export function wrapStagehand<T extends StagehandLike>(
   return guarded as unknown as T;
 }
 
-/**
- * Detect the Stagehand mode from any of its possible declaration
- * sources. Returns the first match or `undefined` if no mode field
- * is readable. Used for fail-closed CUA refusal (BLOCK-2).
- */
-function detectStagehandMode(
-  client: StagehandLike,
-  stagehandConfig: WrapStagehandOptions['stagehandConfig']
-): string | undefined {
-  // 1. Explicit options first.
-  if (stagehandConfig !== undefined && typeof stagehandConfig.mode === 'string') {
-    return stagehandConfig.mode;
-  }
-  // 2. Try common client-state fields.
-  const c = client as unknown as {
-    config?: { mode?: unknown };
-    modelName?: unknown;
-    mode?: unknown;
-  };
-  if (c.config !== undefined && typeof c.config.mode === 'string') return c.config.mode;
-  if (typeof c.modelName === 'string') return c.modelName;
-  if (typeof c.mode === 'string') return c.mode;
-  return undefined;
-}
-
-/**
- * Normalise the polymorphic `act` argument shape into a string +
- * optional args record so the validator surface sees a stable
- * representation.
- */
-function normaliseActArg(
-  action: string | { action: string; [k: string]: unknown }
-): { actionString: string; args?: Record<string, unknown> } {
-  if (typeof action === 'string') {
-    return { actionString: action };
-  }
-  const { action: actionString, ...rest } = action;
-  return { actionString, args: rest };
-}
+// (detectStagehandMode + normaliseActArg removed — hoisted to
+// `@blackunicorn/bonklm-browser-agents-core` as `detectVendorMode`
+// + `normaliseActArg`. See `shared-helpers.ts` for the single
+// source of truth.)

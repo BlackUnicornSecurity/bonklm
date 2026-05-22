@@ -41,7 +41,8 @@
   "author": "Black Unicorn <security@blackunicorn.tech>",
   "license": "MIT",
   "dependencies": {
-    "@blackunicorn/bonklm": "workspace:*"
+    "@blackunicorn/bonklm": "workspace:*",
+    "@blackunicorn/bonklm-browser-agents-core": "workspace:*"
   },
   "peerDependencies": {
     "inngest": "^4.4.0"

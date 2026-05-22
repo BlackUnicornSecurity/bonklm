@@ -379,6 +379,9 @@ importers:
       '@blackunicorn/bonklm':
         specifier: workspace:*
         version: link:../core
+      '@blackunicorn/bonklm-browser-agents-core':
+        specifier: workspace:*
+        version: link:../browser-agents-core
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.7
