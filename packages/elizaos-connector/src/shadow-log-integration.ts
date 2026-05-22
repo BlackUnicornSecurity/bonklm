@@ -62,10 +62,19 @@ export interface VerifyAndReadOptions {
    */
   authenticatedRoomIds: Set<string> | undefined;
   /**
-   * Source-trust filter for the read. Default
-   * `['authenticated', 'agent_internal']` — excludes unauthenticated
-   * HTTP entries so the recipient-gate corroboration set carries
-   * only trusted entries.
+   * Source-trust filter for the read.
+   *
+   * **Default: `['authenticated']`** (iter-1 security BLOCK-Q2
+   * tightening). Previously the default included `'agent_internal'`,
+   * which combined with the `classifySourceTrust` default of
+   * `'agent_internal'` admitted unclassified user-HTTP messages
+   * into the recipient-gate corroboration set. The corroboration
+   * set should contain ONLY messages explicitly tagged as
+   * authenticated by the consumer's session resolver.
+   *
+   * Consumers may opt back into a broader filter (e.g.
+   * `['authenticated', 'agent_internal']`) if their threat model
+   * trusts agent-internal writes — but this is OPT-IN, not default.
    */
   sourceFilter?: ShadowLogSourceTrust | ShadowLogSourceTrust[];
   /** Logger for CRITICAL on tamper. */
@@ -124,10 +133,11 @@ export async function verifyAndReadAuthenticatedMessages(
   }
 
   // Read entries with the source-trust filter applied. Default
-  // excludes 'unauthenticated_http' so the connector's two-condition
-  // gate reads ONLY trusted entries.
-  const sourceFilter =
-    opts.sourceFilter ?? ['authenticated', 'agent_internal'];
+  // accepts ONLY 'authenticated' — iter-1 security BLOCK-Q2:
+  // `'agent_internal'` and `'unauthenticated_http'` are excluded by
+  // default so the corroboration set carries ONLY user-authored
+  // verified-session messages. Consumers may broaden via opt-in.
+  const sourceFilter = opts.sourceFilter ?? ['authenticated'];
   const entries = await opts.shadowLog.readByRoom(opts.roomId, {
     sourceTrust: sourceFilter,
     limit: Number.MAX_SAFE_INTEGER,

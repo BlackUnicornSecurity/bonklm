@@ -31,6 +31,7 @@ import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-ut
 import type {
   BonklmPluginOptions,
   IAgentRuntimeLike,
+  MemoryLike,
   PluginLike,
   PluginLoadContext,
 } from './types.js';
@@ -39,6 +40,11 @@ import { assertCallContextRuntime } from './als-context.js';
 import { installSealedWrapMemory } from './wrap-memory.js';
 import { applyProbeOutcome, runStartupProbe } from './probe.js';
 import { wrapSigningAction } from './tool-call-args-gate.js';
+import {
+  mapMessageReceivedToShadowLog,
+  type ElizaMessageReceivedEvent,
+} from './shadow-log-adapter.js';
+import { warnAcknowledgeClass4RiskDeprecated } from './shadow-log-integration.js';
 
 /**
  * Default action-name regex matching every web3-signing action the
@@ -109,6 +115,91 @@ export function bonklmPlugin(options: BonklmPluginOptions = {}): PluginLike {
       // attacker plugin via Promise.resolve().then() cannot interleave.
       installSealedWrapMemory(runtime, frozenOptions);
 
+      // Story 2.4a Phase-2 step 4: shadow log auto-wire + acknowledge
+      // deprecation warning.
+      if (frozenOptions.shadowLog !== undefined) {
+        // Emit the deprecation warning when both shadowLog AND
+        // acknowledgeClass4Risk are set — the flag is no longer needed
+        // once the structural defence is wired.
+        if (frozenOptions.acknowledgeClass4Risk === true) {
+          warnAcknowledgeClass4RiskDeprecated(logger);
+        }
+        // Subscribe to MESSAGE_RECEIVED so every inbound message
+        // lands in the shadow log BEFORE any ElizaOS persistence
+        // layer touches it. If the runtime doesn't expose `.on()`,
+        // emit an INFO log so the operator knows the auto-wire was
+        // a no-op and they need to manually invoke `shadowLog.append`
+        // at their message-handler.
+        if (typeof runtime.on === 'function') {
+          const shadowLog = frozenOptions.shadowLog;
+          // Iter-1 security BLOCK-Q2: default to 'unauthenticated_http'
+          // so unclassified inbound messages do NOT enter the
+          // corroboration set. Consumers supply a real classifier
+          // to mark verified-session messages as 'authenticated'.
+          const classifySourceTrust =
+            frozenOptions.classifySourceTrust ??
+            (() => 'unauthenticated_http' as const);
+          runtime.on('MESSAGE_RECEIVED', async (...handlerArgs: unknown[]) => {
+            try {
+              const event = handlerArgs[0] as Partial<ElizaMessageReceivedEvent> & {
+                content?: { text?: string };
+              };
+              if (
+                typeof event !== 'object' ||
+                event === null ||
+                typeof event.messageId !== 'string' ||
+                typeof event.roomId !== 'string' ||
+                typeof event.entityId !== 'string'
+              ) {
+                logger.warn('[BonkLM] MESSAGE_RECEIVED event missing required fields; skipping shadow log append', { event });
+                return;
+              }
+              const sourceTrust = await classifySourceTrust(runtime, event as MemoryLike);
+              const input = mapMessageReceivedToShadowLog(
+                event as ElizaMessageReceivedEvent,
+                sourceTrust
+              );
+              await shadowLog.append(input);
+            } catch (err) {
+              const e = err as Error;
+              logger.error('[BonkLM] CRITICAL — shadow log append failed in MESSAGE_RECEIVED handler', {
+                error: e.message,
+              });
+            }
+          });
+        } else {
+          logger.info(
+            '[BonkLM] runtime does not expose `on()` event API; shadow log auto-wire skipped. ' +
+              'Consumers MUST manually invoke `shadowLog.append(...)` at their own message-handler hook BEFORE persistence.'
+          );
+        }
+      } else if (frozenOptions.acknowledgeClass4Risk === true) {
+        // No shadow log AND flag is set — accepted for backward compat
+        // (acts the same as v0.4.x). Plugin continues without the
+        // structural defence; operator has explicitly accepted the
+        // Class-4 risk per the v0.4.x semantics.
+        logger.warn(
+          '[BonkLM] acknowledgeClass4Risk=true accepted (backward compat). Consider wiring a shadow log via `options.shadowLog` to close the Class-4 gap structurally; the flag is scheduled for removal in v0.6.'
+        );
+      } else if (
+        frozenOptions.shadowLog === undefined &&
+        frozenOptions.runtimePort !== undefined
+      ) {
+        // Iter-1 security A&D-Q7: operator configured `runtimePort`
+        // (which means they intend to probe the runtime HTTP API for
+        // Class-4 exposure) but DID NOT wire `options.shadowLog`. The
+        // probe will detect the vulnerability but the validator will
+        // fall back to `runtime.getMemories` — Class-4 attack surface
+        // still wide open at validator-read time. WARN-LEVEL so the
+        // operator sees the inconsistency.
+        logger.warn(
+          '[BonkLM] HIGH — `runtimePort` is configured (probe enabled) but `options.shadowLog` is NOT wired. ' +
+            'The probe may detect Class-4 exposure but the validator will still read from `runtime.getMemories` ' +
+            '— leaving the structural defence inactive. Wire a shadow log via `options.shadowLog` to close ' +
+            'the Class-4 gap end-to-end.'
+        );
+      }
+
       // Construct C — wrap every web3-signing action's handler.
       const actions = runtime.actions ?? [];
       let wrappedCount = 0;
@@ -123,6 +214,7 @@ export function bonklmPlugin(options: BonklmPluginOptions = {}): PluginLike {
         priority: BONKLM_PLUGIN_PRIORITY,
         probeRan: frozenOptions.runtimePort !== undefined,
         acknowledgedClass4Risk: frozenOptions.acknowledgeClass4Risk === true,
+        shadowLogWired: frozenOptions.shadowLog !== undefined,
       });
     },
   };

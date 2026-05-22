@@ -25,6 +25,7 @@ import {
   detectPatterns,
   normalizeText,
   PromptInjectionValidator,
+  type ShadowLogEntry,
   type Validator,
 } from '@blackunicorn/bonklm';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
@@ -34,6 +35,10 @@ import type {
   IAgentRuntimeLike,
   MemoryLike,
 } from './types.js';
+import {
+  shadowLogIntegrityFailureMessage,
+  verifyAndReadAuthenticatedMessages,
+} from './shadow-log-integration.js';
 
 /**
  * Build the ToolCallArgsValidator chain used by Construct C. The
@@ -222,11 +227,24 @@ export function wrapSigningAction(
 
       // Two-condition recipient gate.
       const recipient = extractRecipient(args);
-      if (recipient && message.roomId && typeof r.getMemories === 'function') {
-        const memories = (await r.getMemories({
+      if (recipient && message.roomId) {
+        const memories = await readMemoriesForGate({
+          runtime: r,
+          message,
           roomId: message.roomId,
-          tableName: 'messages',
-        })) ?? [];
+          options,
+        });
+        // `null` signals shadow-log integrity failure — refuse the
+        // action (fail-CLOSED) with a generic public error.
+        if (memories === null) {
+          options.onActionBlocked?.(action.name, 'shadow_log_integrity_failure');
+          throw new ConnectorValidationError(
+            productionMode
+              ? `Action blocked: ${action.name}`
+              : `Action ${action.name} blocked: ${shadowLogIntegrityFailureMessage()}`,
+            'validation_failed'
+          );
+        }
         const gate = evaluateRecipientGate(recipient, memories);
         if (gate.block) {
           options.onActionBlocked?.(action.name, gate.reason ?? 'recipient_gate_blocked');
@@ -247,5 +265,96 @@ export function wrapSigningAction(
       }
       return undefined;
     },
+  };
+}
+
+/**
+ * Story 2.4a Phase-2 — gate-side memory read.
+ *
+ * When `options.shadowLog` is configured, reads memories from the
+ * shadow log via `verifyAndReadAuthenticatedMessages`. This closes
+ * the Class-4 attack window where an unauthenticated HTTP PATCH
+ * mutates the memories table between write and validator-read.
+ *
+ * When shadow log is NOT configured, falls back to v0.4.x behaviour
+ * — reads from `runtime.getMemories(...)`.
+ *
+ * Returns:
+ *  - `MemoryLike[]` — entries safe to pass to `evaluateRecipientGate`.
+ *  - `null` — shadow log integrity check failed; caller MUST block
+ *    the action (fail-CLOSED).
+ *
+ * @internal
+ */
+async function readMemoriesForGate(args: {
+  runtime: IAgentRuntimeLike;
+  message: MemoryLike;
+  roomId: string;
+  options: BonklmPluginOptions;
+}): Promise<MemoryLike[] | null> {
+  const { runtime, message, roomId, options } = args;
+
+  if (options.shadowLog !== undefined) {
+    // Resolve the authenticated room IDs. Default trusts the message's
+    // own roomId (single-room agent — the common case). Multi-room
+    // deployments supply their own resolver.
+    const resolver =
+      options.getAuthenticatedRoomIds ??
+      ((_runtime, msg: MemoryLike) =>
+        new Set<string>(msg.roomId !== undefined ? [msg.roomId] : []));
+    const authenticatedRoomIds = await resolver(runtime, message);
+
+    const result = await verifyAndReadAuthenticatedMessages({
+      shadowLog: options.shadowLog,
+      roomId,
+      authenticatedRoomIds,
+      logger: options.logger,
+    });
+    if (result.ok === false) {
+      return null; // chain-integrity failure → fail-CLOSED
+    }
+    return result.entries.map(shadowEntryToMemoryLike);
+  }
+
+  // v0.4.x backward-compat fallback.
+  if (typeof runtime.getMemories === 'function') {
+    return (
+      (await runtime.getMemories({
+        roomId,
+        tableName: 'messages',
+      })) ?? []
+    );
+  }
+  return [];
+}
+
+/**
+ * Convert a `ShadowLogEntry` to the `MemoryLike` shape that
+ * `evaluateRecipientGate` consumes.
+ *
+ * **Iter-1 security BLOCK-Q10a (data-integrity fix)**: the source
+ * field PRESERVES the entry's actual `sourceTrust`. Previously this
+ * hardcoded `'authenticated'`, which silently re-stamped
+ * `'agent_internal'` entries as user-authored — defeating the
+ * `evaluateRecipientGate` filter `m.source === 'authenticated'`.
+ * Now `evaluateRecipientGate` correctly excludes agent-internal
+ * entries from the corroboration set.
+ *
+ * `bonklmTrust: true` IS stamped — by construction these entries
+ * flow out of `verifyAndReadAuthenticatedMessages` which has
+ * passed chain integrity verification AND filtered through the
+ * source-trust allowlist.
+ *
+ * @internal
+ */
+function shadowEntryToMemoryLike(entry: ShadowLogEntry): MemoryLike {
+  return {
+    id: entry.messageId,
+    entityId: entry.entityId,
+    roomId: entry.roomId,
+    content: { text: entry.text },
+    tableName: 'messages',
+    source: entry.sourceTrust, // preserve actual trust tag
+    metadata: { bonklmTrust: true },
   };
 }

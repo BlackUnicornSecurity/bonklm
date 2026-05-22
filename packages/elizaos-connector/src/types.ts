@@ -9,7 +9,13 @@
  * ElizaOS APIs shift between minors in the v1/v2 line; we re-align
  * this file when bumping the peer.
  */
-import type { Guard, Logger, Validator } from '@blackunicorn/bonklm';
+import type {
+  Guard,
+  Logger,
+  ShadowLog,
+  ShadowLogSourceTrust,
+  Validator,
+} from '@blackunicorn/bonklm';
 
 /**
  * Plugin priorities are documented as numeric; higher runs FIRST per
@@ -103,6 +109,80 @@ export interface BonklmPluginOptions {
   onActionBlocked?: (actionName: string, reason: string) => void;
   /** Callback when a memory write is refused. */
   onMemoryWriteRefused?: (reason: string) => void;
+
+  /**
+   * Story 2.4a Phase-2: shadow log for Class-4 structural defence.
+   *
+   * When supplied, the plugin:
+   *  - Auto-subscribes to MESSAGE_RECEIVED (if the runtime exposes
+   *    the v1 event API) and writes shadow log entries BEFORE any
+   *    ElizaOS persistence layer touches the memory.
+   *  - The wrapped signing-action handler reads user-authored
+   *    memories from the shadow log (via verifyAndReadAuthenticatedMessages)
+   *    INSTEAD of `runtime.getMemories(...)`. Closes the Class-4
+   *    attack window where an unauthenticated HTTP PATCH mutates
+   *    the memories table between write and validator-read.
+   *
+   * When omitted: the connector operates in v0.4.x backward-compat
+   * mode — validator reads from `runtime.getMemories`. The plugin
+   * emits an INFO log noting the Class-4 limitation.
+   *
+   * Construct: `new GuardrailEngine` does NOT carry the shadow log.
+   * Consumers wire it independently:
+   *
+   * ```ts
+   * import { createShadowLog } from '@blackunicorn/bonklm';
+   * import { createElizaOSDrizzleShadowLogStorage, bonklmPlugin } from '@blackunicorn/bonklm-elizaos';
+   *
+   * const storage = createElizaOSDrizzleShadowLogStorage({ client: drizzleDb });
+   * const shadowLog = createShadowLog(storage);
+   *
+   * await runtime.registerPlugin(bonklmPlugin({ engine, shadowLog }));
+   * ```
+   */
+  shadowLog?: ShadowLog;
+
+  /**
+   * Story 2.4a Phase-2: callback returning the authenticated room IDs
+   * for a given message. Called by the wrapped signing-action handler
+   * before invoking `verifyAndReadAuthenticatedMessages` so the
+   * shadow log's cross-room boundary is enforced at the connector
+   * layer (per the Story 1.3b contract).
+   *
+   * **Default behaviour when omitted**: trust the message's
+   * `roomId` — i.e. `() => new Set([message.roomId])`. This is the
+   * RIGHT default for single-room agents (the common case); multi-
+   * room deployments MUST supply a real session-derived resolver.
+   */
+  getAuthenticatedRoomIds?: (
+    runtime: IAgentRuntimeLike,
+    message: MemoryLike
+  ) => Promise<Set<string>> | Set<string>;
+
+  /**
+   * Story 2.4a Phase-2: callback returning the source-trust tag for
+   * an inbound MESSAGE_RECEIVED event. Consumers map their session
+   * context to the source-trust taxonomy.
+   *
+   * **Default: `'unauthenticated_http'`** (iter-1 security BLOCK-Q2 —
+   * the SAFE-BY-DEFAULT-FAIL-CLOSED tag). A message tagged as
+   * `'unauthenticated_http'` is EXCLUDED from the corroboration set
+   * the recipient gate consults (the default source filter accepts
+   * ONLY `'authenticated'`). Consumers MUST supply this resolver
+   * to mark verified-session messages as `'authenticated'`; without
+   * it, the connector treats all inbound messages as untrusted —
+   * which is the right safe-by-default posture.
+   *
+   * Previous default `'agent_internal'` was wrong: agent_internal
+   * was in the default sourceFilter of `verifyAndReadAuthenticatedMessages`,
+   * so unclassified user-HTTP messages would enter the corroboration
+   * set. Fixed to `'unauthenticated_http'` so the connector fails
+   * CLOSED by default.
+   */
+  classifySourceTrust?: (
+    runtime: IAgentRuntimeLike,
+    message: MemoryLike
+  ) => ShadowLogSourceTrust | Promise<ShadowLogSourceTrust>;
 }
 
 /** Plugin load-call context (subset). */
@@ -124,6 +204,13 @@ export interface IAgentRuntimeLike {
   actions?: ActionLike[];
   plugins?: PluginLike[];
   bonklm?: BonklmRuntimeNamespace;
+  /**
+   * Story 2.4a Phase-2: optional event-subscription API. ElizaOS v1
+   * exposes `runtime.on(event, handler)`; v2 may differ. The plugin
+   * subscribes to MESSAGE_RECEIVED when present to write shadow log
+   * entries pre-persistence; absent → INFO log noting the limitation.
+   */
+  on?: (event: string, handler: (...args: unknown[]) => unknown) => void;
 }
 
 /**

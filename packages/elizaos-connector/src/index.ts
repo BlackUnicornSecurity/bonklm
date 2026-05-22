@@ -72,6 +72,7 @@ export {
 
 export {
   auditCharacterFile,
+  auditInstalledVersions,
   auditPlugins,
   buildReport,
   probeOutcomeToFindings,
