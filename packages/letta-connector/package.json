@@ -1,0 +1,51 @@
+{
+  "name": "@blackunicorn/bonklm-letta",
+  "version": "0.4.0",
+  "description": "Letta memory-client connector for BonkLM — wraps Letta agent memory add/search/update with sealed write + composed-context recall validation",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "workerd": "./dist/index.js",
+      "edge-light": "./dist/index.js",
+      "deno": "./dist/index.js",
+      "bun": "./dist/index.js",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "clean": "rm -rf dist"
+  },
+  "keywords": ["letta", "memgpt", "memory", "llm", "guardrails", "security", "ai-safety", "bonklm"],
+  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "license": "MIT",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "@blackunicorn/bonklm-memory-utils": "workspace:*"
+  },
+  "peerDependencies": {
+    "@letta-ai/letta-client": "^1.11.0"
+  },
+  "peerDependenciesMeta": {
+    "@letta-ai/letta-client": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.7",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

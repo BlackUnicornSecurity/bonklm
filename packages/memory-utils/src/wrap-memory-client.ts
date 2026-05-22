@@ -26,6 +26,7 @@
  * @package @blackunicorn/bonklm-memory-utils
  */
 import {
+  assertAsyncLocalStorageHealthy,
   createComposedContextValidator,
   createMemoryWriteValidator,
   createLogger,
@@ -84,6 +85,29 @@ export function wrapMemoryClient<TClient extends object>(
   // wrappers can also bypass-check, but enforcing here means a
   // direct `wrapMemoryClient` consumer still gets the same defence.
   assertGetTenantIdIsCallback(options.getTenantId);
+
+  // Cumulative-audit security BLOCK #5: assert AsyncLocalStorage is
+  // healthy at construction. The memory connectors don't directly
+  // use ALS, but the engine's call-context propagation (Story 2.1b)
+  // depends on it. We guard the canary so it only runs on edge
+  // runtimes that expose `globalThis.AsyncLocalStorage` — Node consumers
+  // import ALS via `node:async_hooks` directly and should call the
+  // canary at engine construction instead (per Story 2.1b ADR).
+  // The guard prevents this construction-time check from FAILING the
+  // Node path (where globalThis.AsyncLocalStorage is undefined).
+  if (typeof (globalThis as { AsyncLocalStorage?: unknown }).AsyncLocalStorage !== 'undefined') {
+    try {
+      assertAsyncLocalStorageHealthy();
+    } catch (err) {
+      // Surface the canary failure with a memory-utils-named stack
+      // so consumers know which wrapper triggered the check.
+      const e = err as Error;
+      throw new ConnectorValidationError(
+        `wrapMemoryClient: AsyncLocalStorage health check failed at construction — ${e.message}`,
+        'configuration_error'
+      );
+    }
+  }
 
   // Freeze options — iter-2 security A&D: hostile shared-options-ref
   // cannot mutate `getTenantId` or callbacks after construction.
@@ -241,6 +265,49 @@ export function assertGetTenantIdValid(
       `wrap${vendorName}Client: \`getTenantId\` must be a function (ctx) => string, not ${typeof getTenantId}. ` +
         `Passing a literal string would scope every memory write to a single tenant — a multi-tenant ` +
         `deployment must thread the per-call session context through a callback.`,
+      'configuration_error'
+    );
+  }
+}
+
+/**
+ * Cumulative-audit code-reviewer HIGH + iter-1 architect A&D:
+ * shared tenant-ID format validation. Previously duplicated in both
+ * mem0-adapter.ts AND zep-adapter.ts (security-boundary regex copies
+ * are a latent divergence bug).
+ *
+ * Iter-1 security A&D: removed `:` from the allowed set. Colon could
+ * enable URL-authority injection (`localhost:9000`-style tenant IDs)
+ * if a future adapter interpolates the tenant id into a URL.
+ * Legitimate composite IDs use `-` or `_` separators (`user-123`,
+ * `user_123`) — both still permitted.
+ *
+ * Allowed: word chars (`\w` = `[A-Za-z0-9_]`), `-`, `.`, `@`.
+ * Max length: 256 chars.
+ */
+const TENANT_ID_SAFE_PATTERN = /^[\w\-.@]+$/;
+const TENANT_ID_MAX_LENGTH = 256;
+
+export function assertTenantIdSafe(
+  tenantId: unknown,
+  vendorName: string
+): asserts tenantId is string {
+  if (typeof tenantId !== 'string' || tenantId.length === 0) {
+    throw new ConnectorValidationError(
+      `${vendorName} adapter: getTenantId(ctx) returned ${typeof tenantId}; must be a non-empty string`,
+      'configuration_error'
+    );
+  }
+  if (tenantId.length > TENANT_ID_MAX_LENGTH) {
+    throw new ConnectorValidationError(
+      `${vendorName} adapter: getTenantId(ctx) returned a value longer than ${TENANT_ID_MAX_LENGTH} chars; refusing.`,
+      'configuration_error'
+    );
+  }
+  if (!TENANT_ID_SAFE_PATTERN.test(tenantId)) {
+    throw new ConnectorValidationError(
+      `${vendorName} adapter: getTenantId(ctx) returned a value containing characters outside [\\w\\-.@]; refusing. ` +
+        `Composite IDs should use \`-\` or \`_\` as separators (e.g. \`user-123\`, \`tenant_admin\`).`,
       'configuration_error'
     );
   }

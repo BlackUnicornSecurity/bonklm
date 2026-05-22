@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@blackunicorn/bonklm": ["../core/src"],
+      "@blackunicorn/bonklm/core/connector-utils": ["../core/src/connector-utils/index"],
+      "@blackunicorn/bonklm-memory-utils": ["../memory-utils/src"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "tests"]
+}

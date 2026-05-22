@@ -276,6 +276,57 @@ describe('wrapZepClient — graphIds + userId neutralization (iter-1 security BL
       wrapped.graph.add({ graphId: 'whatever', data: 'content' })
     ).rejects.toThrow(ConnectorValidationError);
   });
+
+  it('rejects tenant IDs containing `:` (cumulative-audit security A&D)', async () => {
+    const { engine, validators } = makeEngineAndValidators();
+    const client = makeFakeZepClient();
+    const wrapped = wrapZepClient(client, engine, {
+      getTenantId: () => 'localhost:9000',
+      validators,
+    });
+
+    await expect(
+      wrapped.graph.add({ graphId: 'whatever', data: 'content' })
+    ).rejects.toThrow(ConnectorValidationError);
+  });
+
+  it('strips userIds (plural) on graph.search (cumulative-audit security BLOCK #3)', async () => {
+    const { engine, validators } = makeEngineAndValidators();
+    const client = makeFakeZepClient();
+    const wrapped = wrapZepClient(client, engine, {
+      getTenantId: () => 'authenticated-user',
+      validators,
+    });
+
+    await wrapped.graph.search({
+      graphId: 'whatever',
+      userIds: ['victim-1', 'victim-2'],
+      query: 'q',
+    } as { graphId: string; userIds: string[]; query: string });
+
+    const callArg = client.graph.search.mock.calls[0][0];
+    expect(callArg.graphId).toBe('authenticated-user');
+    expect(callArg.userIds).toBeUndefined();
+  });
+
+  it('strips sessionId on graph methods', async () => {
+    const { engine, validators } = makeEngineAndValidators();
+    const client = makeFakeZepClient();
+    const wrapped = wrapZepClient(client, engine, {
+      getTenantId: () => 'authenticated-user',
+      validators,
+    });
+
+    await wrapped.graph.add({
+      graphId: 'whatever',
+      sessionId: 'victim-session',
+      data: 'clean content',
+    } as { graphId: string; sessionId: string; data: string });
+
+    const callArg = client.graph.add.mock.calls[0][0];
+    expect(callArg.graphId).toBe('authenticated-user');
+    expect(callArg.sessionId).toBeUndefined();
+  });
 });
 
 describe('wrapZepClient — fail-closed on unknown namespaces (iter-1 security BLOCK #10)', () => {
