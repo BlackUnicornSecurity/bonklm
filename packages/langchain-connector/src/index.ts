@@ -25,7 +25,29 @@
  */
 
 // Main class export
+/**
+ * @deprecated Story 1.5: prefer the `langchain@1.x` middleware
+ * pattern via `createBonklmMiddleware`. `GuardrailsCallbackHandler`
+ * is kept for dual-path runtime detection on `@langchain/core@^0.3.x`
+ * peers and will be removed when the 0.3.x line reaches EOL.
+ */
 export { GuardrailsCallbackHandler, isGuardrailsViolationError, isStreamValidationError } from './guardrails-handler.js';
+
+// Story 1.5 — langchain@1.x middleware + retriever wrap + LangGraph node.
+export {
+  createBonklmMiddleware,
+  withRetrieverGuardrails,
+  bonklmLangGraphNode,
+  type BonklmMiddlewareConfig,
+  type BonklmMiddlewareScope,
+  type BonklmLangchainMiddleware,
+  type BonklmMiddlewareState,
+  type BonklmModelResponse,
+  type BonklmToolCall,
+  type BonklmRetrieverLike,
+  type WithRetrieverGuardrailsOptions,
+  type BonklmLangGraphState,
+} from './middleware/index.js';
 
 // Types
 export type {
