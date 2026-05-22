@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "bonklm-web",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "/Users/paultinp/bonklm-web", "dev"],
+      "port": 4200
+    }
+  ]
+}
