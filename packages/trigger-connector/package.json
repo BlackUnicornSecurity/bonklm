@@ -1,0 +1,67 @@
+{
+  "name": "@blackunicorn/bonklm-trigger",
+  "version": "0.4.0",
+  "description": "Trigger.dev v3/v4 middleware for BonkLM — CRIU-safe LLM security guardrails via cachedValidate + locals",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "trigger.dev",
+    "middleware",
+    "task",
+    "criu",
+    "checkpoint",
+    "durable",
+    "replay",
+    "llm",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "jailbreak",
+    "ai-safety"
+  ],
+  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "license": "MIT",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "@blackunicorn/bonklm-browser-agents-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@trigger.dev/sdk": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@trigger.dev/sdk": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@trigger.dev/core": "^4.0.0",
+    "@trigger.dev/sdk": "^4.0.0",
+    "@vitest/coverage-v8": "^4.1.7",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

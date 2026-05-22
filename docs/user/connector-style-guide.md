@@ -9,10 +9,10 @@ connector AC references this guide; PR reviewers reject divergences.
 
 ---
 
-## TL;DR — The four canonical sub-conventions
+## TL;DR — The five canonical sub-conventions
 
-Every connector exports ONE OR MORE factories matching one of these four shapes. Pick
-the shape that matches your vendor SDK's primary API surface; do NOT invent a fifth
+Every connector exports ONE OR MORE factories matching one of these five shapes. Pick
+the shape that matches your vendor SDK's primary API surface; do NOT invent a sixth
 shape without an ADR amendment to this guide.
 
 ### 1. Object / client wrap
@@ -81,6 +81,60 @@ Example:
 **Avoid #4 for new connectors UNLESS the host runtime literally cannot consume #1 or #3.**
 ElizaOS uses #4 because the runtime's `Plugin` interface dictates the registration shape;
 your connector's host probably does not.
+
+### 5. Task-options bindings factory
+
+```ts
+with<Vendor>(options): { middleware, onFailure, /* ...other lifecycle hooks */ }
+```
+
+Use ONLY when the host SDK's task / job / workflow factory takes its lifecycle
+hooks as NAMED OPTION KEYS rather than as a single middleware reference, AND the
+connector needs to register MULTIPLE hooks (not just one). The factory returns a
+BINDINGS object the consumer spreads into the host's factory call.
+
+Example:
+
+```ts
+// Trigger.dev v3/v4 — task() accepts { middleware, onFailure, run, ... }
+const { middleware, onFailure } = withBonkLM({ validators, cache });
+export const myTask = task({
+  id: "my-task",
+  middleware,
+  onFailure,
+  run: async (payload) => { /* ... */ },
+});
+```
+
+Examples:
+- `withBonkLM(options)` — Trigger.dev v3/v4 (Story 2.9). Returns
+  `{ middleware, onFailure }`; survives CRIU checkpoint/resume via the
+  SDK's `locals` registry.
+
+**Use #5 ONLY when:**
+- The host SDK's factory takes lifecycle hooks as named option keys
+  (e.g. `task({ middleware, onFailure })`).
+- The SDK does NOT accept a wrapped object (shape #1) or a single
+  middleware reference (shape #3).
+- The connector needs to register MULTIPLE hooks per task (otherwise
+  shape #3 is sufficient — return ONE hook, not an object).
+
+Per-SDK idiomatic naming is permitted. `withBonkLM` is idiomatic for
+Trigger.dev (community uses `withSentry`, `withOpenTelemetry`, etc.).
+Inngest uses `<vendor>Middleware` because Inngest's middleware base-class
+extension is the idiomatic shape there. Style-guide does not enforce
+cross-SDK uniformity for shape #5 naming — the constraint is on the
+SHAPE OF THE RETURN VALUE (a bindings object), not the verb.
+
+All shape #5 connectors MUST also:
+- Hoist resolution (engine + salted keyFn + base options) to factory
+  scope so all bindings share the same closure (defeats the
+  per-invocation cache-miss footgun documented at Sprint 13 Inngest
+  BLOCK B1).
+- If the SDK supports a per-run state primitive (Trigger.dev `locals`,
+  Inngest `ctx`-mutation, Temporal `Context`), use it to expose a
+  handle the consumer retrieves inside the run body via a typed
+  accessor (e.g. `getBonklmHandle()`).
 
 ---
 
@@ -321,6 +375,17 @@ The two deviations (LangChain overloaded, Google GenAI engine-in-options) gain
 canonical-shape additions in Story 2.1b-connectors. Both legacy entrypoints emit
 `@deprecated` warnings in v0.5 and throw `TypeError` at v1.0.
 
+### Epic-2 connector exceptions
+
+Two Epic-2 connectors ship with a deliberate deviation from the strict shape #3
+default. Both are acknowledged retroactively as part of the Story 2.9 shape-#5
+ADR amendment:
+
+| Connector | Shipped shape | SDK constraint that forces the deviation | Sunset |
+|---|---|---|---|
+| Inngest | `bonklmInngestMiddleware(options)` — shape #4 (single options bag) | Inngest v4 requires a class extending `Middleware.BaseMiddleware`; the registration is `new Inngest({ middleware: [BonklmInngestMiddleware] })` and the consumer cannot pass an `(engine, options?)` pair. Factory returns the class itself. Re-categorised under shape #4 retroactively because the host runtime constrains the registration shape. | n/a |
+| Trigger.dev | `withBonkLM(options)` — shape #5 (bindings factory) | Trigger.dev v3/v4 `task({...})` accepts `middleware` AND `onFailure` as separate named option keys; the connector must register BOTH. No single wrapper or middleware reference covers the contract. | n/a |
+
 ---
 
 ## Documented exceptions to the "return a new object" rule
@@ -377,3 +442,4 @@ onwards:
 | Date | Story | Change |
 |---|---|---|
 | 2026-05-22 | Story 2.1b-connector-style-ADR | Initial authoring. 4 canonical sub-conventions, Mem0 PRIMARY multi-surface example, Zep ILLUSTRATIVE footnote, Epic-1 deviations table, documented exceptions, sunset clauses. |
+| 2026-05-23 | Story 2.9 (Sprint 14) | Added shape #5 (Task-options bindings factory) for Trigger.dev. Added Epic-2 deviations table with retroactive Inngest reclassification (shape #4, host-constrained) + Trigger.dev shape #5 row. Per-SDK idiomatic naming permitted for shape #5. |
