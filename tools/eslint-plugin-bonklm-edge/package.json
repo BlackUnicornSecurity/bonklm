@@ -1,0 +1,41 @@
+{
+  "name": "@blackunicorn/eslint-plugin-edge",
+  "version": "0.4.0",
+  "description": "ESLint plugin enforcing edge-runtime-safe code in BonkLM connectors (bans bare process.env in edge-reachable files)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "workspacePolicy": "tier-b-publishable",
+  "publishJustification": "Consumed by downstream connector authors to lint their own edge-reachable code with the same rules BonkLM applies internally. Required so consumer monorepos can opt into the no-bare-process.env enforcement that defines edge-portability.",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build && npm test"
+  },
+  "keywords": ["eslint", "eslint-plugin", "edge", "workerd", "bonklm"],
+  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "license": "MIT",
+  "peerDependencies": {
+    "eslint": "^9.0.0 || ^10.0.0"
+  },
+  "devDependencies": {
+    "@types/eslint": "^9.6.1",
+    "@types/estree": "^1.0.6",
+    "eslint": "^10.0.0",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}
