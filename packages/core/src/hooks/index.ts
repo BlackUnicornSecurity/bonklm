@@ -7,8 +7,16 @@
 import { createLogger, type Logger } from '../base/GenericLogger.js';
 import type { HookSurface } from '../engine/GuardrailEngine.types.js';
 
-// Export HookSandbox
+// Export HookSandbox (Node-only — uses node:vm + node:crypto).
 export * from './HookSandbox.js';
+
+// Export EdgeHookManager (Story 2.1b-edge-core — function-only, edge-safe).
+export {
+  EdgeHookManager,
+  type EdgeExecutionContext,
+  type EdgeExecutionResult,
+  type EdgeHookStatistics,
+} from './EdgeHookManager.js';
 
 // Re-export the canonical surface vocabulary so consumers can import it
 // from `@blackunicorn/bonklm/hooks` without reaching into engine internals.

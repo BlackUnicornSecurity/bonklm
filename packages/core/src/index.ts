@@ -109,3 +109,14 @@ export {
   type StreamValidatorState,
   type StandardLoggerOptions,
 } from './connector-utils/index.js';
+
+// Story 2.1b-edge-core (iter-1 architect BLOCK-2): re-export the ALS
+// canary guard from the root barrel so Node consumers (engine
+// construction path, ElizaOS connector Phase-2) can import it without
+// reaching into the `/edge` subpath. Edge consumers continue to import
+// from `@blackunicorn/bonklm/edge` for the portable surface; both
+// paths resolve to the SAME implementation.
+export {
+  assertAsyncLocalStorageHealthy,
+  AsyncLocalStorageCanaryError,
+} from './edge/als-canary.js';

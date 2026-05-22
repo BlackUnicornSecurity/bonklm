@@ -182,3 +182,21 @@ export {
   utf8ByteLength,
   portableRandomUUID,
 } from '../common/edge-codec.js';
+
+// Story 2.1b-edge-core: function-only HookManager variant + ALS canary
+// guard + envBindings injection contract.
+export {
+  EdgeHookManager,
+  type EdgeExecutionContext,
+  type EdgeExecutionResult,
+  type EdgeHookStatistics,
+} from '../hooks/EdgeHookManager.js';
+export {
+  assertAsyncLocalStorageHealthy,
+  AsyncLocalStorageCanaryError,
+} from './als-canary.js';
+export {
+  isProductionEnvironment,
+  isTestEnvironment,
+  type EnvBindings,
+} from '../guards/production.js';

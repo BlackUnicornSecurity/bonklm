@@ -28,6 +28,21 @@ export interface ProductionGuardConfig extends ValidatorConfig {
    * Enable documentation file bypass
    */
   allowDocumentationFiles?: boolean;
+
+  /**
+   * Story 2.1b-edge-core (iter-1 security BLOCK #9 + reviewer HIGH-2):
+   * explicit environment-variable bindings for edge runtimes that cannot
+   * provide `process.env`. When set, `ProductionGuard.validate()` reads
+   * environment indicators from this record rather than `process.env`.
+   * When omitted, falls back to `process.env` on Node.
+   *
+   * Locked 6-key contract: `NODE_ENV` / `RAILS_ENV` / `FLASK_ENV` /
+   * `BONKLM_OVERRIDE_SECRET` / `LLM_GUARDRAILS_OVERRIDE_SECRET` /
+   * `BONKLM_SKIP_RUNTIME_PROBE`. Cloud-provider keys (`AWS_ENV`,
+   * `GCP_PROJECT`, etc.) are not part of the locked contract but ARE
+   * read when present.
+   */
+  envBindings?: EnvBindings;
 }
 
 export interface ProductionIndicator {
@@ -150,8 +165,90 @@ const DOCUMENTATION_PATTERNS: RegExp[] = [
  *
  * @returns true if actually running in a production environment
  */
-export function isProductionEnvironment(): boolean {
-  const env = process.env;
+/**
+ * EnvBindings — Story 2.1b-edge-core injection shape.
+ *
+ * Edge runtimes (Workerd / edge-light / Deno / Bun) do not expose
+ * `process.env`; consumers pass the relevant env-var values explicitly
+ * via the `envBindings` parameter. On Node, callers can omit the
+ * parameter and the function falls back to reading `process.env` when
+ * the global `process` exists.
+ *
+ * Locked 6-key contract (iter-3 architect A&D-1): NODE_ENV, RAILS_ENV,
+ * FLASK_ENV, BONKLM_OVERRIDE_SECRET, LLM_GUARDRAILS_OVERRIDE_SECRET,
+ * BONKLM_SKIP_RUNTIME_PROBE. The production-environment detection
+ * needs additional keys (cloud-provider markers) that we accept via
+ * the same `Record<string, string | undefined>` shape — these are NOT
+ * part of the locked contract but the function reads them when present.
+ */
+export type EnvBindings = Record<string, string | undefined>;
+
+/**
+ * Maximum byte length for any single env-var value. Iter-1 security
+ * BLOCK #7: an attacker who threads untrusted request-header content
+ * into the `envBindings` parameter (e.g. `{ NODE_ENV: req.headers['x-env'] }`)
+ * could trigger CRITICAL blocking by setting `NODE_ENV = "production"`,
+ * causing a DoS via trust escalation. We cap value length at 128
+ * characters — well above any legitimate env-var value (`'production'`
+ * is 10 chars; AWS Lambda runtime markers max out around 40 chars) —
+ * and short-circuit oversized values to `undefined` so the rest of
+ * the logic falls through to the safe "not production" default.
+ *
+ * Implementation note: we DO NOT throw on oversized values to avoid
+ * giving a caller-supplied error a way to crash the engine. Silent
+ * coercion to `undefined` is the safest failure mode.
+ */
+const MAX_ENV_VALUE_LENGTH = 128;
+
+/**
+ * Validate-and-sanitise a caller-supplied `envBindings` record.
+ *
+ * Returns a NEW object containing only keys whose values are
+ * non-empty strings under `MAX_ENV_VALUE_LENGTH`. Anything else is
+ * dropped silently (caller code branches on absence; no
+ * ReferenceError, no oversized-value DoS).
+ *
+ * Iter-1 security BLOCK #7: closes the request-header-injection
+ * surface where attacker-controlled values could flip the production
+ * check.
+ */
+function sanitiseEnvBindings(raw: EnvBindings): EnvBindings {
+  const out: EnvBindings = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof value !== 'string') continue;
+    if (value.length === 0) continue;
+    if (value.length > MAX_ENV_VALUE_LENGTH) continue;
+    out[key] = value;
+  }
+  return out;
+}
+
+/**
+ * Resolve env-var lookup against an explicit `envBindings` record
+ * (edge path) OR fall back to `process.env` when available (Node path).
+ *
+ * Returns an empty object when neither source is available — caller
+ * code branches on the resulting absence; no `process` ReferenceError
+ * is thrown on edge.
+ *
+ * Caller-supplied bindings go through `sanitiseEnvBindings` to defeat
+ * the attacker-controlled-value DoS surface (iter-1 security BLOCK #7).
+ * `process.env` is NOT re-sanitised — it is trusted process-level state.
+ */
+function resolveEnv(envBindings: EnvBindings | undefined): EnvBindings {
+  if (envBindings !== undefined) {
+    return sanitiseEnvBindings(envBindings);
+  }
+  // typeof guard avoids ReferenceError on Workerd / edge-light where
+  // `process` is not declared at module scope.
+  if (typeof process !== 'undefined' && process && process.env) {
+    return process.env as EnvBindings;
+  }
+  return {};
+}
+
+export function isProductionEnvironment(envBindings?: EnvBindings): boolean {
+  const env = resolveEnv(envBindings);
 
   // Check standard environment variables
   const productionEnvVars = [
@@ -206,8 +303,8 @@ export function isProductionEnvironment(): boolean {
  *
  * @returns true if running in a test environment
  */
-export function isTestEnvironment(): boolean {
-  const env = process.env;
+export function isTestEnvironment(envBindings?: EnvBindings): boolean {
+  const env = resolveEnv(envBindings);
 
   // Explicit test environment variables
   const testIndicators = [
@@ -309,6 +406,8 @@ export class ProductionGuard {
       ...mergeConfig(config),
       filePath: config?.filePath,
       allowDocumentationFiles: config?.allowDocumentationFiles ?? true,
+      // iter-1 security BLOCK #9 + reviewer HIGH-2: forward edge env bindings.
+      envBindings: config?.envBindings,
     } as Required<Omit<ProductionGuardConfig, 'filePath'>> & { filePath?: string };
   }
 
@@ -328,8 +427,9 @@ export class ProductionGuard {
     }
 
     const effectiveFilePath = filePath ?? this.config.filePath;
-    const actuallyInProduction = isProductionEnvironment();
-    const inTestEnvironment = isTestEnvironment();
+    // iter-1 security BLOCK #9 + reviewer HIGH-2: forward edge env bindings.
+    const actuallyInProduction = isProductionEnvironment(this.config.envBindings);
+    const inTestEnvironment = isTestEnvironment(this.config.envBindings);
 
     // Skip documentation files
     if (this.config.allowDocumentationFiles && isDocumentationFile(effectiveFilePath)) {
