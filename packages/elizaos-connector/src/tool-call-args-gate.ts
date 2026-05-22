@@ -23,9 +23,11 @@
 import {
   createToolCallArgsValidator,
   detectPatterns,
+  normalizeText,
   PromptInjectionValidator,
   type Validator,
 } from '@blackunicorn/bonklm';
+import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
   ActionLike,
   BonklmPluginOptions,
@@ -46,12 +48,31 @@ function buildToolCallValidator(validators: Validator[]): ReturnType<typeof crea
  * Extract `args.recipient` from a tool-call args object. Returns the
  * canonical lowercase form for case-insensitive comparison against
  * memory text.
+ *
+ * Audit-loop CRITICAL fix #2 (adversarial): non-string recipient
+ * values (number, BigInt, object, etc.) previously returned `null`
+ * which SKIPPED the gate entirely. A crafted action invocation with
+ * `{ recipient: 0xabc }` (decimal) defeated the check. We now throw
+ * a `ConnectorValidationError` if any recipient-named field is
+ * present but non-string, forcing the caller to fix the action
+ * serialisation rather than allowing a silent bypass.
  */
 function extractRecipient(args: unknown): string | null {
   if (!args || typeof args !== 'object') return null;
   const obj = args as { recipient?: unknown; to?: unknown; address?: unknown };
-  for (const candidate of [obj.recipient, obj.to, obj.address]) {
-    if (typeof candidate === 'string' && candidate.length > 0) {
+  for (const [fieldName, candidate] of [
+    ['recipient', obj.recipient],
+    ['to', obj.to],
+    ['address', obj.address],
+  ] as Array<[string, unknown]>) {
+    if (candidate === undefined || candidate === null) continue;
+    if (typeof candidate !== 'string') {
+      throw new ConnectorValidationError(
+        `args.${fieldName} must be a string; received ${typeof candidate}. Recipient validation cannot proceed on a non-string identifier.`,
+        'validation_failed'
+      );
+    }
+    if (candidate.length > 0) {
       return candidate.toLowerCase();
     }
   }
@@ -63,9 +84,20 @@ function extractRecipient(args: unknown): string | null {
  * the supplied message text. Uses `detectPatterns` directly so the
  * gate doesn't trip the `PromptInjectionValidator.analyze` block path
  * (those patterns are WARNING + `blockEligible: false`).
+ *
+ * Audit-loop HIGH fix #4 (adversarial): the direct-call path of
+ * `detectPatterns` does NOT apply `normalizeText`. A Cyrillic-mangled
+ * preference-setting message ("rememьer my wallet 0xabc" with U+044C
+ * substituted for `b`) bypassed pattern detection, so the gate
+ * mis-categorised it as a non-preference-setting message and used
+ * the recipient as legitimate corroboration. Apply `normalizeText`
+ * first to defeat homoglyph / zero-width / fullwidth confusable
+ * obfuscation — mirrors the `PromptInjectionValidator.validate`
+ * normalisation pass.
  */
 function hasPreferenceSettingPattern(text: string): boolean {
-  for (const finding of detectPatterns(text)) {
+  const normalised = normalizeText(text);
+  for (const finding of detectPatterns(normalised)) {
     if (finding.category === 'web3_preference_setting') return true;
   }
   return false;
@@ -81,10 +113,22 @@ export function evaluateRecipientGate(
   memories: ReadonlyArray<MemoryLike>
 ): { block: boolean; reason?: string } {
   // Bucket user-authored messages into preference-setting vs not.
-  // Memories without an explicit `source` are treated as
-  // `agent_internal` (least-privileged for this check — they cannot
-  // attest to where the recipient came from).
-  const userAuthored = memories.filter((m) => m.source === 'authenticated');
+  //
+  // Audit-loop BLOCK #5 (historical-memory source-field collision):
+  // legacy plugins or older deployments may have set `source:
+  // 'authenticated'` on memories before BonkLM took over. Trusting the
+  // source field alone would let attacker-pre-populated memories
+  // bootstrap a recipient into the corroboration set. We require a
+  // BonkLM-stamped `metadata.bonklmTrust === true` marker that ONLY the
+  // sealed `wrapMemory` writer can set (closure-captured, not
+  // arg-passable), AND a source value of 'authenticated'. Both
+  // conditions must hold.
+  const userAuthored = memories.filter(
+    (m) =>
+      m.source === 'authenticated' &&
+      m.metadata !== undefined &&
+      (m.metadata as { bonklmTrust?: unknown }).bonklmTrust === true
+  );
   if (userAuthored.length === 0) {
     // No user-authored memories at all to corroborate the recipient.
     return { block: true, reason: 'Recipient has no user-authored corroboration' };
@@ -92,10 +136,16 @@ export function evaluateRecipientGate(
 
   let prefMentionCount = 0;
   let nonPrefMentionCount = 0;
+  // Audit-loop HIGH fix #4: apply `normalizeText` to BOTH the message
+  // text and the recipient before substring matching so homoglyph /
+  // zero-width / fullwidth confusables in either side cannot defeat
+  // the corroboration check.
+  const normalisedRecipient = normalizeText(recipient).toLowerCase();
   for (const m of userAuthored) {
     const text = m.content?.text;
     if (typeof text !== 'string' || text.length === 0) continue;
-    if (!text.toLowerCase().includes(recipient)) continue;
+    const normalisedText = normalizeText(text).toLowerCase();
+    if (!normalisedText.includes(normalisedRecipient)) continue;
     if (hasPreferenceSettingPattern(text)) {
       prefMentionCount++;
     } else {
@@ -162,10 +212,11 @@ export function wrapSigningAction(
       });
       if (argsResult.blocked) {
         options.onActionBlocked?.(action.name, argsResult.reason ?? 'tool_args_blocked');
-        throw new Error(
+        throw new ConnectorValidationError(
           productionMode
             ? `Action blocked: ${action.name}`
-            : `Action ${action.name} blocked: ${argsResult.reason}`
+            : `Action ${action.name} blocked: ${argsResult.reason}`,
+          'validation_failed'
         );
       }
 
@@ -179,10 +230,11 @@ export function wrapSigningAction(
         const gate = evaluateRecipientGate(recipient, memories);
         if (gate.block) {
           options.onActionBlocked?.(action.name, gate.reason ?? 'recipient_gate_blocked');
-          throw new Error(
+          throw new ConnectorValidationError(
             productionMode
               ? `Action blocked: ${action.name}`
-              : `Action ${action.name} blocked: ${gate.reason}`
+              : `Action ${action.name} blocked: ${gate.reason}`,
+            'validation_failed'
           );
         }
       }

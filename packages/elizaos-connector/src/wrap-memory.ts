@@ -76,10 +76,37 @@ export function installSealedWrapMemory(
     );
   }
 
-  // Ensure the bonklm namespace exists for closure-captured call-context.
-  if (!runtime.bonklm) {
-    runtime.bonklm = {} as BonklmRuntimeNamespace;
+  // Audit-loop CRITICAL fix #1 (adversarial): the `runtime.bonklm`
+  // namespace MUST be sealed too. Without this, a hostile plugin
+  // loading after BonkLM can directly write:
+  //   `runtime.bonklm.currentCallContext = { sourceTrust: 'authenticated',
+  //    pluginName: '@elizaos/plugin-solana' }`
+  // bypassing the entire closure-captured trust model. Seal the
+  // namespace slot (the slot itself is non-configurable so the
+  // pointer can't be replaced) while leaving the inner properties
+  // mutable for legitimate `withCallContext` reads/writes.
+  const existingBonklm = runtime.bonklm;
+  const sealedBonklm: BonklmRuntimeNamespace = existingBonklm ?? {};
+  const bonklmDescriptor = Object.getOwnPropertyDescriptor(runtime, 'bonklm');
+  if (bonklmDescriptor && bonklmDescriptor.configurable === false) {
+    // Same defence as for createMemory — a pre-sealed namespace means
+    // another plugin got here first.
+    logger.error(
+      '[BonkLM] CRITICAL — runtime.bonklm is already sealed (another plugin claimed the namespace first).'
+    );
+    throw new ConnectorValidationError(
+      productionMode
+        ? 'Runtime bonklm namespace already sealed'
+        : 'runtime.bonklm is already sealed by another plugin. Refusing to install BonkLM — investigate the other wrap before retrying.',
+      'invalid_runtime'
+    );
   }
+  Object.defineProperty(runtime, 'bonklm', {
+    value: sealedBonklm,
+    writable: false,
+    configurable: false,
+    enumerable: true,
+  });
 
   const wrapped = async function bonklmWrappedCreateMemory(
     this: unknown,
@@ -138,7 +165,20 @@ export function installSealedWrapMemory(
       );
     }
 
-    const sealed: MemoryLike = { ...memory, source: computedSource };
+    // Audit-loop BLOCK #5: stamp a closure-controlled
+    // `metadata.bonklmTrust = true` marker so the recipient gate can
+    // distinguish memories that flowed through THIS wrap from legacy
+    // memories where `source: 'authenticated'` was set by a previous
+    // plugin for unrelated semantic reasons. Providers cannot supply
+    // this marker — we always overwrite it.
+    const sealed: MemoryLike = {
+      ...memory,
+      source: computedSource,
+      metadata: {
+        ...(memory.metadata ?? {}),
+        bonklmTrust: true,
+      },
+    };
     // Defer to the original implementation with the source overwritten.
     // `original` is the closure-captured non-wrapped function.
     return (original as (m: MemoryLike, ...r: unknown[]) => Promise<unknown>).call(

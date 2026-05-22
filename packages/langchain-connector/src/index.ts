@@ -38,6 +38,7 @@ export {
   createBonklmMiddleware,
   withRetrieverGuardrails,
   bonklmLangGraphNode,
+  createBonklmLangGraphNode,
   type BonklmMiddlewareConfig,
   type BonklmMiddlewareScope,
   type BonklmLangchainMiddleware,

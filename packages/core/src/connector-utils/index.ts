@@ -76,6 +76,7 @@ export {
   createStandardLogger,
   createConnectorLogger,
   sanitizeLogMetadata,
+  stripLogControlChars,
   logValidationFailure,
   logTimeout,
   type StandardLoggerOptions,

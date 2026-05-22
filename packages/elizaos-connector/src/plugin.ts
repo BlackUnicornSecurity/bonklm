@@ -18,6 +18,7 @@
  * @package @blackunicorn/bonklm-elizaos
  */
 import { createLogger } from '@blackunicorn/bonklm';
+import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
   BonklmPluginOptions,
   IAgentRuntimeLike,
@@ -47,6 +48,18 @@ export function bonklmPlugin(options: BonklmPluginOptions = {}): PluginLike {
     priority: BONKLM_PLUGIN_PRIORITY,
     async init(context: PluginLoadContext): Promise<void> {
       const runtime: IAgentRuntimeLike = context.runtime;
+
+      // Audit-loop BLOCK #12: `acknowledgeClass4Risk` is a Phase-2
+      // option (HTTP startup probe + acknowledgement path). Phase-1
+      // does not implement the probe; a user setting this to `true`
+      // would have a false sense of coverage. Throw to force a revisit
+      // when Phase-2 ships rather than silently accept the flag.
+      if (options.acknowledgeClass4Risk === true) {
+        throw new ConnectorValidationError(
+          '`acknowledgeClass4Risk: true` is not yet active. Phase-2 (Story 2.4a, v0.5.0) ships the HTTP startup probe + acknowledgement path. Remove this option until then.',
+          'configuration_error'
+        );
+      }
 
       // Construct B — seal wrapMemory before anything else can touch it.
       installSealedWrapMemory(runtime, options);
