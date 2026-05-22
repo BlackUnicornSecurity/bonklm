@@ -1,0 +1,72 @@
+{
+  "name": "@blackunicorn/bonklm-elizaos",
+  "version": "0.3.0",
+  "description": "ElizaOS connector for BonkLM — web3 agent guardrails (wrapMemory, ToolCallArgsValidator integration, doctor CLI)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "bonklm-doctor": "./dist/bin/doctor.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./doctor": {
+      "types": "./dist/doctor.d.ts",
+      "import": "./dist/doctor.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint src",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "elizaos",
+    "web3",
+    "wallet",
+    "llm",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "validation",
+    "agent"
+  ],
+  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "license": "MIT",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "peerDependencies": {
+    "@elizaos/core": ">=1.7.0 <3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@elizaos/core": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@vitest/coverage-v8": "^4.1.7",
+    "typescript": "^5.3.0",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.7"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}
