@@ -24,6 +24,7 @@ import {
   type Logger,
   Severity,
 } from '@blackunicorn/bonklm';
+import { applyRetrievedDocValidatorToMatches } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
   GuardedQdrantOptions,
   GuardedQdrantResult,
@@ -448,28 +449,21 @@ export function createGuardedClient(
     }
 
     // Story 1.2 — batch validator path. Replaces per-point loop when set.
+    // Cumulative-audit extraction: identical pattern now in
+    // `applyRetrievedDocValidatorToMatches`.
     if (retrievedDocValidator) {
-      // Audit-loop fix: position-stable synthetic ids (see pinecone for
-      // the rationale: defeats attacker-controlled payload from spoofing
-      // another point's id within the same batch).
-      const docs = points.map((p, i) => ({
-        id: `__pos_${i}`,
-        content: [
-          p.payload ? JSON.stringify(p.payload) : '',
-          p.id !== null && p.id !== undefined ? String(p.id) : '',
-        ].filter(Boolean).join(' '),
-        metadata: p.payload as Record<string, unknown> | undefined,
-      }));
-      const batch = await retrievedDocValidator.validateBatch(docs);
-      if (batch.result.blocked) {
-        throw new ConnectorValidationError(
-          productionMode ? 'Point batch blocked' : `Point batch blocked: ${batch.result.reason}`,
-          'validation_failed',
-        );
-      }
-      const survivorPositions = new Set(batch.docs.map((d) => d.id));
-      const valid = points.filter((_p, i) => survivorPositions.has(`__pos_${i}`));
-      return { valid, blocked: batch.filteredCount };
+      return applyRetrievedDocValidatorToMatches(
+        points,
+        retrievedDocValidator,
+        (p) => ({
+          content: [
+            p.payload ? JSON.stringify(p.payload) : '',
+            p.id !== null && p.id !== undefined ? String(p.id) : '',
+          ].filter(Boolean).join(' '),
+          metadata: p.payload as Record<string, unknown> | undefined,
+        }),
+        { productionMode, itemNoun: 'Point' }
+      );
     }
 
     const valid: QdrantPoint[] = [];

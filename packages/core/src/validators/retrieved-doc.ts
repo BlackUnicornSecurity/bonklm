@@ -46,6 +46,7 @@ import {
   maxSeverity,
   riskFromScore,
   runValidatorChain,
+  VALIDATOR_ERROR_CATEGORIES,
 } from './validator-utils.js';
 export type { RedactingValidator } from './validator-utils.js';
 
@@ -190,7 +191,7 @@ export function createRetrievedDocValidator(
       const leafResult = await runValidatorChain(
         config.validators,
         doc.content,
-        'retrieved_doc_validator_error'
+        VALIDATOR_ERROR_CATEGORIES.retrievedDoc
       );
       subResults.push({ key, result: leafResult });
       allFindings.push(...leafResult.findings);

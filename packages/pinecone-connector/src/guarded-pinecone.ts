@@ -23,6 +23,7 @@ import {
   Severity,
 } from '@blackunicorn/bonklm';
 import {
+  applyRetrievedDocValidatorToMatches,
   ConnectorValidationError,
   logTimeout,
   logValidationFailure,
@@ -246,31 +247,23 @@ export function createGuardedIndex(
     }
 
     // Story 1.2 — batch validator path. When set, replaces per-vector loop.
+    // Cumulative-audit extraction: position-stable synthetic-id pattern
+    // now lives in `applyRetrievedDocValidatorToMatches`. The defence
+    // against attacker-influenced metadata spoofing another match's
+    // synthetic id is preserved by the helper.
     if (retrievedDocValidator) {
-      // Audit-loop fix: position-stable synthetic ids. The doc id is the
-      // ARRAY INDEX, not a derived string. This defeats attacker-influenced
-      // metadata from spoofing another match's synthetic id (e.g. metadata
-      // containing the literal string `match[3]`) — the validator returns
-      // surviving docs keyed by these synthetic ids; the original-array
-      // re-projection uses the same position key so collisions are impossible.
-      const docs = matches.map((m, i) => ({
-        id: `__pos_${i}`,
-        content: [
-          m.metadata ? JSON.stringify(m.metadata) : '',
-          m.id ?? '',
-        ].filter(Boolean).join(' '),
-        metadata: m.metadata,
-      }));
-      const batch = await retrievedDocValidator.validateBatch(docs);
-      if (batch.result.blocked) {
-        throw new ConnectorValidationError(
-          productionMode ? 'Vector batch blocked' : `Vector batch blocked: ${batch.result.reason}`,
-          'validation_failed',
-        );
-      }
-      const survivorPositions = new Set(batch.docs.map((d) => d.id));
-      const valid = matches.filter((_m, i) => survivorPositions.has(`__pos_${i}`));
-      return { valid, blocked: batch.filteredCount };
+      return applyRetrievedDocValidatorToMatches(
+        matches as Array<{ id?: string; metadata?: unknown }>,
+        retrievedDocValidator,
+        (m) => ({
+          content: [
+            m.metadata ? JSON.stringify(m.metadata) : '',
+            m.id ?? '',
+          ].filter(Boolean).join(' '),
+          metadata: m.metadata as Record<string, unknown> | undefined,
+        }),
+        { productionMode, itemNoun: 'Vector' }
+      );
     }
 
     const valid: any[] = [];

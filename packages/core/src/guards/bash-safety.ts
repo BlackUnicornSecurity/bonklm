@@ -452,6 +452,13 @@ export class BashSafetyGuard {
 
     const findings: BashFinding[] = [];
 
+    // Cumulative-audit fix: strip ASCII control chars + DEL from any
+    // raw-command slice that flows into a Finding.match field —
+    // attacker-supplied shell content can carry ANSI escapes, newlines,
+    // or carriage returns that hijack downstream log lines. Same
+    // approach as the doc-id sanitisation in retrieved-doc.ts.
+    const sanitiseShell = (s: string): string => s.replace(/[\x00-\x1f\x7f]/g, '');
+
     // Check for command substitution
     if (this.config.detectCommandSubstitution) {
       const substitutions = detectCommandSubstitution(command);
@@ -461,11 +468,11 @@ export class BashSafetyGuard {
             category: 'command_substitution',
             pattern: sub.type,
             severity: Sev.WARNING,
-            match: sub.match.slice(0, 50),
+            match: sanitiseShell(sub.match.slice(0, 50)),
             description: `Command substitution detected: ${sub.type}`,
           });
         }
-        this.logger.warn(`Command substitution detected in: ${command.slice(0, 100)}`);
+        this.logger.warn(`Command substitution detected in: ${sanitiseShell(command.slice(0, 100))}`);
       }
     }
 
@@ -477,7 +484,7 @@ export class BashSafetyGuard {
           category: 'sql_injection',
           pattern: sqliResult.testId ?? sqliResult.subtype ?? 'unknown',
           severity: sqliResult.severity === 'CRITICAL' ? Sev.CRITICAL : Sev.WARNING,
-          match: command.slice(0, 100),
+          match: sanitiseShell(command.slice(0, 100)),
           description: `SQL injection detected: ${sqliResult.subtype ?? sqliResult.testId}`,
         });
       }
@@ -490,7 +497,7 @@ export class BashSafetyGuard {
         category: 'dangerous_rm',
         pattern: rmCheck.isAbsolute ? 'absolute_block' : 'strict_block',
         severity: Sev.CRITICAL,
-        match: command.slice(0, 100),
+        match: sanitiseShell(command.slice(0, 100)),
         description: rmCheck.message,
       });
     }
@@ -502,7 +509,7 @@ export class BashSafetyGuard {
         category: 'directory_escape',
         pattern: 'escape_attempt',
         severity: Sev.CRITICAL,
-        match: command.slice(0, 100),
+        match: sanitiseShell(command.slice(0, 100)),
         description: escapeCheck.message,
       });
     }
@@ -514,7 +521,7 @@ export class BashSafetyGuard {
         category: 'dangerous_pattern',
         pattern: 'dangerous',
         severity: Sev.CRITICAL,
-        match: command.slice(0, 100),
+        match: sanitiseShell(command.slice(0, 100)),
         description: patternCheck.message,
       });
     }

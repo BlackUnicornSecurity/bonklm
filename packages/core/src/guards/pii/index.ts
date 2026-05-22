@@ -14,6 +14,7 @@
 
 import { createResult, Severity as Sev } from '../../base/GuardrailResult.js';
 import { mergeConfig, type ValidatorConfig } from '../../base/ValidatorConfig.js';
+import { normalizeText } from '../../validators/text-normalizer.js';
 import {
   ALL_PATTERNS,
   FAKE_DATA_INDICATORS,
@@ -132,9 +133,19 @@ export function isFakeData(content: string, line: string): boolean {
 
 /**
  * Detect PII in content.
+ *
+ * Cumulative-audit fix (closes Story 1.2-class homoglyph bypass for PII):
+ * normalises the input via `normalizeText` BEFORE pattern matching so
+ * homoglyph-mangled SSN / email / etc. (e.g. Cyrillic confusables,
+ * combining marks, fullwidth chars) get caught the same way the
+ * normalised form does. Mirrors `SecretGuard.detect`'s normalisation
+ * (see `guards/secret.ts:148`).
  */
 export function detectPii(content: string): PiiDetection[] {
   const detections: PiiDetection[] = [];
+  // Normalise before splitting so line indices map to the normalised form
+  // (consistent with the matchText that detection reports).
+  content = normalizeText(content);
   const lines = content.split('\n');
 
   for (const piiPattern of ALL_PATTERNS) {
@@ -310,13 +321,23 @@ export class PIIGuard {
    * inside a `redact`-mode flow even if `detect()` wouldn't surface it
    * outside a sensitive context.
    *
+   * **Normalisation parity** (cumulative-audit BLOCK fix): `detect()`
+   * applies `normalizeText` so homoglyph-mangled PII is caught. This
+   * method MUST apply the same normalisation OR the homoglyph-mangled
+   * PII would pass detect (which routed into redact mode) but slip
+   * through this raw-string scan — same bug class as the Story 1.2
+   * SecretGuard fix. Returning the normalised + redacted form is the
+   * correct behaviour for RAG content reaching an LLM (the LLM sees
+   * the same normalised characters anyway).
+   *
    * @param content     - Original content to redact.
    * @param replacement - Substitution string. @default '[REDACTED]'
-   * @returns The content with each PII match replaced.
+   * @returns The content with each PII match replaced (and the text
+   *   normalised — see note above).
    */
   redactContent(content: string, replacement: string = '[REDACTED]'): string {
     if (!content) return content;
-    let out = content;
+    let out = normalizeText(content);
     const replacer = (): string => replacement;
     for (const piiPattern of ALL_PATTERNS) {
       piiPattern.regex.lastIndex = 0;

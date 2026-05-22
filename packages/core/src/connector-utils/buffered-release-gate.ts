@@ -7,6 +7,16 @@
  * in Story 1.1b; AudioStreamValidator in Story 3.1) pair with their own
  * validate-before-release policy.
  *
+ * **Text-only by design** (cumulative-audit note for Story 3.1 reuse):
+ * `push(chunk: string)` accepts UTF-16 JS strings; `minCharsBeforeRelease`
+ * counts CHARACTERS, not bytes; sentence-boundary detection assumes
+ * ASCII terminators (`.`, `!`, `?`). Story 3.1's audio stream validator
+ * will need EITHER a sibling `BufferedReleaseGateBinary` over raw PCM
+ * frames OR a generic-typed `push<T>` overload — the current API
+ * cannot ingest binary audio frames without first stringifying them
+ * (which defeats the purpose of frame-aligned buffering). Track the
+ * generalization as a Story 3.1 pre-blocker.
+ *
  * Release conditions, in priority order:
  *   1. `minCharsBeforeRelease === 0` — releases on every push.
  *   2. `pendingSize >= minCharsBeforeRelease` (when finite) — buffer cap hit.

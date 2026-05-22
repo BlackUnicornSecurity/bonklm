@@ -23,6 +23,7 @@ import {
   type Logger,
   Severity,
 } from '@blackunicorn/bonklm';
+import { applyRetrievedDocValidatorToMatches } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
   GuardedWeaviateOptions,
   GuardedWeaviateResult,
@@ -340,23 +341,20 @@ export function createGuardedClient(
     }
 
     // Story 1.2 — batch validator path. Replaces per-object loop when set.
+    // Cumulative-audit extraction: identical pattern now in
+    // `applyRetrievedDocValidatorToMatches`. Note this connector
+    // previously threw bare `Error`; the shared helper throws
+    // `ConnectorValidationError` for cross-connector consistency.
     if (retrievedDocValidator) {
-      // Audit-loop fix: position-stable synthetic ids defeat attacker-
-      // influenced metadata from spoofing another object's id key.
-      const docs = objects.map((o, i) => ({
-        id: `__pos_${i}`,
-        content: JSON.stringify(o),
-        metadata: o,
-      }));
-      const batch = await retrievedDocValidator.validateBatch(docs);
-      if (batch.result.blocked) {
-        throw new Error(
-          productionMode ? 'Object batch blocked' : `Object batch blocked: ${batch.result.reason}`
-        );
-      }
-      const survivorPositions = new Set(batch.docs.map((d) => d.id));
-      const valid = objects.filter((_o, i) => survivorPositions.has(`__pos_${i}`));
-      return { valid, blocked: batch.filteredCount };
+      return applyRetrievedDocValidatorToMatches(
+        objects,
+        retrievedDocValidator,
+        (o) => ({
+          content: JSON.stringify(o),
+          metadata: o as Record<string, unknown> | undefined,
+        }),
+        { productionMode, itemNoun: 'Object' }
+      );
     }
 
     const valid: any[] = [];

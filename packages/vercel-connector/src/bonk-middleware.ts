@@ -209,10 +209,18 @@ export function bonkMiddleware(
       const result = await doStream();
       const upstream = result.stream;
 
-      // Phase-1 stream validation: accumulate text-delta + text chunks,
-      // validate at stream end. Phase-2+ will add per-event handling
-      // for the full 20 v5/v6 event types (tool-input-delta,
-      // reasoning-delta, source, finish, etc.) per AC.
+      // Cumulative-audit BLOCK fix: accumulate text from EVERY
+      // event-type that carries free-form text — not just `text-delta`
+      // / `text`. v5/v6 emits `reasoning-delta` (chain-of-thought the
+      // client may render), `source` (titles/URLs from RAG retrievals),
+      // and `tool-input-delta` (streamed tool args). All can carry
+      // attacker-influenced strings to the client unscanned if missed.
+      //
+      // The validator runs over the merged accumulator at stream end.
+      // Per-event semantics (e.g. blocking `tool-input-delta` BEFORE
+      // it reaches the client mid-stream) remain Phase-2+ scope; this
+      // fix closes the unvalidated-text bypass without changing the
+      // tail-validation policy.
       async function* guardedStream(): AsyncGenerator<{
         type: string;
         textDelta?: string;
@@ -221,10 +229,32 @@ export function bonkMiddleware(
         let accumulated = '';
         try {
           for await (const part of upstream) {
-            if (part.type === 'text-delta' && typeof part.textDelta === 'string') {
-              accumulated += part.textDelta;
-            } else if (part.type === 'text' && typeof part.textDelta === 'string') {
-              accumulated += part.textDelta;
+            const td = (part as { textDelta?: unknown }).textDelta;
+            if (typeof td === 'string' && td.length > 0) {
+              // Covers: text-delta, text, reasoning-delta,
+              // tool-input-delta, source (when it carries textDelta).
+              accumulated += td;
+            } else if (part.type === 'source') {
+              // `source` events may carry `.url` / `.title` strings
+              // (RAG-style citations). Concatenate any string fields
+              // defensively so injected URLs / titles are scanned.
+              const src = part as { url?: unknown; title?: unknown };
+              if (typeof src.url === 'string' && src.url.length > 0) accumulated += `${src.url}\n`;
+              if (typeof src.title === 'string' && src.title.length > 0) accumulated += `${src.title}\n`;
+            } else if (part.type === 'tool-call') {
+              // Static (non-streamed) tool calls land in a single
+              // event with a `.toolName` + `.args` blob. Accumulate
+              // the JSON form so the validator sees the full args
+              // even if no `tool-input-delta` preceded.
+              const tc = part as { toolName?: unknown; args?: unknown };
+              if (typeof tc.toolName === 'string') accumulated += `${tc.toolName} `;
+              if (tc.args !== undefined) {
+                try {
+                  accumulated += `${JSON.stringify(tc.args)}\n`;
+                } catch {
+                  /* circular / non-serialisable args — skip */
+                }
+              }
             }
             yield part;
           }
