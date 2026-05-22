@@ -34,6 +34,16 @@ import {
   type ProbeOutcome,
   type ProbeOptions,
 } from './probe.js';
+import { buildEolFindingV04 } from './shadow-log-integration.js';
+
+/**
+ * Story 2.4a Phase-2: regex matching installed
+ * `@blackunicorn/bonklm-elizaos@0.4.x` versions. When the doctor's
+ * plugin-list audit encounters a plugin whose `name` matches AND whose
+ * `version` (if present) matches `0.4.x`, emits a HIGH EOL finding.
+ */
+const BONKLM_ELIZAOS_PACKAGE_NAME = '@blackunicorn/bonklm-elizaos';
+const V04_VERSION_PATTERN = /^0\.4\.[0-9]+(-.*)?$/;
 
 /**
  * Audit-loop HIGH fix #5 (adversarial): expanded credential-prefix
@@ -176,16 +186,44 @@ export function buildReport(findings: DoctorFinding[]): DoctorReport {
 }
 
 /**
+ * Story 2.4a Phase-2 EOL finding helper. Audits the consumer-supplied
+ * `installedVersions` record (`{ '@blackunicorn/bonklm-elizaos': '0.4.1' }`)
+ * for known-EOL versions and returns matching findings.
+ *
+ * Consumers pass this from their npm/pnpm-lock parse pipeline.
+ */
+export function auditInstalledVersions(
+  installedVersions: Record<string, string> | undefined
+): DoctorFinding[] {
+  const findings: DoctorFinding[] = [];
+  if (installedVersions === undefined) return findings;
+  const bonklmElizaosVersion = installedVersions[BONKLM_ELIZAOS_PACKAGE_NAME];
+  if (
+    typeof bonklmElizaosVersion === 'string' &&
+    V04_VERSION_PATTERN.test(bonklmElizaosVersion)
+  ) {
+    findings.push(buildEolFindingV04(bonklmElizaosVersion));
+  }
+  return findings;
+}
+
+/**
  * Combined doctor pass over a character + plugin list.
+ *
+ * Story 2.4a Phase-2: accepts an optional `installedVersions` record
+ * for the EOL audit. Consumers parse their lockfile and pass the
+ * record; doctor adds HIGH findings for known-EOL versions.
  */
 export function runDoctor(input: {
   character?: Record<string, unknown> | null;
   characterFilePath?: string;
   plugins?: ReadonlyArray<PluginLike>;
+  installedVersions?: Record<string, string>;
 }): DoctorReport {
   const characterFindings = auditCharacterFile(input.character, input.characterFilePath);
   const pluginFindings = auditPlugins(input.plugins ?? []);
-  return buildReport([...characterFindings, ...pluginFindings]);
+  const versionFindings = auditInstalledVersions(input.installedVersions);
+  return buildReport([...characterFindings, ...pluginFindings, ...versionFindings]);
 }
 
 /**
