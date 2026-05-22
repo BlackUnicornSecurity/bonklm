@@ -38,6 +38,15 @@
     "./testing": {
       "import": "./dist/testing/index.js",
       "types": "./dist/testing/index.d.ts"
+    },
+    "./edge": {
+      "workerd": "./dist/edge/index.js",
+      "edge-light": "./dist/edge/index.js",
+      "deno": "./dist/edge/index.js",
+      "bun": "./dist/edge/index.js",
+      "import": "./dist/edge/index.js",
+      "types": "./dist/edge/index.d.ts",
+      "default": "./dist/edge/index.js"
     }
   },
   "files": [

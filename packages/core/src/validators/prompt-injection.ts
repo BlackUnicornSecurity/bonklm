@@ -16,6 +16,10 @@ import type { PromptInjectionConfig, ValidatorConfig } from '../base/ValidatorCo
 import { createLogger, type Logger } from '../base/GenericLogger.js';
 import { detectHiddenUnicode, normalizeText, type UnicodeFinding } from './text-normalizer.js';
 import { detectPatterns, type PatternFinding } from './pattern-engine.js';
+// Story 2.1: edge-portable codecs replace `Buffer.from(..., 'base64'|'hex')`
+// so the prompt-injection scanner runs identically on Node, Workerd,
+// Deno, and Bun via the `@blackunicorn/bonklm/edge` subpath.
+import { base64DecodeToUtf8, hexDecodeToUtf8 } from '../common/edge-codec.js';
 
 const DEFAULT_CONFIG: Required<Pick<PromptInjectionConfig, 'detectMultiLayerEncoding' | 'detectBase64Payloads' | 'detectHtmlComments' | 'maxDecodeDepth'>> = {
   detectMultiLayerEncoding: true,
@@ -200,16 +204,9 @@ function iterativeDecode(
  */
 function attemptDecode(content: string): { method: string; result: string } | null {
   if (/^[A-Za-z0-9+/]+=*$/.test(content)) {
-    try {
-      const decoded = Buffer.from(content, 'base64').toString('utf-8');
-      if (decoded !== content && decoded.length > 0) {
-        return { method: 'base64', result: decoded };
-      }
-    } catch {
-      // Base64 decode failure during pattern detection is expected for
-      // many non-base64 substrings. Swallow silently — we already iterate
-      // through every potential encoding and rely on type-of-match, not
-      // exception flow.
+    const decoded = base64DecodeToUtf8(content);
+    if (decoded !== content && decoded.length > 0) {
+      return { method: 'base64', result: decoded };
     }
   }
 
@@ -225,16 +222,12 @@ function attemptDecode(content: string): { method: string; result: string } | nu
   }
 
   if (/^(?:0x)?[0-9A-Fa-f]+$/.test(content)) {
-    try {
-      const hexContent = content.replace(/^0x/, '');
-      if (hexContent.length % 2 === 0) {
-        const decoded = Buffer.from(hexContent, 'hex').toString('utf-8');
-        if (decoded !== content && decoded.length > 0) {
-          return { method: 'hex', result: decoded };
-        }
+    const hexContent = content.replace(/^0x/, '');
+    if (hexContent.length % 2 === 0) {
+      const decoded = hexDecodeToUtf8(hexContent);
+      if (decoded !== content && decoded.length > 0) {
+        return { method: 'hex', result: decoded };
       }
-    } catch {
-      // Not valid hex
     }
   }
 
@@ -287,7 +280,8 @@ function detectBase64Payloads(text: string): Base64Finding[] {
     const potentialBase64 = match[0];
 
     try {
-      const decoded = Buffer.from(potentialBase64, 'base64').toString('utf-8');
+      const decoded = base64DecodeToUtf8(potentialBase64);
+      if (decoded.length === 0) continue;
       const printableRatio = (decoded.match(/[\x20-\x7e\n\r\t]/g) || []).length / decoded.length;
       if (printableRatio < 0.85) {
         continue;
