@@ -120,3 +120,25 @@ export {
   assertAsyncLocalStorageHealthy,
   AsyncLocalStorageCanaryError,
 } from './edge/als-canary.js';
+
+// Story 1.3b — shadow log primitive. Edge-portable (uses Web Crypto
+// for sha256). Default in-memory adapter ships in core; production
+// adapters (Drizzle/PGlite for ElizaOS, Cloudflare DO for Story 3.8)
+// live in their respective connector packages.
+export {
+  createShadowLog,
+  createInMemoryShadowLogStorage,
+  computeContentHash,
+  computeChainLinkHash,
+} from './shadow-log/index.js';
+export type {
+  CreateShadowLogOptions,
+  EvictionPolicy,
+  ReadByRoomOptions,
+  ShadowLog,
+  ShadowLogAppendInput,
+  ShadowLogEntry,
+  ShadowLogSourceTrust,
+  ShadowLogStorageAdapter,
+  VerifyChainResult,
+} from './shadow-log/index.js';
