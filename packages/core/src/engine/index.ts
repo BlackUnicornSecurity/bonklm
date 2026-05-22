@@ -5,3 +5,14 @@
  */
 
 export * from './GuardrailEngine.js';
+export {
+  cachedValidate,
+  createSaltedKeyFn,
+  defaultKeyFn,
+  canonicalJSONStringify,
+  InMemoryLRUCache,
+  type CachedValidatorResult,
+  type InMemoryLRUCacheOptions,
+  type KeyFn,
+  type ValidatorCache,
+} from './cached-validator.js';

@@ -83,6 +83,17 @@ const DEFAULT_CIRCUIT_BREAKER_THRESHOLD = 3;
  * ```
  */
 export class GuardrailEngine {
+  /**
+   * Story 2.7 — engine instance identifier. Random-per-construction so
+   * two engines in the same process produce distinct IDs. Consumed by
+   * `cached-validator.ts#createSaltedKeyFn(engine.getInstanceId())` to
+   * prevent cross-instance cache poisoning when multiple engines share
+   * one cache backend (Redis behind Inngest steps, Trigger.dev locals).
+   *
+   * Format: 16-byte random hex (32 chars). Sufficient entropy to make
+   * collision probability negligible (10^-9 at ~10^11 engines in process).
+   */
+  private readonly instanceId: string;
   private readonly validators: Validator[];
   private readonly guards: Guard[];
   private readonly shortCircuit: boolean;
@@ -104,6 +115,12 @@ export class GuardrailEngine {
   private readonly circuitBreaker: CircuitBreaker;
 
   constructor(config: GuardrailEngineConfig = {}) {
+    // Story 2.7 — assign per-engine instance ID first so any throw
+    // during construction still leaves the instance with a stable
+    // identifier (defensive — useful for log correlation if we add
+    // pre-throw diagnostic emits later).
+    this.instanceId = generateEngineInstanceId();
+
     // Defensive copy (per Story 0.1 corrections PR 3 adversarial finding H1):
     // store a copy of the input arrays so external mutation of the caller's
     // array cannot silently drain the engine's protective layer after
@@ -189,6 +206,19 @@ export class GuardrailEngine {
       overrideTokenEnabled: !!(this.overrideToken || this.overrideTokenValidator),
       overrideTokenType: this.overrideToken ? 'legacy' : this.overrideTokenValidator ? 'cryptographic' : 'none',
     });
+  }
+
+  /**
+   * Story 2.7 — engine instance identifier accessor. Stable across the
+   * engine's lifetime; distinct across engines in the same process.
+   * Pass to `createSaltedKeyFn(engine.getInstanceId())` so cached
+   * validator decisions don't cross-pollinate between engines that
+   * share a cache backend.
+   *
+   * Returns: 32-char lowercase hex string (16 random bytes).
+   */
+  getInstanceId(): string {
+    return this.instanceId;
   }
 
   /**
@@ -741,4 +771,22 @@ export async function validateWithEngine(
 ): Promise<EngineResult> {
   const engine = new GuardrailEngine(config);
   return engine.validate(content);
+}
+
+/**
+ * Story 2.7 — generate a per-engine random instance ID. Uses Web Crypto
+ * `getRandomValues` so it works across every BonkLM-supported runtime
+ * (Node 19+, Workerd, Deno, Bun, Vercel Edge) without `node:crypto`.
+ * 16 random bytes → 32-char lowercase hex.
+ *
+ * Module-private — kept out of the public surface so consumers go
+ * through `engine.getInstanceId()` for the value (single source of
+ * truth) and the salting helper lives in `cached-validator.ts`.
+ */
+function generateEngineInstanceId(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  let hex = '';
+  for (const b of bytes) hex += b.toString(16).padStart(2, '0');
+  return hex;
 }
