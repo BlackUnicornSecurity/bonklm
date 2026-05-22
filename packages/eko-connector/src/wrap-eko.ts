@@ -34,6 +34,10 @@
 import type { GuardrailEngine } from '@blackunicorn/bonklm';
 import {
   BrowserAgentGuardrailBlockedError,
+  assertNonCuaMode,
+  emitWarning,
+  isUnsafeBinaryResult,
+  normaliseActArg,
   withBrowserAgentGuardrails,
   type BrowserAgentValidateResult,
 } from '@blackunicorn/bonklm-browser-agents-core';
@@ -63,17 +67,12 @@ export class EkoGuardrailBlockedError extends BrowserAgentGuardrailBlockedError 
   }
 }
 
-/**
- * CUA-mode detection (same regex as wrapStagehand for parity).
- */
-const CUA_MODE_PATTERN = /^(cua|computer[-_]?use)$/i;
-
+// CUA detection hoisted to `@blackunicorn/bonklm-browser-agents-core`
+// (sprint-13 cumulative-audit arch X4 + sec CS2 closure). Single
+// source of truth for the synonym regex + mode-field walk.
 // Note: Story 2.4 audit-rev-B4 removed an unused ALREADY_VALIDATED_SENTINEL
-// here. The original intent (skip re-validation when the planner re-enters
-// a guarded path) is not exercised — `wrapEko` REPLACES methods in place
-// so re-entry would be a programming error, not a planner re-entry that
-// needs short-circuiting. If a real re-entry scenario surfaces, re-add
-// the sentinel with an exported setter helper + a documented trust contract.
+// here — wrapEko replaces methods in place so re-entry is a
+// programming error, not a planner path that needs short-circuiting.
 
 /**
  * Wrap an Eko v4 client. Returns the same instance with `run` +
@@ -108,19 +107,12 @@ export function wrapEko<T extends EkoLike>(
 
   const { allowCuaMode = false, logger, ekoConfig, skipAgents = [] } = options;
 
-  // Fail-closed CUA preflight (sec parity with wrapStagehand).
-  const detectedMode = detectEkoMode(client, ekoConfig);
-  if (
-    detectedMode !== undefined &&
-    CUA_MODE_PATTERN.test(detectedMode) &&
-    allowCuaMode !== true
-  ) {
-    throw new Error(
-      'wrapEko: Eko CUA / computer-use mode is refused by default. ' +
-        'Screenshots are NOT inspected by BonkLM validators. Pass ' +
-        '`allowCuaMode: true` to explicitly accept the bypass risk.'
-    );
-  }
+  // Fail-closed CUA preflight via shared helper (single source of
+  // truth in browser-agents-core/shared-helpers.ts).
+  assertNonCuaMode('wrapEko', client as object, {
+    allowCuaMode,
+    configOverride: ekoConfig,
+  });
 
   const guarded = withBrowserAgentGuardrails(client as object, {
     engine,
@@ -178,15 +170,11 @@ export function wrapEko<T extends EkoLike>(
     // sec B4 closure: warn if skipAgents covers ALL discovered
     // agents — silent total bypass.
     if (allNames.length > 0 && allNames.every((n) => skipSet.has(n))) {
-      const msg =
+      emitWarning(
+        logger,
         '[bonklm-eko] skipAgents covers ALL registered agents — sub-action ' +
-        'guardrails are entirely disabled. Only the eko.run boundary is gated.';
-      if (logger !== undefined) {
-        logger.warn(msg);
-      } else {
-        // eslint-disable-next-line no-console
-        console.warn(msg);
-      }
+          'guardrails are entirely disabled. Only the eko.run boundary is gated.'
+      );
     }
 
     for (const [name, raw] of Object.entries(client.agents)) {
@@ -487,7 +475,7 @@ function wrapMcpInPlace(
     // iterator and BLOCK with a clear reason rather than feeding a
     // lossy JSON.stringify into a content validator. Consumers who
     // need binary-validation in v0.5+ can wire a dedicated adapter.
-    if (isUnsafeMcpResult(result)) {
+    if (isUnsafeBinaryResult(result)) {
       throw new EkoGuardrailBlockedError(
         `mcp.tool:${server}/${tool}/result`,
         'retrieved_doc',
@@ -515,69 +503,6 @@ function wrapMcpInPlace(
   };
 }
 
-/**
- * Detect MCP result shapes that can't be meaningfully text-validated.
- * Returns true for Buffer / Uint8Array / ArrayBuffer / async-iterable
- * results. Plain objects + strings pass through.
- */
-function isUnsafeMcpResult(result: unknown): boolean {
-  if (result === null || result === undefined) return false;
-  if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') {
-    return false;
-  }
-  // Node Buffer (subclass of Uint8Array, also has .type field).
-  if (
-    typeof globalThis.Buffer !== 'undefined' &&
-    globalThis.Buffer.isBuffer(result as { length: number })
-  ) {
-    return true;
-  }
-  // Generic typed arrays (Uint8Array, etc).
-  if (result instanceof Uint8Array) return true;
-  if (result instanceof ArrayBuffer) return true;
-  // Async iterables / streams (ReadableStream too).
-  if (typeof (result as { [Symbol.asyncIterator]?: unknown })[Symbol.asyncIterator] === 'function') {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Detect Eko mode from explicit options + client-state fields.
- *
- * Audit closure B2-rev: `modelName` is NOT a mode field. Reading
- * `modelName` here produced false-positive CUA refusals when the
- * model name happened to match the CUA synonym regex (`'cua-pro'`,
- * `'computer-use-v1'`). Stick to fields that semantically describe
- * the execution mode: `ekoConfig.mode`, `client.config.mode`,
- * `client.mode`.
- */
-function detectEkoMode(
-  client: EkoLike,
-  ekoConfig: WrapEkoOptions['ekoConfig']
-): string | undefined {
-  if (ekoConfig !== undefined && typeof ekoConfig.mode === 'string') {
-    return ekoConfig.mode;
-  }
-  const c = client as unknown as {
-    config?: { mode?: unknown };
-    mode?: unknown;
-  };
-  if (c.config !== undefined && typeof c.config.mode === 'string') return c.config.mode;
-  if (typeof c.mode === 'string') return c.mode;
-  return undefined;
-}
-
-/**
- * Normalise the polymorphic `act` argument shape (same helper as
- * the Stagehand wrapper).
- */
-function normaliseActArg(
-  action: string | { action: string; [k: string]: unknown }
-): { actionString: string; args?: Record<string, unknown> } {
-  if (typeof action === 'string') {
-    return { actionString: action };
-  }
-  const { action: actionString, ...rest } = action;
-  return { actionString, args: rest };
-}
+// (isUnsafeMcpResult, detectEkoMode, normaliseActArg removed — all
+// hoisted to `@blackunicorn/bonklm-browser-agents-core`. See
+// `shared-helpers.ts` for the single source of truth.)

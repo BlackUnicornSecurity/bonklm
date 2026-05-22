@@ -133,10 +133,17 @@ export class BrowserAgentGuardrailBlockedError extends Error {
     // Sanitize reason: strip non-printable / control chars + cap at
     // 200 chars (sec-audit T6 closure — `reason` may echo
     // attacker-controlled content into logs / error-tracking).
-    const safeReason =
-      typeof reason === 'string'
-        ? reason.replace(/[^\x20-\x7E]/g, '').slice(0, 200)
-        : undefined;
+    // Inline copy (sanitizeReasonText lives in shared-helpers but
+    // types.ts must stay import-cycle-free as the bottom of the
+    // module graph).
+    const safeReason: string | undefined =
+      typeof reason !== 'string' || reason.length === 0
+        ? undefined
+        : (() => {
+            // eslint-disable-next-line no-control-regex
+            const stripped = reason.replace(/[^\x20-\x7E]/g, '').slice(0, 200);
+            return stripped.length > 0 ? stripped : undefined;
+          })();
     super(
       `bonklm-${connector}: ${action} blocked by ${surface} validator${
         safeReason !== undefined && safeReason.length > 0 ? ` — ${safeReason}` : ''
@@ -149,6 +156,20 @@ export class BrowserAgentGuardrailBlockedError extends Error {
     // Defensive: `extends Error` chain can break under some bundler
     // configurations (downlevel ES5 / CJS). Explicit setPrototypeOf
     // restores the chain so `instanceof` works in all targets.
+    //
+    // **Three-level inheritance caveat** (Sprint-13 cumulative-audit
+    // rev HIGH-2): `new.target` inside this base constructor refers
+    // to the CONCRETE subclass being instantiated (`StagehandGuardrailBlockedError`,
+    // `EkoGuardrailBlockedError`, OR any consumer-defined further
+    // subclass). The setPrototypeOf below correctly anchors to the
+    // concrete prototype. Subclasses MUST NOT repeat the call
+    // BEFORE `super(...)` — that would clobber back to the
+    // intermediate prototype and break `instanceof` checks for the
+    // grandchild. The per-connector subclasses today DO call
+    // `Object.setPrototypeOf(this, new.target.prototype)` after
+    // `super(...)` which is a no-op (new.target is the same), kept
+    // only for explicitness. Do NOT add a third level without
+    // removing the subclass-level call.
     Object.setPrototypeOf(this, new.target.prototype);
   }
 }
