@@ -24,8 +24,16 @@
  *
  * @package @blackunicorn/bonklm-elizaos
  */
+import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 import type { DoctorFinding, DoctorReport, PluginLike } from './types.js';
 import { VERIFIED_PUBLISHER_ALLOWLIST } from './types.js';
+import { detectTypoSquat } from './typo-squat.js';
+import {
+  applyProbeOutcome,
+  runStartupProbe,
+  type ProbeOutcome,
+  type ProbeOptions,
+} from './probe.js';
 
 /**
  * Audit-loop HIGH fix #5 (adversarial): expanded credential-prefix
@@ -111,15 +119,38 @@ export function auditCharacterFile(
 
 /**
  * Run the plugin-list audit. Each loaded plugin's package name is
- * compared against {@link VERIFIED_PUBLISHER_ALLOWLIST}. Phase-1 is
- * exact-match only; the Levenshtein-distance pass (typo-squat
- * defence) lands in Phase-2.
+ * compared against {@link VERIFIED_PUBLISHER_ALLOWLIST}.
+ *
+ * Phase-2 (Story 2.1b-connectors): exact-match check is augmented
+ * with a Levenshtein-distance ≤ 2 typo-squat layer. A plugin name
+ * that is distance ≤ 2 from any allowlist entry (and not exact-match)
+ * produces a CRITICAL `plugin_typo_squat` finding — these are
+ * impersonation attempts that the wrap-memory closure refuses.
+ *
+ * Plugins distant > 2 from every allowlist entry produce the Phase-1
+ * MEDIUM `plugin_not_in_allowlist` finding.
  */
 export function auditPlugins(plugins: ReadonlyArray<PluginLike>): DoctorFinding[] {
   const findings: DoctorFinding[] = [];
   for (const plugin of plugins) {
     if (!plugin.name) continue;
-    if (VERIFIED_PUBLISHER_ALLOWLIST.includes(plugin.name)) continue;
+    const typoCheck = detectTypoSquat(plugin.name, VERIFIED_PUBLISHER_ALLOWLIST);
+    if (typoCheck.exactMatch) continue;
+    if (typoCheck.nearestTypoSquat !== undefined) {
+      // CRITICAL — typo-squat impersonation.
+      findings.push({
+        severity: 'CRITICAL',
+        category: 'plugin_typo_squat',
+        description:
+          `Plugin "${plugin.name}" is distance-${typoCheck.nearestTypoSquat.distance} from ` +
+          `verified publisher "${typoCheck.nearestTypoSquat.target}". This is a likely typo-squat ` +
+          `impersonation — Provider-source 'messages' writes from this plugin will be refused with ` +
+          `CRITICAL diagnostic by the sealed wrapMemory closure.`,
+        pluginName: plugin.name,
+      });
+      continue;
+    }
+    // Unknown-distant plugin — Phase-1 MEDIUM behaviour preserved.
     findings.push({
       severity: 'MEDIUM',
       category: 'plugin_not_in_allowlist',
@@ -155,4 +186,109 @@ export function runDoctor(input: {
   const characterFindings = auditCharacterFile(input.character, input.characterFilePath);
   const pluginFindings = auditPlugins(input.plugins ?? []);
   return buildReport([...characterFindings, ...pluginFindings]);
+}
+
+/**
+ * Translate a probe outcome into doctor findings. Used by both
+ * `bonklm doctor --runtime` (CLI) and library consumers that want to
+ * run the probe outside of `bonklmPlugin.init()`.
+ *
+ * Mapping:
+ * - `unauth_detected_no_ack` → CRITICAL `runtime_unauth_memories`.
+ * - `unauth_detected_acknowledged` → HIGH `runtime_unauth_memories_acknowledged`.
+ * - `unreachable` (probe completed, route protected) → INFO.
+ * - `unreachable` (network failure) → MEDIUM `runtime_probe_unreachable`.
+ * - `skipped` → INFO.
+ */
+export function probeOutcomeToFindings(outcome: ProbeOutcome): DoctorFinding[] {
+  switch (outcome.kind) {
+    case 'unauth_detected_no_ack':
+      return [
+        {
+          severity: 'CRITICAL',
+          category: 'runtime_unauth_memories',
+          description:
+            'ElizaOS runtime exposes /api/agents/{agentId}/memories WITHOUT authentication. ' +
+            'Provider plugins can mutate user-authored memories via this route, defeating BonkLM\'s ' +
+            'sealed wrapMemory defence (Class-4 vulnerability). Secure the route or pass ' +
+            '`acknowledgeClass4Risk: true` to bonklmPlugin(...).',
+        },
+      ];
+    case 'unauth_detected_acknowledged':
+      return [
+        {
+          severity: 'HIGH',
+          category: 'runtime_unauth_memories_acknowledged',
+          description:
+            'Unauthenticated /memories route detected; risk acknowledged via acknowledgeClass4Risk. ' +
+            'Plugin continues but Construct C corroboration excludes unauth-source memories. ' +
+            'Resolve the upstream auth gap to restore full Construct B+C coverage.',
+        },
+      ];
+    case 'unreachable':
+      if (outcome.reason.startsWith('Probe completed')) {
+        return [
+          {
+            severity: 'INFO',
+            category: 'runtime_probe_safe',
+            description: outcome.reason,
+          },
+        ];
+      }
+      return [
+        {
+          severity: 'MEDIUM',
+          category: 'runtime_probe_unreachable',
+          description: outcome.reason,
+        },
+      ];
+    case 'skipped':
+      return [
+        {
+          severity: 'INFO',
+          category: 'runtime_probe_skipped',
+          description: outcome.reason,
+        },
+      ];
+  }
+}
+
+/**
+ * Run the runtime probe + translate to doctor findings.
+ *
+ * `bonklm doctor --runtime` (the CLI mode) invokes this; library
+ * consumers can call it directly to bundle the probe outcome with
+ * the static-audit findings produced by {@link runDoctor}.
+ *
+ * Probe-await semantics (iter-2 architect BLOCK-2) and side-effect
+ * application (iter-2 senior-dev BLOCK-A timeout, AAD-C ALS-clear,
+ * etc.) are honoured by the underlying {@link runStartupProbe} +
+ * {@link applyProbeOutcome} pair. Logging is the caller's choice:
+ * passing `logger` triggers the structured warn/error/info logs that
+ * `bonklmPlugin.init` emits; omitting it produces findings only.
+ */
+export async function runDoctorRuntime(
+  opts: ProbeOptions & { applyLogSideEffects?: boolean }
+): Promise<DoctorReport> {
+  const outcome = await runStartupProbe(opts);
+  if (opts.applyLogSideEffects === true) {
+    try {
+      applyProbeOutcome(outcome, { logger: opts.logger });
+    } catch (err) {
+      // Iter-1 code-reviewer HIGH-2 + security A&D-10: narrow swallow
+      // to ConnectorValidationError ONLY — the doctor's contract is
+      // "report, not halt" for the CRITICAL Class-4 throw, but any
+      // OTHER error (TypeError from malformed outcome, RangeError, etc.)
+      // is a programming error and MUST propagate. The CRITICAL
+      // finding is already in the report (via probeOutcomeToFindings
+      // below) so swallowing the ConnectorValidationError specifically
+      // is safe; programming errors above must surface so future
+      // regressions in applyProbeOutcome are debuggable.
+      if (!(err instanceof ConnectorValidationError)) {
+        throw err;
+      }
+      // Expected throw — fall through to report build.
+    }
+  }
+  return buildReport(probeOutcomeToFindings(outcome));
 }

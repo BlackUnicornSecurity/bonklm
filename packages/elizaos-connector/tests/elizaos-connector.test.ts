@@ -225,11 +225,15 @@ describe('evaluateRecipientGate — audit-loop BLOCK regressions', () => {
   });
 });
 
-describe('bonklmPlugin — audit-loop BLOCK regressions', () => {
-  it('AR-12: throws when acknowledgeClass4Risk: true is set (Phase-1 no-op trap)', async () => {
+describe('bonklmPlugin — Phase-1 / Phase-2 init regressions', () => {
+  it('AR-12 (Phase-2 update): acknowledgeClass4Risk: true is HONOURED without a probe target', async () => {
+    // Phase-1 (v0.4.0) threw on this flag because the probe was a
+    // no-op. Phase-2 (Story 2.1b-connectors) honours it: when no
+    // runtimePort is configured, the probe is skipped + the flag is
+    // recorded for future probe runs but init() completes normally.
     const runtime = makeRuntime();
     const plugin = bonklmPlugin({ acknowledgeClass4Risk: true });
-    await expect(plugin.init!({ runtime })).rejects.toThrow(ConnectorValidationError);
+    await expect(plugin.init!({ runtime })).resolves.toBeUndefined();
   });
 
   it('AR-12b: allows init when acknowledgeClass4Risk is false/undefined', async () => {
