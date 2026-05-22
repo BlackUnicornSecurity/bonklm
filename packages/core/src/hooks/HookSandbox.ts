@@ -12,9 +12,14 @@
  * - Dangerous pattern detection
  */
 
-import { EventEmitter } from 'node:events';
+// Story 2.1b-edge-core: `node:events` import removed in favour of the
+// portable internal emitter. `node:vm` + `node:crypto` randomUUID stay
+// because HookSandbox is intentionally Node-only (vm sandboxing is its
+// entire purpose). Edge consumers import `EdgeHookManager` from
+// `@blackunicorn/bonklm/edge` instead.
 import { randomUUID } from 'node:crypto';
 import * as vm from 'node:vm';
+import { PortableEventEmitter } from '../common/portable-emitter.js';
 
 // ============================================================================
 // TYPES
@@ -164,7 +169,7 @@ export class HookSandbox {
   private executionLog: ExecutionLog[] = [];
   private blockedAttempts: BlockedAttempt[] = [];
   private isInitialized = false;
-  private eventEmitter?: EventEmitter;
+  private eventEmitter?: PortableEventEmitter;
 
   constructor(config?: SandboxConfig) {
     this.config = {
@@ -176,7 +181,7 @@ export class HookSandbox {
       logExecutions: config?.logExecutions ?? true,
     };
 
-    this.eventEmitter = new EventEmitter();
+    this.eventEmitter = new PortableEventEmitter();
   }
 
   /**
@@ -635,7 +640,7 @@ export class HookSandbox {
   /**
    * Get the event emitter for subscribing to sandbox events
    */
-  getEventEmitter(): EventEmitter | undefined {
+  getEventEmitter(): PortableEventEmitter | undefined {
     return this.eventEmitter;
   }
 }

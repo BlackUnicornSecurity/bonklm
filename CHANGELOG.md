@@ -5,6 +5,54 @@ All notable changes to BonkLM (`@blackunicorn/bonklm`) will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added (Story 2.1b-edge-core, en route to v0.5.0)
+
+- `EdgeHookManager` — function-only `HookSandbox` variant exported from
+  `@blackunicorn/bonklm/edge`. Refuses string-handler hooks at the
+  `executeHook` boundary with `ConnectorValidationError('configuration_error')`.
+- `assertAsyncLocalStorageHealthy(AlsCtor?)` — object-valued canary guard
+  against absent / poisoned `AsyncLocalStorage`. Exported from BOTH
+  `@blackunicorn/bonklm` (root) AND `@blackunicorn/bonklm/edge`.
+- `AsyncLocalStorageCanaryError` — distinct error class for ALS-canary
+  failures.
+- `EnvBindings` type + `isProductionEnvironment(envBindings?)` +
+  `isTestEnvironment(envBindings?)` — injection-based env-var resolution
+  for edge runtimes. `ProductionGuardConfig` gains `envBindings?` field;
+  `ProductionGuard.validate()` forwards to the env-aware functions.
+- `PortableEventEmitter` — internal portable EventEmitter replacement
+  (eliminates `node:events` ESM hazard in HookSandbox).
+- Canonical Workerd `wrangler.toml` setup anchor in
+  `docs/user/migration/edge-string-handlers.md#cloudflare-workers-required-setup`.
+- envBindings v0.3→v0.5 migration table in the same doc.
+
+### Changed (BREAKING, en route to v0.5.0)
+
+- **`HookSandbox.getEventEmitter()` return type** — changed from
+  `EventEmitter | undefined` (`node:events`) to
+  `PortableEventEmitter | undefined`. The portable emitter exposes
+  `on` / `off` / `emit` / `listenerCount` / `removeAllListeners` —
+  callers relying on Node `EventEmitter`-specific methods (`once`,
+  `setMaxListeners`, `'error'` channel auto-rethrow) must adapt. The
+  swap eliminates the `node:events` ESM-resolution hazard for bundlers
+  targeting non-Node runtimes. Documented in
+  `docs/user/migration/edge-string-handlers.md`.
+
+### Security
+
+- EdgeHookManager logs are now CAPPED (1000 executions, 100 blocked
+  attempts) to defeat memory-exhaustion DoS in long-running edge
+  isolates that reuse a single manager across requests.
+- `EnvBindings` values are sanitised before consumption — values longer
+  than 128 chars or non-string types are silently dropped. Defeats
+  request-header-injection where a consumer threads attacker-controlled
+  values into the bindings record (e.g. `{ NODE_ENV: req.headers[...] }`).
+- ALS canary uses object-valued sentinel with `portableRandomUUID()`
+  token + reference-equality + per-field deep-equal. Catches poisoned
+  `globalThis.AsyncLocalStorage` stubs, broken polyfills, and
+  prototype-pollution attacks.
+
 ## [0.4.0] - 2026-05-22
 
 ### Highlights
