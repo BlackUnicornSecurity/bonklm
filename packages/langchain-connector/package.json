@@ -37,11 +37,15 @@
     "@blackunicorn/bonklm": "workspace:*"
   },
   "peerDependencies": {
-    "@langchain/core": "^0.3.0"
+    "@langchain/core": "^0.3.0 || ^0.4.0 || ^1.0.0",
+    "langchain": "^1.0.0 || ^1.4.0"
   },
   "peerDependenciesMeta": {
     "@langchain/core": {
       "optional": false
+    },
+    "langchain": {
+      "optional": true
     }
   },
   "devDependencies": {
