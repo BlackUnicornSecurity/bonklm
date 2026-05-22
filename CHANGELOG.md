@@ -7,6 +7,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (Story 2.1b-connectors, en route to v0.5.0)
+
+- **ElizaOS Phase-2**: `@blackunicorn/bonklm-elizaos` ships the
+  AsyncLocalStorage call-context migration + sealed `updateMemory` +
+  startup HTTP probe with full security amendments.
+- `als-context.ts` — `withCallContext` / `getCallContext` / `runWithoutCallContext`
+  / `assertCallContextRuntime`. Replaces the Phase-1
+  `runtime.bonklm.currentCallContext` direct property; hostile-plugin
+  writes to that path are now INERT.
+- `probe.ts` — `runStartupProbe(opts)` + `applyProbeOutcome(outcome, opts)`
+  with 2000ms AbortController, IPv6 fallback (127.0.0.1 → [::1]),
+  ALS-clear, module-scope dedup memo with FIFO at 100 entries (cache
+  key includes NODE_ENV for test/prod isolation), 4-branch outcome
+  enumeration, probe-await semantics.
+- `typo-squat.ts` — Wagner-Fischer Levenshtein distance + NFKC
+  normalisation + format-character strip. Catches `@elizaos/plugin-soIana`,
+  Cyrillic homoglyphs, zero-width space embeds, fullwidth Latin variants.
+- `updateMemory` sealed alongside `createMemory` in the SAME synchronous
+  block (race-resistance test asserts attacker plugins via
+  `Promise.resolve().then()` cannot interleave).
+- `bonklmPlugin` options gain `runtimePort?: number` + `envBindings?:
+  Record<string, string | undefined>` + `acknowledgeClass4Risk?: boolean`
+  (now honoured; Phase-1 threw on it).
+- `runDoctorRuntime(opts)` + `probeOutcomeToFindings(outcome)` library
+  entries — `bonklm doctor --runtime` CLI ships in v0.5 release prep.
+
+### Changed (BREAKING, en route to v0.5.0)
+
+- **`doctor.auditPlugins` severity escalation** — plugin names with
+  Levenshtein distance ≤ 2 from a verified-publisher allowlist entry
+  (and not exact-match) now produce a **CRITICAL** `plugin_typo_squat`
+  finding (was: MEDIUM `plugin_not_in_allowlist` for all non-allowlisted
+  plugins in v0.4.0). Consumers with CI gates on severity counts MUST
+  audit their thresholds before upgrading. The MEDIUM finding survives
+  for unknown-distant plugins (distance > 2); only typo-squat candidates
+  are escalated. Rationale: typo-squat impersonation of trusted
+  publishers is qualitatively different from "unknown plugin" — the
+  former is an active attack, the latter is a configuration question.
+
+### Security (Story 2.1b-connectors)
+
+- AsyncLocalStorage migration closes iter-2 architect BLOCK-1 +
+  adversarial audit #11 (hostile direct-assignment to
+  `runtime.bonklm.currentCallContext`).
+- Sealed `updateMemory` closes iter-2 architect BLOCK-2 (Phase-1 left
+  the update path unhardened).
+- Startup HTTP probe with SSRF defence (LITERAL IP only, `localhost`
+  BANNED) + 2000ms timeout (defeats hung-listener DoS amplification
+  bounded by 50 plugins × 4s) + module-scope dedup memo (50-plugin
+  parallel init resolves in <5s, not 200s).
+- Probe cache key includes NODE_ENV — test/prod outcomes never share
+  cache entries in shared-process deployments (iter-1 security BLOCK-6).
+- `runtime.bonklm` namespace object frozen (`Object.freeze(sealedBonklm)`)
+  in addition to the slot seal — hostile plugins cannot write
+  `runtime.bonklm.foo = ...` even on the empty namespace (iter-1
+  security BLOCK-8).
+- `BonklmPluginOptions` frozen in `bonklmPlugin()` — hostile plugins
+  sharing the options reference cannot mutate `acknowledgeClass4Risk`
+  or other fields after construction.
+- `agentId` URL-encoded in probe URL — defence-in-depth against path
+  traversal if a future ElizaOS change surfaces user-controlled values
+  through `runtime.agentId`.
+- Typo-squat NFKC + format-character strip — defeats zero-width space
+  embedding, fullwidth Latin variants, composed-vs-decomposed
+  homograph attacks (iter-1 security BLOCK-4).
+- `installSealedWrapMemory` synchronous seal block wrapped in
+  try/catch — partial-install failures throw `ConnectorValidationError`
+  loudly rather than leaving a half-wrapped runtime (iter-1 architect
+  BLOCK-2).
+- `runDoctorRuntime` catch narrowed to `ConnectorValidationError` —
+  future programming errors in `applyProbeOutcome` propagate for
+  debuggability rather than being swallowed.
+
 ### Added (Story 2.1b-edge-core, en route to v0.5.0)
 
 - `EdgeHookManager` — function-only `HookSandbox` variant exported from

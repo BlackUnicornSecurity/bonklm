@@ -71,13 +71,34 @@ export interface BonklmPluginOptions {
    */
   signingActionRegex?: RegExp;
   /**
-   * Phase-1 explicit Class-4 acknowledgement. Required only when the
-   * runtime HTTP startup probe detects unauthenticated /memories
-   * routes. Phase-1 does NOT implement the runtime probe (deferred to
-   * Phase-2); this flag is currently a no-op kept in the surface so
-   * the public API is forward-compatible.
+   * Phase-2 explicit Class-4 acknowledgement. When the startup HTTP
+   * probe detects an unauthenticated `/memories` route AND this flag
+   * is `true`, the plugin emits a CRITICAL log + continues. When the
+   * probe detects unauth AND this flag is `false` (or absent), the
+   * plugin throws `ConnectorValidationError('invalid_runtime')` and
+   * `init()` fails.
+   *
+   * Phase-1 (v0.4.0) threw on this flag because the probe was not
+   * implemented; Phase-2 (this commit) honours it.
    */
   acknowledgeClass4Risk?: boolean;
+  /**
+   * Phase-2 startup-probe configuration: the local TCP port the
+   * ElizaOS HTTP API listens on. When set (and `runtime.agentId` is
+   * available), `init()` probes `http://127.0.0.1:{port}/api/agents/{agentId}/memories`
+   * (then `[::1]` on IPv4-refused) for unauth exposure.
+   *
+   * When omitted, the probe is skipped with an INFO log and the
+   * Class-4 check does not run.
+   */
+  runtimePort?: number;
+  /**
+   * Phase-2 env-var injection for the probe's `BONKLM_SKIP_RUNTIME_PROBE`
+   * + `NODE_ENV` lookups. Edge consumers (Workerd / Deno) pass an
+   * explicit record; Node consumers can omit and the probe falls back
+   * to `process.env`. Locked 6-key contract per Story 2.1b plan.
+   */
+  envBindings?: Record<string, string | undefined>;
   /** Callback when an action is blocked at validation. */
   onActionBlocked?: (actionName: string, reason: string) => void;
   /** Callback when a memory write is refused. */
@@ -106,22 +127,22 @@ export interface IAgentRuntimeLike {
 }
 
 /**
- * Runtime-side namespace the connector installs on `runtime.bonklm`
- * to carry closure-controlled call context that Provider plugins
- * cannot supply via arguments.
+ * Runtime-side namespace the connector installs on `runtime.bonklm`.
+ *
+ * Phase-2 (Story 2.1b-connectors): the namespace is sealed via
+ * `Object.defineProperty({ writable: false, configurable: false })`
+ * but is intentionally EMPTY — call-context propagation moved from a
+ * mutable `currentCallContext` property to `AsyncLocalStorage`
+ * (closes the iter-2 architect BLOCK-1 + adversarial #11
+ * hostile-direct-assignment vector). The sealed slot remains so
+ * downstream code can still `runtime.bonklm.something` if a future
+ * legitimate field is added; today nothing is stored here.
  */
 export interface BonklmRuntimeNamespace {
-  /**
-   * Per-call source-trust context. Set by the connector at known call
-   * sites (HTTP message handler, agent-internal action runner) and
-   * read by the `createMemory` wrapper to compute the `source` field
-   * INSIDE the closure. Providers literally cannot supply this via
-   * arguments — closes the source-spoof attack class.
-   */
-  currentCallContext?: {
-    sourceTrust: SourceTrust;
-    pluginName?: string;
-  };
+  // Intentionally empty (Phase-2). Call-context lives in AsyncLocalStorage
+  // managed by `als-context.ts` — hostile plugin assignments to
+  // `runtime.bonklm.currentCallContext` are no-ops because no
+  // BonkLM code consults that path.
 }
 
 /** Duck-typed `Memory`. */
