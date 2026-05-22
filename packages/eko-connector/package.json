@@ -1,0 +1,60 @@
+{
+  "name": "@blackunicorn/bonklm-eko",
+  "version": "0.4.0",
+  "description": "Eko multi-agent connector for BonkLM — validates planner output + BrowserAgent + FileAgent + MCP-tool dispatch.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "eko",
+    "multi-agent",
+    "browser-agent",
+    "file-agent",
+    "mcp",
+    "llm",
+    "guardrails",
+    "security"
+  ],
+  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "license": "MIT",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "@blackunicorn/bonklm-browser-agents-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@eko-ai/eko": "^4.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@eko-ai/eko": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.7",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
