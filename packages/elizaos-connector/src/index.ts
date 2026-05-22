@@ -81,6 +81,26 @@ export {
 
 export { bonklmPlugin } from './plugin.js';
 
+// Story 2.4a — Class-4 structural defence via shadow log integration.
+export {
+  createElizaOSDrizzleShadowLogStorage,
+  assertRoomAccess,
+  ShadowLogAuthError,
+  mapMessageReceivedToShadowLog,
+  type DrizzleShadowLogClient,
+  type DrizzleShadowLogStorageOptions,
+  type ElizaMessageReceivedEvent,
+} from './shadow-log-adapter.js';
+
+export {
+  verifyAndReadAuthenticatedMessages,
+  shadowLogIntegrityFailureMessage,
+  buildEolFindingV04,
+  warnAcknowledgeClass4RiskDeprecated,
+  type AuthenticatedMessagesResult,
+  type VerifyAndReadOptions,
+} from './shadow-log-integration.js';
+
 export {
   BONKLM_PLUGIN_PRIORITY,
   VERIFIED_PUBLISHER_ALLOWLIST,

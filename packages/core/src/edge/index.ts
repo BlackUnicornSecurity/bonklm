@@ -200,3 +200,22 @@ export {
   isTestEnvironment,
   type EnvBindings,
 } from '../guards/production.js';
+
+// Story 1.3b — shadow log primitive (edge-portable, uses Web Crypto).
+export {
+  createShadowLog,
+  createInMemoryShadowLogStorage,
+  computeContentHash,
+  computeChainLinkHash,
+} from '../shadow-log/index.js';
+export type {
+  CreateShadowLogOptions,
+  EvictionPolicy,
+  ReadByRoomOptions,
+  ShadowLog,
+  ShadowLogAppendInput,
+  ShadowLogEntry,
+  ShadowLogSourceTrust,
+  ShadowLogStorageAdapter,
+  VerifyChainResult,
+} from '../shadow-log/index.js';
