@@ -39,13 +39,13 @@
  *
  * @package @blackunicorn/bonklm-zep
  */
-import type {
-  AdapterInvocation,
-  AdapterRoute,
-  GetTenantId,
-  MemoryAdapter,
+import {
+  assertTenantIdSafe,
+  type AdapterInvocation,
+  type AdapterRoute,
+  type GetTenantId,
+  type MemoryAdapter,
 } from '@blackunicorn/bonklm-memory-utils';
-import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * The Zep method names this adapter routes through. Methods NOT
@@ -165,35 +165,9 @@ function extractRecallEntries(result: unknown): string[] {
   return entries.filter((s) => s.length > 0);
 }
 
-/**
- * Tenant-ID format validation — defence-in-depth against API-layer
- * injection. Refuses values with control chars, path-traversal
- * sequences, or unreasonable length.
- *
- * Iter-1 security A&D #8: writes flow into Zep's `graphId` field
- * which is then sent to the Zep API. We refuse values that could
- * cause downstream injection.
- */
-function assertTenantIdSafe(tenantId: unknown): asserts tenantId is string {
-  if (typeof tenantId !== 'string' || tenantId.length === 0) {
-    throw new ConnectorValidationError(
-      `zep adapter: getTenantId(ctx) returned ${typeof tenantId}; must be a non-empty string`,
-      'configuration_error'
-    );
-  }
-  if (tenantId.length > 256) {
-    throw new ConnectorValidationError(
-      `zep adapter: getTenantId(ctx) returned a value longer than 256 chars; refusing.`,
-      'configuration_error'
-    );
-  }
-  if (!/^[\w\-.:@]+$/.test(tenantId)) {
-    throw new ConnectorValidationError(
-      `zep adapter: getTenantId(ctx) returned a value containing characters outside [\\w\\-.:@]; refusing.`,
-      'configuration_error'
-    );
-  }
-}
+// Tenant-ID format validation moved to memory-utils as a shared
+// helper (cumulative-audit code-reviewer HIGH + iter-1 security A&D
+// removed `:` from the allowed set).
 
 /**
  * Rewrite `graph.*` args to enforce `graphId === getTenantId(ctx)`
@@ -212,6 +186,18 @@ function assertTenantIdSafe(tenantId: unknown): asserts tenantId is string {
  * are removed; consumers who need them must pass them through
  * options.getTenantId derivation, not raw args.
  */
+/**
+ * Cumulative-audit security BLOCK #3 (extended): Zep accepts
+ * alternative scoping fields the original rewrite didn't neutralize.
+ *   - `graphIds` (plural) — multi-graph queries.
+ *   - `userId` — alternative user-scope.
+ *   - `userIds` (plural) — multi-user queries on `graph.search`.
+ *   - `sessionId` — thread session scope; if a future Zep SDK
+ *     surface accepts it on graph.* methods, it would route through
+ *     unwrapped without this entry.
+ */
+const ZEP_BYPASS_FIELDS = ['graphIds', 'userId', 'userIds', 'sessionId'] as const;
+
 function rewriteGraphIdArgs(
   args: ReadonlyArray<unknown>,
   ctx: unknown,
@@ -220,17 +206,15 @@ function rewriteGraphIdArgs(
   const params = args[0];
   if (!params || typeof params !== 'object') return args;
   const tenantId = getTenantId(ctx);
-  assertTenantIdSafe(tenantId);
+  assertTenantIdSafe(tenantId, 'zep');
   // Spread to a NEW object so we don't mutate the caller's params.
-  // Iter-1 security BLOCK #2: neutralize `graphIds` (plural) and
-  // `userId` so caller-controlled multi-graph or userId-scoped
-  // bypass paths can't survive the rewrite.
   const newParams: Record<string, unknown> = {
     ...(params as Record<string, unknown>),
     graphId: tenantId,
   };
-  delete newParams.graphIds;
-  delete newParams.userId;
+  for (const field of ZEP_BYPASS_FIELDS) {
+    delete newParams[field];
+  }
   return [newParams, ...args.slice(1)];
 }
 

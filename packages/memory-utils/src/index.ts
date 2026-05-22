@@ -7,6 +7,7 @@
 export {
   wrapMemoryClient,
   assertGetTenantIdValid,
+  assertTenantIdSafe,
 } from './wrap-memory-client.js';
 
 export type {

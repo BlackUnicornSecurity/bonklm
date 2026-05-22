@@ -29,11 +29,12 @@
  *
  * @package @blackunicorn/bonklm-mem0
  */
-import type {
-  AdapterInvocation,
-  AdapterRoute,
-  GetTenantId,
-  MemoryAdapter,
+import {
+  assertTenantIdSafe,
+  type AdapterInvocation,
+  type AdapterRoute,
+  type GetTenantId,
+  type MemoryAdapter,
 } from '@blackunicorn/bonklm-memory-utils';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 
@@ -149,49 +150,34 @@ const MEM0_METHODS = new Set([
  * adapter instance bound to the consumer's callback.
  */
 
-/**
- * Tenant-ID format validation — defence-in-depth against API-layer
- * injection when the tenant value flows into the Mem0 `user_id` field
- * (which is then passed to the Mem0 server). Refuses values with
- * control chars, path-traversal sequences, or unreasonable length.
- */
-function assertTenantIdSafe(tenantId: unknown): asserts tenantId is string {
-  if (typeof tenantId !== 'string' || tenantId.length === 0) {
-    throw new ConnectorValidationError(
-      `mem0 adapter: getTenantId(ctx) returned ${typeof tenantId}; must be a non-empty string`,
-      'configuration_error'
-    );
-  }
-  if (tenantId.length > 256) {
-    throw new ConnectorValidationError(
-      `mem0 adapter: getTenantId(ctx) returned a value longer than 256 chars; refusing.`,
-      'configuration_error'
-    );
-  }
-  if (!/^[\w\-.:@]+$/.test(tenantId)) {
-    throw new ConnectorValidationError(
-      `mem0 adapter: getTenantId(ctx) returned a value containing characters outside [\\w\\-.:@]; refusing.`,
-      'configuration_error'
-    );
-  }
-}
+// Tenant-ID format validation moved to memory-utils as a shared helper
+// (`assertTenantIdSafe(tenantId, vendor)`) — cumulative-audit
+// code-reviewer HIGH. Previously this function was duplicated
+// character-for-character with zep-adapter.ts; security-boundary
+// regex copies are a latent divergence bug.
 
 /**
- * Rewrite Mem0 method args to overwrite `user_id` with `getTenantId(ctx)`.
- * Defeats caller-controlled user_id leak across Mem0's add / update /
- * search / getAll surfaces.
+ * Cumulative-audit security BLOCK #3 + #10: Mem0 SDK accepts MULTIPLE
+ * scoping fields in the options object that can independently route
+ * memory writes/reads — `user_id`, `agent_id`, `run_id`, `app_id`,
+ * `org_id`, `project_id`. A hostile caller passing
+ * `{ user_id: 'me', agent_id: 'victim-agent' }` would have `user_id`
+ * overwritten but `agent_id` would survive — agent-scoped memories
+ * leak to the wrong tenant.
  *
- * Different Mem0 methods carry `user_id` in different argument
- * positions:
- *   - `add(messages|text, options)` → user_id in options (arg[1]).
- *   - `update(memory_id, data)` → user_id NOT applicable (memory_id
- *     scopes the write); we don't rewrite.
- *   - `search(query, options)` → user_id in options (arg[1]).
- *   - `getAll(options)` → user_id in options (arg[0]).
+ * Defence: overwrite `user_id` with `getTenantId(ctx)` AND DELETE the
+ * other scoping fields (`agent_id`/`run_id`/`app_id`/`org_id`/
+ * `project_id`). Consumers who need narrower scoping must encode it
+ * INTO their `getTenantId` callback (e.g. `getTenantId(ctx) =>
+ * \`${ctx.userId}:${ctx.agentId}\`` — though that requires colon
+ * back in the tenant-id regex which we removed, so use \`-\` instead).
  *
- * We construct a NEW args array; the caller's original args are not
- * mutated. Options field is spread; non-options args pass through.
+ * Note `reset()` also accepts `user_id`/`agent_id`/etc. — the
+ * `route()` for `reset` now also rewrites to ensure a bulk-delete is
+ * scoped to the authenticated tenant, NOT the API-key org-level scope.
  */
+const MEM0_BYPASS_FIELDS = ['agent_id', 'run_id', 'app_id', 'org_id', 'project_id'] as const;
+
 function rewriteMem0UserId(
   method: string,
   args: ReadonlyArray<unknown>,
@@ -199,25 +185,32 @@ function rewriteMem0UserId(
   getTenantId: GetTenantId
 ): ReadonlyArray<unknown> {
   const tenantId = getTenantId(ctx);
-  assertTenantIdSafe(tenantId);
+  assertTenantIdSafe(tenantId, 'mem0');
 
   // Map method → options-args-position. `update` is omitted (memory_id-scoped).
   const optionsPos: Record<string, number | undefined> = {
     add: 1,
     search: 1,
     getAll: 0,
+    reset: 0, // Iter-1 security BLOCK #10: reset MUST be scoped.
   };
   const pos = optionsPos[method];
   if (pos === undefined) return args;
 
   const orig = args[pos];
-  const newOptions =
+  const baseOptions: Record<string, unknown> =
     orig !== null && typeof orig === 'object'
-      ? { ...(orig as Record<string, unknown>), user_id: tenantId }
-      : { user_id: tenantId };
+      ? { ...(orig as Record<string, unknown>) }
+      : {};
+
+  // Cumulative security BLOCK #3: neutralize alternative scoping fields.
+  for (const field of MEM0_BYPASS_FIELDS) {
+    delete baseOptions[field];
+  }
+  baseOptions.user_id = tenantId;
 
   const newArgs = [...args];
-  newArgs[pos] = newOptions;
+  newArgs[pos] = baseOptions;
   return newArgs;
 }
 
@@ -253,9 +246,21 @@ export function buildMem0Adapter(getTenantId: GetTenantId): MemoryAdapter {
             writeContent: extractUpdateContent(args),
           };
         case 'history':
-        case 'reset':
-          // No INPUT to validate; no recall result. Pass-through.
+          // Read of mutation history; no INPUT to validate. Pass-through.
           return { surface: null };
+        case 'reset':
+          // Iter-1 security BLOCK #10: scope reset to the authenticated
+          // tenant. Without the rewrite, `client.reset()` would invoke
+          // the SDK with no scoping — at Mem0 v3 with org-level API
+          // keys this bulk-deletes across ALL tenants. Even with the
+          // option-arg present, hostile callers could pass
+          // `{ user_id: 'victim' }` to scope the delete to another
+          // user's memories. The rewrite forces user_id = getTenantId(ctx)
+          // AND strips the alternative-scoping fields.
+          return {
+            surface: null,
+            rewriteArgs: rewriteMem0UserId('reset', args, ctx, getTenantId),
+          };
         case 'search':
           return {
             surface: null,

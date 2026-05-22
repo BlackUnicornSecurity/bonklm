@@ -262,6 +262,128 @@ describe('wrapMem0Client — multi-tenant user_id scoping (iter-1 security BLOCK
       ConnectorValidationError
     );
   });
+
+  it('rejects tenant IDs containing `:` (cumulative-audit security A&D)', async () => {
+    const { engine, validators } = makeEngineAndValidators();
+    const client = makeFakeMem0Client();
+    const wrapped = wrapMem0Client(client, engine, {
+      getTenantId: () => 'localhost:9000',
+      validators,
+    });
+
+    await expect(wrapped.add('content', { user_id: 'whatever' })).rejects.toThrow(
+      ConnectorValidationError
+    );
+  });
+});
+
+describe('wrapMem0Client — multi-field scoping bypass defence (cumulative-audit security BLOCK #3)', () => {
+  it('add: strips agent_id alongside user_id rewrite', async () => {
+    const { engine, validators } = makeEngineAndValidators();
+    const client = makeFakeMem0Client();
+    const wrapped = wrapMem0Client(client, engine, {
+      getTenantId: () => 'authenticated-user',
+      validators,
+    });
+
+    await wrapped.add('clean content', {
+      user_id: 'victim',
+      agent_id: 'victim-agent',
+    });
+
+    const callArg = client.add.mock.calls[0][1];
+    expect(callArg.user_id).toBe('authenticated-user');
+    expect(callArg.agent_id).toBeUndefined();
+  });
+
+  it('add: strips run_id, app_id, org_id, project_id', async () => {
+    const { engine, validators } = makeEngineAndValidators();
+    const client = makeFakeMem0Client();
+    const wrapped = wrapMem0Client(client, engine, {
+      getTenantId: () => 'authenticated-user',
+      validators,
+    });
+
+    await wrapped.add('clean content', {
+      user_id: 'victim',
+      run_id: 'victim-run',
+      app_id: 'victim-app',
+      org_id: 'victim-org',
+      project_id: 'victim-project',
+    });
+
+    const callArg = client.add.mock.calls[0][1];
+    expect(callArg.user_id).toBe('authenticated-user');
+    expect(callArg.run_id).toBeUndefined();
+    expect(callArg.app_id).toBeUndefined();
+    expect(callArg.org_id).toBeUndefined();
+    expect(callArg.project_id).toBeUndefined();
+  });
+
+  it('search: strips bypass fields on recall path too', async () => {
+    const { engine, validators } = makeEngineAndValidators();
+    const client = makeFakeMem0Client();
+    const wrapped = wrapMem0Client(client, engine, {
+      getTenantId: () => 'authenticated-user',
+      validators,
+    });
+
+    await wrapped.search('q', { user_id: 'victim', agent_id: 'victim-agent' });
+
+    const callArg = client.search.mock.calls[0][1];
+    expect(callArg.user_id).toBe('authenticated-user');
+    expect(callArg.agent_id).toBeUndefined();
+  });
+});
+
+describe('wrapMem0Client — reset() tenant scoping (cumulative-audit security BLOCK #10)', () => {
+  it('reset: scopes to authenticated tenant via user_id rewrite', async () => {
+    const { engine, validators } = makeEngineAndValidators();
+    const client = makeFakeMem0Client();
+    const wrapped = wrapMem0Client(client, engine, {
+      getTenantId: () => 'authenticated-user',
+      validators,
+    });
+
+    await wrapped.reset();
+
+    const callArg = client.reset.mock.calls[0][0];
+    expect(callArg.user_id).toBe('authenticated-user');
+  });
+
+  it('reset: strips hostile user_id passed by caller', async () => {
+    const { engine, validators } = makeEngineAndValidators();
+    const client = makeFakeMem0Client();
+    const wrapped = wrapMem0Client(client, engine, {
+      getTenantId: () => 'authenticated-user',
+      validators,
+    });
+
+    await wrapped.reset({ user_id: 'victim-user' });
+
+    const callArg = client.reset.mock.calls[0][0];
+    expect(callArg.user_id).toBe('authenticated-user');
+  });
+
+  it('reset: strips alternative-scope fields on bulk-delete', async () => {
+    const { engine, validators } = makeEngineAndValidators();
+    const client = makeFakeMem0Client();
+    const wrapped = wrapMem0Client(client, engine, {
+      getTenantId: () => 'authenticated-user',
+      validators,
+    });
+
+    await wrapped.reset({
+      user_id: 'victim',
+      agent_id: 'victim-agent',
+      org_id: 'victim-org',
+    });
+
+    const callArg = client.reset.mock.calls[0][0];
+    expect(callArg.user_id).toBe('authenticated-user');
+    expect(callArg.agent_id).toBeUndefined();
+    expect(callArg.org_id).toBeUndefined();
+  });
 });
 
 describe('wrapMem0Client — pass-through methods', () => {
