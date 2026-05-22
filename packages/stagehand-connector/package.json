@@ -1,0 +1,58 @@
+{
+  "name": "@blackunicorn/bonklm-stagehand",
+  "version": "0.4.0",
+  "description": "Browserbase Stagehand connector for BonkLM — act/extract/observe/agent.execute validation.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "stagehand",
+    "browserbase",
+    "browser-agent",
+    "llm",
+    "guardrails",
+    "security"
+  ],
+  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "license": "MIT",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "@blackunicorn/bonklm-browser-agents-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@browserbasehq/stagehand": "^3.4.0"
+  },
+  "peerDependenciesMeta": {
+    "@browserbasehq/stagehand": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.7",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

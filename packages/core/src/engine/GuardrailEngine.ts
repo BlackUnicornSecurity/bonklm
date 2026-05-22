@@ -26,6 +26,7 @@ import type {
   GuardrailEngineConfig,
   InterceptCallback,
   Validator,
+  ValidatorInput,
   ValidatorResult,
 } from './GuardrailEngine.types.js';
 
@@ -460,6 +461,90 @@ export class GuardrailEngine {
 
     // Invoke intercept callbacks
     await this.invokeInterceptCallbacks(result, content, context);
+    return result;
+  }
+
+  /**
+   * Story 2.3 audit BLOCK-3 — `validateInput` is the discriminated-union
+   * counterpart of `validate(content: string)`. Accepts a structured
+   * `ValidatorInput` (text / tool_call / retrieved_docs / memory_write /
+   * composed_context) and preserves shape through the validator
+   * pipeline so structured-input validators receive the right kind
+   * instead of a stringified blob.
+   *
+   * Fires the SAME `aggregateResults` + `invokeInterceptCallbacks`
+   * path as `validate()` so consumers wiring `engine.onIntercept(...)`
+   * for telemetry / audit get hits from browser-agent + Inngest + any
+   * other structured-input surface — no silent observability gap.
+   *
+   * Guards are NOT run here (they take `(content: string, context?: string)`
+   * which doesn't map cleanly to a discriminated union). Consumers
+   * needing guards on structured surfaces should derive a string
+   * representation themselves and call `validate(content)` in addition.
+   */
+  async validateInput(input: ValidatorInput): Promise<EngineResult> {
+    const startTime = Date.now();
+    // Stringified form fed to intercept callbacks (their signature
+    // takes `content: string`). Use a minimal canonical form: text
+    // input passes through verbatim; structured inputs JSON-encode.
+    const contentForCallback =
+      input.kind === 'text' ? input.content : JSON.stringify(input);
+
+    // Circuit breaker shortcut (same protective layer as validate()).
+    if (this.isCircuitBreakerOpen()) {
+      this.logger.warn('Circuit breaker is open - blocking request (validateInput)');
+      const blockedResult: EngineResult = {
+        allowed: false,
+        blocked: true,
+        severity: Severity.CRITICAL,
+        risk_level: RiskLevel.HIGH,
+        risk_score: 50,
+        reason: 'Circuit breaker is open due to repeated buffer overflow violations',
+        findings: [
+          {
+            category: 'circuit_breaker',
+            severity: Severity.CRITICAL,
+            description: 'Request blocked: Circuit breaker is open',
+            weight: 50,
+          },
+        ],
+        results: [],
+        validatorCount: this.validators.length,
+        guardCount: this.guards.length,
+        executionTime: Date.now() - startTime,
+        timestamp: Date.now(),
+      };
+      await this.invokeInterceptCallbacks(blockedResult, contentForCallback);
+      return blockedResult;
+    }
+
+    // Run validators with the structured input.
+    const allResults: ValidatorResult[] = [];
+    for (const validator of this.validators) {
+      const name = validator.name ?? validator.constructor.name;
+      try {
+        const result = await validator.validate(input);
+        allResults.push({ ...result, validatorName: name });
+        if (this.shortCircuit && result.blocked) break;
+      } catch (error) {
+        this.logger.error(`Error in validator ${name} (validateInput)`, { error });
+        allResults.push({
+          ...createResult(false, Severity.CRITICAL, [
+            {
+              category: 'validator_error',
+              severity: Severity.CRITICAL,
+              description: `Validator ${name} threw an error: ${String(error)}`,
+            },
+          ]),
+          validatorName: name,
+        });
+        if (this.shortCircuit) break;
+      }
+    }
+
+    const result = this.aggregateResults(allResults, startTime);
+    if (result.allowed) this.resetCircuitBreaker();
+    await this.invokeInterceptCallbacks(result, contentForCallback);
     return result;
   }
 
