@@ -388,13 +388,13 @@ importers:
         version: link:../stagehand-connector
       '@browserbasehq/stagehand':
         specifier: ^3.4.0
-        version: 3.4.0(@cfworker/json-schema@4.1.1)(@opentelemetry/api@1.9.1)(deepmerge@4.3.1)(encoding@0.1.13)(playwright-core@1.58.2)(zod@4.3.6)
+        version: 3.4.0(@cfworker/json-schema@4.1.1)(@opentelemetry/api@1.9.1)(deepmerge@4.3.1)(encoding@0.1.13)(playwright-core@1.58.2)(zod@3.25.76)
       '@vitest/coverage-v8':
         specifier: ^4.1.7
         version: 4.1.7(vitest@4.1.7)
       inngest:
         specifier: ^4.4.0
-        version: 4.4.0(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(encoding@0.1.13)(express@5.2.1)(fastify@5.7.4)(hono@4.12.21)(react@19.2.4)(typescript@5.9.3)(zod@4.3.6)
+        version: 4.4.0(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(encoding@0.1.13)(express@5.2.1)(fastify@5.7.4)(hono@4.12.21)(react@19.2.4)(typescript@5.9.3)(zod@3.25.76)
       typescript:
         specifier: ^5.3.3
         version: 5.9.3
@@ -776,7 +776,7 @@ importers:
         version: link:../browser-agents-core
       '@browserbasehq/stagehand':
         specifier: ^3.4.0
-        version: 3.4.0(@cfworker/json-schema@4.1.1)(@opentelemetry/api@1.9.1)(deepmerge@4.3.1)(encoding@0.1.13)(playwright-core@1.58.2)(zod@3.25.76)
+        version: 3.4.0(@cfworker/json-schema@4.1.1)(@opentelemetry/api@1.9.1)(deepmerge@4.3.1)(encoding@0.1.13)(playwright-core@1.58.2)(zod@4.3.6)
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.7
@@ -793,9 +793,6 @@ importers:
       '@blackunicorn/bonklm':
         specifier: workspace:*
         version: link:../core
-      '@blackunicorn/bonklm-browser-agents-core':
-        specifier: workspace:*
-        version: link:../browser-agents-core
     devDependencies:
       '@trigger.dev/core':
         specifier: ^4.0.0
@@ -20896,7 +20893,7 @@ snapshots:
 
   inline-style-parser@0.2.7: {}
 
-  inngest@4.4.0(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(encoding@0.1.13)(express@5.2.1)(fastify@5.7.4)(hono@4.12.21)(react@19.2.4)(typescript@5.9.3)(zod@4.3.6):
+  inngest@4.4.0(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))(encoding@0.1.13)(express@5.2.1)(fastify@5.7.4)(hono@4.12.21)(react@19.2.4)(typescript@5.9.3)(zod@3.25.76):
     dependencies:
       '@bufbuild/protobuf': 2.11.0
       '@inngest/ai': 0.1.7
@@ -20921,7 +20918,7 @@ snapshots:
       serialize-error-cjs: 0.1.4
       temporal-polyfill: 0.2.5
       ulid: 2.4.0
-      zod: 4.3.6
+      zod: 3.25.76
     optionalDependencies:
       express: 5.2.1
       fastify: 5.7.4

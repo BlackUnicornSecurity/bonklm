@@ -56,6 +56,18 @@ export interface GuardedNamespaceOptions {
   memoryWriteValidator?: MemoryWriteValidator;
 
   /**
+   * Optional `GuardrailEngine` for audit-telemetry wiring. When
+   * supplied, the connector calls `engine.notifyCachedResult(...)`
+   * after every read-path validator dispatch (query + multiQuery) so
+   * consumers wiring `engine.onIntercept(...)` see Turbopuffer
+   * retrieved-doc decisions.
+   *
+   * Sprint 14 deferred-closure arch X6 (engine wiring across vector
+   * connectors).
+   */
+  engine?: import('@blackunicorn/bonklm').GuardrailEngine;
+
+  /**
    * RetrievedDocValidator applied to `query()` response rows.
    * Filters out poisoned rows; on batch-level BLOCK the connector
    * throws `ConnectorValidationError`.

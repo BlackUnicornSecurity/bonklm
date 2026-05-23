@@ -276,6 +276,57 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       const r = await handle!.validateInput('hello');
       expect(r.allowed).toBe(true);
     });
+
+    it('arch X2 closure (Sprint 14 deferred): isReplay=true short-circuits handle rebuild when slot is already populated', async () => {
+      const { middleware } = withBonkLM({
+        validators: [{ name: 'V', validate: () => okResult('cold') }],
+      });
+      // First (non-replay) attempt populates the locals slot.
+      let handleA: BonklmTriggerHandle | undefined;
+      await middleware({
+        ctx: makeCtx('run_replay_2', false),
+        next: async () => {
+          handleA = getBonklmHandle();
+        },
+      });
+      // Resume of the SAME attempt (isReplay=true). Locals still
+      // carries handleA from the heap snapshot. The middleware
+      // should NOT re-set the slot — same reference.
+      let handleB: BonklmTriggerHandle | undefined;
+      await middleware({
+        ctx: makeCtx('run_replay_2', true),
+        next: async () => {
+          handleB = getBonklmHandle();
+        },
+      });
+      expect(handleA).toBe(handleB);
+    });
+
+    it('isReplay=true falls through to rebuild + logs warning when slot is empty', async () => {
+      const warnings: Array<{ msg: string }> = [];
+      const { middleware } = withBonkLM({
+        validators: [{ name: 'V', validate: () => okResult('cold') }],
+        logger: {
+          info: () => {},
+          warn: (msg: string) => warnings.push({ msg }),
+          error: () => {},
+          debug: () => {},
+        },
+      });
+      // Locals slot is empty (beforeEach reset). isReplay=true + empty
+      // slot triggers fallback rebuild + warning.
+      let handle: BonklmTriggerHandle | undefined;
+      await middleware({
+        ctx: makeCtx('run_replay_3', true),
+        next: async () => {
+          handle = getBonklmHandle();
+        },
+      });
+      expect(handle).toBeDefined();
+      expect(warnings.some((w) => /isReplay.*locals.*empty/i.test(w.msg))).toBe(
+        true
+      );
+    });
   });
 
   describe('Handle surface — validateInput / validateOutput / validateToolArgs', () => {

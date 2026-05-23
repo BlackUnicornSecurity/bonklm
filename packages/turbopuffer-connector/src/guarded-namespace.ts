@@ -57,12 +57,18 @@ import {
 // Type-only imports from the root barrel are erased at compile time
 // + carry no runtime cost. Safe to keep on the root path.
 import type {
+  GuardrailEngine,
   Logger,
   MemoryWritePayload,
   MemoryWriteValidator,
   RetrievedDoc,
   RetrievedDocValidator,
+  ValidatorResult,
 } from '@blackunicorn/bonklm';
+// Severity/RiskLevel are value imports (used to construct the
+// synthetic notifyCachedResult payload). Edge-safe — they're plain
+// string-literal enums.
+import { RiskLevel, Severity } from '@blackunicorn/bonklm';
 import type {
   GuardedNamespace,
   GuardedNamespaceOptions,
@@ -168,6 +174,11 @@ export function createGuardedNamespace(
 interface ResolvedConfig {
   memoryWriteValidator?: MemoryWriteValidator;
   retrievedDocValidator?: RetrievedDocValidator;
+  /**
+   * Sprint 14 deferred-closure arch X6: engine reference (when
+   * supplied) used to dispatch `notifyCachedResult` after read paths.
+   */
+  engine?: GuardrailEngine;
   contentFields: readonly string[];
   primaryContentField: string;
   userIdField: string;
@@ -187,6 +198,7 @@ function resolveOptions(options: GuardedNamespaceOptions): ResolvedConfig {
   return {
     memoryWriteValidator: options.memoryWriteValidator,
     retrievedDocValidator: options.retrievedDocValidator,
+    engine: options.engine,
     contentFields,
     primaryContentField: contentFields[0],
     userIdField: options.userIdField ?? DEFAULT_USER_ID_FIELD,
@@ -459,8 +471,56 @@ function makeQueryWrapper(
       }
     );
 
+    // Sprint 14 deferred-closure arch X6: dispatch retrieved-doc
+    // decision to engine.onIntercept(...) listeners when configured.
+    notifyEngineForRetrievedBatch(
+      config,
+      recordRows,
+      'turbopuffer:query'
+    );
+
     return { ...response, rows: valid };
   };
+}
+
+/**
+ * Internal: fire `engine.notifyCachedResult` with a synthetic
+ * aggregated `ValidatorResult` representing the retrieved-doc batch
+ * decision. Used by both `makeQueryWrapper` and `makeMultiQueryWrapper`.
+ *
+ * If `applyRetrievedDocValidatorToMatches` BLOCKED the batch, the
+ * caller throws before reaching this helper — so the notification
+ * always describes an ALLOW outcome. Per-doc filtering (some rows
+ * dropped) is invisible at this aggregation layer; consumers wanting
+ * row-level visibility should wire the validator's own logger.
+ */
+function notifyEngineForRetrievedBatch(
+  config: ResolvedConfig,
+  rows: readonly GuardedTurbopufferRow[],
+  surface: string
+): void {
+  if (config.engine === undefined) return;
+  const syntheticResult: ValidatorResult = {
+    allowed: true,
+    blocked: false,
+    severity: Severity.INFO,
+    risk_level: RiskLevel.LOW,
+    risk_score: 0,
+    findings: [],
+    timestamp: Date.now(),
+    validatorName: 'TurbopufferRetrievedDocBatch',
+  };
+  const contentForCallback = rows
+    .map((r) => {
+      const c = r[config.primaryContentField];
+      return typeof c === 'string' ? c : '';
+    })
+    .join('\n');
+  void config.engine.notifyCachedResult(
+    [syntheticResult],
+    contentForCallback,
+    surface
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -563,6 +623,11 @@ function makeMultiQueryWrapper(
         }
       );
       validatedResults.push({ ...sub, rows: valid });
+      notifyEngineForRetrievedBatch(
+        config,
+        recordRows,
+        `turbopuffer:multiQuery[${i}]`
+      );
     }
 
     return { ...response, results: validatedResults };

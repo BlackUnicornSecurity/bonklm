@@ -8,8 +8,7 @@
     "sourceMap": true,
     "baseUrl": ".",
     "paths": {
-      "@blackunicorn/bonklm": ["../core/src"],
-      "@blackunicorn/bonklm-browser-agents-core": ["../browser-agents-core/src"]
+      "@blackunicorn/bonklm": ["../core/src"]
     }
   },
   "include": ["src/**/*"],

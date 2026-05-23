@@ -41,12 +41,15 @@
  *
  * @package @blackunicorn/bonklm-lance
  */
+import { RiskLevel, Severity } from '@blackunicorn/bonklm';
 import type {
+  GuardrailEngine,
   Logger,
   MemoryWritePayload,
   MemoryWriteValidator,
   RetrievedDoc,
   RetrievedDocValidator,
+  ValidatorResult,
 } from '@blackunicorn/bonklm';
 // Sprint 14 cumulative sec cross-S1 closure + arch X3-bundle-safety:
 // value imports route through the connector-utils subpath. The root
@@ -176,6 +179,11 @@ export function createGuardedLanceTable(
 interface ResolvedConfig {
   memoryWriteValidator?: MemoryWriteValidator;
   retrievedDocValidator?: RetrievedDocValidator;
+  /**
+   * Sprint 14 deferred-closure arch X6: engine reference (when
+   * supplied) used to dispatch `notifyCachedResult` after read paths.
+   */
+  engine?: GuardrailEngine;
   /** Always at least one entry. */
   contentFields: readonly string[];
   /**
@@ -205,6 +213,7 @@ function resolveOptions(options: GuardedLanceTableOptions): ResolvedConfig {
   return {
     memoryWriteValidator: options.memoryWriteValidator,
     retrievedDocValidator: options.retrievedDocValidator,
+    engine: options.engine,
     contentFields,
     primaryContentField: contentFields[0],
     userIdField: options.userIdField ?? DEFAULT_USER_ID_FIELD,
@@ -716,6 +725,41 @@ function wrapQueryBuilder(
               itemNoun: 'document',
             }
           );
+          // Sprint 14 deferred-closure arch X6: when an engine is
+          // supplied, dispatch the aggregated retrieved-doc result to
+          // `engine.notifyCachedResult` so `engine.onIntercept(...)`
+          // listeners observe Lance read-path decisions. The
+          // `validateBatch` API returns a single aggregated result —
+          // we wrap it in a synthetic ValidatorResult[] for the
+          // notification call.
+          if (config.engine !== undefined) {
+            // applyRetrievedDocValidatorToMatches uses validateBatch
+            // internally + throws on batch-block; if we got here the
+            // batch was ALLOW (possibly with per-doc filtering).
+            // Synthesize an ALLOW ValidatorResult so the engine sees
+            // ONE result aggregated from this batch.
+            const syntheticResult: ValidatorResult = {
+              allowed: true,
+              blocked: false,
+              severity: Severity.INFO,
+              risk_level: RiskLevel.LOW,
+              risk_score: 0,
+              findings: [],
+              timestamp: Date.now(),
+              validatorName: 'LanceRetrievedDocBatch',
+            };
+            const contentForCallback = recordRows
+              .map((r) => {
+                const c = r[config.primaryContentField];
+                return typeof c === 'string' ? c : '';
+              })
+              .join('\n');
+            void config.engine.notifyCachedResult(
+              [syntheticResult],
+              contentForCallback,
+              'lance:query.toArray'
+            );
+          }
           return valid;
         };
       }
