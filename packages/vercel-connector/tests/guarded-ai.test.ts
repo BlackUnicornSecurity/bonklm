@@ -13,7 +13,13 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { messagesToText } from '../src/guarded-ai.js';
+// Sprint 31: switched from CommonJS `require(...)` in test bodies to
+// canonical ESM import. The previous pattern produced "Cannot find
+// module" errors in Node ≥20 ESM mode (8 tests). The "avoid mock
+// issues" comment that justified the require() pattern was stale —
+// this file has no vi.mock setup that would conflict with top-level
+// import order.
+import { createGuardedAI, messagesToText } from '../src/guarded-ai.js';
 import { PromptInjectionValidator } from '@blackunicorn/bonklm';
 import type { CoreMessage } from 'ai';
 import { noOpValidator } from '@blackunicorn/bonklm/testing';
@@ -116,9 +122,6 @@ describe('messagesToText utility', () => {
 
 describe('createGuardedAI - Basic functionality', () => {
   it('should create a guarded AI instance', () => {
-    // Dynamically import to avoid mock issues
-    const { createGuardedAI } = require('../src/guarded-ai.js');
-
     const guardedAI = createGuardedAI({
       validators: [new PromptInjectionValidator()]
     });
@@ -129,8 +132,6 @@ describe('createGuardedAI - Basic functionality', () => {
   });
 
   it('should use default logger when none provided', () => {
-    const { createGuardedAI } = require('../src/guarded-ai.js');
-
     const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const guardedAI = createGuardedAI({
@@ -142,8 +143,6 @@ describe('createGuardedAI - Basic functionality', () => {
   });
 
   it('should apply default configuration values', () => {
-    const { createGuardedAI } = require('../src/guarded-ai.js');
-
     const guardedAI = createGuardedAI({
       validators: [noOpValidator()]
     });
@@ -188,8 +187,6 @@ describe('SEC-006: Complex Message Content', () => {
 
 describe('Configuration options', () => {
   it('should accept custom validation timeout', () => {
-    const { createGuardedAI } = require('../src/guarded-ai.js');
-
     const guardedAI = createGuardedAI({
       validators: [noOpValidator()],
       validationTimeout: 5000
@@ -199,8 +196,6 @@ describe('Configuration options', () => {
   });
 
   it('should accept custom max buffer size', () => {
-    const { createGuardedAI } = require('../src/guarded-ai.js');
-
     const guardedAI = createGuardedAI({
       validators: [noOpValidator()],
       maxStreamBufferSize: 2048
@@ -210,8 +205,6 @@ describe('Configuration options', () => {
   });
 
   it('should accept production mode flag', () => {
-    const { createGuardedAI } = require('../src/guarded-ai.js');
-
     const guardedAI = createGuardedAI({
       validators: [noOpValidator()],
       productionMode: true
@@ -221,8 +214,6 @@ describe('Configuration options', () => {
   });
 
   it('should accept streaming mode configuration', () => {
-    const { createGuardedAI } = require('../src/guarded-ai.js');
-
     const guardedAI = createGuardedAI({
       validators: [noOpValidator()],
       validateStreaming: true,
@@ -233,8 +224,6 @@ describe('Configuration options', () => {
   });
 
   it('should accept callbacks', () => {
-    const { createGuardedAI } = require('../src/guarded-ai.js');
-
     const onBlocked = vi.fn();
     const onStreamBlocked = vi.fn();
 
