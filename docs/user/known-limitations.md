@@ -437,6 +437,52 @@ re-throws. The asymmetry is a deliberate design trade-off; a
 future revision (Sprint 16+) may add an opt-in
 `notifyOnBlockedWrites: true` flag.
 
+## 22. AudioStreamValidator partial path is ASCII-fold only
+
+`AudioStreamValidator.validatePartial` (Story 3.1, Sprint 16) folds
+uppercase ASCII A-Z to lowercase via a `code | 0x20` bit-twiddle at
+step time — there is no NFKD normalisation, no homoglyph mapping, and
+no `.toLowerCase()` call on the released text span. This is the price
+of the zero-allocation hot-path contract (AC-c): the validator must
+return in <100ms on a 1KB partial transcript and never allocate
+intermediate strings.
+
+**Consequence**: Cyrillic-confusable attacks (`іgnore`, U+0456 Latin-
+looking `i`), mixed-script bypasses, and zero-width-char splits
+against the curated needle set bypass `validatePartial` and produce
+`earlyBlock: false`. The `partialCoverageOnly: true` field on
+`AudioStreamPartialResult` flags this explicitly — connector authors
+who gate the LLM call on `earlyBlock` alone produce false negatives
+for the homoglyph / mixed-script class.
+
+**Mitigation**: `validateFinal` runs the full validator stack
+(defaults to `PromptInjectionValidator`, which applies NFKD +
+homoglyph normalisation per the cumulative-audit pass 1 fix). Always
+call `validateFinal` on stream close — never rely on partial-path
+clean signals to bypass the final pass.
+
+## 23. AudioStreamValidator one-instance-per-session requirement
+
+`AudioStreamValidator` carries mutable session state — the
+`earlyBlock` flag, the AC automaton's position pointer, and the
+`BufferedReleaseGate`'s pending buffer. Sharing one instance across
+concurrent voice sessions WILL produce cross-session state leakage:
+session A's partial transcript can advance the automaton state that
+session B's next `validatePartial` reads, and `getSignalEarlyBlock`
+called from one session resets the flag for all sessions sharing the
+instance.
+
+**Mitigation**: use `validator.fork()` to clone a pre-configured
+factory into a fresh stateful instance per session, OR construct a
+new `AudioStreamValidator` per session from the same config object.
+The pattern set + AC trie are rebuilt from the config; only session
+state is isolated. `await using validator = ...` (via
+`Symbol.asyncDispose`) clears session state on scope exit.
+
+This requirement is documented prominently in the class JSDoc; the
+`fork()` factory exists specifically to make the per-session pattern
+ergonomic for LiveKit / Vapi / Retell connectors (Sprint 16+).
+
 ## See also
 
 - [`threat-surfaces.md`](./threat-surfaces.md) — what BonkLM DOES

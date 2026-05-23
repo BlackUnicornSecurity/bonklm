@@ -51,7 +51,21 @@ export type ValidatorInput =
         metadata?: Record<string, unknown>;
       };
     }
-  | { kind: 'composed_context'; entries: string[] };
+  | { kind: 'composed_context'; entries: string[] }
+  | {
+      /**
+       * Story 3.1 — audio-stream `validate(input)` entry point. Carries
+       * a transcript chunk (`content`) plus a flag distinguishing the
+       * partial-hot-path call from the final-heavy-path call. Connectors
+       * that wire `AudioStreamValidator` into a `GuardrailEngine`
+       * validator chain emit `{ kind: 'audio_partial', isFinal,
+       * content }`; the validator routes to `validatePartial` /
+       * `validateFinal` internally.
+       */
+      kind: 'audio_partial';
+      content: string;
+      isFinal?: boolean;
+    };
 
 /**
  * Validator instance interface.
