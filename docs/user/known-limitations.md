@@ -315,6 +315,85 @@ control characters and caps at 200 characters. It does NOT redact:
     forward `error.stack` to consumer-facing surfaces or attacker-
     accessible run-status fields.
 
+## 17. Mistral streaming output is NOT post-validated
+
+(Added: Sprint 15 Story 2.12 audit sec S3 / rev R1#5 closure.)
+
+`@blackunicorn/bonklm-mistral` pre-validates inputs on
+`chat.stream` / `agents.stream` / `fim.stream` but returns the
+underlying `ReadableStream` unchanged. The streamed output content
+is NOT scanned chunk-by-chunk by the connector — consumers wanting
+output validation on streams must accumulate chunks + call
+`engine.validate(accumulated)` themselves.
+
+**Mitigation**:
+  - Prefer `*.complete` (non-streaming) for high-sensitivity
+    workloads.
+  - For streaming: consume the stream, accumulate chunks into a
+    buffer, periodically call `engine.validate(buffer)` (e.g. every
+    256 chars or on punctuation boundaries), and tear down the
+    stream + render a generic error if BLOCK fires mid-stream.
+  - This pattern is well-trodden in the OpenAI connector + the
+    `BufferedReleaseGate` primitive (`packages/core/src/connector-utils/buffered-release-gate.ts`).
+
+## 18. Mistral multi-turn assistant-message bypass (default mode)
+
+(Added: Sprint 15 Story 2.12 audit sec S1 closure.)
+
+By default `wrapMistral` validates only `role === 'user'` messages.
+Multi-turn deployments where assistant history is attacker-
+influenced (RAG-retrieved chat history fed back as `assistant`
+messages, vector-store memory poisoning, repeated prior-turn
+feed-in) bypass the user-only validator entirely.
+
+**Mitigation**:
+  - Pass `validateAllMessages: true` to `wrapMistral` to validate
+    every message regardless of role. Costs one extra validate per
+    non-user message in the request.
+  - Alternatively: pre-validate untrusted history BEFORE assembling
+    the chat request, with stronger surface-specific validators
+    (e.g. `RetrievedDocValidator` for RAG-injected history).
+
+## 19. Mistral image-encoded injection bypass (multimodal)
+
+(Added: Sprint 15 Story 2.12 audit sec S2 closure.)
+
+The Mistral connector's `extractMessageText` walks structured
+content arrays and extracts only `{type: 'text', text}` parts.
+`{type: 'image_url', ...}` parts are silently dropped from
+validator inspection.
+
+An attacker who embeds an OCR-readable prompt-injection payload
+inside an image URL (Mistral Vision / `pixtral-*` models) bypasses
+the validator entirely.
+
+**Mitigation**:
+  - Pre-OCR your image inputs upstream of `wrapMistral` and
+    validate the extracted text via `engine.validate(...)` before
+    submitting the image URL.
+  - Future story (Epic 3+) may add OCR-pre-screening to the
+    connector; not in v0.4 scope.
+
+## 20. Mistral `classifiers.moderate` consumer-intent inversion
+
+(Added: Sprint 15 Story 2.12 audit sec S4 closure.)
+
+When a consumer calls `guarded.classifiers.moderate(attackerContent)`
+to DISCOVER whether the content is harmful, the BonkLM validator
+pipeline runs on the input FIRST and may BLOCK it before Mistral's
+own moderation classifier sees it. The block is technically
+correct per the validator's logic but behaviorally inverts the
+consumer's intent (they WANTED Mistral to judge the content).
+
+**Mitigation**:
+  - For moderation-pipeline use cases on adversarial corpora, set
+    `validateInputs: false` on the `wrapMistral` options, AND wire
+    a separate engine instance for moderation-pipeline calls that
+    omits the prompt-injection validators.
+  - For LLM-chat use cases (the common case), the default
+    behavior is correct — the consumer is not running moderation
+    pipelines through the same wrapped client.
+
 ## See also
 
 - [`threat-surfaces.md`](./threat-surfaces.md) — what BonkLM DOES

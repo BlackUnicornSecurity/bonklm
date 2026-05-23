@@ -1,0 +1,62 @@
+{
+  "name": "@blackunicorn/bonklm-mistral",
+  "version": "0.4.0",
+  "description": "Mistral SDK v2 wrapper for BonkLM — chat/agents/fim/embeddings/classifiers guardrails with default-on multilingual + reformulation detection",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "mistral",
+    "mistralai",
+    "llm",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "jailbreak",
+    "ai-safety",
+    "multilingual",
+    "esm"
+  ],
+  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "license": "MIT",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "peerDependencies": {
+    "@mistralai/mistralai": "^2.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@mistralai/mistralai": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@mistralai/mistralai": "^2.2.0",
+    "@vitest/coverage-v8": "^4.1.7",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
