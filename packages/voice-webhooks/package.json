@@ -1,0 +1,70 @@
+{
+  "name": "@blackunicorn/bonklm-voice-webhooks",
+  "version": "0.5.0",
+  "description": "Vapi (HTTP) + Retell (WebSocket) webhook validators for BonkLM. HMAC-SHA256 auth, sync tool-calls / assistant-request, async transcript observe-only, Retell update_only + response_required.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./vapi": {
+      "import": "./dist/vapi/index.js",
+      "types": "./dist/vapi/index.d.ts"
+    },
+    "./retell": {
+      "import": "./dist/retell/index.js",
+      "types": "./dist/retell/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "vapi",
+    "retell",
+    "webhook",
+    "voice",
+    "realtime",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "hmac",
+    "ai-safety"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/voice-webhooks"
+  },
+  "homepage": "https://github.com/BlackUnicornSecurity/bonklm",
+  "bugs": {
+    "url": "https://github.com/BlackUnicornSecurity/bonklm/issues"
+  },
+  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "license": "MIT",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.7",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
