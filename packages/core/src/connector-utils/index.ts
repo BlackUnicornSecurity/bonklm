@@ -71,6 +71,15 @@ export {
   type ApplyRetrievedDocValidatorOptions,
 } from './retrieved-doc-batch.js';
 
+// Sprint 20 audit closure — shared validator-adapter for connectors
+// routing through cachedValidate (restate + temporal initially; Sprint
+// 21+ for other durable-execution + replay-aware connectors).
+export {
+  adaptValidatorToUniversalInput,
+  extractStringContent,
+  type ValidatorInputCapability,
+} from './adapt-validator.js';
+
 // Logger utilities
 export {
   createStandardLogger,

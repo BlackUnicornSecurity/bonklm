@@ -70,7 +70,7 @@ describe('GuardrailEngine', () => {
       expect(result.allowed).toBe(false);
       expect(result.blocked).toBe(true);
       expect(result.results).toHaveLength(1);
-      expect(result.results[0].validatorName).toBe('PromptInjectionValidator');
+      expect(result.results[0].validatorName).toBe('prompt-injection');
     });
 
     it('should block jailbreak attempts', async () => {
@@ -188,7 +188,7 @@ describe('GuardrailEngine', () => {
       });
       expect(engine.getValidators()).toHaveLength(1);
 
-      const removed = engine.removeValidator('PromptInjectionValidator');
+      const removed = engine.removeValidator('prompt-injection');
       expect(removed).toBe(true);
       expect(engine.getValidators()).toHaveLength(0);
     });
