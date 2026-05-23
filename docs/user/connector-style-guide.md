@@ -9,10 +9,10 @@ connector AC references this guide; PR reviewers reject divergences.
 
 ---
 
-## TL;DR — The five canonical sub-conventions
+## TL;DR — The six canonical sub-conventions
 
-Every connector exports ONE OR MORE factories matching one of these five shapes. Pick
-the shape that matches your vendor SDK's primary API surface; do NOT invent a sixth
+Every connector exports ONE OR MORE factories matching one of these six shapes. Pick
+the shape that matches your vendor SDK's primary API surface; do NOT invent a seventh
 shape without an ADR amendment to this guide.
 
 ### 1. Object / client wrap
@@ -50,6 +50,47 @@ The generic `wrapMemoryClient(client, { engine, adapter, getTenantId })` stays
 exported from `@blackunicorn/bonklm-memory-utils` for advanced callers building
 custom adapters. The per-vendor `wrap<Vendor>Client` is a typed convenience over
 this generic.
+
+### 2b. Vector-database sub-client wrap with validators-in-opts
+
+```ts
+createGuarded<Subject>(subject, options): GuardedSubject
+```
+
+A specialised form of #1 / #2 for vector-database connectors where:
+
+- The validator stack consumed by the connector is NOT a single
+  `GuardrailEngine` but a pair of opt-in specialised validators
+  (`MemoryWriteValidator` for writes, `RetrievedDocValidator` for
+  retrieved-doc batches).
+- The subject is a sub-client of the vendor's top-level Client (e.g.
+  LanceDB's `Table`, Pinecone's `Index`).
+
+Engine is NOT exposed; validators live inside `options.memoryWriteValidator`
+and `options.retrievedDocValidator`. The factory returns a Proxy-based or
+explicit wrapper that intercepts the connector's contract methods and
+passes everything else through to the underlying sub-client.
+
+Examples:
+- `createGuardedLanceTable(table, options)` — `@blackunicorn/bonklm-lance` (Story 2.10).
+- `createGuardedClient(client, options)` — `@blackunicorn/bonklm-qdrant` (Story 1.2 era).
+- `createGuardedClient(client, options)` — `@blackunicorn/bonklm-pinecone`.
+- `createGuardedClient(client, options)` — `@blackunicorn/bonklm-weaviate`.
+
+**Use shape #2b ONLY when:**
+- The subject is a vector-database sub-client (Table / Index /
+  Namespace / Collection).
+- The connector consumes the `MemoryWriteValidator` /
+  `RetrievedDocValidator` pair, NOT a top-level `GuardrailEngine`.
+- The vendor's SDK does not give a clean engine-positional shape
+  (#1) without forcing a wider API surface than the consumer needs.
+
+Naming: `createGuarded<Subject>(subject, options)` for new vector
+connectors; existing `createGuardedClient(client, options)` entries
+in qdrant/pinecone/weaviate are grandfathered (no rename — semver).
+Style-guide ADR amended at Story 2.10 (Sprint 14) after the
+architect-lane audit flagged three connectors already shipping this
+shape undocumented.
 
 ### 3. Framework middleware factory
 
@@ -443,3 +484,4 @@ onwards:
 |---|---|---|
 | 2026-05-22 | Story 2.1b-connector-style-ADR | Initial authoring. 4 canonical sub-conventions, Mem0 PRIMARY multi-surface example, Zep ILLUSTRATIVE footnote, Epic-1 deviations table, documented exceptions, sunset clauses. |
 | 2026-05-23 | Story 2.9 (Sprint 14) | Added shape #5 (Task-options bindings factory) for Trigger.dev. Added Epic-2 deviations table with retroactive Inngest reclassification (shape #4, host-constrained) + Trigger.dev shape #5 row. Per-SDK idiomatic naming permitted for shape #5. |
+| 2026-05-23 | Story 2.10 (Sprint 14) | Added shape #2b (Vector-database sub-client wrap with validators-in-opts) covering `createGuarded<Subject>(subject, options)` for LanceDB, retroactively documenting the qdrant / pinecone / weaviate convention. Story 2.10 audit-loop architect lane flagged three undocumented uses; ADR amended pre-merge. |
