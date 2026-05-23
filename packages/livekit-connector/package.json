@@ -1,0 +1,75 @@
+{
+  "name": "@blackunicorn/bonklm-livekit",
+  "version": "0.5.0",
+  "description": "LiveKit Agents (v1.x) wrapper for BonkLM — wires AudioStreamValidator into UserInputTranscribed + beforeLLMCallback + beforeTTSCallback + function_tools_executed hooks; interim-injection triggers session.interrupt() BEFORE the LLM call.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "livekit",
+    "livekit-agents",
+    "voice",
+    "realtime",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "audio",
+    "ai-safety"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/livekit-connector"
+  },
+  "homepage": "https://github.com/BlackUnicornSecurity/bonklm",
+  "bugs": {
+    "url": "https://github.com/BlackUnicornSecurity/bonklm/issues"
+  },
+  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "license": "MIT",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "peerDependencies": {
+    "@livekit/agents": "^1.4.0",
+    "@livekit/rtc-node": "^0.13.0"
+  },
+  "peerDependenciesMeta": {
+    "@livekit/agents": {
+      "optional": false
+    },
+    "@livekit/rtc-node": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@livekit/agents": "^1.4.0",
+    "@livekit/rtc-node": "^0.13.0",
+    "@vitest/coverage-v8": "^4.1.7",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
