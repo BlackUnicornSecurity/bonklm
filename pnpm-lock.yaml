@@ -807,6 +807,25 @@ importers:
         specifier: ^4.1.7
         version: 4.1.7(@opentelemetry/api@1.9.0)(@types/node@25.2.3)(@vitest/coverage-istanbul@4.1.7)(@vitest/coverage-v8@4.1.7)(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(yaml@2.8.2))
 
+  packages/turbopuffer-connector:
+    dependencies:
+      '@blackunicorn/bonklm':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@turbopuffer/turbopuffer':
+        specifier: ^2.1.0
+        version: 2.1.0
+      '@vitest/coverage-v8':
+        specifier: ^4.1.7
+        version: 4.1.7(vitest@4.1.7)
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.7
+        version: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@25.2.3)(@vitest/coverage-istanbul@4.1.7)(@vitest/coverage-v8@4.1.7)(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(yaml@2.8.2))
+
   packages/vercel-connector:
     dependencies:
       '@blackunicorn/bonklm':
@@ -2468,7 +2487,6 @@ packages:
   '@lancedb/lancedb@0.29.0':
     resolution: {integrity: sha512-lqg2QVs+yriRZ30I1fqnR8qHTR8olSx+9gY7PKvbk19kjP9Ei3uvYhtNsoqdfaF8sdCXML9RczGP9HPYepF2yw==}
     engines: {node: '>= 18'}
-    cpu: [x64, arm64]
     os: [darwin, linux, win32]
     peerDependencies:
       apache-arrow: '>=15.0.0 <=18.1.0'
@@ -5191,6 +5209,9 @@ packages:
 
   '@ts-morph/common@0.29.0':
     resolution: {integrity: sha512-35oUmphHbJvQ/+UTwFNme/t2p3FoKiGJ5auTjjpNTop2dyREspirjMy82PLSC1pnDJ8ah1GU98hwpVt64YXQsg==}
+
+  '@turbopuffer/turbopuffer@2.1.0':
+    resolution: {integrity: sha512-l3RRgXp273dPvoCPhSQKdRTugoXQk0a+ac762XRZtNmVgMT+nxgQWDu+UAL71W+Eamr1/sux/hszlCatoin+Cw==}
 
   '@types/aws-lambda@8.10.122':
     resolution: {integrity: sha512-vBkIh9AY22kVOCEKo5CJlyCgmSWvasC+SWUxL/x/vOwRobMpI/HG1xp/Ae3AqmSiZeLUbOhW0FCD3ZjqqUxmXw==}
@@ -9366,6 +9387,9 @@ packages:
   pako@1.0.11:
     resolution: {integrity: sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw==}
 
+  pako@2.1.0:
+    resolution: {integrity: sha512-w+eufiZ1WuJYgPXbV/PO3NCMEc3xqylkKHzp8bxp1uW4qaSNQUkwmLLEc3kKsfz8lpV1F8Ht3U1Cm+9Srog2ug==}
+
   parse-asn1@5.1.9:
     resolution: {integrity: sha512-fIYNuZ/HastSb80baGOuPRo1O9cf4baWw5WsAp7dBuUzeTD/BoaG8sVTdlPFksBE2lF21dN+A1AnrpIjSWqHHg==}
     engines: {node: '>= 0.10'}
@@ -10760,6 +10784,10 @@ packages:
 
   undici@7.22.0:
     resolution: {integrity: sha512-RqslV2Us5BrllB+JeiZnK4peryVTndy9Dnqq62S3yYRRTj0tFQCwEniUy2167skdGOy3vqRzEvl1Dm4sV2ReDg==}
+    engines: {node: '>=20.18.1'}
+
+  undici@7.25.0:
+    resolution: {integrity: sha512-xXnp4kTyor2Zq+J1FfPI6Eq3ew5h6Vl0F/8d9XU5zZQf1tX9s2Su1/3PiMmUANFULpmksxkClamIZcaUqryHsQ==}
     engines: {node: '>=20.18.1'}
 
   unified@10.1.2:
@@ -17374,6 +17402,11 @@ snapshots:
       path-browserify: 1.0.1
       tinyglobby: 0.2.16
 
+  '@turbopuffer/turbopuffer@2.1.0':
+    dependencies:
+      pako: 2.1.0
+      undici: 7.25.0
+
   '@types/aws-lambda@8.10.122':
     optional: true
 
@@ -22808,6 +22841,8 @@ snapshots:
 
   pako@1.0.11: {}
 
+  pako@2.1.0: {}
+
   parse-asn1@5.1.9:
     dependencies:
       asn1.js: 4.10.1
@@ -24454,6 +24489,8 @@ snapshots:
   undici@6.23.0: {}
 
   undici@7.22.0: {}
+
+  undici@7.25.0: {}
 
   unified@10.1.2:
     dependencies:
