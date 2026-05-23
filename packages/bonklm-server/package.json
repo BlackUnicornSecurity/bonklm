@@ -1,0 +1,67 @@
+{
+  "name": "@blackunicorn/bonklm-server",
+  "version": "0.4.0",
+  "description": "BonkLM Guardrail HTTP server — Fastify service exposing /litellm, /portkey, /openai-compatible endpoints with HMAC-SHA256 auth for LiteLLM + Portkey integration",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "bonklm-server": "./dist/bin/server.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./hmac": {
+      "import": "./dist/hmac/index.js",
+      "types": "./dist/hmac/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "Dockerfile",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "clean": "rm -rf dist",
+    "docker:build": "docker build -t blackunicorn/bonklm-server:0.4.0 ."
+  },
+  "keywords": [
+    "bonklm",
+    "fastify",
+    "guardrails",
+    "llm",
+    "security",
+    "litellm",
+    "portkey",
+    "openai-compatible",
+    "hmac",
+    "prompt-injection",
+    "ai-safety",
+    "server",
+    "docker"
+  ],
+  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "license": "MIT",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "fastify": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@vitest/coverage-v8": "^4.1.7",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
