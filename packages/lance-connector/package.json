@@ -1,0 +1,63 @@
+{
+  "name": "@blackunicorn/bonklm-lance",
+  "version": "0.4.0",
+  "description": "LanceDB Table wrapper for BonkLM — RetrievedDocValidator on reads + MemoryWriteValidator on writes",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "lancedb",
+    "lance",
+    "vector",
+    "vector-database",
+    "rag",
+    "memory",
+    "llm",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "ai-safety"
+  ],
+  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "license": "MIT",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "peerDependencies": {
+    "@lancedb/lancedb": "^0.29.0"
+  },
+  "peerDependenciesMeta": {
+    "@lancedb/lancedb": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@lancedb/lancedb": "^0.29.0",
+    "@vitest/coverage-v8": "^4.1.7",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
