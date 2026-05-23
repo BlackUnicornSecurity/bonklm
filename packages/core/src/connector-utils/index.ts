@@ -80,6 +80,17 @@ export {
   type ValidatorInputCapability,
 } from './adapt-validator.js';
 
+// Sprint 22 audit closure (architect C2 + code-reviewer C-4) — shared
+// wrap-sentinel for double-wrap defence across connectors. Replaces
+// the 5x verbatim Symbol-watermark copy across livekit-connector +
+// document-ingest + cloudflare-agents-connector + inference-providers.
+export {
+  assertNotWrapped,
+  markWrapped,
+  ensureWrappedOnce,
+  _testOnlyClearSentinel,
+} from './wrap-sentinel.js';
+
 // Logger utilities
 export {
   createStandardLogger,

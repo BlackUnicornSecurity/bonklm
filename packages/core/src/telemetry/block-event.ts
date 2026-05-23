@@ -42,7 +42,9 @@ export type BonklmBlockEventKind =
   | 'sandbox'
   | 'inference'
   | 'durable-exec'
-  | 'document';
+  | 'document'
+  | 'cf-agent'
+  | 'web-middleware';
 
 /** Voice surfaces — LiveKit Agents + Vapi/Retell webhooks. */
 export type BonklmVoiceSurface =
@@ -126,12 +128,45 @@ export interface BonklmDocumentBlockEvent extends BonklmBlockEventBase {
   excerpt?: string;
 }
 
+/**
+ * Cloudflare Agent surfaces — `setState` + `sql` SELECT + storage reads.
+ * Story 3.8 / Sprint 22.
+ */
+export type BonklmCfAgentSurface =
+  | 'setState'
+  | 'sql_select'
+  | 'storage_get'
+  | 'storage_list'
+  | 'storage_getAlarm';
+
+export interface BonklmCfAgentBlockEvent extends BonklmBlockEventBase {
+  kind: 'cf-agent';
+  surface: BonklmCfAgentSurface;
+  /** True when the underlying surface broadcasts to WS clients (setState). */
+  broadcast: boolean;
+}
+
+/**
+ * Web middleware surfaces — Elysia plugin + Next.js helpers.
+ * Story 3.9 / Sprint 22.
+ */
+export type BonklmWebMiddlewarePhase = 'request' | 'response';
+
+export interface BonklmWebMiddlewareBlockEvent extends BonklmBlockEventBase {
+  kind: 'web-middleware';
+  phase: BonklmWebMiddlewarePhase;
+  /** First 200 chars of the blocked body. */
+  excerpt?: string;
+}
+
 export type BonklmBlockEvent =
   | BonklmVoiceBlockEvent
   | BonklmSandboxBlockEvent
   | BonklmInferenceBlockEvent
   | BonklmDurableExecBlockEvent
-  | BonklmDocumentBlockEvent;
+  | BonklmDocumentBlockEvent
+  | BonklmCfAgentBlockEvent
+  | BonklmWebMiddlewareBlockEvent;
 
 /**
  * Type guard for cross-package consumers.
@@ -153,6 +188,8 @@ export function isBonklmBlockEvent(value: unknown): value is BonklmBlockEvent {
     v.kind === 'sandbox' ||
     v.kind === 'inference' ||
     v.kind === 'durable-exec' ||
-    v.kind === 'document'
+    v.kind === 'document' ||
+    v.kind === 'cf-agent' ||
+    v.kind === 'web-middleware'
   );
 }
