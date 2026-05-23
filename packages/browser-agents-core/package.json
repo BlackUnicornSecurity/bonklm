@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-browser-agents-core",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "BonkLM browser-agent normalised event union + guardrail factory. Underpins stagehand-connector + eko-connector.",
   "type": "module",
   "main": "./dist/index.js",

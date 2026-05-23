@@ -5,6 +5,154 @@ All notable changes to BonkLM (`@blackunicorn/bonklm`) will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] — 2026-05-23
+
+Sprint 13–15 cumulative release. Five new workspace packages, the
+guardrail HTTP server, the Mistral SDK v2 wrapper, and 470/470 tests
+green across the entire Sprint 13–15 surface.
+
+### New packages
+
+- **`@blackunicorn/bonklm-inngest`** (Story 2.8, Sprint 13) — Inngest
+  v4 middleware. Replay-safe via `cachedValidate` + step-history
+  dedupe. Engine intercept callbacks fire on cached-validate
+  decisions (Sprint 14 carry-over closure).
+- **`@blackunicorn/bonklm-browser-agents-core`** (Story 2.3,
+  Sprint 13) — shared event union + `withBrowserAgentGuardrails`
+  helper consumed by Stagehand + Eko.
+- **`@blackunicorn/bonklm-stagehand`** (Story 2.3, Sprint 13) —
+  Stagehand v3 wrapper. `act` monkey-patch documented with
+  construction-order JSDoc (Sprint 14 closure).
+- **`@blackunicorn/bonklm-eko`** (Story 2.4, Sprint 13) — Eko v4
+  multi-agent + MCP-tool wrapper.
+- **`@blackunicorn/bonklm-trigger`** (Story 2.9, Sprint 14) —
+  Trigger.dev v3/v4 middleware. CRIU-safe locals handle; retry-
+  survival via `cachedValidate` keyed by `ctx.run.id`. Shape #5
+  "Task-options bindings factory" — `withBonkLM(opts)` returns
+  `{ middleware, onFailure }`.
+- **`@blackunicorn/bonklm-lance`** (Story 2.10, Sprint 14) —
+  LanceDB Table wrapper. Multi-column write validation,
+  Arrow-write reject default, retrieved-doc batch validation.
+  Node-only.
+- **`@blackunicorn/bonklm-turbopuffer`** (Story 2.11, Sprint 14) —
+  Turbopuffer Namespace wrapper. Edge-compatible (Workerd / Deno /
+  Bun / Vercel Edge). Wraps `write` / `query` / `multiQuery` /
+  `deleteAll`. README prominently warns about the
+  `turbopuffer@1.0.1` placeholder package on npm.
+- **`@blackunicorn/bonklm-mistral`** (Story 2.12, Sprint 15) —
+  Mistral SDK v2 wrapper. ESM-only. `defaultLocale: 'auto'`
+  auto-wires `MultilingualDetector` + `ReformulationDetector`.
+  Optional `enableModerateSecondOpinion` advisory via
+  `classifiers.moderate`.
+- **`@blackunicorn/bonklm-server`** (Story 2.13, Sprint 15) —
+  Fastify HTTP server exposing BonkLM guardrails. Three routes:
+  `POST /litellm`, `POST /portkey`, `POST /openai-compatible`.
+  HMAC-SHA256 auth via `X-Bonklm-Signature` + `X-Bonklm-Timestamp`.
+  5-minute replay window. Includes Docker image
+  `blackunicorn/bonklm-server`.
+
+### Engine (core)
+
+- **`GuardrailEngine.notifyCachedResult(results, content, ctx?)`**
+  (Sprint 14 closure of Sprint 13 carry-over `arch X3 part 2`):
+  public method bridging `cachedValidate`-driven connectors to the
+  engine's `onIntercept` callbacks. Inngest, Trigger.dev, Lance,
+  and Turbopuffer all wire through this. Without it, validator
+  decisions from those connectors were invisible to engine-wide
+  audit telemetry.
+- **`createGuardedLanceTable` + `createGuardedNamespace`** accept
+  an optional `engine?` for `notifyCachedResult` dispatch on the
+  read path (Sprint 14 deferred-closure arch X6).
+- **`engine.getValidators()` fallback** in Inngest + Trigger
+  middlewares — pass `engine` and omit `validators`; the connector
+  derives the pipeline from `engine.getValidators()` (Sprint 13
+  carry-over arch X6).
+- **`sanitizeReasonText` canonical home** moved to
+  `@blackunicorn/bonklm/core/connector-utils` (Sprint 14 PB-6).
+  Browser-agents-core retains the export for back-compat. New
+  connectors should import from the core subpath.
+
+### Connector-style ADR amendments
+
+- **Shape #5** (Task-options bindings factory) — added at Story 2.9
+  for Trigger.dev's `task({ middleware, onFailure, run })` shape.
+- **Shape #2b** (Vector-database sub-client wrap with
+  validators-in-opts) — added at Story 2.10 for LanceDB,
+  retroactively documenting the qdrant / pinecone / weaviate
+  `createGuarded<X>(subject, options)` convention.
+- **Epic-2 deviations table** — Inngest reclassified as shape #4
+  (host-constrained); Trigger.dev assigned shape #5; Lance +
+  Turbopuffer assigned shape #2b.
+
+### Documentation
+
+- `docs/user/known-limitations.md` §11–20 added across Sprints 14
+  and 15, documenting:
+  - §11 CRIU-checkpoint heap exposure of cache-adapter credentials
+  - §12 Replay-storm DoS on deterministic BLOCK
+  - §13 Unknown ValidatorInput `kind` passthrough
+  - §14 Redact-mode sentinel as secondary injection vector
+  - §15 Older vector connectors lack empty-redaction guard
+  - §16 `sanitizeReasonText` stack-trace / file-path leakage gap
+  - §17 Mistral streaming output not post-validated
+  - §18 Mistral multi-turn assistant-message bypass (default mode)
+  - §19 Mistral image-encoded injection bypass (multimodal)
+  - §20 Mistral `classifiers.moderate` consumer-intent inversion
+
+### Workerd compat re-audit (Story 2.14 ritual)
+
+- Audited workerd CHANGELOG between v0.3.0 (Sprint 11) and v0.5.0
+  release prep (~8 weeks). **No ALS / `nodejs_compat` regressions
+  identified.** `compatibility_date` pin remains at `2024-09-23`.
+  Consumers do NOT need to bump `wrangler.toml`
+  `compatibility_date` when upgrading from 0.4.x to 0.5.0.
+  Audit baseline filed at
+  `team/audit-baselines/workerd-compat-audit-2026-05-23.md`.
+
+### Tests
+
+- 470/470 passing across Sprint 13-15 packages (core + 10 connectors
+  + server + integration + eslint-plugin).
+- Cross-connector composition smoke test added at Sprint 14
+  closure pass (`packages/inngest-connector/tests/cross-connector-composition.test.ts`)
+  combining `wrapStagehand` + `bonklmInngestMiddleware` sharing
+  one engine.
+- Shared vector-connector UAT attack corpus added at Sprint 14
+  closure pass (`packages/core/tests/integration/vector-connector-corpus.test.ts`).
+- Wrapped-method-drift CI smoke
+  (`packages/core/tests/integration/wrapped-method-drift.test.ts`)
+  catches peer-dep SDK signature changes BEFORE release.
+
+### Pre-publish blockers resolved
+
+- READMEs written for trigger / lance / inngest / turbopuffer /
+  mistral / bonklm-server packages.
+- LICENSE files added to all Sprint 13–15 connectors.
+- All packages bumped to 0.5.0.
+
+### Migration notes (0.4.x → 0.5.0)
+
+- **`@blackunicorn/bonklm-mistral`** is ESM-only. CJS consumers
+  must migrate or use dynamic `import()` (see package README).
+- **`@blackunicorn/bonklm-trigger`**: `getBonklmHandle(ctx?)` now
+  accepts an optional `ctx` parameter for cross-task locals-bleed
+  detection. Recommended for new code; optional for back-compat.
+- **`@blackunicorn/bonklm-lance` + `@blackunicorn/bonklm-turbopuffer`**:
+  `contentField` now accepts `string | readonly string[]` for
+  multi-column write validation. Single-string `contentField`
+  consumers see no change.
+- **`@blackunicorn/bonklm-inngest`** validator array is now
+  `Object.freeze`d at factory time (post-construction mutation no
+  longer observable). Consumers mutating validators array after
+  middleware construction should refactor.
+- **`MistralGuardrailBlockedError`** extends
+  `ConnectorValidationError` — cross-connector
+  `catch (e instanceof ConnectorValidationError)` handlers now
+  catch Mistral blocks too.
+- **`@blackunicorn/bonklm-server`** `productionMode` defaults to
+  `true` in the programmatic API (was `false` pre-release). Dev
+  consumers must explicitly set `productionMode: false`.
+
 ## [Unreleased]
 
 ### Added (Story 2.1b-connectors, en route to v0.5.0)
