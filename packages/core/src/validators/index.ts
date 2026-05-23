@@ -16,3 +16,5 @@ export * from './retrieved-doc.js';
 export * from './memory-write.js';
 export * from './composed-context.js';
 export * from './audio-stream.js';
+export * from './code-injection.js';
+export * from './path-traversal.js';
