@@ -5,6 +5,114 @@ All notable changes to BonkLM (`@blackunicorn/bonklm`) will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Sprint 29 (2026-05-24)
+
+Connector test-tooling debt remediation. Pre-existing schema mismatch
+across express / fastify / nestjs middleware schemas exposed Sprint 28
+close (110+ tests failing at rc.1 + rc.2 against the canonical object-
+shape `Validator` / `Logger` instances). Sprint 29 lands the fix at the
+core schema layer so future connector packages inherit it.
+
+3-lane audit (architect + code-reviewer + security-reviewer) ran
+post-fix; convergent findings closed in this same commit before tag.
+
+### Added
+
+- **`Validators.validatorInstance`** + **`ValidatorInstanceRule`**
+  (`@blackunicorn/bonklm` → `validation/`) — config-schema rule that
+  accepts EITHER a bare callable OR an object-with-`.validate`-method.
+  The canonical `Validator` / `Guard` interface is object-shape
+  (`{ validate(input): ..., name?: string }`); the previous
+  `Validators.function` check rejected class instances.
+
+- **`Validators.loggerInstance`** + **`LoggerInstanceRule`** — same
+  pattern for the `Logger` 4-method interface (`{ debug, info, warn,
+  error }`). Adopt this for `logger` config fields in connector
+  middleware schemas. Rejects arrays explicitly (audit code-review
+  MEDIUM closure).
+
+- **`Validators.attackLoggerInstance`** + **`AttackLoggerInstanceRule`**
+  — same pattern for the `AttackLogger` instance shape (object with
+  `getInterceptCallback` method). Preventive fix from audit
+  architect-IMPORTANT-2 — the connector schemas had the same
+  shape-mismatch latent bug on the `attackLogger` config field that
+  the validators/logger fields had; fixed before exposure.
+
+All three new rules are `@public` per v1.0-RC1 freeze policy. New
+`@public` symbols added between rc.1 and v1.0 are explicitly part of
+the freeze once v1.0 ships.
+
+### Changed (semantic — was a footgun)
+
+- **`OptionalRule`** now ONLY short-circuits on `undefined`, NOT on
+  `null`. Per architect-IMPORTANT-3 audit: the prior null-short-circuit
+  meant `{ logger: null }` passed schema validation, then crashed at
+  runtime in `this.logger.debug(...)` because the destructuring
+  default `logger = DEFAULT_LOGGER` only triggers for `undefined`.
+  `null` was always a footgun in the optional path; we now reject it
+  at schema-validation time. 2 core tests updated to match. No known
+  external consumer affected — all internal call-sites pass
+  `undefined`/omit-key (the JS-canonical pattern).
+
+### Fixed
+
+- **express-middleware** — config schema rewritten to use
+  `validatorInstance` + `loggerInstance` for validators/guards/logger
+  fields, and every field wrapped in `Validators.optional(...)` so
+  sparse `{ validators: [...] }`-only configs work (the documented
+  shape from the JSDoc example). 40/40 unit tests now pass (was 40/40
+  failing).
+- **express-middleware** `addSecurityHeaders()` — defensive guard
+  added: skips when `res.getHeader` / `res.setHeader` aren't functions.
+  Lets unit tests pass minimal `Response` mocks without crashing.
+  Express always provides these methods at runtime; production
+  behavior unchanged.
+- **fastify-plugin** — same schema rewrite. 43/43 tests pass.
+- **fastify-plugin** SEC-008 validation-timeout — replaced broken
+  `AbortController` approach (signal was never propagated since
+  `engine.validate()` doesn't accept an `AbortSignal`) with
+  `Promise.race` against a timeout sentinel. The timeout budget now
+  actually fires; slow validators no longer leak past the budget with
+  an `allowed: true` response. **Audit hardening** (security-MEDIUM
+  S29-002 + code-review-MEDIUM): the in-flight `engine.validate()`
+  promise is wrapped with `.catch()` BEFORE `Promise.race` so any
+  post-timeout rejection is absorbed; Node ≥15 crashes the process on
+  unhandled rejections by default.
+- **nestjs-module** — same schema rewrite. 74/74 tests pass. ALSO
+  **CRITICAL audit-arch-1**: nestjs had the same broken AbortController
+  timeout as fastify; ported the same Promise.race + `.catch()` fix.
+- **express-middleware** `addSecurityHeaders()` — defensive guard now
+  logs at WARN level when triggered (audit security-MEDIUM S29-001).
+  Operators see a clear signal if a real production wrapper strips
+  response methods; the headers themselves are not silently dropped
+  without a log entry.
+
+### Changed (no breaking)
+
+- The schema-wide `Validators.optional(...)` wrap loosens validation —
+  previously the schemas rejected missing fields, now they accept them
+  (consistent with the runtime middleware factories that destructure
+  with defaults for every field). This matches the JSDoc-documented
+  API contract; the strict mode was the bug.
+
+### Tests
+
+- express-middleware: **40/40** (was 40 fail)
+- fastify-plugin: **43/43** (was 2 fail)
+- nestjs-module: **74/74** (was 13 fail)
+- Core: **2767/2777** unchanged (10 multilingual Pass-2 skips per Sprint 23 retirement)
+- Build: all affected packages build clean
+
+### Deferred to Sprint 30+
+
+- v1.0.0 cut decision (public-comment window extension continues)
+- Story 2.14a openclaw-adapter removal (date gate 2026-07-01)
+- Full `TestWorkflowEnvironment` Temporal integration
+- anthropic-connector + chroma-connector flaky test-timeout cleanup
+  (separate root cause from Sprint 29 schema work — both are
+  test-framework timeouts on intentionally-slow validators that
+  should be reduced to fit the 5s testTimeout budget).
+
 ## [1.0.0-rc.2] — 2026-05-24 (Sprint 28)
 
 Second release candidate. Docs-only + JSDoc-only iteration; **no

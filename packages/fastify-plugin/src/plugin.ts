@@ -89,21 +89,28 @@ const DEVELOPMENT_ERROR_HANDLER: ErrorHandler = async (
  * S013-003: Configuration validation schema for Fastify plugin.
  * Validates plugin configuration at initialization time.
  */
+// Sprint 29 fix: ALL fields wrapped in `Validators.optional(...)` — the
+// plugin destructures with defaults for every field, so the schema must
+// validate SHAPES when supplied without rejecting sparse configs. The
+// validators/guards arrays use `validatorInstance` (accepts BOTH object-
+// shape Validator instances AND bare callables).
 const FASTIFY_CONFIG_SCHEMA = new Schema({
-  validators: Validators.array(Validators.function, 0, 100),
-  guards: Validators.array(Validators.function, 0, 100),
-  validateRequest: Validators.boolean,
-  validateResponse: Validators.boolean,
-  paths: Validators.array(Validators.string, 0, 100),
-  excludePaths: Validators.array(Validators.string, 0, 100),
-  logger: Validators.function,
-  productionMode: Validators.boolean,
-  validationTimeout: Validators.timeout,
-  maxContentLength: Validators.positiveNumber(0),
-  onError: Validators.function,
-  responseExtractor: Validators.function,
-  // S013-004: AttackLogger is optional
-  attackLogger: Validators.optional(Validators.function),
+  validators: Validators.optional(Validators.array(Validators.validatorInstance, 0, 100)),
+  guards: Validators.optional(Validators.array(Validators.validatorInstance, 0, 100)),
+  validateRequest: Validators.optional(Validators.boolean),
+  validateResponse: Validators.optional(Validators.boolean),
+  paths: Validators.optional(Validators.array(Validators.string, 0, 100)),
+  excludePaths: Validators.optional(Validators.array(Validators.string, 0, 100)),
+  logger: Validators.optional(Validators.loggerInstance),
+  productionMode: Validators.optional(Validators.boolean),
+  validationTimeout: Validators.optional(Validators.timeout),
+  maxContentLength: Validators.optional(Validators.positiveNumber(0)),
+  onError: Validators.optional(Validators.function),
+  responseExtractor: Validators.optional(Validators.function),
+  // S013-004: AttackLogger is optional. Sprint 29: switched from
+  // `function` to `attackLoggerInstance` — canonical AttackLogger is
+  // a class instance, not a bare callable.
+  attackLogger: Validators.optional(Validators.attackLoggerInstance),
   // S013-005: Session tracking options
   enableSessionTracking: Validators.optional(Validators.boolean),
   sessionIdExtractor: Validators.optional(Validators.function),
@@ -236,36 +243,64 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
     return pathMatchers.some((matcher) => matcher(normalizedPath));
   };
 
-  // SEC-008: Create timeout wrapper for validation
+  // SEC-008: Create timeout wrapper for validation.
+  //
+  // Sprint 29 fix: the original implementation created an `AbortController`
+  // and called `controller.abort()` after `validationTimeout` ms, but the
+  // engine.validate() signature does not accept an AbortSignal — so the
+  // abort never propagated and slow validators continued past the timeout
+  // budget (resulting in allowed: true responses against expectation).
+  //
+  // Use `Promise.race` against a timeout promise that resolves to a
+  // blocked-result sentinel. This honours the SEC-008 timeout budget
+  // regardless of validator cooperativeness.
   const validateWithTimeout = async (
     content: string,
     context?: string
   ): Promise<GuardrailResult> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), validationTimeout);
-
+    const timeoutResult: GuardrailResult = {
+      allowed: false,
+      blocked: true,
+      severity: Severity.CRITICAL,
+      risk_level: RiskLevel.HIGH,
+      risk_score: 100,
+      findings: [],
+      timestamp: Date.now(),
+      reason: 'Validation timeout',
+    };
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<GuardrailResult>((resolve) => {
+      timeoutId = setTimeout(() => {
+        logger.error('[Guardrails] Validation timeout');
+        resolve(timeoutResult);
+      }, validationTimeout);
+    });
+    // Sprint 29 security audit S29-002: when the timeout wins the race,
+    // the engine.validate() promise continues running with no caller
+    // holding a reference. Attach a `.catch()` BEFORE the race to absorb
+    // any later rejection (network error, OOM, etc.) — Node ≥15 crashes
+    // the process on unhandled rejections by default, so a slow validator
+    // that throws after the timeout could DoS the worker.
+    const validatePromise = Promise.resolve(engine.validate(content, context)).catch(
+      (err: unknown) => {
+        // Log AFTER-timeout rejections at debug level — operators can see
+        // them if they enable debug logs but they don't pollute warn/error
+        // (the validator decision was already a hard timeout-block).
+        logger.debug?.('[Guardrails] Validator rejected post-timeout', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return timeoutResult;
+      }
+    );
     try {
       // DEV-001: Use correct API signature (string context, not object)
       // DEV-003: AWAIT the validation
-      const result = await engine.validate(content, context);
-      clearTimeout(timeoutId);
+      const result = await Promise.race([validatePromise, timeoutPromise]);
       return result;
-    } catch (error) {
-      clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        logger.error('[Guardrails] Validation timeout');
-        return {
-          allowed: false,
-          blocked: true,
-          severity: Severity.CRITICAL,
-          risk_level: RiskLevel.HIGH,
-          risk_score: 100,
-          findings: [],
-          timestamp: Date.now(),
-          reason: 'Validation timeout',
-        };
+    } finally {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
       }
-      throw error;
     }
   };
 

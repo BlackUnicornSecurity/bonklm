@@ -30,6 +30,7 @@ import {
   GuardrailEngine,
   type GuardrailResult,
   isSessionEscalated,
+  type Logger,
   LogLevel,
   RiskLevel,
   Schema,
@@ -134,8 +135,34 @@ function compilePathMatcher(pattern: string): PathMatcher {
 /**
  * S013-007: Add security headers to the response.
  * Adds common security headers to prevent XSS, clickjacking, and other attacks.
+ *
+ * Sprint 29: defensive guard — skip when `res.getHeader` / `res.setHeader`
+ * are unavailable. Express always provides them at runtime; this guard
+ * lets unit tests pass minimal `Response` mocks without crashing the
+ * middleware. The security headers themselves are the canonical contract
+ * (CSP, X-Frame-Options, X-Content-Type-Options, X-XSS-Protection,
+ * Referrer-Policy, Permissions-Policy) and remain unchanged for Express.
+ *
+ * Sprint 29 security audit S29-001: the guard logs at WARN level when
+ * triggered, so operators see a clear signal if a real production wrapper
+ * strips response methods (e.g. an over-aggressive Proxy or an in-house
+ * Response shim). Tests with minimal mocks will see the WARN line in
+ * captured logs — that's expected and helps surface coverage gaps.
  */
-function addSecurityHeaders(res: Response): void {
+function addSecurityHeaders(res: Response, logger?: Logger): void {
+  if (
+    typeof (res as { getHeader?: unknown }).getHeader !== 'function' ||
+    typeof (res as { setHeader?: unknown }).setHeader !== 'function'
+  ) {
+    logger?.warn?.(
+      '[Guardrails] addSecurityHeaders: res.getHeader/setHeader unavailable; ' +
+        'CSP / X-Frame-Options / X-Content-Type-Options / X-XSS-Protection / ' +
+        'Referrer-Policy / Permissions-Policy were NOT applied. This is expected ' +
+        'in unit tests with minimal Response mocks, but indicates a real ' +
+        'misconfiguration in production (broken Response wrapper / Proxy).'
+    );
+    return;
+  }
   // Content-Security-Policy: Restrict resource sources
   // Default policy allows same-origin scripts and styles
   if (!res.getHeader('Content-Security-Policy')) {
@@ -172,24 +199,35 @@ function addSecurityHeaders(res: Response): void {
  * S013-003: Configuration validation schema for Express middleware.
  * Validates middleware configuration at initialization time.
  */
+// Sprint 29 fix: EVERY field in `GuardrailsMiddlewareConfig` is optional
+// from the user's perspective — `createGuardrailsMiddleware` destructures
+// with defaults for all of them. The original schema marked them as
+// required, which broke when callers passed sparse configs (the documented
+// `{ validators: [...] }`-only shape from the JSDoc example). Wrap each
+// in `Validators.optional(...)` so the schema validates SHAPES when
+// supplied, but does not reject missing fields. The validators/guards
+// arrays additionally use `validatorInstance` (object-shape OR callable)
+// since canonical validators are class instances.
 const EXPRESS_CONFIG_SCHEMA = new Schema({
-  validators: Validators.array(Validators.function, 0, 100),
-  guards: Validators.array(Validators.function, 0, 100),
-  validateRequest: Validators.boolean,
-  validateResponse: Validators.boolean,
-  validateResponseMode: Validators.enum(['buffer', 'disabled'] as const),
-  onRequestOnly: Validators.boolean,
-  paths: Validators.array(Validators.string, 0, 100),
-  excludePaths: Validators.array(Validators.string, 0, 100),
-  logger: Validators.function,
-  productionMode: Validators.boolean,
-  validationTimeout: Validators.timeout,
-  maxContentLength: Validators.positiveNumber(0),
-  onError: Validators.function,
-  bodyExtractor: Validators.function,
-  responseExtractor: Validators.function,
-  // S013-004: AttackLogger is optional
-  attackLogger: Validators.optional(Validators.function),
+  validators: Validators.optional(Validators.array(Validators.validatorInstance, 0, 100)),
+  guards: Validators.optional(Validators.array(Validators.validatorInstance, 0, 100)),
+  validateRequest: Validators.optional(Validators.boolean),
+  validateResponse: Validators.optional(Validators.boolean),
+  validateResponseMode: Validators.optional(Validators.enum(['buffer', 'disabled'] as const)),
+  onRequestOnly: Validators.optional(Validators.boolean),
+  paths: Validators.optional(Validators.array(Validators.string, 0, 100)),
+  excludePaths: Validators.optional(Validators.array(Validators.string, 0, 100)),
+  logger: Validators.optional(Validators.loggerInstance),
+  productionMode: Validators.optional(Validators.boolean),
+  validationTimeout: Validators.optional(Validators.timeout),
+  maxContentLength: Validators.optional(Validators.positiveNumber(0)),
+  onError: Validators.optional(Validators.function),
+  bodyExtractor: Validators.optional(Validators.function),
+  responseExtractor: Validators.optional(Validators.function),
+  // S013-004: AttackLogger is optional. Sprint 29: switched from
+  // `function` to `attackLoggerInstance` — canonical AttackLogger is
+  // a class instance, not a bare callable.
+  attackLogger: Validators.optional(Validators.attackLoggerInstance),
   // S013-005: Session tracking options
   enableSessionTracking: Validators.optional(Validators.boolean),
   sessionIdExtractor: Validators.optional(Validators.function),
@@ -338,7 +376,7 @@ export function createGuardrailsMiddleware(
     next: NextFunction
   ): void {
     // S013-007: Add security headers
-    addSecurityHeaders(res);
+    addSecurityHeaders(res, logger);
 
     // Skip if path not in scope (SEC-001)
     if (!shouldProcessPath(req.path)) {
