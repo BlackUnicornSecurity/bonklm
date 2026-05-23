@@ -563,7 +563,7 @@ importers:
         version: link:../memory-utils
       mem0ai:
         specifier: ^3.0.0
-        version: 3.0.3(@anthropic-ai/sdk@0.98.0(zod@3.25.76))(@azure/identity@4.13.1)(@azure/search-documents@12.2.0)(@cloudflare/workers-types@4.20260120.0)(@google/genai@2.5.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@3.25.76))(bufferutil@4.1.0))(@langchain/core@1.1.48(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.218.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.39.0(ws@8.20.1(bufferutil@4.1.0))(zod@3.25.76))(ws@8.20.1(bufferutil@4.1.0)))(@mistralai/mistralai@1.10.0)(@qdrant/js-client-rest@1.16.2(typescript@5.9.3))(@supabase/supabase-js@2.106.1)(@types/jest@29.5.14)(@types/pg@8.15.6)(better-sqlite3@12.10.0)(cloudflare@4.5.0(encoding@0.1.13))(compromise@14.15.0)(encoding@0.1.13)(groq-sdk@0.3.0(encoding@0.1.13))(natural@8.1.1(@opentelemetry/api@1.9.1)(socks@2.8.7))(ollama@0.6.3)(pg@8.21.0)(redis@5.12.1(@opentelemetry/api@1.9.1))(ws@8.20.1(bufferutil@4.1.0))
+        version: 3.0.3(@anthropic-ai/sdk@0.98.0(zod@3.25.76))(@azure/identity@4.13.1)(@azure/search-documents@12.2.0)(@cloudflare/workers-types@4.20260120.0)(@google/genai@2.5.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@3.25.76))(bufferutil@4.1.0))(@langchain/core@1.1.48(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.218.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.39.0(ws@8.20.1(bufferutil@4.1.0))(zod@3.25.76))(ws@8.20.1(bufferutil@4.1.0)))(@mistralai/mistralai@2.2.1(bufferutil@4.1.0))(@qdrant/js-client-rest@1.16.2(typescript@5.9.3))(@supabase/supabase-js@2.106.1)(@types/jest@29.5.14)(@types/pg@8.15.6)(better-sqlite3@12.10.0)(cloudflare@4.5.0(encoding@0.1.13))(compromise@14.15.0)(encoding@0.1.13)(groq-sdk@0.3.0(encoding@0.1.13))(natural@8.1.1(@opentelemetry/api@1.9.1)(socks@2.8.7))(ollama@0.6.3)(pg@8.21.0)(redis@5.12.1(@opentelemetry/api@1.9.1))(ws@8.20.1(bufferutil@4.1.0))
     devDependencies:
       '@vitest/coverage-v8':
         specifier: ^4.1.7
@@ -581,6 +581,25 @@ importers:
         specifier: workspace:*
         version: link:../core
     devDependencies:
+      '@vitest/coverage-v8':
+        specifier: ^4.1.7
+        version: 4.1.7(vitest@4.1.7)
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.7
+        version: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@25.2.3)(@vitest/coverage-istanbul@4.1.7)(@vitest/coverage-v8@4.1.7)(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(yaml@2.8.2))
+
+  packages/mistral-connector:
+    dependencies:
+      '@blackunicorn/bonklm':
+        specifier: workspace:*
+        version: link:../core
+    devDependencies:
+      '@mistralai/mistralai':
+        specifier: ^2.2.0
+        version: 2.2.1(bufferutil@4.1.0)
       '@vitest/coverage-v8':
         specifier: ^4.1.7
         version: 4.1.7(vitest@4.1.7)
@@ -2826,6 +2845,9 @@ packages:
 
   '@mistralai/mistralai@1.10.0':
     resolution: {integrity: sha512-tdIgWs4Le8vpvPiUEWne6tK0qbVc+jMenujnvTqOjogrJUsCSQhus0tHTU1avDDh5//Rq2dFgP9mWRAdIEoBqg==}
+
+  '@mistralai/mistralai@2.2.1':
+    resolution: {integrity: sha512-uKU8CZmL2RzYKmplsU01hii4p3pe4HqJefpWNRWXm1Tcm0Sm4xXfwSLIy4k7ZCPlbETCGcp69E7hZs+WOJ5itQ==}
 
   '@modelcontextprotocol/sdk@1.26.0':
     resolution: {integrity: sha512-Y5RmPncpiDtTXDbLKswIJzTqu2hyBKxTNsgKqKclDbhIgg1wgtf1fRuvxgTnRfcnxtvvgbIEcqUOzZrJ6iSReg==}
@@ -12936,7 +12958,7 @@ snapshots:
       '@copilotkitnext/shared': 1.51.4
       rxjs: 7.8.1
       zod: 3.25.76
-      zod-to-json-schema: 3.25.1(zod@3.25.76)
+      zod-to-json-schema: 3.25.2(zod@3.25.76)
 
   '@copilotkitnext/react@1.51.4(@types/mdast@4.0.4)(@types/react@18.3.28)(micromark-util-types@2.0.2)(micromark@4.0.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
@@ -13011,7 +13033,7 @@ snapshots:
       discord-api-types: 0.38.39
       prism-media: 1.3.5
       tslib: 2.8.1
-      ws: 8.19.0(bufferutil@4.1.0)
+      ws: 8.20.1(bufferutil@4.1.0)
     transitivePeerDependencies:
       - '@discordjs/opus'
       - bufferutil
@@ -13369,7 +13391,7 @@ snapshots:
       get-port: 5.1.1
       json-schema: 0.4.0
       zod: 3.25.76
-      zod-to-json-schema: 3.25.1(zod@3.25.76)
+      zod-to-json-schema: 3.25.2(zod@3.25.76)
     optionalDependencies:
       '@cfworker/json-schema': 4.1.1
       '@genkit-ai/firebase': 1.28.0(@google-cloud/firestore@7.11.6(encoding@0.1.13))(encoding@0.1.13)(firebase-admin@13.6.1(encoding@0.1.13))(genkit@1.28.0(@google-cloud/firestore@7.11.6(encoding@0.1.13))(encoding@0.1.13)(firebase-admin@13.6.1(encoding@0.1.13)))
@@ -13573,7 +13595,7 @@ snapshots:
       google-auth-library: 10.5.0
       p-retry: 7.1.1
       protobufjs: 7.6.0
-      ws: 8.19.0(bufferutil@4.1.0)
+      ws: 8.20.1(bufferutil@4.1.0)
     optionalDependencies:
       '@modelcontextprotocol/sdk': 1.29.0(@cfworker/json-schema@4.1.1)(zod@3.25.76)
     transitivePeerDependencies:
@@ -13586,7 +13608,7 @@ snapshots:
       google-auth-library: 10.5.0
       p-retry: 7.1.1
       protobufjs: 7.6.0
-      ws: 8.19.0(bufferutil@4.1.0)
+      ws: 8.20.1(bufferutil@4.1.0)
     optionalDependencies:
       '@modelcontextprotocol/sdk': 1.29.0(@cfworker/json-schema@4.1.1)(zod@4.3.6)
     transitivePeerDependencies:
@@ -14232,7 +14254,7 @@ snapshots:
       lodash.pickby: 4.6.0
       protobufjs: 7.6.0
       qs: 6.15.2
-      ws: 8.19.0(bufferutil@4.1.0)
+      ws: 8.20.1(bufferutil@4.1.0)
     transitivePeerDependencies:
       - bufferutil
       - debug
@@ -14537,7 +14559,7 @@ snapshots:
       zod: 4.3.6
       zod-from-json-schema: 0.5.2
       zod-from-json-schema-v3: zod-from-json-schema@0.0.5
-      zod-to-json-schema: 3.25.1(zod@4.3.6)
+      zod-to-json-schema: 3.25.2(zod@4.3.6)
 
   '@mermaid-js/parser@0.6.3':
     dependencies:
@@ -14549,6 +14571,15 @@ snapshots:
     dependencies:
       zod: 3.25.76
       zod-to-json-schema: 3.25.2(zod@3.25.76)
+
+  '@mistralai/mistralai@2.2.1(bufferutil@4.1.0)':
+    dependencies:
+      ws: 8.20.1(bufferutil@4.1.0)
+      zod: 4.3.6
+      zod-to-json-schema: 3.25.2(zod@4.3.6)
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   '@modelcontextprotocol/sdk@1.26.0(@cfworker/json-schema@4.1.1)(zod@4.3.6)':
     dependencies:
@@ -14931,18 +14962,6 @@ snapshots:
       '@octokit/request-error': 7.1.0
       '@octokit/webhooks-methods': 6.0.0
 
-  '@openai/agents-core@0.11.4(@cfworker/json-schema@4.1.1)(ws@8.19.0(bufferutil@4.1.0))(zod@4.3.6)':
-    dependencies:
-      debug: 4.4.3
-      openai: 6.39.0(ws@8.19.0(bufferutil@4.1.0))(zod@4.3.6)
-    optionalDependencies:
-      '@modelcontextprotocol/sdk': 1.29.0(@cfworker/json-schema@4.1.1)(zod@4.3.6)
-      zod: 4.3.6
-    transitivePeerDependencies:
-      - '@cfworker/json-schema'
-      - supports-color
-      - ws
-
   '@openai/agents-core@0.11.4(@cfworker/json-schema@4.1.1)(ws@8.20.1(bufferutil@4.1.0))(zod@4.3.6)':
     dependencies:
       debug: 4.4.3
@@ -14968,10 +14987,10 @@ snapshots:
 
   '@openai/agents-realtime@0.11.4(@cfworker/json-schema@4.1.1)(bufferutil@4.1.0)(zod@4.3.6)':
     dependencies:
-      '@openai/agents-core': 0.11.4(@cfworker/json-schema@4.1.1)(ws@8.19.0(bufferutil@4.1.0))(zod@4.3.6)
+      '@openai/agents-core': 0.11.4(@cfworker/json-schema@4.1.1)(ws@8.20.1(bufferutil@4.1.0))(zod@4.3.6)
       '@types/ws': 8.18.1
       debug: 4.4.3
-      ws: 8.19.0(bufferutil@4.1.0)
+      ws: 8.20.1(bufferutil@4.1.0)
       zod: 4.3.6
     transitivePeerDependencies:
       - '@cfworker/json-schema'
@@ -17053,7 +17072,7 @@ snapshots:
       '@types/node': 20.19.33
       '@types/ws': 8.18.1
       eventemitter3: 5.0.4
-      ws: 8.19.0(bufferutil@4.1.0)
+      ws: 8.20.1(bufferutil@4.1.0)
     transitivePeerDependencies:
       - bufferutil
       - debug
@@ -18196,7 +18215,7 @@ snapshots:
       pino: 9.14.0
       protobufjs: 7.6.0
       sharp: 0.34.5
-      ws: 8.19.0(bufferutil@4.1.0)
+      ws: 8.20.1(bufferutil@4.1.0)
     transitivePeerDependencies:
       - bufferutil
       - supports-color
@@ -21910,7 +21929,7 @@ snapshots:
 
   media-typer@1.1.0: {}
 
-  mem0ai@3.0.3(@anthropic-ai/sdk@0.98.0(zod@3.25.76))(@azure/identity@4.13.1)(@azure/search-documents@12.2.0)(@cloudflare/workers-types@4.20260120.0)(@google/genai@2.5.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@3.25.76))(bufferutil@4.1.0))(@langchain/core@1.1.48(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.218.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.39.0(ws@8.20.1(bufferutil@4.1.0))(zod@3.25.76))(ws@8.20.1(bufferutil@4.1.0)))(@mistralai/mistralai@1.10.0)(@qdrant/js-client-rest@1.16.2(typescript@5.9.3))(@supabase/supabase-js@2.106.1)(@types/jest@29.5.14)(@types/pg@8.15.6)(better-sqlite3@12.10.0)(cloudflare@4.5.0(encoding@0.1.13))(compromise@14.15.0)(encoding@0.1.13)(groq-sdk@0.3.0(encoding@0.1.13))(natural@8.1.1(@opentelemetry/api@1.9.1)(socks@2.8.7))(ollama@0.6.3)(pg@8.21.0)(redis@5.12.1(@opentelemetry/api@1.9.1))(ws@8.20.1(bufferutil@4.1.0)):
+  mem0ai@3.0.3(@anthropic-ai/sdk@0.98.0(zod@3.25.76))(@azure/identity@4.13.1)(@azure/search-documents@12.2.0)(@cloudflare/workers-types@4.20260120.0)(@google/genai@2.5.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@3.25.76))(bufferutil@4.1.0))(@langchain/core@1.1.48(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.218.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.39.0(ws@8.20.1(bufferutil@4.1.0))(zod@3.25.76))(ws@8.20.1(bufferutil@4.1.0)))(@mistralai/mistralai@2.2.1(bufferutil@4.1.0))(@qdrant/js-client-rest@1.16.2(typescript@5.9.3))(@supabase/supabase-js@2.106.1)(@types/jest@29.5.14)(@types/pg@8.15.6)(better-sqlite3@12.10.0)(cloudflare@4.5.0(encoding@0.1.13))(compromise@14.15.0)(encoding@0.1.13)(groq-sdk@0.3.0(encoding@0.1.13))(natural@8.1.1(@opentelemetry/api@1.9.1)(socks@2.8.7))(ollama@0.6.3)(pg@8.21.0)(redis@5.12.1(@opentelemetry/api@1.9.1))(ws@8.20.1(bufferutil@4.1.0)):
     dependencies:
       '@anthropic-ai/sdk': 0.98.0(zod@3.25.76)
       '@azure/identity': 4.13.1
@@ -21918,7 +21937,7 @@ snapshots:
       '@cloudflare/workers-types': 4.20260120.0
       '@google/genai': 2.5.0(@modelcontextprotocol/sdk@1.29.0(@cfworker/json-schema@4.1.1)(zod@3.25.76))(bufferutil@4.1.0)
       '@langchain/core': 1.1.48(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.218.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.1))(openai@6.39.0(ws@8.20.1(bufferutil@4.1.0))(zod@3.25.76))(ws@8.20.1(bufferutil@4.1.0))
-      '@mistralai/mistralai': 1.10.0
+      '@mistralai/mistralai': 2.2.1(bufferutil@4.1.0)
       '@qdrant/js-client-rest': 1.16.2(typescript@5.9.3)
       '@supabase/supabase-js': 2.106.1
       '@types/jest': 29.5.14
@@ -22586,7 +22605,7 @@ snapshots:
   node-edge-tts@1.2.10(bufferutil@4.1.0):
     dependencies:
       https-proxy-agent: 7.0.6
-      ws: 8.19.0(bufferutil@4.1.0)
+      ws: 8.20.1(bufferutil@4.1.0)
       yargs: 17.7.2
     transitivePeerDependencies:
       - bufferutil
@@ -22808,11 +22827,6 @@ snapshots:
       - encoding
 
   openai@6.10.0(ws@8.19.0(bufferutil@4.1.0))(zod@4.3.6):
-    optionalDependencies:
-      ws: 8.19.0(bufferutil@4.1.0)
-      zod: 4.3.6
-
-  openai@6.39.0(ws@8.19.0(bufferutil@4.1.0))(zod@4.3.6):
     optionalDependencies:
       ws: 8.19.0(bufferutil@4.1.0)
       zod: 4.3.6
