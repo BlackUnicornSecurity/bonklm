@@ -240,6 +240,14 @@ interface ResolvedBundle {
   baseCachedOptions: Omit<CachedValidateOptions, 'cacheNamespace'>;
   baseCacheNamespace: string | undefined;
   logger: CachedValidateOptions['logger'];
+  /**
+   * Sprint 14 cumulative arch X3 part 2 closure: engine reference
+   * carried into the bundle so `runPipeline` can call
+   * `engine.notifyCachedResult(...)` after `cachedValidate`. Without
+   * this, Trigger.dev validator decisions are invisible to
+   * `engine.onIntercept(...)` audit telemetry consumers.
+   */
+  engine: GuardrailEngine;
 }
 
 /**
@@ -393,6 +401,10 @@ function resolveOptions(options: BonklmTriggerOptions): ResolvedBundle {
     },
     baseCacheNamespace: options.cacheNamespace,
     logger: options.logger,
+    // Sprint 14 cumulative arch X3 part 2 closure: carry the engine
+    // so the per-attempt runPipeline can dispatch to onIntercept
+    // callbacks via notifyCachedResult.
+    engine,
   };
 }
 
@@ -405,7 +417,7 @@ function handleFromBundle(
   bundle: ResolvedBundle,
   runId: string
 ): BonklmTriggerHandle {
-  const { validators, baseCachedOptions, baseCacheNamespace } = bundle;
+  const { validators, baseCachedOptions, baseCacheNamespace, engine } = bundle;
   const cacheNamespace =
     baseCacheNamespace !== undefined
       ? `${baseCacheNamespace}::run-${runId}`
@@ -417,7 +429,8 @@ function handleFromBundle(
   };
 
   const runPipeline = async (
-    input: ValidatorInput
+    input: ValidatorInput,
+    surface: string
   ): Promise<BonklmTriggerValidateResult> => {
     // rev R4 (Story 2.9 audit) DESIGN NOTE: throws from cachedValidate
     // propagate intentionally — Trigger.dev's task runner catches them
@@ -429,6 +442,20 @@ function handleFromBundle(
       validators as Validator[],
       input,
       cachedOptions
+    );
+    // Sprint 14 cumulative arch X3 part 2 closure: notify the engine
+    // so onIntercept callbacks fire for cached-validate decisions.
+    // Without this, Trigger.dev validator decisions silently bypass
+    // engine-wide audit telemetry. Surface tag includes the runId so
+    // observability consumers can correlate per-run.
+    const contentForCallback =
+      typeof (input as { content?: unknown }).content === 'string'
+        ? ((input as { content: string }).content as string)
+        : JSON.stringify(input);
+    await engine.notifyCachedResult(
+      results,
+      contentForCallback,
+      `trigger:${surface}:run-${runId}`
     );
     const firstBlock = results.find((r) => r.blocked === true);
     const blocked = firstBlock !== undefined;
@@ -485,13 +512,13 @@ function handleFromBundle(
           'validateInput: expected a string or a ValidatorInput object'
         );
       }
-      return runPipeline(input);
+      return runPipeline(input, 'validateInput');
     },
     async validateOutput(content) {
       if (typeof content !== 'string') {
         return blockedAt('validateOutput: expected a string');
       }
-      return runPipeline({ kind: 'text', content });
+      return runPipeline({ kind: 'text', content }, 'validateOutput');
     },
     async validateToolArgs(toolName, args) {
       // B2-rev: reject empty / non-string toolName at the boundary.
@@ -501,11 +528,14 @@ function handleFromBundle(
       // B3 pre-flight: catch non-serializable args here.
       const preflight = preflightCanonical({ kind: 'tool_call', toolName, args });
       if (preflight !== null) return preflight;
-      return runPipeline({
-        kind: 'tool_call',
-        toolName,
-        args,
-      });
+      return runPipeline(
+        {
+          kind: 'tool_call',
+          toolName,
+          args,
+        },
+        'validateToolArgs'
+      );
     },
   };
 

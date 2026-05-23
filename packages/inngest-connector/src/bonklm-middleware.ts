@@ -84,9 +84,24 @@ export interface StepRunner {
  * across every function-run so the engineInstanceId salt is stable.
  */
 interface ResolvedBundle {
-  validators: Validator[];
+  /**
+   * Sprint 14 cumulative sec cross-S2 closure: frozen shallow copy so
+   * post-factory mutation of the consumer's original array does not
+   * leak into subsequent function-run invocations. Matches the
+   * Trigger.dev connector's sec S7 posture.
+   */
+  validators: readonly Validator[];
   cachedOptions: CachedValidateOptions;
   stepPrefix: string;
+  /**
+   * Sprint 14 cumulative arch X3 part 2 closure: engine reference
+   * carried into the bundle so `runPipeline` can call
+   * `engine.notifyCachedResult(...)` after `cachedValidate`,
+   * propagating decisions to `engine.onIntercept(...)` listeners.
+   * Without this, Inngest validator decisions were invisible to the
+   * audit telemetry surface.
+   */
+  engine: GuardrailEngine;
 }
 
 /**
@@ -206,14 +221,35 @@ function surfaceFromBundle(
   step: StepRunner,
   bundle: ResolvedBundle
 ): BonklmInngestContextSurface {
-  const { validators, cachedOptions, stepPrefix } = bundle;
+  const { validators, cachedOptions, stepPrefix, engine } = bundle;
 
   const runPipeline = async (
     stepId: string,
     input: ValidatorInput
   ): Promise<BonklmInngestValidateResult> => {
     return step.run(stepId, async () => {
-      const results = await cachedValidate(validators, input, cachedOptions);
+      const results = await cachedValidate(
+        validators as Validator[],
+        input,
+        cachedOptions
+      );
+      // Sprint 14 cumulative arch X3 part 2 closure: notify the engine
+      // so `engine.onIntercept(...)` callbacks fire for cached-validate
+      // decisions too (Inngest's previous bypass meant attack telemetry
+      // wired via onIntercept silently lost every Inngest validator
+      // decision). Connector-surface context tag lets observability
+      // consumers distinguish `inngest:<stepId>` from other surfaces.
+      // Fire-and-forget — failures inside callbacks must NOT break the
+      // function-run.
+      const contentForCallback =
+        typeof (input as { content?: unknown }).content === 'string'
+          ? ((input as { content: string }).content as string)
+          : JSON.stringify(input);
+      await engine.notifyCachedResult(
+        results,
+        contentForCallback,
+        `inngest:${stepId}`
+      );
       const firstBlock = results.find((r) => r.blocked === true);
       const blocked = firstBlock !== undefined;
       return {
@@ -373,8 +409,10 @@ function resolveOptions(options: BonklmInngestMiddlewareOptions): ResolvedBundle
   };
 
   return {
-    validators: options.validators,
+    // Sprint 14 cumulative sec cross-S2 closure: freeze a shallow copy.
+    validators: Object.freeze([...options.validators]),
     cachedOptions,
     stepPrefix,
+    engine,
   };
 }

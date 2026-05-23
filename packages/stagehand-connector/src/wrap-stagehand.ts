@@ -142,6 +142,26 @@ export function wrapStagehand<T extends StagehandLike>(
   // this, sub-actions bypass tool_call validation entirely. Document
   // the mutation loudly — this IS mutating the consumer's client by
   // design (the security goal supersedes the immutability principle).
+  //
+  // **Construction-order doc (Sprint 13 carry-over rev A&D-2)**:
+  // `wrapStagehand` MUST be called BEFORE the Stagehand planner starts
+  // (or before any caller captures a reference to `client.act` /
+  // `client.extract` / `client.agent`). After this function returns,
+  // the methods on the consumer's `client` instance are REPLACED in
+  // place. Any code holding a captured `client.act` reference from
+  // BEFORE this call bypasses validation entirely.
+  //
+  // **Runtime-registration limitation**: methods added to the client
+  // AFTER `wrapStagehand` returns (e.g. plugin extensions that
+  // attach new actions) are NOT wrapped. The connector intercepts
+  // the four primary surfaces (`act`, `extract`, `observe`, `agent`)
+  // discovered at wrap time only.
+  //
+  // **Hybrid client dual-wrap warning**: a consumer who calls
+  // `wrapStagehand(client, ...)` twice with different engines silently
+  // overwrites the first wrap's monkey-patches; the second engine's
+  // validator stack alone is enforced. Wrap exactly once per client
+  // lifetime.
   const originalAct = client.act.bind(client);
   const validatedAct = async (
     actionArg: string | { action: string; [k: string]: unknown }
