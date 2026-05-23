@@ -43,10 +43,10 @@ import {
   type GuardrailResult,
   type Logger,
   Severity,
+  validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
 import {
   ConnectorValidationError,
-  logTimeout,
   logValidationFailure,
   StreamValidator,
 } from '@blackunicorn/bonklm/core/connector-utils';
@@ -80,27 +80,21 @@ function makeTimeoutValidator(
   logger: Logger
 ) {
   return async (content: string, context?: string): Promise<GuardrailResult> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const r = await engine.validate(content, context);
-      clearTimeout(timeoutId);
-      return r;
-    } catch (err) {
-      clearTimeout(timeoutId);
-      if (err instanceof Error && err.name === 'AbortError') {
-        logTimeout(logger, 'Google GenAI validation', timeoutMs);
-        return createResult(false, Severity.CRITICAL, [
+    const r = await validateWithTimeoutSecure<GuardrailResult>({
+      operation: () => engine.validate(content, context) as Promise<GuardrailResult>,
+      timeoutMs,
+      timeoutSentinel: () =>
+        createResult(false, Severity.CRITICAL, [
           {
             category: 'timeout',
             severity: Severity.CRITICAL,
             description: 'Validation timeout',
             weight: 30,
           },
-        ]);
-      }
-      throw err;
-    }
+        ]),
+      logger,
+    });
+    return r;
   };
 }
 

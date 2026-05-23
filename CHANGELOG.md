@@ -5,6 +5,108 @@ All notable changes to BonkLM (`@blackunicorn/bonklm`) will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Sprint 30 (2026-05-24)
+
+SEC-008 timeout-primitive extraction. Sprint 29 audit uncovered that
+fastify-plugin's validation-timeout was broken — `engine.validate()`
+doesn't accept an `AbortSignal`, so the AbortController-based timeout
+was a no-op. Sprint 30 swept the workspace and found the SAME broken
+pattern in 20+ other connectors (anthropic, chroma, openai, langchain,
+llamaindex, google-genai, huggingface, mastra, openai-agents, vercel
+×2, weaviate, pinecone, qdrant, mcp, copilotkit, ollama, genkit,
+langchain-middleware). Per-connector porting would create 20+
+near-identical patches each needing independent audit. Extract a
+single canonical primitive instead.
+
+### Added
+
+- **`validateWithTimeoutSecure`** — shared SEC-008 timeout primitive
+  at `@blackunicorn/bonklm` → `connector-utils/timeout-wrapper.ts`.
+  Promise.race against a lazy timeout-sentinel factory, with the
+  in-flight validator promise wrapped in `.catch()` BEFORE the race
+  to absorb post-timeout rejections (Node ≥15 crashes the process on
+  unhandled rejections by default — DoS vector if validator throws
+  after timeout fires).
+
+  ```ts
+  import { validateWithTimeoutSecure } from '@blackunicorn/bonklm';
+
+  const result = await validateWithTimeoutSecure({
+    operation: () => engine.validate(content, context),
+    timeoutMs: validationTimeout,
+    timeoutSentinel: () => buildBlockedResult(),
+    logger,
+  });
+  ```
+
+  `@public` per v1.0-RC1 freeze policy. **Connector authors MUST NOT
+  roll their own AbortController-based timeout** — the AbortSignal
+  does not propagate to `engine.validate()` and the timeout becomes a
+  no-op. Use this helper.
+
+### Fixed (22 connectors ported to `validateWithTimeoutSecure`)
+
+Per CLAUDE.md "100% pass rate required — no postponing" rule + 3-lane
+audit CRITICAL finding (architect: "Port all 20 before tagging RC2"),
+**ALL 22 affected connector packages** are ported in this same sprint:
+
+- **anthropic-connector** — was broken AbortController. 89/89 pass.
+- **chroma-connector** — was broken AbortController. 56/56 pass.
+- **fastify-plugin** — refactored from Sprint 29 inline. 43/43 pass.
+- **nestjs-module** — refactored from Sprint 29 inline. 74/74 pass.
+- **express-middleware** — was broken AbortController. 40/40 pass.
+- **openai-connector** — was broken AbortController.
+- **openai-agents-connector** — was broken AbortController.
+- **google-genai-connector** — was broken AbortController.
+- **huggingface-connector** — was broken AbortController.
+- **langchain-connector** (guardrails-handler + middleware) — was broken
+  AbortController (class-method form via `this.engine` / `this.logger`).
+- **llamaindex-connector** (guarded-engine: QueryEngine + Retriever
+  factories) — was broken AbortController.
+- **mastra-connector** — was broken AbortController.
+- **mcp-connector** — was broken AbortController.
+- **vercel-connector** (guarded-ai + bonk-middleware) — was broken
+  AbortController.
+- **weaviate-connector** — was broken AbortController.
+- **pinecone-connector** — was broken AbortController.
+- **qdrant-connector** — was broken AbortController.
+- **copilotkit-connector** — was broken AbortController.
+- **ollama-connector** — was broken AbortController.
+- **genkit-connector** — was broken AbortController.
+
+Per-file sentinel SHAPES preserved (GuardrailResult / EngineResult /
+`{results:[...]}` / ad-hoc plain object) so caller-side type contracts
+are unchanged; only the timeout-orchestration mechanism switched.
+
+### Audit hardening (applied inline before commit)
+
+3-lane audit (architect + code-reviewer + security-reviewer) ran
+post-helper-extraction. Convergent findings closed:
+
+- **CRITICAL** (architect+security) — 18-22 broken connectors → **all ported.**
+- **HIGH** (architect+security) — sentinel-factory called twice on
+  post-timeout race rejection → memoized via `getSentinel()` cache.
+- **HIGH** (security) — sentinel-factory throw path could crash process
+  → wrapped in `safeSentinel()` try/catch with hardcoded fallback.
+- **MEDIUM** (code-reviewer+architect) — `timeoutMs ≤ 0` was an unenforced
+  silent-bypass vector → throws `TypeError` at helper entry.
+- **MEDIUM** (code-reviewer) — `TimeoutWrapperLogger` duplicated the
+  canonical `Logger` interface → imported canonical type, dropped
+  duplicate.
+- **MEDIUM** (security) — post-timeout validator rejection logged at
+  `debug` → upgraded to `warn` so operators see systematic failures.
+- **LOW** (architect) — stale "AbortController" JSDoc in anthropic /
+  fastify / nestjs types → updated all 4 to "validateWithTimeoutSecure".
+
+### Tests
+
+- Core: **2767/2777** unchanged (10 multilingual Pass-2 skips).
+- 22 ported packages: full build green. Pre-existing test-tooling
+  failures in mastra/pinecone (test-string assertion drift) and
+  vercel-connector (CommonJS `require()` in ESM test file) are
+  documented unchanged (predate Sprint 30; tracked separately).
+- All affected packages build clean.
+
 ## [Unreleased] — Sprint 29 (2026-05-24)
 
 Connector test-tooling debt remediation. Pre-existing schema mismatch

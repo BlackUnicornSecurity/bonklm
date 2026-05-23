@@ -29,6 +29,7 @@ import {
   type GuardrailResult,
   type Logger,
   Severity,
+  validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
 import type {
   GuardedChatCompletion,
@@ -173,7 +174,11 @@ export function createGuardedOpenAI(
   });
 
   /**
-   * SEC-008: Validation timeout wrapper with AbortController.
+   * SEC-008: Validation timeout wrapper.
+   *
+   * Sprint 30: routes through the canonical `validateWithTimeoutSecure`
+   * primitive from core/connector-utils. Replaces the broken
+   * AbortController pattern (signal never propagated to engine.validate).
    *
    * @internal
    */
@@ -181,48 +186,28 @@ export function createGuardedOpenAI(
     content: string,
     context?: string,
   ): Promise<GuardrailResult[]> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), validationTimeout);
+    // DEV-001: Correct API signature - use string context, not object
+    const engineResult = await validateWithTimeoutSecure({
+      operation: () => engine.validate(content, context),
+      timeoutMs: validationTimeout,
+      timeoutSentinel: () =>
+        createResult(false, Severity.CRITICAL, [
+          {
+            category: 'timeout',
+            description: 'Validation timeout',
+            severity: Severity.CRITICAL,
+            weight: 30,
+          },
+        ]),
+      logger,
+    });
 
-    try {
-      // DEV-001: Correct API signature - use string context, not object
-      const engineResult = await engine.validate(content, context);
-
-      // Clear timeout before processing results to prevent race condition
-      clearTimeout(timeoutId);
-
-      // Convert EngineResult to GuardrailResult[]
-      if ('results' in engineResult) {
-        // Multiple results returned (from EngineResult.results array)
-        const multiResult = engineResult;
-        return multiResult.results || [engineResult as GuardrailResult];
-      }
-
-      // Single result returned
-      return [engineResult as GuardrailResult];
-    } catch (error) {
-      // Clear timeout before processing error
-      clearTimeout(timeoutId);
-
-      if (error instanceof Error && error.name === 'AbortError') {
-        logger.error('[Guardrails] Validation timeout');
-        return [
-          createResult(false, Severity.CRITICAL, [
-            {
-              category: 'timeout',
-              description: 'Validation timeout',
-              severity: Severity.CRITICAL,
-              weight: 30,
-            },
-          ]),
-        ];
-      }
-
-      throw error;
-    } finally {
-      // Ensure AbortController is cleaned up to prevent memory leaks
-      controller.signal.removeEventListener('abort', () => {});
+    // Convert EngineResult to GuardrailResult[]
+    const er = engineResult as unknown as { results?: GuardrailResult[] };
+    if (er.results !== undefined && er.results.length > 0) {
+      return er.results;
     }
+    return [engineResult as GuardrailResult];
   };
 
   /**

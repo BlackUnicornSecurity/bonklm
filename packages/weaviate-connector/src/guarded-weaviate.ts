@@ -22,6 +22,7 @@ import {
   type GuardrailResult,
   type Logger,
   Severity,
+  validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
 import { applyRetrievedDocValidatorToMatches } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
@@ -150,30 +151,21 @@ export function createGuardedClient(
     content: string,
     context?: string
   ): Promise<GuardrailResult> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), validationTimeout);
-
-    try {
-      const result = await engine.validate(content, context);
-      clearTimeout(timeoutId);
-      return result;
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error instanceof Error && error.name === 'AbortError') {
-        logger.error('[Guardrails] Validation timeout');
-        return createResult(false, Severity.CRITICAL, [
+    const result = await validateWithTimeoutSecure<GuardrailResult>({
+      operation: () => engine.validate(content, context) as Promise<GuardrailResult>,
+      timeoutMs: validationTimeout,
+      timeoutSentinel: () =>
+        createResult(false, Severity.CRITICAL, [
           {
             category: 'timeout',
             description: 'Validation timeout',
             severity: Severity.CRITICAL,
             weight: 30,
           },
-        ]);
-      }
-
-      throw error;
-    }
+        ]),
+      logger,
+    });
+    return result;
   };
 
   /**

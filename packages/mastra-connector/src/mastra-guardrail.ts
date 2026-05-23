@@ -27,11 +27,11 @@ import {
   type Logger,
   RiskLevel,
   Severity,
+  validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
 import {
   ConnectorValidationError,
   createStreamValidatorState,
-  logTimeout,
   logValidationFailure,
   StreamValidationError,
   updateStreamValidatorState,
@@ -263,43 +263,31 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
     content: string,
     context?: string,
   ): Promise<EngineResult> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), validationTimeout);
-
-    try {
-      const engineResult = await engine.validate(content, context);
-
-      clearTimeout(timeoutId);
-      return engineResult;
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error instanceof Error && error.name === 'AbortError') {
-        // S012-004: Use connector-utils timeout logging
-        logTimeout(logger, 'Mastra validation', validationTimeout);
-        return {
-          allowed: false,
-          blocked: true,
+    const engineResult = await validateWithTimeoutSecure<EngineResult>({
+      operation: () => engine.validate(content, context) as Promise<EngineResult>,
+      timeoutMs: validationTimeout,
+      timeoutSentinel: () => ({
+        allowed: false,
+        blocked: true,
+        severity: Severity.CRITICAL,
+        risk_level: RiskLevel.HIGH,
+        risk_score: 30,
+        reason: 'Validation timeout',
+        findings: [{
+          category: 'timeout',
           severity: Severity.CRITICAL,
-          risk_level: RiskLevel.HIGH,
-          risk_score: 30,
-          reason: 'Validation timeout',
-          findings: [{
-            category: 'timeout',
-            severity: Severity.CRITICAL,
-            description: 'Validation timeout',
-            weight: 30,
-          }],
-          results: [],
-          validatorCount: validators.length,
-          guardCount: guards.length,
-          executionTime: validationTimeout,
-          timestamp: Date.now(),
-        };
-      }
-
-      throw error;
-    }
+          description: 'Validation timeout',
+          weight: 30,
+        }],
+        results: [],
+        validatorCount: validators.length,
+        guardCount: guards.length,
+        executionTime: validationTimeout,
+        timestamp: Date.now(),
+      }),
+      logger,
+    });
+    return engineResult;
   };
 
   /**

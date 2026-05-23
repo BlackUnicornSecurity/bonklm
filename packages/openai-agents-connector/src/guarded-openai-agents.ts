@@ -37,10 +37,10 @@ import {
   createToolCallArgsValidator,
   GuardrailEngine,
   type Logger,
+  validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
 import {
   ConnectorValidationError,
-  logTimeout,
   logValidationFailure,
 } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
@@ -120,27 +120,20 @@ function makeValidate(
   engine: GuardrailEngine,
   timeout: number,
   logger: Logger,
-  label: string
+  _label: string
 ) {
   return async (content: string, context: string) => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-    try {
-      const r = await engine.validate(content, context);
-      clearTimeout(timeoutId);
-      return r;
-    } catch (err) {
-      clearTimeout(timeoutId);
-      if (err instanceof Error && err.name === 'AbortError') {
-        logTimeout(logger, label, timeout);
-        return {
-          allowed: false,
-          blocked: true,
-          reason: 'Validation timeout',
-        } as { allowed: boolean; blocked: boolean; reason?: string };
-      }
-      throw err;
-    }
+    const r = await validateWithTimeoutSecure({
+      operation: () => engine.validate(content, context),
+      timeoutMs: timeout,
+      timeoutSentinel: () => ({
+        allowed: false,
+        blocked: true,
+        reason: 'Validation timeout',
+      } as { allowed: boolean; blocked: boolean; reason?: string }),
+      logger,
+    });
+    return r;
   };
 }
 

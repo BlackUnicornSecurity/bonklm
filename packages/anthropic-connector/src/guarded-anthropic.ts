@@ -9,7 +9,7 @@
  * - SEC-003: Max buffer size enforcement to prevent DoS
  * - SEC-006: Complex message content handling (arrays, images, structured data)
  * - SEC-007: Production mode error messages
- * - SEC-008: Validation timeout with AbortController
+ * - SEC-008: Validation timeout via `validateWithTimeoutSecure` (Sprint 30)
  * - DEV-001: Correct GuardrailEngine.validate() API (string context)
  * - DEV-002: Proper logger integration
  *
@@ -33,6 +33,7 @@ import {
   type GuardrailResult,
   type Logger,
   Severity,
+  validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
 import type {
   GuardedAnthropicOptions,
@@ -243,7 +244,12 @@ export function createGuardedAnthropic(
   };
 
   /**
-   * SEC-008: Validation timeout wrapper with AbortController.
+   * SEC-008: Validation timeout wrapper.
+   *
+   * Sprint 30: routes through the shared `validateWithTimeoutSecure`
+   * primitive from core/connector-utils — single canonical SEC-008
+   * implementation across all connectors. The helper handles
+   * Promise.race + post-timeout-rejection absorption internally.
    *
    * @internal
    */
@@ -252,9 +258,6 @@ export function createGuardedAnthropic(
     context?: string,
     runId?: string,
   ): Promise<GuardrailResult[]> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), validationTimeout);
-
     const currentRunId = runId || generateRunId();
     const startTime = Date.now();
 
@@ -270,18 +273,27 @@ export function createGuardedAnthropic(
 
     try {
       // DEV-001: Correct API signature - use string context, not object
-      const engineResult = await engine.validate(content, context);
-
-      // Clear timeout before processing results to prevent race condition
-      clearTimeout(timeoutId);
+      const engineResult = await validateWithTimeoutSecure({
+        operation: () => engine.validate(content, context),
+        timeoutMs: validationTimeout,
+        timeoutSentinel: () =>
+          createResult(false, Severity.CRITICAL, [
+            {
+              category: 'timeout',
+              description: 'Validation timeout',
+              severity: Severity.CRITICAL,
+            },
+          ]),
+        logger,
+      });
 
       const duration = Date.now() - startTime;
 
       // Convert EngineResult to GuardrailResult[]
-      if ('results' in engineResult) {
+      const er = engineResult as unknown as { results?: GuardrailResult[] };
+      if (er.results !== undefined) {
         // Multiple results returned (from EngineResult.results array)
-        const multiResult = engineResult;
-        return multiResult.results || [engineResult as GuardrailResult];
+        return er.results.length > 0 ? er.results : [engineResult as GuardrailResult];
       }
 
       // Single result returned
@@ -303,9 +315,6 @@ export function createGuardedAnthropic(
 
       return result;
     } catch (error) {
-      // Clear timeout before processing error
-      clearTimeout(timeoutId);
-
       // Record telemetry error
       if (telemetry && error instanceof Error) {
         telemetry.recordValidationError({
@@ -314,25 +323,7 @@ export function createGuardedAnthropic(
           error,
         });
       }
-
-      if (error instanceof Error && error.name === 'AbortError') {
-        logger.error('[Guardrails] Validation timeout');
-        return [
-          createResult(false, Severity.CRITICAL, [
-            {
-              category: 'timeout',
-              description: 'Validation timeout',
-              severity: Severity.CRITICAL,
-              weight: 30,
-            },
-          ]),
-        ];
-      }
-
       throw error;
-    } finally {
-      // Ensure AbortController is cleaned up to prevent memory leaks
-      controller.signal.removeEventListener('abort', () => {});
     }
   };
 

@@ -119,12 +119,14 @@ export {
   logTimeout,
   DEFAULT_MAX_BUFFER_SIZE,
   DEFAULT_VALIDATION_INTERVAL,
+  validateWithTimeoutSecure,
   type ContentExtractorOptions,
   type StreamValidationOptions,
   type StreamValidatorEngine,
   type StreamValidatorResult,
   type StreamValidatorState,
   type StandardLoggerOptions,
+  type ValidateWithTimeoutOptions,
 } from './connector-utils/index.js';
 
 // Story 2.1b-edge-core (iter-1 architect BLOCK-2): re-export the ALS

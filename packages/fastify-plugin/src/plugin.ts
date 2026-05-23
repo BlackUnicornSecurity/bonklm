@@ -6,7 +6,7 @@
  * Security Fixes Applied:
  * - SEC-001: Path traversal protection via path.normalize()
  * - SEC-007: Production mode toggle for error messages
- * - SEC-008: Validation timeout with AbortController
+ * - SEC-008: Validation timeout via `validateWithTimeoutSecure` (Sprint 30)
  * - SEC-010: Request size limit option
  * - DEV-001: Correct GuardrailEngine.validate() API (string context)
  * - DEV-002: Use createLogger('console') instead of raw console
@@ -35,6 +35,7 @@ import {
   type SessionPatternFinding,
   Severity,
   updateSessionState,
+  validateWithTimeoutSecure,
   Validators,
 } from '@blackunicorn/bonklm';
 import type {
@@ -245,63 +246,39 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
 
   // SEC-008: Create timeout wrapper for validation.
   //
-  // Sprint 29 fix: the original implementation created an `AbortController`
-  // and called `controller.abort()` after `validationTimeout` ms, but the
-  // engine.validate() signature does not accept an AbortSignal — so the
-  // abort never propagated and slow validators continued past the timeout
-  // budget (resulting in allowed: true responses against expectation).
-  //
-  // Use `Promise.race` against a timeout promise that resolves to a
-  // blocked-result sentinel. This honours the SEC-008 timeout budget
-  // regardless of validator cooperativeness.
+  // Sprint 30: routes through the shared `validateWithTimeoutSecure`
+  // primitive from core/connector-utils. The helper handles
+  // Promise.race + post-timeout-rejection absorption internally — same
+  // contract Sprint 29 introduced inline here, now de-duplicated across
+  // all connectors.
   const validateWithTimeout = async (
     content: string,
     context?: string
   ): Promise<GuardrailResult> => {
-    const timeoutResult: GuardrailResult = {
-      allowed: false,
-      blocked: true,
-      severity: Severity.CRITICAL,
-      risk_level: RiskLevel.HIGH,
-      risk_score: 100,
-      findings: [],
-      timestamp: Date.now(),
-      reason: 'Validation timeout',
-    };
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const timeoutPromise = new Promise<GuardrailResult>((resolve) => {
-      timeoutId = setTimeout(() => {
-        logger.error('[Guardrails] Validation timeout');
-        resolve(timeoutResult);
-      }, validationTimeout);
+    // DEV-001/003: correct API signature + AWAIT validation.
+    // Helper generic R is GuardrailResult — engine.validate may return
+    // an EngineResult union member, but the fastify hook only ever
+    // consumes the single-result shape (blocked / allowed fields). Cast
+    // the operation's return to narrow the helper's inferred type.
+    const result = await validateWithTimeoutSecure<GuardrailResult>({
+      operation: async () => {
+        const r = await engine.validate(content, context);
+        return r as GuardrailResult;
+      },
+      timeoutMs: validationTimeout,
+      timeoutSentinel: () => ({
+        allowed: false,
+        blocked: true,
+        severity: Severity.CRITICAL,
+        risk_level: RiskLevel.HIGH,
+        risk_score: 100,
+        findings: [],
+        timestamp: Date.now(),
+        reason: 'Validation timeout',
+      }),
+      logger,
     });
-    // Sprint 29 security audit S29-002: when the timeout wins the race,
-    // the engine.validate() promise continues running with no caller
-    // holding a reference. Attach a `.catch()` BEFORE the race to absorb
-    // any later rejection (network error, OOM, etc.) — Node ≥15 crashes
-    // the process on unhandled rejections by default, so a slow validator
-    // that throws after the timeout could DoS the worker.
-    const validatePromise = Promise.resolve(engine.validate(content, context)).catch(
-      (err: unknown) => {
-        // Log AFTER-timeout rejections at debug level — operators can see
-        // them if they enable debug logs but they don't pollute warn/error
-        // (the validator decision was already a hard timeout-block).
-        logger.debug?.('[Guardrails] Validator rejected post-timeout', {
-          error: err instanceof Error ? err.message : String(err),
-        });
-        return timeoutResult;
-      }
-    );
-    try {
-      // DEV-001: Use correct API signature (string context, not object)
-      // DEV-003: AWAIT the validation
-      const result = await Promise.race([validatePromise, timeoutPromise]);
-      return result;
-    } finally {
-      if (timeoutId !== undefined) {
-        clearTimeout(timeoutId);
-      }
-    }
+    return result;
   };
 
   // Select error handler based on production mode (SEC-007)

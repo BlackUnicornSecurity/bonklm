@@ -25,6 +25,7 @@ import {
   type GuardrailResult,
   type Logger,
   Severity,
+  validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
 // S012-011: Use standard connector error classes from core
 import {
@@ -197,43 +198,29 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
     content: string,
     context?: string,
   ): Promise<GuardrailResult[]> {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.validationTimeout);
+    // DEV-001: Correct API signature - use string context, not object
+    const engineResult = await validateWithTimeoutSecure({
+      operation: () => this.engine.validate(content, context),
+      timeoutMs: this.validationTimeout,
+      timeoutSentinel: () =>
+        createResult(false, Severity.CRITICAL, [
+          {
+            category: 'timeout',
+            description: 'Validation timeout',
+            severity: Severity.CRITICAL,
+            weight: 30,
+          },
+        ]),
+      logger: this.logger,
+    });
 
-    try {
-      // DEV-001: Correct API signature - use string context, not object
-      const engineResult = await this.engine.validate(content, context);
-
-      clearTimeout(timeoutId);
-
-      // Convert EngineResult to GuardrailResult[]
-      if ('results' in engineResult) {
-        const multiResult = engineResult;
-        return multiResult.results || [engineResult as GuardrailResult];
-      }
-
-      return [engineResult as GuardrailResult];
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error instanceof Error && error.name === 'AbortError') {
-        this.logger.error('[Guardrails] Validation timeout');
-        return [
-          createResult(false, Severity.CRITICAL, [
-            {
-              category: 'timeout',
-              description: 'Validation timeout',
-              severity: Severity.CRITICAL,
-              weight: 30,
-            },
-          ]),
-        ];
-      }
-
-      throw error;
-    } finally {
-      controller.signal.removeEventListener('abort', () => {});
+    // Convert EngineResult to GuardrailResult[]
+    if ('results' in engineResult) {
+      const multiResult = engineResult as { results?: GuardrailResult[] };
+      return multiResult.results || [engineResult as GuardrailResult];
     }
+
+    return [engineResult as GuardrailResult];
   }
 
   /**

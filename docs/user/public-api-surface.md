@@ -57,6 +57,10 @@ This document enumerates what is **PUBLIC** (frozen for v2.0) vs
 - `adaptValidatorToUniversalInput` (function)
 - `extractStringContent` (function)
 - `assertNotWrapped` / `markWrapped` / `ensureWrappedOnce` (functions)
+- **`validateWithTimeoutSecure` (function)** — Sprint 30 SEC-008
+  canonical timeout primitive. ALL connector authors MUST use this
+  instead of rolling their own AbortController-based timeout (the
+  AbortSignal does not propagate to `engine.validate()`).
 
 #### Telemetry
 - `BonklmBlockEvent` (discriminated union, 7 kinds)
