@@ -1,0 +1,48 @@
+{
+  "name": "@blackunicorn/bonklm-cloudflare-agents",
+  "version": "0.5.0",
+  "description": "BonkLM connector for Cloudflare Agents (Durable Objects + Workerd) — BonklmAgent extends Agent with setState / sql / ctx.storage validators (Story 3.8)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "workerd": "./dist/index.js",
+      "edge-light": "./dist/index.js",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "src", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "agents": "^0.13.0"
+  },
+  "peerDependenciesMeta": {
+    "agents": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/cloudflare-agents-connector"
+  },
+  "homepage": "https://github.com/BlackUnicornSecurity/bonklm/tree/main/packages/cloudflare-agents-connector#readme",
+  "bugs": "https://github.com/BlackUnicornSecurity/bonklm/issues",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

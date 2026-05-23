@@ -1,0 +1,42 @@
+{
+  "name": "@blackunicorn/bonklm-web-middleware-utils",
+  "version": "0.5.0",
+  "description": "BonkLM shared web-middleware utilities — runRequestValidation, runResponseValidation, framework-agnostic getRequestBody (Story 3.9)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "workerd": "./dist/index.js",
+      "edge-light": "./dist/index.js",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "src", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "devDependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "typescript": "^5.9.0",
+    "vitest": "^4.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/web-middleware-utils"
+  },
+  "homepage": "https://github.com/BlackUnicornSecurity/bonklm/tree/main/packages/web-middleware-utils#readme",
+  "bugs": "https://github.com/BlackUnicornSecurity/bonklm/issues",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
