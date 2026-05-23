@@ -61,7 +61,12 @@ import {
   type Validator,
   type ValidatorInput,
 } from '@blackunicorn/bonklm';
-import { sanitizeReasonText } from '@blackunicorn/bonklm-browser-agents-core';
+// v0.5.0 pre-publish audit arch v5#7 closure: migrate sanitizeReasonText
+// import to the canonical edge-safe home in core/connector-utils so the
+// inngest connector no longer depends on the browser-named package
+// for a pure text utility. browser-agents-core retains its own
+// `sanitizeReasonText` export for back-compat with existing callers.
+import { sanitizeReasonText } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
   BonklmInngestContextSurface,
   BonklmInngestMiddlewareOptions,

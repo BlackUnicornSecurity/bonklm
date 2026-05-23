@@ -150,8 +150,35 @@ green across the entire Sprint 13–15 surface.
   `catch (e instanceof ConnectorValidationError)` handlers now
   catch Mistral blocks too.
 - **`@blackunicorn/bonklm-server`** `productionMode` defaults to
-  `true` in the programmatic API (was `false` pre-release). Dev
-  consumers must explicitly set `productionMode: false`.
+  `true` in the programmatic API AND the CLI bin (env var
+  `BONKLM_PRODUCTION_MODE` defaults to `'true'`). Dev consumers
+  must explicitly set `productionMode: false` /
+  `BONKLM_PRODUCTION_MODE=false`. **Pre-publish closure note**:
+  the v0.5.0 pre-release docs had the CLI default at `false` for
+  one ephemeral state; the published v0.5.0 unifies to safe-default
+  `true` across both surfaces.
+- **`@blackunicorn/bonklm-trigger`** default `cacheNamespace`
+  fallback bumped from `@blackunicorn/bonklm-trigger@0.4::run-...`
+  to `@blackunicorn/bonklm-trigger@0.5::run-...`. Consumers
+  relying on the DEFAULT cache namespace (no explicit
+  `cacheNamespace` option) will see a one-time cache-miss storm
+  on first deploy after upgrade — cached BLOCK/ALLOW decisions
+  from v0.4 are effectively invalidated. To preserve cache
+  continuity across the upgrade, pin an explicit `cacheNamespace`
+  option to the v0.4 string. This is intentional: validator
+  pipeline changes between major BonkLM versions may invalidate
+  the underlying decisions even if the inputs hash identically.
+- **`BrowserAgentGuardrailBlockedError`** now extends
+  `ConnectorValidationError`. Stagehand + Eko + future browser-
+  agent connectors raise blocks that match cross-connector
+  `catch (e instanceof ConnectorValidationError)` handlers.
+  Pre-v0.5.0 consumers catching only `instanceof Error` or
+  `instanceof BrowserAgentGuardrailBlockedError` continue to work.
+- **`@blackunicorn/bonklm-inngest`** `sanitizeReasonText` import
+  migrated from `@blackunicorn/bonklm-browser-agents-core` to
+  `@blackunicorn/bonklm/core/connector-utils` (canonical edge-safe
+  home). The browser-agents-core re-export remains for back-compat;
+  consumer code referencing the symbol directly is unaffected.
 
 ## [Unreleased]
 

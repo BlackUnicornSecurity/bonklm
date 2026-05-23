@@ -471,7 +471,7 @@ function handleFromBundle(
   const cacheNamespace =
     baseCacheNamespace !== undefined
       ? `${baseCacheNamespace}::run-${runId}`
-      : `@blackunicorn/bonklm-trigger@0.4::run-${runId}`;
+      : `@blackunicorn/bonklm-trigger@0.5::run-${runId}`;
 
   const cachedOptions: CachedValidateOptions = {
     ...baseCachedOptions,

@@ -35,6 +35,15 @@
     "guardrails",
     "security"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/eko-connector"
+  },
+  "homepage": "https://github.com/BlackUnicornSecurity/bonklm",
+  "bugs": {
+    "url": "https://github.com/BlackUnicornSecurity/bonklm/issues"
+  },
   "author": "Black Unicorn <security@blackunicorn.tech>",
   "license": "MIT",
   "dependencies": {

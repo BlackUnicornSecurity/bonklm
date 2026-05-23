@@ -20,6 +20,14 @@
  * @package @blackunicorn/bonklm-browser-agents-core
  */
 import type { GuardrailEngine } from '@blackunicorn/bonklm';
+// v0.5.0 pre-publish audit arch v5#5 closure: hoist
+// `BrowserAgentGuardrailBlockedError` onto the cross-connector
+// `ConnectorValidationError` hierarchy so consumers writing
+// `catch (e instanceof ConnectorValidationError)` ALSO catch
+// Stagehand / Eko / browser-agent blocks. Imported from the edge-
+// safe `/core/connector-utils` subpath to keep the module graph
+// free of Node-only transitives.
+import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * Normalised browser-agent event union. Connector packages emit
@@ -112,7 +120,7 @@ export interface BrowserAgentValidateResult {
  * Sub-classes (per-connector) attach connector-specific metadata
  * via the `connector` field + readable name.
  */
-export class BrowserAgentGuardrailBlockedError extends Error {
+export class BrowserAgentGuardrailBlockedError extends ConnectorValidationError {
   /**
    * Per-connector identifier (`'stagehand'`, `'eko'`, etc).
    * Distinguishes errors from different browser-agent SDKs in
@@ -147,7 +155,8 @@ export class BrowserAgentGuardrailBlockedError extends Error {
     super(
       `bonklm-${connector}: ${action} blocked by ${surface} validator${
         safeReason !== undefined && safeReason.length > 0 ? ` — ${safeReason}` : ''
-      }`
+      }`,
+      'validation_failed'
     );
     this.name = 'BrowserAgentGuardrailBlockedError';
     this.connector = connector;

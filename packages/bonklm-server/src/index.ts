@@ -21,8 +21,15 @@
  * @package @blackunicorn/bonklm-server
  */
 import Fastify from 'fastify';
-import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type {
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+  FastifyServerOptions,
+} from 'fastify';
 import { GuardrailEngine } from '@blackunicorn/bonklm';
+import type { EngineResult } from '@blackunicorn/bonklm';
+import { sanitizeReasonText } from '@blackunicorn/bonklm/core/connector-utils';
 import {
   HMAC_SIGNATURE_HEADER,
   HMAC_TIMESTAMP_HEADER,
@@ -136,11 +143,11 @@ export async function createBonklmGuardrailServer(
   // Story 2.13 audit rev R2 closure: pass the caller's logger via
   // `loggerInstance` rather than silently discarding it via
   // `logger: false`. Fastify 5 accepts a pre-built logger via
-  // `loggerInstance` — we cast to bypass Fastify's generic-narrowing
-  // because BonkLM's `Logger` is a structural subtype of pino's
-  // logger (debug/info/warn/error/trace methods) and the cast is
-  // narrowed at module boundary.
-  const fastifyOpts =
+  // `loggerInstance` — we narrow to `FastifyServerOptions` so a
+  // future Fastify-6 signature change fails loudly rather than
+  // silently (v0.5.0 pre-publish rev v5#6 closure: replaced
+  // `as never` escape hatches with `Parameters<typeof Fastify>[0]`).
+  const fastifyOpts: FastifyServerOptions =
     options.logger === undefined
       ? {
           logger: {
@@ -149,10 +156,10 @@ export async function createBonklmGuardrailServer(
           bodyLimit,
         }
       : {
-          loggerInstance: options.logger as never,
+          loggerInstance: options.logger as FastifyServerOptions['loggerInstance'],
           bodyLimit,
         };
-  const fastify = Fastify(fastifyOpts as never) as unknown as FastifyInstance;
+  const fastify = Fastify(fastifyOpts) as unknown as FastifyInstance;
 
   // Story 2.13 audit arch 2# / arch 3# / rev R1 / sec S4 closure:
   // custom JSON parser that VERIFIES HMAC BEFORE attempting JSON
@@ -297,10 +304,17 @@ export async function createBonklmGuardrailServer(
 /**
  * Translate an engine result into the shared `GuardrailDecision`
  * response shape. Sanitization + production-mode handling baked in.
+ *
+ * v0.5.0 pre-publish audit sec v5#9 closure: attacker-controlled
+ * validator output (`engineResult.reason`, `finding.description`) is
+ * now sanitized via `sanitizeReasonText` BEFORE crossing the HTTP
+ * boundary, regardless of `productionMode`. The `productionMode`
+ * gate controls whether reason/findings are EXPOSED at all; the
+ * sanitization always runs when they are.
  */
 function makeDecision(
   surface: 'litellm' | 'portkey' | 'openai-compatible',
-  engineResult: import('@blackunicorn/bonklm').EngineResult,
+  engineResult: EngineResult,
   requestId: string,
   productionMode: boolean
 ): GuardrailDecision {
@@ -311,7 +325,7 @@ function makeDecision(
     reason: blocked
       ? productionMode
         ? 'guardrail decision'
-        : engineResult.reason
+        : (sanitizeReasonText(engineResult.reason) ?? 'guardrail decision')
       : undefined,
     surface,
     findings:
@@ -320,7 +334,7 @@ function makeDecision(
         : engineResult.findings.map((f) => ({
             category: f.category,
             severity: String(f.severity),
-            description: f.description,
+            description: sanitizeReasonText(f.description) ?? '',
           })),
     requestId,
   };

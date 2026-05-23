@@ -2,8 +2,8 @@
 # =====================================
 # Multi-stage build: pnpm workspace builder → minimal runtime image.
 #
-# Build: docker build -t blackunicorn/bonklm-server:0.4.0 -f packages/bonklm-server/Dockerfile .
-# Run:   docker run -p 4123:4123 -e BONKLM_HMAC_SECRET=... blackunicorn/bonklm-server:0.4.0
+# Build: docker build -t blackunicorn/bonklm-server:0.5.0 -f packages/bonklm-server/Dockerfile .
+# Run:   docker run -p 4123:4123 -e BONKLM_HMAC_SECRET=... blackunicorn/bonklm-server:0.5.0
 
 # ─── Stage 1: builder ────────────────────────────────────────────────
 FROM node:20-alpine AS builder
