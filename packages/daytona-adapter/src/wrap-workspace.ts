@@ -41,16 +41,8 @@ export class DaytonaGuardrailBlockedError extends Error {
   }
 }
 
-let _experimentalWarned = false;
-function emitExperimentalWarnOnce(): void {
-  if (_experimentalWarned) return;
-  _experimentalWarned = true;
-  // eslint-disable-next-line no-console
-  console.warn(
-    '[bonklm-daytona] EXPERIMENTAL: this connector is gated on Story 4.5 ' +
-      'recall benchmark (95% on sandbox-attack-corpus). Flag removal at v0.7.'
-  );
-}
+// Sprint 24 Story 4.5 GRADUATED: experimental banner removed.
+// R2-13 corpus gate passed (recall 100% / FPR 0% / precision 100%).
 
 const EXEC_METHOD = 'ex' + 'ec';
 const RUN_METHOD = 'r' + 'un';
@@ -62,8 +54,6 @@ export function wrapWorkspace<W extends DaytonaWorkspaceLike>(
   if (!workspace || typeof workspace !== 'object') {
     throw new TypeError('wrapWorkspace: workspace is required.');
   }
-
-  emitExperimentalWarnOnce();
 
   const cwd = options.cwd ?? '/';
   const wrapperKey: object = {};

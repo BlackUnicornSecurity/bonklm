@@ -5,6 +5,76 @@ All notable changes to BonkLM (`@blackunicorn/bonklm`) will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] — 2026-05-23 (Sprint 24)
+
+EPIC 4 consolidation release. Sandbox connectors graduate from
+EXPERIMENTAL to STABLE; OTel vendor recipes documented; multilingual
+Pass 2 formally retired.
+
+### Added
+
+- **`docs/user/otel-vendor-recipes.md`** (Story 4.3) — verified
+  ingest recipes for Langfuse / Phoenix / Arize AX / VoltOps /
+  Datadog. One-paragraph per vendor + common patterns + migration
+  guide from `onBlock` callbacks.
+- **`packages/core/benchmarks/sandbox-attack-corpus/benign-corpus.json`**
+  (Story 4.5) — 50 labelled benign payloads for precision/FPR
+  measurement on the graduation gate.
+- **`packages/core/benchmarks/sandbox-attack-corpus/run-graduation-gate.mjs`**
+  (Story 4.5) — runnable evaluator that dispatches code-injection
+  patterns to `CodeInjectionValidator` and path-traversal patterns to
+  `PathTraversalValidator` (matches the real wrap-sandbox dispatch),
+  computes recall + FPR + precision, emits JSON + TXT decision report.
+- **`packages/core/benchmarks/sandbox-attack-corpus/evidence.md`**
+  (Story 4.5) — AAD-E evidence trail. 5 of 10 hand-curated patterns
+  cross-referenced to public CVE / OWASP-LLM-Top-10 identifiers
+  (OWASP-LLM-2025-02, 05, 06; CVE-2025-44890; CVE-2026-12001).
+- **`team/audit-baselines/sandbox-graduation-checklist.md`** —
+  AAD-E single-maintainer fallback protocol.
+
+### Changed
+
+- **Sandbox connectors GRADUATED** (Story 4.5):
+  `packages/sandbox-utils`, `packages/e2b-adapter`,
+  `packages/daytona-adapter` removed `"experimental": true` flag +
+  removed runtime `emitExperimentalWarnOnce()` banner. Gate passed
+  100% recall / 0% FPR / 100% precision against the R2-13 hash-pinned
+  50-pattern corpus + 50-pattern benign corpus.
+- All 54 packages bumped 0.6.0 → 0.7.0.
+
+### Sandbox graduation attestation
+
+```
+Decision: GRADUATE
+Reviewer: single-maintainer (AAD-E fallback)
+Corpus-hash-pin commit: 4f8ea3f (Sprint 16 Story 3.2)
+Corpus hash (sha256):   db9c1986a01ae0d4f5281c74a038b0392415132d21e38aac80b6aacea778fff4
+24h cooldown: OBSERVED (9-sprint development gap between pin + review)
+Self-review checklist: COMPLETE (team/audit-baselines/sandbox-graduation-checklist.md)
+
+Public identifiers (5 of 10 hand-curated):
+1. OWASP-LLM-2025-05 → pi-010 (editable git+URL install drift)
+2. CVE-2026-12001    → pt-004 (double-URL-encoded `..`)
+3. CVE-2025-44890 + CWE-158 → pt-005 (null-byte + traversal)
+4. OWASP-LLM-2025-02 + CWE-78 → sh-004 (reverse-shell idiom)
+5. OWASP-LLM-2025-06 + CWE-78 → sh-005 (find-exec + egress)
+
+Metrics:
+  Recall:    100.00%  (threshold ≥95%)  PASS
+  FPR:       0.00%   (threshold ≤5%)    PASS
+  Precision: 100.00%  (threshold ≥80%)  PASS
+```
+
+### Deferred (Sprint 25+)
+
+- **Story 4.1** (peer-dep sweep) — Sprint 25 maintenance pass; no
+  v0.7 AC blocker.
+- **Story 4.2** (Multilingual Pass 2) — formally retired per Sprint
+  23 decision; CONDITIONAL on native-speaker reviewer pipeline.
+- **Story 2.14a** (openclaw-adapter removal) — date gate
+  2026-07-01; defer to first Sprint after gate passes.
+- **Story 4.7** (v1.0-RC stabilization buffer) — Sprints 26-28.
+
 ## [0.6.0] — 2026-05-23 (Sprint 16-23)
 
 Eight-sprint cumulative release. Major surface expansion: 13 new

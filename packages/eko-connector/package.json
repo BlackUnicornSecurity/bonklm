@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-eko",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Eko multi-agent connector for BonkLM — validates planner output + BrowserAgent + FileAgent + MCP-tool dispatch.",
   "type": "module",
   "main": "./dist/index.js",

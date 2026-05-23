@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-openai-agents",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "OpenAI Agents SDK connector for BonkLM — wraps Agent / Handoff / Realtime surfaces with guardrails",
   "type": "module",
   "main": "./dist/index.js",

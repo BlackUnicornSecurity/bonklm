@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-hono",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Hono middleware for BonkLM — edge-runtime-native LLM security guardrails",
   "type": "module",
   "main": "./dist/index.js",

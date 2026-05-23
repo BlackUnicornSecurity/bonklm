@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-letta",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Letta memory-client connector for BonkLM — wraps Letta agent memory add/search/update with sealed write + composed-context recall validation",
   "type": "module",
   "main": "./dist/index.js",

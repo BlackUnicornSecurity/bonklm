@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-ollama",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Ollama SDK connector for BonkLM",
   "type": "module",
   "main": "dist/index.js",

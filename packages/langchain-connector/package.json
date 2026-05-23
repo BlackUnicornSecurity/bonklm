@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-langchain",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "LangChain connector for BonkLM",
   "type": "module",
   "main": "dist/index.js",

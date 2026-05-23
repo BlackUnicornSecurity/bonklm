@@ -1,0 +1,21 @@
+# Sandbox Graduation Gate Report — Sprint 24 / Story 4.5
+
+Generated: 2026-05-23T20:18:57.571Z
+Corpus hash (R2-13): db9c1986a01ae0d4f5281c74a038b0392415132d21e38aac80b6aacea778fff4
+Corpus size: 50 attack + 50 benign
+
+## Confusion matrix
+  TP=50  FN=0  TN=50  FP=0
+
+## Metrics
+  Recall:    100.00%  (threshold ≥95%)    PASS
+  FPR:       0.00%  (threshold ≤5%)     PASS
+  Precision: 100.00%  (threshold ≥80%)    PASS
+
+## Decision
+  ✅ GRADUATE — remove `experimental: true` flag from sandbox-utils + e2b-adapter + daytona-adapter.
+
+## Gap categories
+  (no false negatives)
+
+  (no false positives)
