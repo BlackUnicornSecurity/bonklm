@@ -483,6 +483,59 @@ This requirement is documented prominently in the class JSDoc; the
 `fork()` factory exists specifically to make the per-session pattern
 ergonomic for LiveKit / Vapi / Retell connectors (Sprint 16+).
 
+## 24. CodeInjectionValidator + PathTraversalValidator are first-line defence
+
+`CodeInjectionValidator` (Story 3.2, Sprint 16) detects known-bad code
+shapes via a regex pattern set across 5 categories
+(PYTHON_DYNAMIC_EXEC / JS_DYNAMIC_EXEC / SHELL_METACHAR /
+NETWORK_EGRESS / PACKAGE_INSTALL). `PathTraversalValidator` rejects
+`..` traversal, absolute paths outside `cwd`, and (opt-in) symlinks
+that escape `cwd`.
+
+**Both validators are FIRST-LINE DEFENCE only.** Sandbox isolation —
+filesystem chroot / jail, network-egress firewall, time + CPU limits,
+seccomp — is the TRUE containment boundary. BonkLM does not replace
+sandbox hardening; it cuts the volume of payloads that reach the
+sandbox. Connectors shipping E2B / Daytona / similar runtimes (Story
+3.5) MUST wire both validators in front of the sandbox AND configure
+the sandbox itself for least-privilege execution.
+
+Known regex-engine limitations (post-Sprint 16 audit, accepted for v0.6):
+
+  - **String-concatenation bypass**: an identifier assembled by
+    concatenating tokens at runtime defeats the static regex (the
+    engine has no AST view). Caught only when the resulting
+    identifier appears verbatim in source.
+  - **Variable-driven sinks**: when the first argument to a sink call
+    is a name resolved at runtime rather than a string literal, the
+    pattern that requires a literal won't fire.
+  - **PACKAGE_INSTALL during sandbox init**: legitimate
+    `pip install -r requirements.txt` build steps are blocked. Use
+    `allowlistedPatterns` regex to whitelist your init script BEFORE
+    routing the LLM output through the validator.
+  - **Symlink check is not edge-runtime safe**: enabling
+    `checkSymlinks: true` calls `fs.realpathSync` and will fail under
+    Workerd / Vercel Edge / Cloudflare. Default is `false`.
+  - **PathTraversal strict mode**: ANY `..` segment is rejected even
+    when the path resolves cleanly inside `cwd`. Trades a small FP
+    surface for defeating the resolve-clean trick.
+
+Audit-closure fixes shipped in Sprint 16 close (not limitations,
+hardenings — listed here for traceability):
+
+  - Block-comment-between-name-and-paren evasion on Python + JS
+    dynamic-call sinks — closed.
+  - Allowlist substring-poisoning (`api.openai.com.evil.com`) — closed
+    via suffix-exact match.
+  - PathTraversal `startsWith` prefix collision
+    (`/srv/app-evil` escaping `/srv/app`) — closed via
+    `path.sep`-bounded `isInside` helper.
+  - Symlink check fail-OPEN on realpath error — closed: now
+    fail-SECURE (push CRITICAL finding).
+  - `pip3.11 install` evasion — closed via `pip[\d.]*`.
+  - jQuery `$(selector)` / Markdown backtick FPs — closed: shell
+    metachar patterns now require dangerous-cmd proximity.
+
 ## See also
 
 - [`threat-surfaces.md`](./threat-surfaces.md) — what BonkLM DOES
