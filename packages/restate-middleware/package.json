@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-restate",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Restate SDK middleware for BonkLM. Reuses cachedValidate for idempotent validation across retries (durable execution).",
   "type": "module",
   "main": "./dist/index.js",

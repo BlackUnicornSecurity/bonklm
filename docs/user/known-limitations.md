@@ -667,6 +667,35 @@ Mitigation: dashboards SHOULD key on `severity` (the finding's
 derived `risk_level` aggregate when fine-grained severity-by-finding
 filtering is required.
 
+## 25. Multilingual Pass 2 RETIRED (Sprint 23 Story 3.12 FINISH)
+
+**Status**: 12 languages supported (es / fr / de / pt / it / zh /
+ja / ko / ru / ar / bn / ur). The originally-planned Pass 2 covering
+7 additional languages (id Indonesian / tr Turkish / fa Persian /
+vi Vietnamese / th Thai / pl Polish / nl Dutch) is RETIRED to
+v0.7+ backlog under Story 4.2 (CONDITIONAL: requires a
+native-speaker reviewer pipeline commitment).
+
+**Why retired**: 5 sprints of stall (Sprint 18-22) — connector-
+shipping work (LiveKit / voice-webhooks / sandbox / document-ingest /
+cf-agents / Elysia / Next.js) consumed all capacity. AAD-D corpus
+curator-vs-pattern-author separation requires non-author native-
+speaker reviewers who have not been recruited.
+
+**What still works**: bn + ur shipped Sprint 17 with seed corpora
+(curator: `claude-opus-4.7-seed`). Sprint 21 Pass 1 audit recommended
+native-speaker re-validation before tightening recall gates;
+Sprint 22 architect C6 mandated the retire-or-recommit decision;
+Sprint 23 finalised: retire.
+
+**Operators needing additional language coverage**: the regex
+pattern engine accepts caller-supplied `MultilingualPattern[]` via
+the `MultilingualDetector` config. Self-hosted patterns work today
+without core changes — only the bundled-default coverage is at 12.
+
+See `team/plans/2026-05-23-story-3.12-finish-retirement.md` for the
+full decision trail.
+
 ## See also
 
 - [`threat-surfaces.md`](./threat-surfaces.md) — what BonkLM DOES

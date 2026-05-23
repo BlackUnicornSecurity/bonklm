@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-livekit",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "LiveKit Agents (v1.x) wrapper for BonkLM — wires AudioStreamValidator into UserInputTranscribed + beforeLLMCallback + beforeTTSCallback + function_tools_executed hooks; interim-injection triggers session.interrupt() BEFORE the LLM call.",
   "type": "module",
   "main": "./dist/index.js",

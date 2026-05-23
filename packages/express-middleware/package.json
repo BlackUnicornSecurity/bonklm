@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-express",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Express middleware for BonkLM",
   "type": "module",
   "main": "./dist/index.js",

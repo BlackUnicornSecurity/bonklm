@@ -32,4 +32,18 @@ export {
   type BonklmInferenceBlockEvent,
   type BonklmDurableExecBlockEvent,
   type BonklmDocumentBlockEvent,
+  type BonklmCfAgentBlockEvent,
+  type BonklmWebMiddlewareBlockEvent,
 } from './block-event.js';
+
+// Sprint 23 Story 3.11 — OTLP span export for validator decisions
+// with R2-10 locked attribute vocabulary.
+export {
+  bonklmTrace,
+  type BonklmTraceSurface,
+  type BonklmTraceAction,
+  type BonklmTraceOptions,
+  type BonklmTracer,
+  type BonklmSpan,
+  type BonklmSpanOptions,
+} from './otlp-export.js';

@@ -5,6 +5,152 @@ All notable changes to BonkLM (`@blackunicorn/bonklm`) will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] — 2026-05-23 (Sprint 16-23)
+
+Eight-sprint cumulative release. Major surface expansion: 13 new
+connector packages, 2 new core validators, full OTel export, R2-10
+discriminated-union BonklmBlockEvent across all connectors, and the
+v0.7-graduation-gate sandbox-attack-corpus.
+
+### Added
+
+**Core validators + primitives (Sprint 16-17)**:
+- `AudioStreamValidator` (Story 3.1) — voice / realtime transcript
+  validator with Aho-Corasick hot-path + `BufferedReleaseGate`
+  wiring. Per-session `fork()` factory; `Symbol.asyncDispose`.
+- `CodeInjectionValidator` (Story 3.2) — Python / JS dynamic-exec /
+  shell metachar / network-egress / `PACKAGE_INSTALL` patterns.
+- `PathTraversalValidator` (Story 3.2) — `..` traversal + absolute-
+  path-outside-cwd + opt-in symlink-target validation.
+- `R2-13 sandbox-attack-corpus` — hash-pinned 50-pattern corpus
+  for Story 4.5 graduation (CODE_INJECTION 30 / PACKAGE_INSTALL 10 /
+  PATH_TRAVERSAL 5 / SHELL_METACHAR 5).
+- `BonklmBlockEvent` discriminated union (Sprint 21 + 22 + 23) —
+  7 kinds (`voice` / `sandbox` / `inference` / `durable-exec` /
+  `document` / `cf-agent` / `web-middleware`) for cross-package
+  observability.
+- `adaptValidatorToUniversalInput` (Sprint 20) — shared validator
+  adapter; replaces 5x inline try-catch-TypeError shims.
+- `assertNotWrapped` + `markWrapped` + `ensureWrappedOnce`
+  (Sprint 22) — shared wrap-sentinel helper for connector double-
+  wrap defence.
+- `RTL bidi-control guard` (Sprint 17) — `stripBidiControls` +
+  `normalizeForMultilingualMatch` for Arabic / Urdu / Persian
+  payloads (defeats U+202A-202E + U+2066-2069 + U+200E/F + U+061C).
+- `MultilingualDetector.name = 'multilingual'` + Validator interface
+  conformance (Sprint 17 audit closure).
+- `bonklmTrace()` (Story 3.11) — OTLP span export with R2-10
+  locked attribute vocabulary (`bonklm.validator` / `severity` /
+  `action` / `finding_count` / `surface`). Caller-provides-exporter.
+
+**New connector packages (Sprint 16-23)**:
+- `@blackunicorn/bonklm-livekit` (Story 3.3, Sprint 18) — LiveKit
+  Agents v1.4.x `BonklmAgent` subclass + `wrapLiveKitAgentSession`
+  event wiring.
+- `@blackunicorn/bonklm-voice-webhooks` (Story 3.4, Sprint 19) —
+  Vapi (HTTP) + Retell (WebSocket) HMAC-SHA256 handlers.
+- `@blackunicorn/bonklm-sandbox-utils` (Story 3.5 START, Sprint 19) —
+  shared validateCode / validatePath / wrapStream primitives.
+- `@blackunicorn/bonklm-e2b` (Story 3.5 START, Sprint 19) — E2B
+  sandbox `wrapSandbox` (EXPERIMENTAL).
+- `@blackunicorn/bonklm-daytona` (Story 3.5 finish, Sprint 20) —
+  Daytona workspace `wrapWorkspace` (EXPERIMENTAL).
+- `@blackunicorn/bonklm-inference-providers` (Story 3.6, Sprint 20) —
+  `wrapGroq` + `wrapCerebras` + `wrapTogether` (OpenAI-compatible).
+- `@blackunicorn/bonklm-restate` (Story 4.4, Sprint 20+21) —
+  `withRestateGuardrails` with full `ObjectContext` support
+  (`key()` / `set()` / `get()`).
+- `@blackunicorn/bonklm-temporal` (Story 4.4, Sprint 20+21) —
+  `createValidateInputActivity` + `guardrailGate` workflow helper.
+- `@blackunicorn/bonklm-document-ingest` (Story 3.7, Sprint 21) —
+  `wrapLlamaParse` + `wrapUnstructured` + `wrapReducto` +
+  `validateExtractedText` DIY helper.
+- `@blackunicorn/bonklm-cloudflare-agents` (Story 3.8, Sprint 22) —
+  Cloudflare Agents Durable Object `withBonklmAgent` subclass mixin
+  (edge-only).
+- `@blackunicorn/bonklm-web-middleware-utils` (Story 3.9, Sprint 22) —
+  shared `runRequestValidation` / `runResponseValidation` /
+  `getRequestBody`.
+- `@blackunicorn/bonklm-elysia` (Story 3.9, Sprint 22) —
+  `bonklmGuardrails` Elysia plugin (peer `elysia ^1.4.0`).
+- `@blackunicorn/bonklm-nextjs` (Story 3.9, Sprint 22) —
+  `withBonklm` Server Action + `bonklmRouteHandler` Route Handler +
+  `bonklmEdgeMiddleware` middleware.ts factory (peer `next ^16.0.0`).
+- `@blackunicorn/bonklm-voltagent` (Story 3.10, Sprint 23) —
+  `wrapVoltAgent` for `@voltagent/core ^2.7.0`.
+- `@blackunicorn/bonklm-voltops-otel` (Story 3.10, Sprint 23) —
+  VoltOps OTel adapter via `emitVoltOpsSpan`.
+
+**Multilingual (Sprint 17, 23)**:
+- bn (Bengali) + ur (Urdu) patterns + 20+20 corpora. Now 12
+  bundled languages.
+- RTL bidi guard for ar / ur (Sprint 17).
+- Story 3.12 Pass 2 (id / tr / fa / vi / th / pl / nl) RETIRED to
+  v0.7+ backlog under Story 4.2 (CONDITIONAL: native-speaker
+  reviewer pipeline). See
+  `team/plans/2026-05-23-story-3.12-finish-retirement.md`.
+
+### Changed
+
+- `PromptInjectionValidator.name = 'prompt-injection'` (Sprint 20) —
+  was `constructor.name = 'PromptInjectionValidator'`. **SEMVER-
+  observability**: downstream consumers keying on
+  `result.results[].validatorName === 'PromptInjectionValidator'`
+  must migrate to `'prompt-injection'`.
+- `JailbreakValidator.name = 'jailbreak'` (Sprint 20) — same shape.
+- `scoreToRiskLevel` thresholds unified to `≥10 HIGH / ≥5 MEDIUM`
+  (Sprint 17). AudioStream previously `≥7 / ≥3` — operators keying
+  on `risk_level === 'HIGH'` for alerting see a downgrade for
+  single-WARNING audio findings.
+- `validateExtractedText` truncation now byte-accurate via
+  `Buffer.subarray` (was UTF-16 code units; multibyte payloads
+  bypassed the cap). New `onOversize: 'truncate' | 'block' |
+  'allow'` policy; configurable `maxBytes`.
+- `withRestateGuardrails`: `lastDecisionStateKey` option (string or
+  `false` to opt out of `ctx.set('bonklm:last_decision', ...)`
+  persistence on every ALLOW).
+- Restate `ctx.key()` sanitization (`%3A` for `:`) prevents
+  journal-key collision attacks.
+- `bonklmEdgeMiddleware` return type changed from `Response |
+  undefined` to `Response` (Sprint 22 audit). Accepts optional
+  `nextResponse` factory for Next.js 14+ `NextResponse.next()`.
+
+### Security
+
+- HMAC: one-sided replay window (was `Math.abs` doubled the
+  effective window).
+- HMAC: decode-once 32-byte assertion (`timingSafeHexEqual`)
+  replaces fragile double length-check.
+- `assertNotWrapped` everywhere — double-wrap on any connector
+  throws rather than silently double-validating.
+- `adaptValidatorToUniversalInput` capability detection replaces
+  try-catch-TypeError shims (which masked real validator bugs).
+- HMAC failure reason no longer leaked in HTTP response body
+  (was `{reason: 'signature_mismatch'}`; now `{error:
+  'unauthorized'}`; reason still in `onHmacFailure` telemetry).
+- Vapi tool-call `name` field documented as unvalidated (only
+  `args` flows through engine).
+- Daytona / E2B / Cloudflare-agents EXPERIMENTAL banner +
+  documented "first-line defense; sandbox isolation is true
+  containment" everywhere.
+
+### Deferred (v0.7+ targets)
+
+- Story 4.1 (LangGraph / Mastra), 4.2 (Multilingual Pass 2 —
+  CONDITIONAL), 4.3 (Mid-S4 cross-validator suite), 4.5
+  (Sandbox graduation gate via R2-13 corpus), 4.6 (Cross-cutting
+  hardening).
+- `@temporalio/testing` real-worker integration (current Sprint 21
+  tests are activity-shape mocks).
+- `createGuardedWrapper` migration completed for 4 packages
+  (livekit + document-ingest 3x); 1 package remaining
+  (voice-webhooks) ships in Sprint 24.
+- Documentation site overhaul + per-connector migration guides.
+
+### v0.5.0 release notes
+- See below for the original v0.5.0 release (Sprint 13-15
+  cumulative).
+
 ## [0.5.0] — 2026-05-23
 
 Sprint 13–15 cumulative release. Five new workspace packages, the
