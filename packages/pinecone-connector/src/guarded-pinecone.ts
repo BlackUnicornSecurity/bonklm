@@ -21,11 +21,11 @@ import {
   type Logger,
   RiskLevel,
   Severity,
+  validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
 import {
   applyRetrievedDocValidatorToMatches,
   ConnectorValidationError,
-  logTimeout,
   logValidationFailure,
 } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
@@ -115,43 +115,31 @@ export function createGuardedIndex(
     content: string,
     context?: string
   ): Promise<EngineResult> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), validationTimeout);
-
-    try {
-      const result = await engine.validate(content, context);
-      clearTimeout(timeoutId);
-      return result;
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error instanceof Error && error.name === 'AbortError') {
-        // S012-002: Use connector-utils timeout logging
-        logTimeout(logger, 'Pinecone validation', validationTimeout);
-        return {
-          allowed: false,
-          blocked: true,
+    const result = await validateWithTimeoutSecure<EngineResult>({
+      operation: () => engine.validate(content, context) as Promise<EngineResult>,
+      timeoutMs: validationTimeout,
+      timeoutSentinel: () => ({
+        allowed: false,
+        blocked: true,
+        severity: Severity.CRITICAL,
+        risk_level: RiskLevel.HIGH,
+        risk_score: 30,
+        reason: 'Validation timeout',
+        findings: [{
+          category: 'timeout',
           severity: Severity.CRITICAL,
-          risk_level: RiskLevel.HIGH,
-          risk_score: 30,
-          reason: 'Validation timeout',
-          findings: [{
-            category: 'timeout',
-            severity: Severity.CRITICAL,
-            description: 'Validation timeout',
-            weight: 30,
-          }],
-          results: [],
-          validatorCount: validators.length,
-          guardCount: guards.length,
-          executionTime: validationTimeout,
-          timestamp: Date.now(),
-        };
-      }
-
-      // Re-throw non-timeout errors
-      throw error;
-    }
+          description: 'Validation timeout',
+          weight: 30,
+        }],
+        results: [],
+        validatorCount: validators.length,
+        guardCount: guards.length,
+        executionTime: validationTimeout,
+        timestamp: Date.now(),
+      }),
+      logger,
+    });
+    return result;
   };
 
   /**

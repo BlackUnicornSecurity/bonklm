@@ -26,6 +26,7 @@ import {
   type GuardrailResult,
   type Logger,
   Severity,
+  validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
 import type {
   FlowHookResult,
@@ -142,22 +143,14 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
     content: string,
     context?: string,
   ): Promise<GuardrailResult[]> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), validationTimeout);
-
-    try {
-      // DEV-001: Correct API signature - use string context, not object
-      // DEV-003: AWAIT the validation
-      const engineResult = await engine.validate(content, context);
-
-      clearTimeout(timeoutId);
-      return engineResult.results;
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error instanceof Error && error.name === 'AbortError') {
-        logger.error('[Genkit Guardrails] Validation timeout');
-        return [
+    // DEV-001: Correct API signature - use string context, not object
+    // DEV-003: AWAIT the validation
+    const engineResult = await validateWithTimeoutSecure<{ results: GuardrailResult[] }>({
+      operation: () =>
+        engine.validate(content, context) as Promise<{ results: GuardrailResult[] }>,
+      timeoutMs: validationTimeout,
+      timeoutSentinel: () => ({
+        results: [
           createResult(false, Severity.CRITICAL, [
             {
               category: 'timeout',
@@ -165,11 +158,11 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
               description: 'Validation timeout',
             },
           ]),
-        ];
-      }
-
-      throw error;
-    }
+        ],
+      }),
+      logger,
+    });
+    return engineResult.results;
   };
 
   /**

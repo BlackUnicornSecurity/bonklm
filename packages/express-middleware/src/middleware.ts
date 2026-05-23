@@ -37,6 +37,7 @@ import {
   type SessionPatternFinding,
   Severity,
   updateSessionState,
+  validateWithTimeoutSecure,
   Validators,
 } from '@blackunicorn/bonklm';
 import type {
@@ -332,38 +333,35 @@ export function createGuardrailsMiddleware(
     return pathMatchers.some((matcher) => matcher(normalizedPath));
   };
 
-  // SEC-008: Create timeout wrapper for validation
+  // SEC-008: Create timeout wrapper for validation.
+  //
+  // Sprint 30: routes through the canonical `validateWithTimeoutSecure`
+  // primitive from core/connector-utils. Replaces the broken
+  // AbortController pattern (signal never propagated to engine.validate).
   const validateWithTimeout = async (
     content: string,
     context?: string
   ): Promise<GuardrailResult[]> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), validationTimeout);
-
-    try {
-      // DEV-001: Use correct API signature (string context, not object)
-      const result = await engine.validate(content, context);
-      clearTimeout(timeoutId);
-      return [result];
-    } catch (error) {
-      clearTimeout(timeoutId);
-      if (error instanceof Error && error.name === 'AbortError') {
-        logger.error('[Guardrails] Validation timeout');
-        return [
-          {
-            allowed: false,
-            blocked: true,
-            severity: Severity.CRITICAL,
-            risk_level: RiskLevel.HIGH,
-            risk_score: 100,
-            findings: [],
-            timestamp: Date.now(),
-            reason: 'Validation timeout',
-          },
-        ];
-      }
-      throw error;
-    }
+    // DEV-001: Use correct API signature (string context, not object)
+    const result = await validateWithTimeoutSecure<GuardrailResult>({
+      operation: async () => {
+        const r = await engine.validate(content, context);
+        return r as GuardrailResult;
+      },
+      timeoutMs: validationTimeout,
+      timeoutSentinel: () => ({
+        allowed: false,
+        blocked: true,
+        severity: Severity.CRITICAL,
+        risk_level: RiskLevel.HIGH,
+        risk_score: 100,
+        findings: [],
+        timestamp: Date.now(),
+        reason: 'Validation timeout',
+      }),
+      logger,
+    });
+    return [result];
   };
 
   // Select error handler based on production mode (SEC-007)

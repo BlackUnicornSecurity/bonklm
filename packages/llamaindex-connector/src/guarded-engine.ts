@@ -14,7 +14,7 @@
  * @package @blackunicorn/bonklm-llamaindex
  */
 
-import { createLogger, createResult, GuardrailEngine, type GuardrailResult, type Logger, Severity } from '@blackunicorn/bonklm';
+import { createLogger, createResult, GuardrailEngine, type GuardrailResult, type Logger, Severity, validateWithTimeoutSecure } from '@blackunicorn/bonklm';
 import type {
   GuardedLlamaIndexOptions,
   GuardedQueryResult,
@@ -104,30 +104,21 @@ export function createGuardedQueryEngine(
     content: string,
     context?: string
   ): Promise<GuardrailResult> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), validationTimeout);
-
-    try {
-      const result = await engine.validate(content, context);
-      clearTimeout(timeoutId);
-      return result;
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error instanceof Error && error.name === 'AbortError') {
-        logger.error('[Guardrails] Validation timeout');
-        return createResult(false, Severity.CRITICAL, [
+    const result = await validateWithTimeoutSecure<GuardrailResult>({
+      operation: () => engine.validate(content, context) as Promise<GuardrailResult>,
+      timeoutMs: validationTimeout,
+      timeoutSentinel: () =>
+        createResult(false, Severity.CRITICAL, [
           {
             category: 'timeout',
             description: 'Validation timeout',
             severity: Severity.CRITICAL,
             weight: 30,
           },
-        ]);
-      }
-
-      throw error;
-    }
+        ]),
+      logger,
+    });
+    return result;
   };
 
   /**
@@ -284,30 +275,21 @@ export function createGuardedRetriever(
   });
 
   const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), validationTimeout);
-
-    try {
-      const result = await engine.validate(content, context);
-      clearTimeout(timeoutId);
-      return result;
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error instanceof Error && error.name === 'AbortError') {
-        logger.error('[Guardrails] Validation timeout');
-        return createResult(false, Severity.CRITICAL, [
+    const result = await validateWithTimeoutSecure<GuardrailResult>({
+      operation: () => engine.validate(content, context) as Promise<GuardrailResult>,
+      timeoutMs: validationTimeout,
+      timeoutSentinel: () =>
+        createResult(false, Severity.CRITICAL, [
           {
             category: 'timeout',
             description: 'Validation timeout',
             severity: Severity.CRITICAL,
             weight: 30,
           },
-        ]);
-      }
-
-      throw error;
-    }
+        ]),
+      logger,
+    });
+    return result;
   };
 
   return {

@@ -110,3 +110,12 @@ export { validatePositiveNumber } from './validation-helpers.js';
 // connectors should import from this subpath to avoid a server-side
 // runtime dep on a browser-named package.)
 export { sanitizeReasonText } from './sanitize.js';
+
+// Sprint 30 — SEC-008 canonical timeout primitive. Replaces the broken
+// AbortController-without-signal pattern duplicated across 20+ connectors
+// (Sprint 29 architect-CRITICAL audit). All connector timeout impls MUST
+// route through this helper; do not roll your own.
+export {
+  validateWithTimeoutSecure,
+  type ValidateWithTimeoutOptions,
+} from './timeout-wrapper.js';

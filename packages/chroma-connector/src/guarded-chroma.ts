@@ -22,6 +22,7 @@ import {
   type GuardrailResult,
   type Logger,
   Severity,
+  validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
 import type {
   ChromaQueryOptions,
@@ -107,7 +108,13 @@ export function createGuardedCollection(
   });
 
   /**
-   * Validation timeout wrapper with AbortController.
+   * Validation timeout wrapper.
+   *
+   * Sprint 30 fix: replaced broken AbortController pattern (signal
+   * never propagated to engine.validate) with the canonical shared
+   * `validateWithTimeoutSecure` primitive from core/connector-utils.
+   * See `core/src/connector-utils/timeout-wrapper.ts` for the SEC-008
+   * contract.
    *
    * @internal
    */
@@ -115,30 +122,30 @@ export function createGuardedCollection(
     content: string,
     context?: string
   ): Promise<GuardrailResult> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), validationTimeout);
-
-    try {
-      const result = await engine.validate(content, context);
-      clearTimeout(timeoutId);
-      return result;
-    } catch (error) {
-      clearTimeout(timeoutId);
-
-      if (error instanceof Error && error.name === 'AbortError') {
-        logger.error('[Guardrails] Validation timeout');
-        return createResult(false, Severity.CRITICAL, [
+    const result = await validateWithTimeoutSecure({
+      operation: () => engine.validate(content, context),
+      timeoutMs: validationTimeout,
+      timeoutSentinel: () =>
+        createResult(false, Severity.CRITICAL, [
           {
             category: 'timeout',
             description: 'Validation timeout',
             severity: Severity.CRITICAL,
             weight: 30,
           },
-        ]);
-      }
-
-      throw error;
+        ]),
+      logger,
+    });
+    // engine.validate may return an EngineResult union; chroma callers
+    // expect a single GuardrailResult. If the result contains multiple
+    // sub-results, surface the first blocked one (or the first one if
+    // none are blocked).
+    if ('results' in result && Array.isArray((result as { results?: unknown[] }).results)) {
+      const arr = (result as { results: GuardrailResult[] }).results;
+      const blocked = arr.find((r) => r.blocked);
+      return blocked ?? arr[0] ?? (result as GuardrailResult);
     }
+    return result as GuardrailResult;
   };
 
   /**

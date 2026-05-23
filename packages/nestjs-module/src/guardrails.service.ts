@@ -19,6 +19,7 @@ import {
   type SessionPatternFinding,
   Severity,
   updateSessionState,
+  validateWithTimeoutSecure,
   Validators,
 } from '@blackunicorn/bonklm';
 import type {
@@ -220,20 +221,12 @@ export class GuardrailsService {
       ];
     }
 
-    // SEC-008: Timeout wrapper via Promise.race.
+    // SEC-008: Timeout wrapper.
     //
-    // Sprint 29 audit CRITICAL (arch-1): the previous AbortController
-    // approach was broken — `engine.validate()` does not accept an
-    // AbortSignal, so the `controller.abort()` call never propagated.
-    // Slow validators silently exceeded the timeout budget and returned
-    // an `allowed: true` result (security regression). Port the
-    // Promise.race fix from fastify-plugin/src/plugin.ts.
-    //
-    // Sprint 29 security audit S29-002 hardening: the in-flight
-    // `engine.validate()` promise gets a `.catch()` BEFORE Promise.race
-    // so any post-timeout rejection is absorbed (Node ≥15 crashes the
-    // process on unhandled rejections by default).
-    const timeoutResult: GuardrailResult = {
+    // Sprint 30: routes through the shared `validateWithTimeoutSecure`
+    // primitive from core/connector-utils. The helper handles
+    // Promise.race + post-timeout-rejection absorption internally.
+    const buildTimeoutSentinel = (): GuardrailResult => ({
       allowed: false,
       blocked: true,
       severity: Severity.CRITICAL,
@@ -248,25 +241,15 @@ export class GuardrailsService {
         },
       ],
       timestamp: Date.now(),
-    };
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const timeoutPromise = new Promise<GuardrailResult>((resolve) => {
-      timeoutId = setTimeout(() => {
-        this.logger.error('[Guardrails] Validation timeout');
-        resolve(timeoutResult);
-      }, this.validationTimeout);
     });
-    const validatePromise = Promise.resolve(this.engine.validate(content, context)).catch(
-      (err: unknown) => {
-        this.logger.debug?.('[Guardrails] Validator rejected post-timeout', {
-          error: err instanceof Error ? err.message : String(err),
-        });
-        return timeoutResult;
-      }
-    );
     try {
       // DEV-001: Use correct API signature (string context, not object)
-      const result = await Promise.race([validatePromise, timeoutPromise]);
+      const result = await validateWithTimeoutSecure({
+        operation: () => this.engine.validate(content, context),
+        timeoutMs: this.validationTimeout,
+        timeoutSentinel: buildTimeoutSentinel,
+        logger: this.logger,
+      });
 
       // Return individual results if available, otherwise wrap the engine result
       return 'results' in result && (result as { results?: unknown[] }).results !== undefined &&
@@ -274,13 +257,6 @@ export class GuardrailsService {
         ? (result as { results: GuardrailResult[] }).results
         : [result];
     } catch (error) {
-      // AbortError branch retained for any future SDK that surfaces
-      // AbortError via engine.validate (defensive — Sprint 29 audit).
-      if (error instanceof Error && error.name === 'AbortError') {
-        this.logger.error('[Guardrails] Validation timeout');
-        return [timeoutResult];
-      }
-
       this.logger.error('[Guardrails] Validation error', { error });
       return [
         {
@@ -300,10 +276,6 @@ export class GuardrailsService {
           timestamp: Date.now(),
         },
       ];
-    } finally {
-      if (timeoutId !== undefined) {
-        clearTimeout(timeoutId);
-      }
     }
   }
 

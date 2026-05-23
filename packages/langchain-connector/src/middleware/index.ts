@@ -37,10 +37,10 @@ import {
   type GuardrailEngine,
   type Logger,
   type Validator,
+  validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
 import {
   ConnectorValidationError,
-  logTimeout,
   logValidationFailure,
 } from '@blackunicorn/bonklm/core/connector-utils';
 
@@ -250,32 +250,25 @@ export function createBonklmMiddleware(
     allowed: boolean;
     reason?: string;
   }> => {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout);
-    try {
-      if (config.engine) {
-        const r = await config.engine.validate(content, ctx);
-        clearTimeout(timeoutId);
-        return { allowed: r.allowed, reason: r.reason };
-      }
-      // Ad-hoc chain: short-circuit on first BLOCK.
-      for (const v of config.validators) {
-        const r = await v.validate(content);
-        if (!r.allowed) {
-          clearTimeout(timeoutId);
-          return { allowed: false, reason: r.reason };
+    return validateWithTimeoutSecure<{ allowed: boolean; reason?: string }>({
+      operation: async () => {
+        if (config.engine) {
+          const r = await config.engine.validate(content, ctx);
+          return { allowed: r.allowed, reason: r.reason };
         }
-      }
-      clearTimeout(timeoutId);
-      return { allowed: true };
-    } catch (err) {
-      clearTimeout(timeoutId);
-      if (err instanceof Error && err.name === 'AbortError') {
-        logTimeout(logger, 'bonklm-langchain-middleware', timeout);
-        return { allowed: false, reason: 'Validation timeout' };
-      }
-      throw err;
-    }
+        // Ad-hoc chain: short-circuit on first BLOCK.
+        for (const v of config.validators) {
+          const r = await v.validate(content);
+          if (!r.allowed) {
+            return { allowed: false, reason: r.reason };
+          }
+        }
+        return { allowed: true };
+      },
+      timeoutMs: timeout,
+      timeoutSentinel: () => ({ allowed: false, reason: 'Validation timeout' }),
+      logger,
+    });
   };
 
   const scopeSet = new Set(scopes);
