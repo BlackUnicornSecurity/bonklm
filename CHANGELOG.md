@@ -5,6 +5,48 @@ All notable changes to BonkLM (`@blackunicorn/bonklm`) will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Sprint 31 (2026-05-24)
+
+Pre-existing test-tooling debt cleanup. Closes the spawn-task chip
+from Sprint 30 close: 10 long-standing test failures across 3 connector
+packages that predate Sprints 28-30 (verified by stashing + reproducing
+at HEAD).
+
+### Fixed (test-only — no src changes, no public-API change)
+
+- **vercel-connector** — 8 tests in `tests/guarded-ai.test.ts` used
+  CommonJS `require('../src/guarded-ai.js')` inside test bodies. The
+  package is ESM-only (`"type": "module"`), so `require()` failed with
+  `Cannot find module '../src/guarded-ai.js'`. The stale "Dynamically
+  import to avoid mock issues" comment that justified the pattern was
+  copy-pasted from a different test file — verified zero `vi.mock`
+  setup in this file. Converted to a single top-level ESM import.
+  Result: 17/17 pass (was 9/17).
+- **pinecone-connector** — `should validate vector contains only
+  numbers` assertion drift. Test expected `'Vector must contain only
+  valid numbers'`, src throws `'Vector must contain only finite
+  numbers'`. Updated test to match canonical src ('finite' is more
+  precise — rejects NaN/Infinity, which 'valid' was ambiguous about).
+  Result: 14/14 pass.
+- **mastra-connector** — `should return safe fallback for blocked
+  output` asserted that `wrapped.execute(...)` returns a 'filtered'
+  string when output is blocked. Src explicitly comments `S012-004:
+  Throw error instead of returning filtered content` and throws
+  `ConnectorValidationError`. Test was stale per the canonical security
+  contract (silent filtering hides attacks from the application).
+  Renamed test + asserts the throw. Regex anchored to start-of-message
+  (code-review HIGH closure) so a future mis-route through
+  input-blocked / circuit-breaker paths would not silently match.
+  Result: 34/34 pass.
+
+### Tests
+
+- **Full workspace green for the first time across Sprints 1-31**:
+  162/162 test files pass, **4665/4678** tests pass (13 documented
+  skips per Sprint 23 multilingual Pass-2 retirement).
+- Core: 2767/2777 unchanged.
+- No src changes; no public-API change; no version bump.
+
 ## [Unreleased] — Sprint 30 (2026-05-24)
 
 SEC-008 timeout-primitive extraction. Sprint 29 audit uncovered that

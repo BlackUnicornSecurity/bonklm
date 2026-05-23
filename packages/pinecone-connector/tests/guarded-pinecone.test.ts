@@ -53,8 +53,10 @@ describe('Pinecone Connector', () => {
         validators: [noOpValidator()]
       });
 
+      // Sprint 31: assertion string updated to match canonical src error
+      // ('finite numbers' is more precise — rejects NaN/Infinity too).
       await expect(guardedIndex.query({ vector: [0.1, 'invalid', 0.3] as any })).rejects.toThrow(
-        'Vector must contain only valid numbers'
+        'Vector must contain only finite numbers'
       );
     });
 
