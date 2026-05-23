@@ -536,6 +536,79 @@ hardenings — listed here for traceability):
   - jQuery `$(selector)` / Markdown backtick FPs — closed: shell
     metachar patterns now require dangerous-cmd proximity.
 
+## 25. MultilingualDetector depth roadmap in progress (Story 3.12)
+
+Sprint 16 (Story 3.12 Pass 1) shipped the audit + plan + Hindi seed
+corpus. Sprint 17-22 fills out the remaining gaps. Current state:
+
+  - **Languages covered**: 10 (es / fr / de / pt / it / zh / ja / ko / ru / ar)
+    plus 4 romanized (zh / ja / ko / ru, system_override only).
+  - **Categories per language**: 4 (system_override / constraint_removal /
+    mode_switching / role_hijacking).
+  - **NOT yet covered** (Sprint 17-22 backlog):
+      - jailbreak phrasings per language (GAP-1).
+      - reformulation triggers per language (GAP-2).
+      - 10 additional languages: hi / bn / ur / id / tr / fa / vi / th /
+        pl / nl (one per Sprint 17-21).
+      - per-language test corpus (20 TP + 20 TN) — Hindi seed shipped
+        Sprint 16, remainder by Sprint 22.
+      - RTL bidi-control character handling for ar / ur / fa.
+      - Composition fix: `MultilingualDetector` runs INSTEAD of
+        `PromptInjectionValidator` in some default chains; should be
+        alongside (Sprint 22).
+  - **Honest positioning** (per AC D-5): regex-based; novel phrasings
+    + mixed-script attacks not fully covered. Compete on Node-native
+    + edge + tool-args + memory-writes, not language breadth.
+
+Sprint 22 close gate: per-language recall ≥ 85% on 20-TP corpus,
+FPR ≤ 5% on 20-TN corpus, curator-vs-pattern-author separation
+attestation per AAD-D.
+
+## 26. AudioStream + CodeInjection cross-validator composition
+
+(Sprint 16 cumulative audit security BLOCK-2 closure.)
+
+`AudioStreamValidator`'s default `finalValidators` now includes BOTH
+`PromptInjectionValidator` AND `CodeInjectionValidator`. Without
+the CodeInjection default, spoken voice payloads like `pip install
+evil-pkg` or dynamic-call sinks bypass both AudioStream's small
+curated 25-needle AC set AND PromptInjection's English-only
+prompt-override regex.
+
+  - **Edge-runtime callers** wanting to shed the CodeInjection
+    pattern-engine import cost should pass
+    `finalValidators: [new PromptInjectionValidator()]` explicitly.
+  - **Mixed-script attacks** (non-English natural-language preamble
+    + English code-injection sink) ARE caught by the default chain
+    because CodeInjection scans the final transcript verbatim. The
+    Hindi corpus entry `hi-tp-020` covers this case.
+  - **The partial-path bypass remains**: a connector that gates on
+    `earlyBlock` alone (skipping `validateFinal`) misses any code
+    sink not in AudioStream's curated 25-needle set. The
+    `partialCoverageOnly: true` flag on every partial result is the
+    formal warning; connectors MUST run `validateFinal` on stream
+    close regardless of `earlyBlock` state.
+
+## 27. Cross-validator `ValidatorInput` kind coverage
+
+The Sprint 16 validators (`AudioStream`, `CodeInjection`,
+`PathTraversal`, `Multilingual`) accept different subsets of the
+`ValidatorInput` discriminated union:
+
+| Validator | text | tool_call | composed_context | memory_write | audio_partial |
+|---|:---:|:---:|:---:|:---:|:---:|
+| AudioStreamValidator | ✅ | ❌ throws | ❌ throws | ❌ throws | ✅ (native) |
+| CodeInjectionValidator | ✅ | ✅ (JSON.stringify args) | ✅ (joined entries) | ✅ (payload.content) | ✅ (treats as text) |
+| PathTraversalValidator | ✅ | ✅ (JSON.stringify args) | ✅ (joined entries) | ✅ (payload.content) | ✅ (treats as text) |
+| MultilingualDetector | ✅ | ✅ (JSON.stringify args) | ✅ (joined entries) | ✅ (payload.content) | ✅ (treats as text) |
+
+`AudioStreamValidator`'s narrower input surface is intentional: the
+hot-path partial automaton is text-only by contract. Connectors
+wiring it into a `GuardrailEngine` chain alongside the other three
+validators should dispatch via the engine's per-validator routing,
+NOT broadcast every `kind` to every validator (which would produce
+TypeErrors per chunk on AudioStream for tool_call inputs).
+
 ## See also
 
 - [`threat-surfaces.md`](./threat-surfaces.md) — what BonkLM DOES

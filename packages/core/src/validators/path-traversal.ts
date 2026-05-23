@@ -26,6 +26,7 @@ import {
   type Finding,
 } from '../base/GuardrailResult.js';
 import { resolve as pathResolve, isAbsolute as pathIsAbsolute, sep as pathSep } from 'node:path';
+import { unwrapValidatorInput } from './internal/unwrap-input.js';
 
 const SURFACE: HookSurface = 'text_input';
 
@@ -59,7 +60,7 @@ export class PathTraversalValidator implements Validator {
   }
 
   async validate(input: string | ValidatorInput): Promise<GuardrailResult> {
-    const content = unwrapInput(input);
+    const content = unwrapValidatorInput(input, 'PathTraversalValidator');
     return this.validateString(content);
   }
 
@@ -153,25 +154,6 @@ export class PathTraversalValidator implements Validator {
 // =============================================================================
 // HELPERS
 // =============================================================================
-
-function unwrapInput(input: string | ValidatorInput): string {
-  if (typeof input === 'string') return input;
-  if (input.kind === 'text') return input.content;
-  // Audit closure code-reviewer CONCERN-6: align with CodeInjection's
-  // unwrap surface — accept composed_context / memory_write / tool_call.
-  if (input.kind === 'composed_context') return input.entries.join('\n\n');
-  if (input.kind === 'memory_write') return input.payload.content;
-  if (input.kind === 'tool_call') {
-    try {
-      return typeof input.args === 'string' ? input.args : JSON.stringify(input.args);
-    } catch {
-      return String(input.args);
-    }
-  }
-  throw new TypeError(
-    `PathTraversalValidator: unsupported ValidatorInput kind '${input.kind}'.`
-  );
-}
 
 /**
  * Sep-bounded containment check (code-reviewer BLOCK-1 fix).

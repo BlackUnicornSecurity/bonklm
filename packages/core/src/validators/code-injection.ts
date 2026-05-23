@@ -48,6 +48,7 @@ import {
   Severity,
   type Finding,
 } from '../base/GuardrailResult.js';
+import { unwrapValidatorInput } from './internal/unwrap-input.js';
 
 export enum CodeInjectionCategory {
   PYTHON_DYNAMIC_EXEC = 'python_dynamic_exec',
@@ -551,7 +552,7 @@ export class CodeInjectionValidator implements Validator {
   }
 
   async validate(input: string | ValidatorInput): Promise<GuardrailResult> {
-    const content = unwrapInput(input);
+    const content = unwrapValidatorInput(input, 'CodeInjectionValidator');
     return this.validateString(content);
   }
 
@@ -629,26 +630,6 @@ export class CodeInjectionValidator implements Validator {
 // =============================================================================
 // HELPERS
 // =============================================================================
-
-function unwrapInput(input: string | ValidatorInput): string {
-  if (typeof input === 'string') return input;
-  if (input.kind === 'text') return input.content;
-  if (input.kind === 'composed_context') return input.entries.join('\n\n');
-  if (input.kind === 'memory_write') return input.payload.content;
-  // Audit closure architect CONCERN-2: accept tool_call by stringifying
-  // args — LLM-emitted code often arrives as a tool argument and the
-  // throw-on-kind path surprises integrators.
-  if (input.kind === 'tool_call') {
-    try {
-      return typeof input.args === 'string' ? input.args : JSON.stringify(input.args);
-    } catch {
-      return String(input.args);
-    }
-  }
-  throw new TypeError(
-    `CodeInjectionValidator: unsupported ValidatorInput kind '${input.kind}'.`
-  );
-}
 
 function severityRank(s: Severity): number {
   switch (s) {
