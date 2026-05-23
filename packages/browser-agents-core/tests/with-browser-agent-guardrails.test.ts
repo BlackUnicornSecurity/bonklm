@@ -249,4 +249,66 @@ describe('Story 2.3 — withBrowserAgentGuardrails', () => {
       );
     });
   });
+
+  // v0.5.0 pre-publish audit arch v5#5 closure:
+  // `BrowserAgentGuardrailBlockedError` now extends
+  // `ConnectorValidationError`. Cross-connector `catch (e instanceof
+  // ConnectorValidationError)` handlers ALSO catch Stagehand / Eko
+  // / browser-agent blocks. The instanceof chain is preserved
+  // across all three levels.
+  describe('arch v5#5 — BrowserAgentGuardrailBlockedError hierarchy', () => {
+    it('is catchable as ConnectorValidationError', async () => {
+      const { BrowserAgentGuardrailBlockedError } = await import(
+        '../src/types.js'
+      );
+      const { ConnectorValidationError } = await import(
+        '@blackunicorn/bonklm/core/connector-utils'
+      );
+      const err = new BrowserAgentGuardrailBlockedError(
+        'stagehand',
+        'act:click',
+        'tool_call',
+        'blocked-reason'
+      );
+      expect(err).toBeInstanceOf(BrowserAgentGuardrailBlockedError);
+      expect(err).toBeInstanceOf(ConnectorValidationError);
+      expect(err).toBeInstanceOf(Error);
+      expect(err.name).toBe('BrowserAgentGuardrailBlockedError');
+    });
+
+    it('reports the validation_failed category via ConnectorValidationError', async () => {
+      const { BrowserAgentGuardrailBlockedError } = await import(
+        '../src/types.js'
+      );
+      const err = new BrowserAgentGuardrailBlockedError(
+        'eko',
+        'file:write',
+        'memory_write',
+        undefined
+      );
+      // ConnectorValidationError attaches `category` from the
+      // second constructor argument; the subclass passes
+      // 'validation_failed' on super().
+      expect((err as unknown as { category: string }).category).toBe(
+        'validation_failed'
+      );
+    });
+
+    it('sanitizes the reason text in the message (sec T6 closure preserved)', async () => {
+      const { BrowserAgentGuardrailBlockedError } = await import(
+        '../src/types.js'
+      );
+      // eslint-disable-next-line no-control-regex
+      const attackerReason = 'BLOCKED\x00\x01leaked';
+      const err = new BrowserAgentGuardrailBlockedError(
+        'stagehand',
+        'act:click',
+        'tool_call',
+        attackerReason
+      );
+      expect(err.message).not.toContain('\x00');
+      expect(err.message).toContain('BLOCKED');
+      expect(err.message).toContain('leaked');
+    });
+  });
 });

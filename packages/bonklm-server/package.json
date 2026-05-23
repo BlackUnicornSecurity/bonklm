@@ -32,7 +32,7 @@
     "test": "vitest",
     "test:coverage": "vitest --coverage",
     "clean": "rm -rf dist",
-    "docker:build": "docker build -t blackunicorn/bonklm-server:0.4.0 ."
+    "docker:build": "docker build -t blackunicorn/bonklm-server:$(node -p \"require('./package.json').version\") ."
   },
   "keywords": [
     "bonklm",
@@ -49,6 +49,15 @@
     "server",
     "docker"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/bonklm-server"
+  },
+  "homepage": "https://github.com/BlackUnicornSecurity/bonklm",
+  "bugs": {
+    "url": "https://github.com/BlackUnicornSecurity/bonklm/issues"
+  },
   "author": "Black Unicorn <security@blackunicorn.tech>",
   "license": "MIT",
   "dependencies": {

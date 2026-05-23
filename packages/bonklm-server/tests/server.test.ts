@@ -17,7 +17,12 @@
  * network listener required for unit tests.
  */
 import { describe, it, expect } from 'vitest';
-import { PromptInjectionValidator, Severity } from '@blackunicorn/bonklm';
+import {
+  PromptInjectionValidator,
+  RiskLevel,
+  Severity,
+  type GuardrailResult,
+} from '@blackunicorn/bonklm';
 import {
   createBonklmGuardrailServer,
   signHmac,
@@ -658,6 +663,146 @@ describe('Story 2.13 — bonklm-server', () => {
           payload: body,
         });
         expect(res.statusCode).toBe(401);
+        await server.close();
+      });
+    });
+
+    // v0.5.0 pre-publish audit sec v5#9 closure: makeDecision now
+    // sanitizes both `engineResult.reason` AND
+    // `finding.description` via `sanitizeReasonText` before they
+    // cross the HTTP response boundary, REGARDLESS of
+    // `productionMode`. Production mode CONTROLS exposure
+    // (generic vs. specific); sanitization always runs.
+    describe('sec v5#9 — makeDecision sanitizes reason + finding.description', () => {
+      // eslint-disable-next-line no-control-regex
+      const ATTACKER_CONTROL_CHARS = '\x00\x01\x02';
+      class AttackerControlledValidator {
+        readonly name = 'AttackerControlledValidator';
+        async validate(): Promise<GuardrailResult> {
+          return {
+            allowed: false,
+            blocked: true,
+            severity: Severity.BLOCKED,
+            risk_level: RiskLevel.HIGH,
+            risk_score: 90,
+            // Reason carries non-printable control chars (attacker-
+            // influenced via the validator's finding-stringification
+            // path). The HTTP boundary MUST strip these regardless
+            // of productionMode.
+            reason: `BLOCK${ATTACKER_CONTROL_CHARS}LEAKED_PAYLOAD`,
+            findings: [
+              {
+                category: 'attacker_category',
+                severity: Severity.BLOCKED,
+                description: `desc${ATTACKER_CONTROL_CHARS}LEAKED_DESC`,
+                weight: 10,
+              },
+            ],
+            timestamp: Date.now(),
+          };
+        }
+      }
+
+      it('strips control chars from reason + finding.description in dev mode (productionMode=false)', async () => {
+        const server = await createBonklmGuardrailServer({
+          validators: [new AttackerControlledValidator()],
+          hmacSecret: HMAC_SECRET,
+          productionMode: false,
+        });
+        const body = JSON.stringify({ messages: [{ role: 'user', content: 'x' }] });
+        const res = await server.inject({
+          method: 'POST',
+          url: '/openai-compatible',
+          headers: signedHeaders(body),
+          payload: body,
+        });
+        expect(res.statusCode).toBe(200);
+        const decision = res.json() as {
+          blocked: boolean;
+          reason: string;
+          findings: Array<{ description: string }>;
+        };
+        expect(decision.blocked).toBe(true);
+        // Control chars stripped, but content preserved.
+        expect(decision.reason).not.toContain('\x00');
+        expect(decision.reason).not.toContain('\x01');
+        expect(decision.reason).toContain('BLOCK');
+        expect(decision.reason).toContain('LEAKED_PAYLOAD');
+        expect(decision.findings).toHaveLength(1);
+        expect(decision.findings[0].description).not.toContain('\x00');
+        expect(decision.findings[0].description).toContain('desc');
+        expect(decision.findings[0].description).toContain('LEAKED_DESC');
+        await server.close();
+      });
+
+      it('emits generic reason + no findings in production mode (productionMode=true)', async () => {
+        const server = await createBonklmGuardrailServer({
+          validators: [new AttackerControlledValidator()],
+          hmacSecret: HMAC_SECRET,
+          productionMode: true,
+        });
+        const body = JSON.stringify({ messages: [{ role: 'user', content: 'x' }] });
+        const res = await server.inject({
+          method: 'POST',
+          url: '/openai-compatible',
+          headers: signedHeaders(body),
+          payload: body,
+        });
+        expect(res.statusCode).toBe(200);
+        const decision = res.json() as {
+          blocked: boolean;
+          reason: string;
+          findings?: unknown;
+        };
+        expect(decision.blocked).toBe(true);
+        expect(decision.reason).toBe('guardrail decision');
+        expect(decision.findings).toBeUndefined();
+        await server.close();
+      });
+    });
+
+    // v0.5.0 pre-publish audit rev v5#6 closure: replaced `as never`
+    // escape hatches with `FastifyServerOptions` narrow casts. The
+    // server constructs without crashing for both logger-modes.
+    describe('rev v5#6 — Fastify options narrowing without `as never`', () => {
+      it('constructs with internal logger (no caller-provided logger)', async () => {
+        const server = await createBonklmGuardrailServer({
+          validators: [new PromptInjectionValidator()],
+          hmacSecret: HMAC_SECRET,
+        });
+        expect(server).toBeDefined();
+        // Validate via a real round-trip — proves Fastify is healthy.
+        const res = await server.inject({ method: 'GET', url: '/healthz' });
+        expect(res.statusCode).toBe(200);
+        await server.close();
+      });
+
+      it('constructs with caller-provided loggerInstance (no silent discard)', async () => {
+        const calls: Array<{ level: string; msg: string }> = [];
+        // Fastify requires a pino-shaped logger: debug/info/warn/error
+        // PLUS fatal/trace/child. Use no-op stubs for the latter.
+        const noop = (): void => {};
+        const customLogger = {
+          debug: (msg: string) => calls.push({ level: 'debug', msg }),
+          info: (msg: string) => calls.push({ level: 'info', msg }),
+          warn: (msg: string) => calls.push({ level: 'warn', msg }),
+          error: (msg: string) => calls.push({ level: 'error', msg }),
+          fatal: noop,
+          trace: noop,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          child: function (this: any) {
+            return this;
+          },
+        };
+        const server = await createBonklmGuardrailServer({
+          validators: [new PromptInjectionValidator()],
+          hmacSecret: HMAC_SECRET,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          logger: customLogger as any,
+        });
+        expect(server).toBeDefined();
+        const res = await server.inject({ method: 'GET', url: '/healthz' });
+        expect(res.statusCode).toBe(200);
         await server.close();
       });
     });

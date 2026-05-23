@@ -133,6 +133,20 @@ function resolveOptions(options: WrapMistralOptions | undefined): ResolvedOption
  *   Mandatory per Story 2.12 AC (shape #1: engine is the 2nd positional).
  *   For multilingual coverage (AC #3 `defaultLocale: 'auto'`), wire
  *   `MultilingualValidator` + reformulation-detection into this engine.
+ *
+ *   **Engine mutation under `defaultLocale: 'auto'`** (v0.5.0 audit
+ *   rev v5#8 closure): the wrapper calls
+ *   `engine.addValidator(new MultilingualDetector())` and
+ *   `engine.addValidator(new ReformulationDetector())` IF those
+ *   validators are not already registered. Side-effect is
+ *   IDEMPOTENT (instanceof gate prevents double-wire) but is
+ *   visible to other connectors sharing the same engine — Stagehand
+ *   / Inngest / Trigger calls THROUGH the same engine will ALSO see
+ *   the auto-wired validators on their validation paths. If you
+ *   share engines across connectors and want Mistral-specific
+ *   validators isolated, construct a dedicated engine for the
+ *   Mistral connector OR pass `defaultLocale: 'en'` to opt out of
+ *   the auto-wire.
  * @param options - configuration overrides (see {@link WrapMistralOptions}).
  *
  * @example

@@ -32,8 +32,14 @@ async function main(): Promise<void> {
   const replayWindowMs = process.env.BONKLM_REPLAY_WINDOW_MS
     ? Number.parseInt(process.env.BONKLM_REPLAY_WINDOW_MS, 10)
     : undefined;
+  // sec v5#13 closure (v0.5.0 pre-publish audit): CLI default flipped
+  // to `true` to match the programmatic API default. Operators MUST
+  // explicitly opt OUT for dev/debugging via
+  // `BONKLM_PRODUCTION_MODE=false`. Default-safe matches Dockerfile
+  // posture + closes the "production by deploy default, debug by API
+  // default" drift.
   const productionMode =
-    (process.env.BONKLM_PRODUCTION_MODE ?? 'false').toLowerCase() === 'true';
+    (process.env.BONKLM_PRODUCTION_MODE ?? 'true').toLowerCase() === 'true';
 
   if (hmacSecret === undefined || hmacSecret.length < 32) {
     // eslint-disable-next-line no-console

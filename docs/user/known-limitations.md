@@ -394,6 +394,49 @@ consumer's intent (they WANTED Mistral to judge the content).
     behavior is correct — the consumer is not running moderation
     pipelines through the same wrapped client.
 
+## 21. `engine.onIntercept` does NOT fire on Lance/Turbopuffer write-path BLOCKs
+
+(Added: v0.5.0 pre-publish audit sec v5#15 closure.)
+
+The `engine.notifyCachedResult(...)` bridge is fired by the vector-DB
+connectors (`@blackunicorn/bonklm-lance`,
+`@blackunicorn/bonklm-turbopuffer`) on **read-path ALLOW** outcomes
+only. On the **write-path BLOCK** path, the connector throws
+`ConnectorValidationError` synchronously, interrupting the call
+stack before any notify call can fire.
+
+This means a consumer who wires
+`engine.onIntercept(attackLogger)` will receive callbacks for:
+
+  - Inngest validateInput/Output/ToolArgs results (cachedValidate-driven).
+  - Trigger.dev validateInput/Output/ToolArgs results (cachedValidate-driven).
+  - Mistral chat/agents/fim completion validations (synchronous + notify).
+  - Lance/Turbopuffer query/.toArray retrieved-doc batch ALLOWs.
+  - Stagehand/Eko `engine.validateInput` paths (fires inline).
+
+But will NOT receive callbacks for:
+
+  - Lance `add(records)` per-row BLOCK.
+  - Lance `update({values: ...})` BLOCK.
+  - Lance `mergeInsert(...).execute(records)` per-row BLOCK.
+  - Turbopuffer `write({upsert_rows: ...})` per-row BLOCK.
+  - Turbopuffer `write({patch_rows: ...})` per-row BLOCK.
+
+The thrown `ConnectorValidationError` is the audit signal for write
+BLOCKs — consumers wanting telemetry on write paths should wrap
+their connector calls with a try/catch + a custom logger inside
+the catch block, OR pass a structured `logger` to the connector
+options (which receives warn/error events for the boundary
+conditions only, not per-validator findings).
+
+**Architectural rationale**: write-path BLOCKs interrupt the call
+stack synchronously to prevent partial-write state. Firing a
+post-throw notify would require a try/catch wrapper around every
+validator call that swallows the throw to fire the callback then
+re-throws. The asymmetry is a deliberate design trade-off; a
+future revision (Sprint 16+) may add an opt-in
+`notifyOnBlockedWrites: true` flag.
+
 ## See also
 
 - [`threat-surfaces.md`](./threat-surfaces.md) — what BonkLM DOES
