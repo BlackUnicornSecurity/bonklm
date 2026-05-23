@@ -57,6 +57,8 @@
     }
   },
   "devDependencies": {
+    "@temporalio/activity": "^1.16.0",
+    "@temporalio/testing": "^1.16.0",
     "@vitest/coverage-v8": "^4.1.7",
     "typescript": "^5.3.3",
     "vitest": "^4.1.7"

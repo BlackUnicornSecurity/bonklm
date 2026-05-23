@@ -106,6 +106,9 @@ export function ensureWrappedOnce<T>(
  * descriptor by re-defining with `configurable: true`. Operators
  * must NOT call this in production — it disables the double-wrap
  * defence.
+ *
+ * @internal — may change without notice in any minor/patch (v1.0-RC1
+ * API freeze policy). The leading `_` prefix marks INTERNAL surface.
  */
 export function _testOnlyClearSentinel(
   target: unknown,
