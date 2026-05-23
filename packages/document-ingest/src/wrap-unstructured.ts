@@ -12,6 +12,10 @@
  * `text` field. We validate the joined text across ALL elements
  * (the LLM consumer typically concatenates them anyway).
  */
+import {
+  assertNotWrapped,
+  markWrapped,
+} from '@blackunicorn/bonklm/core/connector-utils';
 import { validateExtractedText } from './validate-extracted-text.js';
 import type { DocumentIngestWrapOptions } from './types.js';
 
@@ -56,11 +60,7 @@ export function wrapUnstructured<C extends UnstructuredClientLike>(
   if (!options?.engine) {
     throw new TypeError('wrapUnstructured: options.engine is required.');
   }
-  if ((client as unknown as Record<symbol, unknown>)[BONKLM_WIRED]) {
-    throw new Error(
-      'wrapUnstructured: client already wrapped by bonklm-document-ingest.'
-    );
-  }
+  assertNotWrapped(client, BONKLM_WIRED, 'wrapUnstructured');
 
   const originalPartition = client.general.partition.bind(client.general);
 
@@ -89,11 +89,6 @@ export function wrapUnstructured<C extends UnstructuredClientLike>(
     },
   } as unknown as C;
 
-  Object.defineProperty(wrapped, BONKLM_WIRED, {
-    value: true,
-    enumerable: false,
-    writable: false,
-    configurable: false,
-  });
+  markWrapped(wrapped, BONKLM_WIRED);
   return wrapped;
 }

@@ -13,6 +13,10 @@
  *
  * Structural typing — peer-optional SDK install.
  */
+import {
+  assertNotWrapped,
+  markWrapped,
+} from '@blackunicorn/bonklm/core/connector-utils';
 import { validateExtractedText } from './validate-extracted-text.js';
 import type { DocumentIngestWrapOptions } from './types.js';
 
@@ -54,14 +58,7 @@ export function wrapLlamaParse<R extends LlamaParseReaderLike>(
   if (!options?.engine) {
     throw new TypeError('wrapLlamaParse: options.engine is required.');
   }
-  if ((reader as unknown as Record<symbol, unknown>)[BONKLM_WIRED]) {
-    throw new Error(
-      'wrapLlamaParse: reader already wrapped by bonklm-document-ingest. ' +
-        'Wrapping twice would double-validate every document. ' +
-        'Use a fresh LlamaParseReader instance per wrap or pass the ' +
-        'wrapped reader directly.'
-    );
-  }
+  assertNotWrapped(reader, BONKLM_WIRED, 'wrapLlamaParse');
 
   const wrapped = {
     ...reader,
@@ -80,11 +77,6 @@ export function wrapLlamaParse<R extends LlamaParseReaderLike>(
     },
   } as unknown as R;
 
-  Object.defineProperty(wrapped, BONKLM_WIRED, {
-    value: true,
-    enumerable: false,
-    writable: false,
-    configurable: false,
-  });
+  markWrapped(wrapped, BONKLM_WIRED);
   return wrapped;
 }

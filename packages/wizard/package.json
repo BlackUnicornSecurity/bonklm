@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-wizard",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "deprecated": "This package has been merged into @blackunicorn/bonklm. Please install @blackunicorn/bonklm instead — the `bonklm` CLI is shipped from there now.",
   "description": "DEPRECATED: merged into @blackunicorn/bonklm. Install @blackunicorn/bonklm instead.",

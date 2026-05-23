@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-logger",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Attack Logger & Awareness Display for BonkLM",
   "type": "module",
   "main": "./dist/index.js",

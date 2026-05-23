@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-e2b",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "E2B Sandbox wrapper for BonkLM. Proxies commands.run / runCode / files.* with code-injection + path-traversal validation. EXPERIMENTAL (Story 3.5).",
   "experimental": true,
   "type": "module",

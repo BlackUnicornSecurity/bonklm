@@ -30,6 +30,7 @@
  */
 import { voice } from '@livekit/agents';
 import { AudioStreamValidator, AUDIO_STREAM_SURFACE } from '@blackunicorn/bonklm/validators';
+import { assertNotWrapped, markWrapped } from '@blackunicorn/bonklm/core/connector-utils';
 
 type AgentSession = voice.AgentSession;
 const { AgentSessionEventTypes } = voice;
@@ -59,15 +60,12 @@ export function wrapLiveKitAgentSession<S extends AgentSession>(
         'Pass the SAME instance you used to construct BonklmAgent so partial-path state flows into the final-path.'
     );
   }
-  const sessionAny = session as unknown as Record<symbol, boolean | undefined>;
-  if (sessionAny[BONKLM_WIRED_SYMBOL]) {
-    throw new Error(
-      'wrapLiveKitAgentSession: this AgentSession is already wrapped by @blackunicorn/bonklm-livekit. ' +
-        'Re-wrapping orphans the prior listener closure and produces a silent bypass on the partial path. ' +
-        'Construct a fresh session OR call removeAllListeners() before re-wrapping.'
-    );
-  }
-  sessionAny[BONKLM_WIRED_SYMBOL] = true;
+  // Sprint 22 audit closure (architect C2 + code-reviewer C-4): use
+  // shared wrap-sentinel helper from core/connector-utils. Replaces
+  // the verbatim Symbol-watermark copy (was duplicated across 5
+  // connector packages).
+  assertNotWrapped(session, BONKLM_WIRED_SYMBOL, 'wrapLiveKitAgentSession');
+  markWrapped(session, BONKLM_WIRED_SYMBOL);
 
   const av = config.audioStreamValidator;
   const partialBudget = config.maxPartialLatencyMs ?? DEFAULT_MAX_PARTIAL_MS;

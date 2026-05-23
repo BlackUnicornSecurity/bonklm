@@ -7,6 +7,10 @@
  * embeddings + bbox metadata). We validate the concatenated chunk
  * text.
  */
+import {
+  assertNotWrapped,
+  markWrapped,
+} from '@blackunicorn/bonklm/core/connector-utils';
 import { validateExtractedText } from './validate-extracted-text.js';
 import type { DocumentIngestWrapOptions } from './types.js';
 
@@ -49,9 +53,7 @@ export function wrapReducto<C extends ReductoClientLike>(
   if (!options?.engine) {
     throw new TypeError('wrapReducto: options.engine is required.');
   }
-  if ((client as unknown as Record<symbol, unknown>)[BONKLM_WIRED]) {
-    throw new Error('wrapReducto: client already wrapped.');
-  }
+  assertNotWrapped(client, BONKLM_WIRED, 'wrapReducto');
 
   const originalParse = client.parse.bind(client);
 
@@ -75,11 +77,6 @@ export function wrapReducto<C extends ReductoClientLike>(
     },
   } as unknown as C;
 
-  Object.defineProperty(wrapped, BONKLM_WIRED, {
-    value: true,
-    enumerable: false,
-    writable: false,
-    configurable: false,
-  });
+  markWrapped(wrapped, BONKLM_WIRED);
   return wrapped;
 }

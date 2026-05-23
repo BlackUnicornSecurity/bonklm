@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-anthropic",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Anthropic SDK connector for BonkLM",
   "type": "module",
   "main": "dist/index.js",
