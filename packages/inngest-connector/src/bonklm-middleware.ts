@@ -353,9 +353,25 @@ function blockedAt(reason: string): BonklmInngestValidateResult {
  * when a cache is provided + no explicit keyFn was given.
  */
 function resolveOptions(options: BonklmInngestMiddlewareOptions): ResolvedBundle {
-  if (!Array.isArray(options.validators) || options.validators.length === 0) {
+  // Sprint 13 carry-over arch X6 closure: when the consumer supplies
+  // `engine` AND omits `validators`, derive the pipeline from
+  // `engine.getValidators()`. Removes the awkward "pass the same list
+  // twice" pattern flagged by the cumulative audit.
+  let resolvedValidators: Validator[] | undefined = options.validators;
+  if (
+    (resolvedValidators === undefined || resolvedValidators.length === 0) &&
+    options.engine !== undefined
+  ) {
+    const fromEngine = options.engine.getValidators();
+    if (fromEngine.length > 0) {
+      resolvedValidators = fromEngine;
+    }
+  }
+  if (!Array.isArray(resolvedValidators) || resolvedValidators.length === 0) {
     throw new Error(
-      'bonklmInngestMiddleware: `validators` MUST be a non-empty array.'
+      'bonklmInngestMiddleware: `validators` MUST be a non-empty array. ' +
+        'Either pass `validators: [...]` explicitly, or supply an `engine` ' +
+        'whose `getValidators()` returns a non-empty list.'
     );
   }
 
@@ -391,7 +407,7 @@ function resolveOptions(options: BonklmInngestMiddlewareOptions): ResolvedBundle
   const engine =
     options.engine ??
     new GuardrailEngine({
-      validators: options.validators,
+      validators: resolvedValidators,
     });
 
   const wantsCache = options.cache !== undefined;
@@ -410,7 +426,7 @@ function resolveOptions(options: BonklmInngestMiddlewareOptions): ResolvedBundle
 
   return {
     // Sprint 14 cumulative sec cross-S2 closure: freeze a shallow copy.
-    validators: Object.freeze([...options.validators]),
+    validators: Object.freeze([...resolvedValidators]),
     cachedOptions,
     stepPrefix,
     engine,

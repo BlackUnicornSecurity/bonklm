@@ -43,8 +43,7 @@
   "author": "Black Unicorn <security@blackunicorn.tech>",
   "license": "MIT",
   "dependencies": {
-    "@blackunicorn/bonklm": "workspace:*",
-    "@blackunicorn/bonklm-browser-agents-core": "workspace:*"
+    "@blackunicorn/bonklm": "workspace:*"
   },
   "peerDependencies": {
     "@trigger.dev/sdk": "^4.0.0"

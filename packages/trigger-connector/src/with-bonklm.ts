@@ -103,7 +103,11 @@ import {
   type Validator,
   type ValidatorInput,
 } from '@blackunicorn/bonklm';
-import { sanitizeReasonText } from '@blackunicorn/bonklm-browser-agents-core';
+// Sprint 14 deferred-closure PB-6 final: canonical home for
+// `sanitizeReasonText` is `@blackunicorn/bonklm/core/connector-utils`.
+// Trigger.dev is a server-side task runner; pulling
+// `bonklm-browser-agents-core` for a pure text utility was misleading.
+import { sanitizeReasonText } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
   BonklmTriggerBindings,
   BonklmTriggerFailureParams,
@@ -319,6 +323,36 @@ export function withBonkLM(options: BonklmTriggerOptions): BonklmTriggerBindings
   const middleware = async (
     params: BonklmTriggerMiddlewareParams
   ): Promise<void> => {
+    // arch X2 closure (Story 2.9 audit, deferred to Sprint 14):
+    // when `ctx.run.isReplay === true`, the V8 heap was restored
+    // from a CRIU checkpoint AND `locals` was part of that snapshot
+    // — the handle is already in the slot. Skip the rebuild +
+    // re-set to save a `handleFromBundle` call on resume.
+    //
+    // Defensive: verify the slot actually carries our typed handle
+    // before short-circuiting. A consumer who manually cleared
+    // locals mid-run OR a future runtime model that fails to
+    // restore the slot will fall through to the rebuild path —
+    // safety wins over the perf optimization.
+    if (params.ctx.run.isReplay) {
+      const existing = locals.get(bonklmHandleLocalsKey);
+      if (
+        existing !== undefined &&
+        existing !== null &&
+        typeof existing.validateInput === 'function' &&
+        typeof existing.validateOutput === 'function' &&
+        typeof existing.validateToolArgs === 'function'
+      ) {
+        await params.next();
+        return;
+      }
+      // Slot missing on replay — fall through to rebuild. Log a
+      // warning so observability catches the unexpected case.
+      bundle.logger?.warn?.(
+        '@blackunicorn/bonklm-trigger: isReplay=true but locals slot empty / non-conformant; rebuilding handle',
+        { runId: params.ctx.run.id }
+      );
+    }
     // Build a per-run handle with the cacheNamespace keyed by run.id.
     // This is what gives us retry-survival: same run.id across retries
     // = same cacheNamespace = cache hit on identical inputs.
@@ -354,9 +388,25 @@ export function withBonkLM(options: BonklmTriggerOptions): BonklmTriggerBindings
  * sanitizes the cacheNamespace input.
  */
 function resolveOptions(options: BonklmTriggerOptions): ResolvedBundle {
-  if (!Array.isArray(options.validators) || options.validators.length === 0) {
+  // Sprint 13 carry-over arch X6 closure: when the consumer supplies
+  // `engine` AND omits `validators`, derive the pipeline from
+  // `engine.getValidators()`. Removes the awkward "pass the same list
+  // twice" pattern flagged by the cumulative audit.
+  let resolvedValidators: Validator[] | undefined = options.validators;
+  if (
+    (resolvedValidators === undefined || resolvedValidators.length === 0) &&
+    options.engine !== undefined
+  ) {
+    const fromEngine = options.engine.getValidators();
+    if (fromEngine.length > 0) {
+      resolvedValidators = fromEngine;
+    }
+  }
+  if (!Array.isArray(resolvedValidators) || resolvedValidators.length === 0) {
     throw new Error(
-      'withBonkLM: `validators` MUST be a non-empty array.'
+      'withBonkLM: `validators` MUST be a non-empty array. ' +
+        'Either pass `validators: [...]` explicitly, or supply an `engine` ' +
+        'whose `getValidators()` returns a non-empty list.'
     );
   }
 
@@ -377,7 +427,7 @@ function resolveOptions(options: BonklmTriggerOptions): ResolvedBundle {
   const engine =
     options.engine ??
     new GuardrailEngine({
-      validators: options.validators,
+      validators: resolvedValidators,
     });
 
   const wantsCache = options.cache !== undefined;
@@ -391,7 +441,7 @@ function resolveOptions(options: BonklmTriggerOptions): ResolvedBundle {
     // does not leak into subsequent middleware invocations. Validators
     // themselves are not deep-frozen — they're consumer-defined classes
     // with internal state we cannot generically freeze.
-    validators: Object.freeze([...options.validators]),
+    validators: Object.freeze([...resolvedValidators]),
     baseCachedOptions: {
       cache: options.cache,
       keyFn,

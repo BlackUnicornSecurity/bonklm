@@ -42,6 +42,31 @@ export interface GuardedLanceTableOptions {
   memoryWriteValidator?: MemoryWriteValidator;
 
   /**
+   * Optional `GuardrailEngine` for audit-telemetry wiring. When
+   * supplied, the connector calls `engine.notifyCachedResult(...)`
+   * after every read-path validator dispatch so consumers wiring
+   * `engine.onIntercept(...)` see Lance retrieved-doc decisions.
+   * Without this, validator outcomes from Lance are invisible to
+   * engine-wide observability.
+   *
+   * Sprint 14 deferred-closure arch X6 (engine wiring across vector
+   * connectors): closes the divergence with Inngest/Trigger which
+   * already wire notifyCachedResult.
+   *
+   * @example
+   * ```ts
+   * const engine = new GuardrailEngine({ validators: [...] });
+   * engine.onIntercept((result, ctx) => attackLogger.log(result, ctx));
+   *
+   * const guarded = createGuardedLanceTable(table, {
+   *   engine,
+   *   retrievedDocValidator: createRetrievedDocValidator({...}),
+   * });
+   * ```
+   */
+  engine?: import('@blackunicorn/bonklm').GuardrailEngine;
+
+  /**
    * RetrievedDocValidator applied to `.toArray()` results from
    * `search(...)` and `query()`. Filters out poisoned rows; on
    * batch-level BLOCK the connector throws `ConnectorValidationError`.

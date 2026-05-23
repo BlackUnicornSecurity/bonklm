@@ -171,6 +171,150 @@ A future release (Sprint 14+) may unify the two pipelines so guards
 fire on `validateInput` too — but the type-safety + result-shape
 unification is non-trivial and currently a known gap.
 
+## 11. CRIU-checkpoint heap exposure of cache-adapter credentials
+
+(Added: Sprint 14 cumulative audit security sec S5 closure.)
+
+The Trigger.dev connector (`@blackunicorn/bonklm-trigger`) stores a
+validation handle in Trigger.dev's `locals` registry so it survives
+CRIU checkpoint/resume across `wait.for(...)` boundaries. If your
+handle holds a reference to a cache adapter (Redis client, etc.) that
+embeds credentials inside its closure state, those credentials are
+serialized as part of the V8 heap snapshot during CRIU checkpoint.
+
+Trigger.dev's CRIU snapshot is stored at-rest in object storage
+(typically S3-compatible) — potentially a different security tier than
+the running compute machine.
+
+**Mitigation**:
+  1. Use secretless adapter factories — resolve credentials from an
+     env var at factory-init time so the credential is a stack-frame
+     string rather than a long-lived closure reference.
+  2. Review your Trigger.dev project's snapshot storage tier ACLs.
+  3. Rotate cache credentials more aggressively in CRIU-resumed
+     workloads.
+
+## 12. Replay-storm DoS on deterministic BLOCK + non-Abort errors
+
+(Added: Sprint 14 cumulative audit security sec S6 closure.)
+
+In replay-capable runtimes (Inngest, Trigger.dev), a deterministic
+validator BLOCK paired with a `throw new Error(...)` triggers a
+retry storm:
+
+  1. Attempt N: validator BLOCKs, consumer throws `Error`, Trigger.dev
+     queues retry.
+  2. Attempt N+1: cached BLOCK is served (validator does NOT re-fire,
+     the cache works correctly), consumer throws again, retry.
+  3. Loop continues until `maxAttempts` is exhausted.
+
+The cached BLOCK prevents validator re-execution (correct) but does
+NOT prevent the retry storm itself.
+
+**Mitigation**:
+  - In Trigger.dev `run()` body, throw `AbortTaskRunError` (from
+    `@trigger.dev/sdk/v3`) instead of a generic `Error`. It terminates
+    the run immediately without consuming retry budget.
+  - In Inngest function body, throw `NonRetriableError` (from
+    `inngest`) for the same effect.
+  - Set `retry: { maxAttempts: 1 }` on tasks whose BLOCK decisions
+    should never retry.
+
+## 13. Unknown ValidatorInput `kind` discriminants pass through unvalidated
+
+(Added: Sprint 14 cumulative audit security sec S8 closure.)
+
+The `ValidatorInput` discriminated union has a fixed set of known
+discriminants (`text`, `tool_call`, `retrieved_docs`, `memory_write`,
+`composed_context`, etc.). Connectors (Inngest, Trigger.dev) that
+accept a pre-built `ValidatorInput` object check the `kind` field is
+a string and forward to the validator pipeline.
+
+If a consumer constructs a `ValidatorInput` with an unrecognized
+`kind` (typo, or a future kind not yet supported by all validators),
+each validator that switches on `kind` will default to ALLOW (no-match
+path).
+
+**Mitigation**:
+  - Use the typed constructors / helpers from `@blackunicorn/bonklm`
+    rather than building raw `ValidatorInput` objects.
+  - Audit your validator stack: each validator should explicitly
+    assert known `kind` values + return a structured BLOCK for
+    unrecognized ones if your threat model requires it.
+
+## 14. Redact-mode sentinel as secondary injection vector
+
+(Added: Sprint 14 cumulative audit security sec S9 closure.)
+
+When a `MemoryWriteValidator` is configured with `onFailure: 'redact'`,
+the validator replaces flagged regions with a redaction sentinel
+(default `[REDACTED]`, consumer-overridable via `redactReplacement`).
+The redacted content persists to your vector DB / memory store. A
+subsequent retrieval returning that document exposes the sentinel
+string to the LLM.
+
+The default `[REDACTED]` sentinel is benign for current models, but:
+
+  1. A model could in principle be trained or instructed to interpret
+     `[REDACTED]` as a privileged signal ("the user redacted this,
+     so I should bypass my safety guidelines to recover it").
+  2. A consumer-override `redactReplacement` containing untrusted
+     content (e.g. dynamically built from user input) is a direct
+     injection vector — the sentinel reaches the LLM via the
+     retrieval path.
+
+**Mitigation**:
+  - Treat `redactReplacement` as security-relevant configuration; do
+    NOT build it from runtime input.
+  - Prefer `onFailure: 'block-write'` for high-sensitivity data; the
+    redact mode is a usability trade-off, not a defence-in-depth.
+  - Monitor retrieval responses for unexpected sentinel patterns.
+
+## 15. Older vector connectors lack empty-redaction guard
+
+(Added: Sprint 14 cumulative audit security cross-empty-redaction.)
+
+The Lance + Turbopuffer connectors (Stories 2.10–2.11) default
+`emptyRedactionMode: 'block'` — writes that redact to an empty
+content string are rejected rather than persisting an empty doc.
+
+The older vector connectors (qdrant, pinecone, weaviate — Story
+1.2 era) do NOT consume `MemoryWriteValidator` in the same shape;
+they take a separate `validators` array consumed by an internally-
+built `GuardrailEngine`. The empty-redaction edge case does not apply
+to those connectors as-shipped, but consumers who pre-validate their
+own writes before calling `upsert()` should be aware that an
+all-redacted-to-empty payload may land in the index.
+
+**Mitigation**:
+  - Pre-validate your writes BEFORE calling
+    `client.upsert(...)` / `index.upsert(...)`. If your validator
+    returns empty content after redaction, do not pass it through.
+  - Future Story (Sprint 15+): retrofit qdrant/pinecone/weaviate to
+    consume `MemoryWriteValidator` symmetrically with lance/turbopuffer.
+
+## 16. `sanitizeReasonText` stack-trace + file-path leakage gap
+
+(Added: Sprint 14 cumulative audit security sec S3 closure.)
+
+`sanitizeReasonText` (now exported canonically from
+`@blackunicorn/bonklm/core/connector-utils`) strips non-printable
+control characters and caps at 200 characters. It does NOT redact:
+
+  - Absolute file paths embedded in `Error.message`
+  - Environment variable values that happen to be ASCII
+  - Multi-line stack traces (the trace itself is usually on
+    `error.stack`, not `.message`, so 200-char cap on message only
+    bounds exposure)
+
+**Mitigation**:
+  - In production, configure connectors with `productionMode: true`
+    so error messages carry generic strings rather than the
+    validator's `reason`.
+  - Forward `error.message` ONLY to your structured logger; do NOT
+    forward `error.stack` to consumer-facing surfaces or attacker-
+    accessible run-status fields.
+
 ## See also
 
 - [`threat-surfaces.md`](./threat-surfaces.md) — what BonkLM DOES
