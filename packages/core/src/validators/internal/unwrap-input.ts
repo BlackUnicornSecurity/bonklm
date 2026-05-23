@@ -15,6 +15,7 @@
  * transcription).
  */
 import type { ValidatorInput } from '../../engine/GuardrailEngine.types.js';
+import { RiskLevel } from '../../base/GuardrailResult.js';
 
 /**
  * Unwrap a `ValidatorInput` (or raw string) to the inner text payload.
@@ -75,12 +76,8 @@ export function unwrapValidatorInput(
  * (weight 10) as `HIGH`, two WARNING findings (weight 5 each) as
  * `MEDIUM`.
  */
-export function scoreToRiskLevel(score: number): import('../../base/GuardrailResult.js').RiskLevel {
-  // Inline import to avoid circular dep — this helper is leaf-most.
-  const HIGH = 'HIGH' as const;
-  const MEDIUM = 'MEDIUM' as const;
-  const LOW = 'LOW' as const;
-  if (score >= 10) return HIGH as unknown as import('../../base/GuardrailResult.js').RiskLevel;
-  if (score >= 5) return MEDIUM as unknown as import('../../base/GuardrailResult.js').RiskLevel;
-  return LOW as unknown as import('../../base/GuardrailResult.js').RiskLevel;
+export function scoreToRiskLevel(score: number): RiskLevel {
+  if (score >= 10) return RiskLevel.HIGH;
+  if (score >= 5) return RiskLevel.MEDIUM;
+  return RiskLevel.LOW;
 }

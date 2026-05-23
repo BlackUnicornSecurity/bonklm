@@ -146,12 +146,68 @@ describe('Multilingual Corpus — recall + FPR baseline (Sprint 16 measurement; 
   });
 
   /**
-   * Sprint 22 close will activate this per-language gate. Today it is
-   * conditional (skip when patterns missing): hi (Hindi) has NO patterns
-   * yet — patterns ship Sprint 21. The TP corpus exists FIRST so
-   * curator-vs-pattern-author separation is enforceable at pattern-PR time.
+   * Sprint 17 audit closure (code-reviewer BLOCK-2 + security BLOCK-1/2):
+   * per-language corpus-driven TP gate. Activates per-language as
+   * patterns land. Sprint 17 enforces bn + ur (both ≥ 85% recall after
+   * the audit-closure pattern fixes). Hindi defers until Sprint 21
+   * pattern PR.
    */
-  it.skip('Sprint 22 gate: per-language recall ≥ 85% AND FPR ≤ 5%', () => {
+  it('per-language TP recall gate: bn + ur enforced at 85% (Sprint 17 audit closure)', async () => {
+    const detector = new MultilingualDetector();
+    const ENFORCED_LANGS = new Set(['bn', 'ur']);
+    for (const lang of languages) {
+      if (!ENFORCED_LANGS.has(lang)) continue;
+      const tp = loadCorpus(lang, 'true-positives');
+      if (tp.length === 0) continue;
+
+      const misses: string[] = [];
+      let blocked = 0;
+      for (const entry of tp) {
+        const r = detector.validate(entry.payload);
+        if (r.blocked) blocked++;
+        else misses.push(`${entry.id}: ${entry.payload.slice(0, 60)}`);
+      }
+      const recall = blocked / tp.length;
+      if (recall < 0.85) {
+        // eslint-disable-next-line no-console
+        console.error(`${lang} TP misses:\n  ` + misses.join('\n  '));
+      }
+      expect(recall, `${lang} recall ${(recall * 100).toFixed(0)}%`).toBeGreaterThanOrEqual(0.85);
+    }
+  });
+
+  it('per-language FPR ceiling: bn + ur ≤ 5% (Sprint 17 audit closure)', async () => {
+    const detector = new MultilingualDetector();
+    const ENFORCED_LANGS = new Set(['bn', 'ur']);
+    for (const lang of languages) {
+      if (!ENFORCED_LANGS.has(lang)) continue;
+      const tn = loadCorpus(lang, 'true-negatives');
+      if (tn.length === 0) continue;
+
+      const fps: string[] = [];
+      let blocked = 0;
+      for (const entry of tn) {
+        const r = detector.validate(entry.payload);
+        if (r.blocked) {
+          blocked++;
+          fps.push(`${entry.id}: ${entry.payload.slice(0, 60)}`);
+        }
+      }
+      const fpr = blocked / tn.length;
+      if (fpr > 0.05) {
+        // eslint-disable-next-line no-console
+        console.error(`${lang} TN false-positives:\n  ` + fps.join('\n  '));
+      }
+      expect(fpr, `${lang} FPR ${(fpr * 100).toFixed(0)}%`).toBeLessThanOrEqual(0.05);
+    }
+  });
+
+  /**
+   * Sprint 22 close gate (all 20 languages). Today: conditional skip
+   * until every language has both patterns AND a curator-attested
+   * corpus. Hindi has corpus but no patterns (Sprint 21).
+   */
+  it.skip('Sprint 22 gate: per-language recall ≥ 85% AND FPR ≤ 5% (all langs)', () => {
     for (const lang of languages) {
       const tp = loadCorpus(lang, 'true-positives');
       const tn = loadCorpus(lang, 'true-negatives');

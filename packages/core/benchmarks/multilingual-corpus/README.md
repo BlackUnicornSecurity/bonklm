@@ -33,18 +33,18 @@ Updated 2026-05-23 (Sprint 16 / Story 3.12 Pass 1 — scaffold).
 
 ### Tier 2 — new 10 (Sprint 17-22 backlog)
 
-| Lang | Sprint | Patterns | TP | TN | Reviewer |
-|---|---|---|---|---|---|
-| hi (Hindi) | 16 (seed) / 21 (full) | ❌ → seed only | ✅ seed 20 | ✅ seed 20 | TBD |
-| bn (Bengali) | 17 | ❌ | ❌ | ❌ | TBD |
-| ur (Urdu) | 17 | ❌ | ❌ | ❌ | TBD |
-| id (Indonesian) | 18 | ❌ | ❌ | ❌ | TBD |
-| tr (Turkish) | 18 | ❌ | ❌ | ❌ | TBD |
-| fa (Persian) | 19 | ❌ | ❌ | ❌ | TBD |
-| vi (Vietnamese) | 19 | ❌ | ❌ | ❌ | TBD |
-| th (Thai) | 20 | ❌ | ❌ | ❌ | TBD |
-| pl (Polish) | 20 | ❌ | ❌ | ❌ | TBD |
-| nl (Dutch) | 21 | ❌ | ❌ | ❌ | TBD |
+| Lang | Sprint | Patterns | TP | TN | Reviewer | Recall (last) | FPR (last) |
+|---|---|---|---|---|---|---|---|
+| hi (Hindi) | 16 (seed) / 21 (full) | ❌ → seed only | ✅ seed 20 | ✅ seed 20 | TBD | 0% (no patterns) | 0% |
+| bn (Bengali) | 17 | ✅ 4 (SOV) | ✅ seed 20 | ✅ seed 20 | TBD | 75% (baseline) | 0% |
+| ur (Urdu) | 17 (RTL guard) | ✅ 4 (SOV) | ✅ seed 20 | ✅ seed 20 | TBD | 80% (baseline) | 0% |
+| id (Indonesian) | 18 | ❌ | ❌ | ❌ | TBD | n/a | n/a |
+| tr (Turkish) | 18 | ❌ | ❌ | ❌ | TBD | n/a | n/a |
+| fa (Persian) | 19 (RTL guard reused) | ❌ | ❌ | ❌ | TBD | n/a | n/a |
+| vi (Vietnamese) | 19 | ❌ | ❌ | ❌ | TBD | n/a | n/a |
+| th (Thai) | 20 | ❌ | ❌ | ❌ | TBD | n/a | n/a |
+| pl (Polish) | 20 | ❌ | ❌ | ❌ | TBD | n/a | n/a |
+| nl (Dutch) | 21 | ❌ | ❌ | ❌ | TBD | n/a | n/a |
 
 ## Entry schema (TP + TN)
 

@@ -609,6 +609,64 @@ validators should dispatch via the engine's per-validator routing,
 NOT broadcast every `kind` to every validator (which would produce
 TypeErrors per chunk on AudioStream for tool_call inputs).
 
+## 28. RTL bidi-control attacks defeated for ar / ur (Sprint 17)
+
+(Story 3.12 Pass 2 / Sprint 17.)
+
+`MultilingualDetector` now strips Unicode bidi-control code points
+BEFORE regex matching, via `stripBidiControls`. Stripped set:
+
+  - U+202A-202E — embedding + override + pop (LRE / RLE / PDF / LRO / RLO)
+  - U+2066-2069 — isolate + pop (LRI / RLI / FSI / PDI)
+  - **U+200E LEFT-TO-RIGHT MARK** (Sprint 17 audit closure)
+  - **U+200F RIGHT-TO-LEFT MARK** (Sprint 17 audit closure)
+  - **U+061C ARABIC LETTER MARK** (Sprint 17 audit closure)
+
+Coverage:
+  - Arabic (ar): system_override + constraint_removal + mode_switching
+    + role_hijacking — all 4 categories handle bidi-wrapped inputs.
+  - Urdu (ur): same 4 categories — ships with bidi-attack TPs
+    `ur-tp-015` (RLO+PDF wrap) and `ur-tp-016` (LRE wrap).
+  - Persian (fa): RTL bidi guard already in place; patterns ship
+    Sprint 19.
+  - Hebrew (he): out of scope today; reuses same `stripBidiControls`
+    when patterns ship (Sprint 22+).
+
+**Not covered**:
+  - NFKD homoglyph normalisation on the multilingual path:
+    `normalizeForMultilingualMatch` is exported but the detector
+    currently wires only `stripBidiControls`. Composed-form homoglyph
+    attacks (e.g. `Á` U+00C1 vs `A` + U+0301) still bypass the
+    multilingual regex. Sprint 18 wires the full normaliser.
+  - Mixed-script attacks where an English code-injection sink wraps an
+    Arabic/Urdu/Persian preamble: caught by `CodeInjectionValidator`
+    in the chain, NOT by `MultilingualDetector` alone. Confirm chain
+    composition per `AudioStreamValidator` default `finalValidators`.
+
+## 29. scoreToRiskLevel threshold convergence (Sprint 17 buffer)
+
+(Sprint 16 cumulative-audit code-reviewer CONCERN-1 closure.)
+
+The shared `scoreToRiskLevel` helper unifies the score-to-RiskLevel
+mapping across `AudioStreamValidator`, `CodeInjectionValidator`,
+`PathTraversalValidator`, `MultilingualDetector`. Thresholds:
+
+  - `score ≥ 10` → `RiskLevel.HIGH`
+  - `score ≥ 5`  → `RiskLevel.MEDIUM`
+  - else         → `RiskLevel.LOW`
+
+**Behaviour change (semver-relevant for v0.6 dashboards)**:
+  - `AudioStreamValidator` previously used `≥ 7 HIGH / ≥ 3 MEDIUM`.
+    Under the new thresholds, a single `WARNING` finding (weight 5)
+    surfaces as `MEDIUM` instead of `HIGH`. Connectors that filter
+    dashboards on `risk_level === 'HIGH'` will see a downgrade for
+    warning-only audio findings — the `blocked` boolean is unchanged.
+
+Mitigation: dashboards SHOULD key on `severity` (the finding's
+`Severity.CRITICAL` / `WARNING` / `INFO` enum) rather than the
+derived `risk_level` aggregate when fine-grained severity-by-finding
+filtering is required.
+
 ## See also
 
 - [`threat-surfaces.md`](./threat-surfaces.md) — what BonkLM DOES

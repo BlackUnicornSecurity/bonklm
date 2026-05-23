@@ -16,6 +16,7 @@ import type {
   HookSurface,
 } from '../engine/GuardrailEngine.types.js';
 import { unwrapValidatorInput } from './internal/unwrap-input.js';
+import { stripBidiControls } from './internal/rtl-bidi-guard.js';
 
 /**
  * R2-10 locked vocab — multilingual detector operates on the text input
@@ -116,6 +117,27 @@ const MULTILINGUAL_PATTERNS: MultilingualPattern[] = [
   { name: 'ru_mode_switching', pattern: /(?:активируй|включи|перейди\s+в)\s+(?:режим\s+)?(?:разработчика|администратора|без\s+ограничений)/i, severity: Sev.CRITICAL, language: 'ru', category: 'mode_switching', description: 'Russian: activate developer/admin mode' },
   { name: 'ru_role_hijacking', pattern: /(?:теперь\s+ты|с\s+этого\s+момента\s+ты|притворись)/i, severity: Sev.WARNING, language: 'ru', category: 'role_hijacking', description: 'Russian: you are now / pretend to be' },
 
+  // === BENGALI (bn) — Sprint 17 / Story 3.12 Pass 2 ===
+  // Bengali SOV word order: noun-phrase FIRST, verb LAST.
+  // Sprint 17 audit closure (code-reviewer BLOCK-1 + security BLOCK-1):
+  // quantifier `সমস্ত` accepted EITHER before OR after the adjective
+  // (e.g. `সমস্ত আগের` AND `আগের সমস্ত` both valid SOV surface forms).
+  // Locative suffix `মোডে` (mode + locative) accepted via `ে?`
+  // after `মোড`.
+  { name: 'bn_system_override', pattern: /(?:সমস্ত\s+)?(?:পূর্ববর্তী|আগের|পূর্বের)\s+(?:সমস্ত\s+)?(?:নির্দেশ|আদেশ|নিয়ম)\s+(?:উপেক্ষা\s*কর|ভুলে\s*যাও|বাতিল\s*কর)/i, severity: Sev.CRITICAL, language: 'bn', category: 'system_override', description: 'Bengali: ignore previous instructions' },
+  { name: 'bn_constraint_removal', pattern: /(?:সমস্ত\s+)?(?:সীমাবদ্ধতা|বিধিনিষেধ|নিয়ম|সুরক্ষা)\s+(?:সরাও|মুছে\s*ফেল|নিষ্ক্রিয়\s*কর)/i, severity: Sev.CRITICAL, language: 'bn', category: 'constraint_removal', description: 'Bengali: remove restrictions' },
+  { name: 'bn_mode_switching', pattern: /(?:ডেভেলপার|প্রশাসক|অসীমিত)\s*(?:মোডে?)\s+(?:সক্রিয়\s*কর|প্রবেশ\s*কর|পরিবর্তন\s*কর)/i, severity: Sev.CRITICAL, language: 'bn', category: 'mode_switching', description: 'Bengali: switch to developer/admin mode' },
+  { name: 'bn_role_hijacking', pattern: /(?:তুমি\s+এখন|এখন\s+থেকে\s+তুমি|ভান\s+কর)/i, severity: Sev.WARNING, language: 'bn', category: 'role_hijacking', description: 'Bengali: you are now / pretend to be' },
+
+  // === URDU (ur) — Sprint 17 / Story 3.12 Pass 2, RTL preprocessed via stripBidiControls ===
+  // Urdu SOV word order with same Sprint 17 audit closure: quantifier
+  // `تمام` accepted EITHER before OR after the adjective. `میں`
+  // (locative) accepted between mode-noun and verb (e.g. `موڈ میں داخل ہو`).
+  { name: 'ur_system_override', pattern: /(?:تمام\s+)?(?:پچھلی|سابقہ|پہلی)\s+(?:تمام\s+)?(?:ہدایات|احکامات|قوانین)\s+(?:نظر\s*انداز\s*کر|بھول\s*جاؤ|ترک\s*کر)/i, severity: Sev.CRITICAL, language: 'ur', category: 'system_override', description: 'Urdu: ignore previous instructions' },
+  { name: 'ur_constraint_removal', pattern: /(?:تمام\s+)?(?:پابندیاں|حدود|قوانین|حفاظت)\s+(?:ہٹاؤ|مٹاؤ|غیر\s*فعال\s*کر)/i, severity: Sev.CRITICAL, language: 'ur', category: 'constraint_removal', description: 'Urdu: remove restrictions' },
+  { name: 'ur_mode_switching', pattern: /(?:ڈویلپر|ایڈمن|لامحدود)\s*(?:موڈ)\s+(?:میں\s+)?(?:فعال\s*کر|داخل\s*ہو)/i, severity: Sev.CRITICAL, language: 'ur', category: 'mode_switching', description: 'Urdu: activate developer/admin mode' },
+  { name: 'ur_role_hijacking', pattern: /(?:تم\s+اب|اب\s+سے\s+تم|بہانہ\s+کرو)/i, severity: Sev.WARNING, language: 'ur', category: 'role_hijacking', description: 'Urdu: you are now / pretend to be' },
+
   // === ARABIC ===
   { name: 'ar_system_override', pattern: /(?:تجاهل|انسَ|اهمل)\s+(?:جميع\s+)?(?:التعليمات|الأوامر|القواعد)\s+(?:السابقة|القديمة)/i, severity: Sev.CRITICAL, language: 'ar', category: 'system_override', description: 'Arabic: ignore previous instructions' },
   { name: 'ar_constraint_removal', pattern: /(?:أزل|احذف|ألغِ|عطّل)\s+(?:جميع\s+)?(?:القيود|القواعد|الحماية)/i, severity: Sev.CRITICAL, language: 'ar', category: 'constraint_removal', description: 'Arabic: remove restrictions' },
@@ -154,6 +176,12 @@ export function detectMultilingualInjection(
     return [];
   }
 
+  // Sprint 17 / Story 3.12 Pass 2: strip Unicode bidi-control
+  // characters BEFORE regex matching so RTL-override attacks (visually
+  // benign, logically malicious) hit the same Arabic/Urdu/Persian
+  // patterns as plain-text injections.
+  const normalised = stripBidiControls(content);
+
   const findings: MultilingualFinding[] = [];
   const languageFilter = new Set(languages);
   const includeAll = !languages || languages.length === 0;
@@ -169,7 +197,7 @@ export function detectMultilingualInjection(
       continue;
     }
 
-    const match = content.match(pattern.pattern);
+    const match = normalised.match(pattern.pattern);
     if (match) {
       findings.push({
         category: `multilingual_${pattern.category}`,
