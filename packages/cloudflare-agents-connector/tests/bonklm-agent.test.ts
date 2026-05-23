@@ -271,6 +271,68 @@ describe('withBonklmAgent — double-wrap + guards', () => {
 // HookContext metadata.broadcast distinction
 // =============================================================================
 
+// =============================================================================
+// Sprint 25 — instance-property fallback (architect B2 closure)
+// =============================================================================
+
+describe('withBonklmAgent — instance-property fallback for sql/ctx (real SDK shape)', () => {
+  /**
+   * Sprint 25 audit-closure: the real `agents ^0.13.0` SDK assigns
+   * `this.sql` and `this.ctx` as per-instance properties (constructor-
+   * bound proxies over DurableObjectState). The Sprint 22 prototype-
+   * only walk would have thrown TypeError against the real SDK. This
+   * test simulates that shape and asserts wrap succeeds.
+   */
+  class InstancePropertyAgent {
+    public sql: SqlStorageLike;
+    public ctx: { storage: DurableObjectStorageLike };
+
+    constructor() {
+      // Constructor-bound per-instance sql (NOT a prototype getter).
+      const rows: Array<Record<string, unknown>> = [
+        { id: 1, body: benignText },
+        { id: 2, body: attackText },
+      ];
+      this.sql = ((..._args: unknown[]) => rows) as SqlStorageLike;
+      const data = new Map<string, unknown>([['k', benignText]]);
+      this.ctx = {
+        storage: {
+          get: async <T = unknown>(k: string | string[]) =>
+            Array.isArray(k) ? new Map() : (data.get(k) as T | undefined),
+          list: async <T = unknown>() => new Map(Array.from(data.entries()) as Array<[string, T]>),
+          getAlarm: async () => null,
+        },
+      };
+    }
+
+    setState(_next: unknown): void {
+      // base setState no-op
+    }
+  }
+
+  it('finds sql via instance property (no prototype getter) — wrap succeeds', () => {
+    // Architect B2 concern: real Cloudflare Agents SDK assigns sql
+    // as a per-instance property; Sprint 22 prototype-only walk
+    // would have thrown TypeError here. Sprint 25 closure: instance-
+    // property fallback added. We assert wrap doesn't throw AND
+    // accessing `.sql` returns a callable function (not undefined).
+    const engine = makeEngine();
+    const BonklmAgent = withBonklmAgent(InstancePropertyAgent, { engine });
+    const a = new BonklmAgent();
+    const sql = (a as unknown as AgentLike).sql!;
+    expect(typeof sql).toBe('function');
+  });
+
+  it('finds ctx via instance property when no prototype getter exists', async () => {
+    const engine = makeEngine();
+    const BonklmAgent = withBonklmAgent(InstancePropertyAgent, { engine });
+    const a = new BonklmAgent();
+    const ctx = (a as unknown as AgentLike).ctx!;
+    expect(ctx).toBeDefined();
+    expect(await ctx.storage.get('k')).toBe(benignText);
+  });
+});
+
 describe('withBonklmAgent — HookContext.broadcast metadata (Sprint 22 AC)', () => {
   it('setState event carries broadcast=true (broadcasts to WS clients)', async () => {
     const engine = makeEngine();

@@ -186,28 +186,23 @@ export function withBonklmAgent<S, Base extends AgentClassLike<S>>(
      */
     get sql(): SqlStorageLike | WrappedSqlStorageLike {
       if (this._bonklmWrappedSql) return this._bonklmWrappedSql;
-      // Walk the prototype chain UP from our own prototype to find
-      // the underlying base-class `sql` getter. We cannot just read
-      // `Object.getPrototypeOf(this).sql` because that re-enters
-      // THIS override and loops forever.
-      const baseProto = Object.getPrototypeOf(BaseAgent.prototype);
-      const ownProtoChain = [BaseAgent.prototype, baseProto].filter(Boolean);
-      let baseSql: SqlStorageLike | undefined;
-      for (const proto of ownProtoChain) {
-        const descriptor = Object.getOwnPropertyDescriptor(proto, 'sql');
-        if (descriptor?.get) {
-          baseSql = descriptor.get.call(this) as SqlStorageLike;
-          break;
-        }
-        if (descriptor?.value && typeof descriptor.value === 'function') {
-          baseSql = descriptor.value as SqlStorageLike;
-          break;
-        }
-      }
+      // Sprint 25 audit-closure (Sprint 22 architect B2): the real
+      // `agents` SDK assigns `this.sql` as a per-instance property
+      // (constructor-bound proxy over DurableObjectState.storage.sql),
+      // NOT a prototype getter. The previous 2-level prototype walk
+      // failed against that shape. Strategy:
+      //   1. Instance-property check — read `this['sql']` AFTER
+      //      bypassing our own getter via property descriptor.
+      //   2. Prototype-chain walk with bounded depth (5 hops) for
+      //      SDKs that DO use prototype getters (e.g. our MockBaseAgent).
+      //   3. Throw TypeError with diagnostic message on failure.
+      const baseSql = findBaseSql(this, BaseAgent);
       if (typeof baseSql !== 'function') {
         throw new TypeError(
-          'BonklmAgent: underlying Agent.sql is not a function. Cloudflare ' +
-            'Agents SDK ^0.13.0 expected.'
+          'BonklmAgent: underlying Agent.sql is not a function. ' +
+            'Cloudflare Agents SDK ^0.13.0 expected. If your custom ' +
+            'Agent subclass uses an unusual prototype shape, file an ' +
+            'issue at https://github.com/BlackUnicornSecurity/bonklm/issues.'
         );
       }
       // When no validators are configured, preserve the underlying
@@ -245,22 +240,8 @@ export function withBonklmAgent<S, Base extends AgentClassLike<S>>(
      * ingests tainted DO storage.
      */
     get ctx(): AgentLike<S>['ctx'] {
-      // Same prototype-chain walk as sql; avoid re-entering our own
-      // getter.
-      const baseProto = Object.getPrototypeOf(BaseAgent.prototype);
-      const ownProtoChain = [BaseAgent.prototype, baseProto].filter(Boolean);
-      let baseCtx: AgentLike<S>['ctx'] | undefined;
-      for (const proto of ownProtoChain) {
-        const descriptor = Object.getOwnPropertyDescriptor(proto, 'ctx');
-        if (descriptor?.get) {
-          baseCtx = descriptor.get.call(this) as AgentLike<S>['ctx'];
-          break;
-        }
-        if ('value' in (descriptor ?? {})) {
-          baseCtx = descriptor!.value as AgentLike<S>['ctx'];
-          break;
-        }
-      }
+      // Same instance-first + bounded prototype walk as sql.
+      const baseCtx = findBaseProperty<AgentLike<S>['ctx']>(this, BaseAgent, 'ctx');
       if (!baseCtx?.storage) return baseCtx;
       const storage = baseCtx.storage;
       return {
@@ -425,6 +406,67 @@ function safeOnError(config: BonklmAgentConfig, err: unknown): void {
   } catch {
     /* swallow */
   }
+}
+
+/**
+ * Sprint 25 audit-closure: find the base-class `sql` property (or any
+ * named property) without re-entering our own getter.
+ *
+ * Strategy:
+ *   1. Walk OWN-instance property names via Object.getOwnPropertyNames
+ *      (skips inherited keys), reading `instance[name]` directly. The
+ *      real `agents` SDK Agent constructor assigns `this.sql = ...`
+ *      as an instance property; this catches it.
+ *   2. Walk the prototype chain UP from BaseAgent.prototype with a
+ *      bounded depth (5 hops) — catches Mock or SDK shapes that use
+ *      `get sql() { ... }` on a prototype.
+ *   3. Return undefined if neither finds a function value.
+ */
+function findBaseSql(
+  instance: object,
+  BaseAgent: { prototype: object }
+): SqlStorageLike | undefined {
+  return findBaseProperty<SqlStorageLike>(instance, BaseAgent, 'sql');
+}
+
+function findBaseProperty<T>(
+  instance: object,
+  BaseAgent: { prototype: object },
+  propertyName: string
+): T | undefined {
+  // 1. Instance-property check (real Cloudflare Agents SDK shape).
+  //    We can't read `instance[propertyName]` directly because that
+  //    re-enters our override getter. Instead, walk OWN keys and
+  //    grab via the descriptor's value field (NOT a getter).
+  const ownNames = Object.getOwnPropertyNames(instance);
+  if (ownNames.includes(propertyName)) {
+    const desc = Object.getOwnPropertyDescriptor(instance, propertyName);
+    if (desc && 'value' in desc && desc.value !== undefined) {
+      return desc.value as T;
+    }
+  }
+
+  // 2. Prototype-chain walk with bounded depth (5 hops).
+  let proto: object | null = BaseAgent.prototype;
+  let depth = 0;
+  const MAX_DEPTH = 5;
+  while (proto !== null && depth < MAX_DEPTH) {
+    const desc = Object.getOwnPropertyDescriptor(proto, propertyName);
+    if (desc?.get) {
+      try {
+        const result = desc.get.call(instance) as T;
+        if (result !== undefined) return result;
+      } catch {
+        // Getter threw — skip + continue walk.
+      }
+    }
+    if (desc && 'value' in desc && typeof desc.value === 'function') {
+      return desc.value as T;
+    }
+    proto = Object.getPrototypeOf(proto);
+    depth++;
+  }
+  return undefined;
 }
 
 function stringifyForValidation(value: unknown): string {
