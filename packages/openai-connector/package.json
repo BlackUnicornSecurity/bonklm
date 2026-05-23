@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-openai",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "OpenAI SDK connector for BonkLM",
   "type": "module",
   "main": "dist/index.js",
