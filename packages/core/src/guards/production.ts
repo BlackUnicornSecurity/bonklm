@@ -398,6 +398,9 @@ export function detectProductionIndicators(text: string): ProductionIndicator[] 
 // GUARD CLASS
 // =============================================================================
 
+/**
+ * @public Sprint 26/28 v1.0-RC1 API freeze.
+ */
 export class ProductionGuard {
   private readonly config: Required<Omit<ProductionGuardConfig, 'filePath'>> & { filePath?: string };
 

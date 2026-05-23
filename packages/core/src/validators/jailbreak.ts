@@ -355,6 +355,9 @@ const DEFAULT_JAILBREAK_CONFIG: Required<
 
 /**
  * Jailbreak Validator class.
+ *
+ * @public Sprint 26/28 v1.0-RC1 API freeze. `name = 'jailbreak'` is
+ * frozen.
  */
 export class JailbreakValidator {
   /**

@@ -421,6 +421,9 @@ export function checkDangerousPatterns(cmd: string): { isDangerous: boolean; mes
 // GUARD CLASS
 // =============================================================================
 
+/**
+ * @public Sprint 26/28 v1.0-RC1 API freeze.
+ */
 export class BashSafetyGuard {
   private readonly config: Required<BashSafetyConfig>;
   private logger: Logger;

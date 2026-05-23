@@ -159,6 +159,14 @@ export interface BonklmWebMiddlewareBlockEvent extends BonklmBlockEventBase {
   excerpt?: string;
 }
 
+/**
+ * Cross-package block-event discriminated union.
+ *
+ * @public Sprint 26/28 v1.0-RC1 API freeze. The 7 `kind` values are
+ * frozen — adding a new `kind` is a MINOR (additive) bump; removing
+ * or renaming one is MAJOR. Per-kind interfaces are also `@public`;
+ * new OPTIONAL fields on the per-kind interfaces are additive.
+ */
 export type BonklmBlockEvent =
   | BonklmVoiceBlockEvent
   | BonklmSandboxBlockEvent

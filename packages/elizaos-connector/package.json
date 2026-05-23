@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-elizaos",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "ElizaOS connector for BonkLM — web3 agent guardrails (wrapMemory, ToolCallArgsValidator integration, doctor CLI)",
   "type": "module",
   "main": "./dist/index.js",

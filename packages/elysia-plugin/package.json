@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-elysia",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "BonkLM Elysia plugin — bonklmGuardrails(opts) middleware (Story 3.9)",
   "type": "module",
   "main": "./dist/index.js",

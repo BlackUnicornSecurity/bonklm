@@ -251,6 +251,9 @@ export function detectXSS(content: string, context?: string): XSSDetectionResult
 // GUARD CLASS
 // =============================================================================
 
+/**
+ * @public Sprint 26/28 v1.0-RC1 API freeze.
+ */
 export class XSSGuard {
   private readonly config: Required<Omit<XSSGuardConfig, 'context'>> & { context?: string };
 

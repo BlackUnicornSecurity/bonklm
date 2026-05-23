@@ -76,6 +76,10 @@ export type ValidatorInput =
  *
  * Return type accepts sync or async results so future ML / remote-API
  * validators can plug in without breaking existing sync validators.
+ *
+ * @public Sprint 26/28 v1.0-RC1 API freeze. Adding a required method
+ * is a major-version break; new OPTIONAL methods (e.g. `validateStream`)
+ * may be added in minor versions.
  */
 export interface Validator {
   /**
@@ -97,6 +101,8 @@ export interface Validator {
  * Guard instance interface.
  * Guards validate content with optional context (e.g., file path).
  * Return type accepts sync or Promise for forward compatibility.
+ *
+ * @public Sprint 26/28 v1.0-RC1 API freeze.
  */
 export interface Guard {
   /**

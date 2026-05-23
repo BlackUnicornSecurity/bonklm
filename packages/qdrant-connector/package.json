@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-qdrant",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "Qdrant connector for BonkLM - Vector database security for RAG applications",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

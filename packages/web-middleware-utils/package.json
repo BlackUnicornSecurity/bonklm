@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-web-middleware-utils",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "BonkLM shared web-middleware utilities — runRequestValidation, runResponseValidation, framework-agnostic getRequestBody (Story 3.9)",
   "type": "module",
   "main": "./dist/index.js",

@@ -5,6 +5,68 @@ All notable changes to BonkLM (`@blackunicorn/bonklm`) will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0-rc.2] — 2026-05-24 (Sprint 28)
+
+Second release candidate. Docs-only + JSDoc-only iteration; **no
+runtime code changes** from rc.1. Extends the public-comment window
+ahead of v1.0.0 final.
+
+### Added
+
+- **`docs/user/migration-v0-to-v1.md`** — comprehensive v0.x → v1.0
+  migration guide. Covers all breaking changes (§1 `messagesToTextLegacy`
+  removal, §2 `BonklmBlockEvent` union, §3 `@public`/`@internal` policy,
+  §4 string-arg validator removal, §6 HMAC contract pin, §7 Workerd
+  compat-date pin, §8 sandbox graduation, §9 multilingual Pass 2
+  retirement, §11 `bonklmTrace` caller-provides-tracer contract,
+  §13 wrap-once defence). Includes per-version reading list.
+
+### Changed (docs-only)
+
+- **`@public` JSDoc tags** applied to top-level core symbols for
+  IDE-tooltip clarity:
+  - `GuardrailEngine` class
+  - `Validator` + `Guard` interfaces
+  - `BonklmBlockEvent` discriminated union
+  - `bonklmTrace()` function
+  - `ShadowLog` interface
+  - `OverrideTokenValidator` class
+  - `assertNotWrapped` / `markWrapped` / `ensureWrappedOnce` helpers
+  - All shipping validators (`PromptInjectionValidator`,
+    `JailbreakValidator`, `AudioStreamValidator`, `CodeInjectionValidator`,
+    `PathTraversalValidator`) + all shipping guards (`SecretGuard`,
+    `XSSGuard`, `BashSafetyGuard`, `ProductionGuard`).
+
+  The JSDoc tags are documentation-only — the freeze policy itself was
+  already established in `packages/core/src/index.ts` (Sprint 27) and
+  `docs/user/public-api-surface.md` (Sprint 25).
+
+### Deferred to v1.0.0 final (Sprint 29+)
+
+- v1.0.0 cut decision (after the extended public-comment window
+  closes — earliest Sprint 29).
+- Story 2.14a — openclaw-adapter removal (date gate `2026-07-01`;
+  today `2026-05-24` — still deferred).
+- Full `TestWorkflowEnvironment` Temporal integration
+  (`MockActivityEnvironment` from Sprint 27 covers the activity
+  contract; full workflow runtime deferred to v1.0-RC stabilization
+  buffer Sprint 30+).
+- Connector-package pre-existing test-tooling debt (express-middleware,
+  nestjs-module, chroma-connector, anthropic-connector integration
+  tests rely on a `validators` config schema shape that pre-dates the
+  current `Validator` instance shape — these are TOOLING failures, NOT
+  runtime regressions; the core 2767/2777 + temporal 21/21 + sandbox
+  graduation 100/0/100 all pass against rc.2).
+
+### Tests
+
+- Core: **2767/2777** passing (10 multilingual Pass-2 skips —
+  documented Sprint 23 retirement).
+- Temporal middleware: **21/21** passing (`MockActivityEnvironment`).
+- Sandbox graduation: **100% recall / 0% FPR / 100% precision** against
+  R2-13 corpus (hash `db9c19...8fff4`, pin commit `4f8ea3f`).
+- Build: all 54 packages build clean at `1.0.0-rc.2`.
+
 ## [1.0.0-rc.1] — 2026-05-23 (Sprint 26)
 
 First release candidate. API-freeze prep per Story 4.7 / v1.0-RC

@@ -43,6 +43,11 @@ export interface PathTraversalValidatorConfig {
   checkSymlinks?: boolean;
 }
 
+/**
+ * @public Sprint 26/28 v1.0-RC1 API freeze. `name = 'path_traversal'`
+ * is frozen. `checkSymlinks` opt-in semantics frozen (default off for
+ * edge-runtime portability).
+ */
 export class PathTraversalValidator implements Validator {
   readonly name = 'path_traversal';
   private readonly cwd: string;

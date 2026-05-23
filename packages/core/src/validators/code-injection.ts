@@ -540,6 +540,11 @@ export interface CodeInjectionValidatorConfig {
   allowlistedPatterns?: RegExp[];
 }
 
+/**
+ * @public Sprint 26/28 v1.0-RC1 API freeze. `name = 'code_injection'`
+ * is frozen. R2-13 sandbox-attack-corpus graduation gate (100/0/100
+ * Sprint 24) anchors the detection contract.
+ */
 export class CodeInjectionValidator implements Validator {
   readonly name = 'code_injection';
   private readonly allowlistedHosts: string[];

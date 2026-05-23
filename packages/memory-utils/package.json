@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-memory-utils",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "Shared memory-client wrapping primitives for BonkLM (consumed by mem0/zep/letta/future vendor connectors)",
   "type": "module",
   "main": "./dist/index.js",

@@ -47,6 +47,10 @@ const SENTINEL_DESCRIPTOR: PropertyDescriptor = {
  *
  * The `label` is interpolated into the error message for ergonomic
  * stack traces — operators see which wrap function rejected the call.
+ *
+ * @public Sprint 26/28 v1.0-RC1 API freeze. Connector authors building
+ * their own wrappers may rely on this. Symbol-based marker placement
+ * is part of the freeze (consumers may inspect `target[sentinel]`).
  */
 export function assertNotWrapped(
   target: unknown,
@@ -73,6 +77,9 @@ export function assertNotWrapped(
  * Safe to call on plain objects, class instances, and class
  * constructors (the marker lands on the object reference itself, not
  * on its prototype).
+ *
+ * @public Sprint 26/28 v1.0-RC1 API freeze. Non-enumerable,
+ * non-writable, non-configurable descriptor is part of the freeze.
  */
 export function markWrapped(target: unknown, sentinel: symbol): void {
   if (target === null || (typeof target !== 'object' && typeof target !== 'function')) {
@@ -86,6 +93,8 @@ export function markWrapped(target: unknown, sentinel: symbol): void {
 /**
  * Convenience: one-call combo of `assertNotWrapped` + the
  * `markWrapped` placement. Returns `target` for fluent use.
+ *
+ * @public Sprint 26/28 v1.0-RC1 API freeze.
  */
 export function ensureWrappedOnce<T>(
   target: T,
