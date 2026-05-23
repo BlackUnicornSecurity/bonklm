@@ -21,12 +21,11 @@ import type { Validator, ValidatorInput, HookSurface } from '../engine/Guardrail
 import {
   createResult,
   type GuardrailResult,
-  RiskLevel,
   Severity,
   type Finding,
 } from '../base/GuardrailResult.js';
 import { resolve as pathResolve, isAbsolute as pathIsAbsolute, sep as pathSep } from 'node:path';
-import { unwrapValidatorInput } from './internal/unwrap-input.js';
+import { unwrapValidatorInput, scoreToRiskLevel } from './internal/unwrap-input.js';
 
 const SURFACE: HookSurface = 'text_input';
 
@@ -145,7 +144,7 @@ export class PathTraversalValidator implements Validator {
 
     const result = createResult(!blocked, worst, findings);
     result.risk_score = score;
-    result.risk_level = scoreToRisk(score);
+    result.risk_level = scoreToRiskLevel(score);
     result.metadata = { surface: SURFACE };
     return result;
   }
@@ -205,8 +204,3 @@ function safeResolve(p: string, _cwd: string): string | null {
   }
 }
 
-function scoreToRisk(score: number): RiskLevel {
-  if (score >= 10) return RiskLevel.HIGH;
-  if (score >= 5) return RiskLevel.MEDIUM;
-  return RiskLevel.LOW;
-}

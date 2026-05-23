@@ -74,7 +74,6 @@ import type {
 import {
   createResult,
   type GuardrailResult,
-  RiskLevel,
   Severity,
   type Finding,
 } from '../base/GuardrailResult.js';
@@ -84,6 +83,7 @@ import {
 } from '../connector-utils/buffered-release-gate.js';
 import { PromptInjectionValidator } from './prompt-injection.js';
 import { CodeInjectionValidator } from './code-injection.js';
+import { scoreToRiskLevel } from './internal/unwrap-input.js';
 
 // =============================================================================
 // PUBLIC CONSTANTS
@@ -624,7 +624,7 @@ export class AudioStreamValidator implements Validator {
 
     const result = createResult(!blocked, worstSeverity, findings);
     result.risk_score = aggregateScore;
-    result.risk_level = scoreToRisk(aggregateScore);
+    result.risk_level = scoreToRiskLevel(aggregateScore);
     result.metadata = {
       ...(result.metadata ?? {}),
       surface: AUDIO_STREAM_SURFACE,
@@ -683,7 +683,7 @@ export class AudioStreamValidator implements Validator {
       Severity.INFO;
     const result = createResult(!partial.earlyBlock, worstSeverity, findings);
     result.risk_score = findings.reduce((s, f) => s + (f.weight ?? 0), 0);
-    result.risk_level = scoreToRisk(result.risk_score);
+    result.risk_level = scoreToRiskLevel(result.risk_score);
     result.metadata = {
       surface: AUDIO_STREAM_SURFACE,
       partialCoverageOnly: true,
@@ -793,11 +793,10 @@ function severityRank(s: Severity): number {
   }
 }
 
-function scoreToRisk(score: number): RiskLevel {
-  if (score >= 7) return RiskLevel.HIGH;
-  if (score >= 3) return RiskLevel.MEDIUM;
-  return RiskLevel.LOW;
-}
+// Sprint 17 buffer (cumulative audit code-reviewer CONCERN-1 closure):
+// scoreToRisk → scoreToRiskLevel (shared, 10/5/0 unified thresholds).
+// Old audio-stream-specific 7/3/0 thresholds removed; connectors
+// observing risk_level across validators now see a single scale.
 
 // =============================================================================
 // EXPORTS FOR TEST + CONSUMER REUSE

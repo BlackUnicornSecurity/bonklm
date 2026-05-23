@@ -44,11 +44,10 @@ import type { Validator, ValidatorInput, HookSurface } from '../engine/Guardrail
 import {
   createResult,
   type GuardrailResult,
-  RiskLevel,
   Severity,
   type Finding,
 } from '../base/GuardrailResult.js';
-import { unwrapValidatorInput } from './internal/unwrap-input.js';
+import { unwrapValidatorInput, scoreToRiskLevel } from './internal/unwrap-input.js';
 
 export enum CodeInjectionCategory {
   PYTHON_DYNAMIC_EXEC = 'python_dynamic_exec',
@@ -611,7 +610,7 @@ export class CodeInjectionValidator implements Validator {
 
     const result = createResult(!blocked, worst, findings);
     result.risk_score = score;
-    result.risk_level = scoreToRisk(score);
+    result.risk_level = scoreToRiskLevel(score);
     result.metadata = { surface: SURFACE };
     return result;
   }
@@ -643,12 +642,6 @@ function severityRank(s: Severity): number {
     default:
       return 1;
   }
-}
-
-function scoreToRisk(score: number): RiskLevel {
-  if (score >= 10) return RiskLevel.HIGH;
-  if (score >= 5) return RiskLevel.MEDIUM;
-  return RiskLevel.LOW;
 }
 
 export { PYTHON_PATTERNS, JS_PATTERNS, SHELL_PATTERNS, PACKAGE_INSTALL_PATTERNS };
