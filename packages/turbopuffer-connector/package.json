@@ -1,0 +1,65 @@
+{
+  "name": "@blackunicorn/bonklm-turbopuffer",
+  "version": "0.4.0",
+  "description": "Turbopuffer Namespace wrapper for BonkLM — edge-compatible (Workerd/Deno/Bun/Vercel Edge) MemoryWriteValidator + RetrievedDocValidator guardrails",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "turbopuffer",
+    "vector",
+    "vector-database",
+    "edge",
+    "workerd",
+    "vercel-edge",
+    "rag",
+    "memory",
+    "llm",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "ai-safety"
+  ],
+  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "license": "MIT",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "peerDependencies": {
+    "@turbopuffer/turbopuffer": "^2.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@turbopuffer/turbopuffer": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@turbopuffer/turbopuffer": "^2.1.0",
+    "@vitest/coverage-v8": "^4.1.7",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
