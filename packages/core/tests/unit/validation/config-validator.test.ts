@@ -292,9 +292,15 @@ describe('OptionalRule', () => {
     expect(rule.validate(undefined)).toBeUndefined();
   });
 
-  it('should allow null', () => {
+  // Sprint 29 behaviour change (architect IMPORTANT-3): OptionalRule
+  // now ONLY short-circuits on `undefined`. Explicit `null` flows into
+  // the inner rule for type-check. Prevents the footgun where
+  // `{ logger: null }` passed schema then crashed at `logger.debug(...)`
+  // because the destructuring default only fires for `undefined`.
+  it('should reject explicit null (Sprint 29: undefined-only short-circuit)', () => {
     const rule = new OptionalRule(new TypeRule('string'));
-    expect(rule.validate(null)).toBeUndefined();
+    const result = rule.validate(null);
+    expect(result).toBeInstanceOf(ConfigValidationError);
   });
 
   it('should validate defined value', () => {
@@ -457,7 +463,8 @@ describe('Validators', () => {
   it('should provide optional validator factory', () => {
     const validator = Validators.optional(Validators.string);
     expect(validator.validate(undefined)).toBeUndefined();
-    expect(validator.validate(null)).toBeUndefined();
+    // Sprint 29: explicit null is rejected (was: accepted). See OptionalRule.
+    expect(validator.validate(null)).toBeInstanceOf(ConfigValidationError);
     expect(validator.validate('hello')).toBeUndefined();
     expect(validator.validate(123)).toBeInstanceOf(ConfigValidationError);
   });

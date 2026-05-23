@@ -82,6 +82,27 @@ This document enumerates what is **PUBLIC** (frozen for v2.0) vs
 - `HookManager` (class)
 - `HookContext` (interface)
 
+#### Config validation (Sprint 29)
+- `Schema` (class) — composable per-key rule schema.
+- `Validators` (registry) — pre-defined rules accessor.
+- `ConfigValidationError` (class).
+- Rule classes: `NumberRangeRule`, `TypeRule`, `EnumRule`,
+  `FunctionRule`, `ValidatorInstanceRule`, `LoggerInstanceRule`,
+  `AttackLoggerInstanceRule`, `ArrayRule`, `ObjectRule`, `OptionalRule`,
+  `CustomRule`.
+- Rule accessors: `Validators.{positiveNumber, percentage, timeout,
+  boolean, string, number, function, validatorInstance, loggerInstance,
+  attackLoggerInstance, array, object, enum, optional, custom}`.
+- **`validatorInstance`** + **`loggerInstance`** + **`attackLoggerInstance`**
+  added Sprint 29 to match the canonical object-shape `Validator` /
+  `Logger` / `AttackLogger` interfaces (the older `function` rule
+  rejects class instances). Use these for connector middleware schemas
+  that accept user-supplied validators / loggers.
+- **`OptionalRule` semantics (Sprint 29)**: short-circuits on `undefined`
+  only. Explicit `null` flows into the inner rule (typically rejected
+  by `TypeRule`). Callers should omit the key or pass `undefined` to
+  signal absence — the JS-canonical pattern.
+
 ### INTERNAL — may change without notice
 - `_testOnlyClearSentinel` (function) — test-only sentinel reset.
 - `_resetFailOpenWarnState` (function) — test-only WARN-state reset.

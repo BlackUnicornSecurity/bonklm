@@ -139,6 +139,125 @@ export class FunctionRule implements ValidationRule {
 }
 
 /**
+ * Sprint 29 — Validator-instance rule.
+ *
+ * Accepts either:
+ *   - A callable function (legacy bare-function validator shape), OR
+ *   - An object exposing a `.validate` method (current `Validator` /
+ *     `Guard` interface from `engine/GuardrailEngine.types.ts`).
+ *
+ * Background: Sprint 28 close uncovered a pre-existing tooling miss
+ * in express-middleware / fastify-plugin / nestjs-module config
+ * schemas — they used `Validators.function` (= `FunctionRule`) for
+ * the `validators` / `guards` arrays, which rejected the current
+ * canonical `Validator` instance shape (class instances are objects,
+ * not functions). 57+ tests failed across the three packages despite
+ * the runtime path handling instances correctly.
+ *
+ * Fix lives at the core schema layer (NOT per-connector) so future
+ * connectors that mirror the same pattern automatically pick up the
+ * canonical shape.
+ *
+ * @public Sprint 29 v1.0-RC2 stabilization. Object-shape contract:
+ * `{ validate: function, name?: string }` — frozen for v1.0.
+ */
+export class ValidatorInstanceRule implements ValidationRule {
+  validate(value: unknown, path?: string): ConfigValidationError | undefined {
+    // Path A — bare function (legacy).
+    if (typeof value === 'function') {
+      return undefined;
+    }
+    // Path B — object with `.validate` method (current canonical).
+    if (
+      value !== null &&
+      typeof value === 'object' &&
+      typeof (value as { validate?: unknown }).validate === 'function'
+    ) {
+      return undefined;
+    }
+    return new ConfigValidationError(
+      `Value must be a Validator (function, or object with a \`.validate\` method)`,
+      path,
+      value
+    );
+  }
+}
+
+/**
+ * Sprint 29 — AttackLogger-instance rule.
+ *
+ * Accepts an object exposing `getInterceptCallback()` (the canonical
+ * `AttackLogger` shape from `@blackunicorn/bonklm-logger`). Defensive
+ * preventive fix from audit IMPORTANT-2: connector schemas previously
+ * used `Validators.function` for the `attackLogger` config field, which
+ * would reject the canonical class-instance shape — same root cause as
+ * the `validator` / `logger` shape mismatch.
+ *
+ * @public Sprint 29 v1.0-RC2 stabilization.
+ */
+export class AttackLoggerInstanceRule implements ValidationRule {
+  validate(value: unknown, path?: string): ConfigValidationError | undefined {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      return new ConfigValidationError(
+        `Value must be an AttackLogger (object with a \`getInterceptCallback\` method)`,
+        path,
+        value
+      );
+    }
+    const obj = value as Record<string, unknown>;
+    if (typeof obj.getInterceptCallback !== 'function') {
+      return new ConfigValidationError(
+        `Value must be an AttackLogger (missing or non-callable \`getInterceptCallback\` method)`,
+        path,
+        value
+      );
+    }
+    return undefined;
+  }
+}
+
+/**
+ * Sprint 29 — Logger-instance rule.
+ *
+ * Accepts an object exposing the canonical `Logger` interface methods:
+ * `debug` / `info` / `warn` / `error` (all callable). This matches the
+ * `Logger` interface in `core/src/base/GenericLogger.ts`.
+ *
+ * Background: Sprint 28 close uncovered that the connector schemas
+ * also used `Validators.function` for the `logger` config field. The
+ * canonical `Logger` shape is an OBJECT with methods, not a callable.
+ *
+ * @public Sprint 29 v1.0-RC2 stabilization. Logger contract is the
+ * `{ debug, info, warn, error }` 4-method shape — frozen for v1.0.
+ */
+export class LoggerInstanceRule implements ValidationRule {
+  validate(value: unknown, path?: string): ConfigValidationError | undefined {
+    // Sprint 29 audit (code-reviewer MEDIUM): arrays are objects, so
+    // exclude them explicitly — matches the `ObjectRule.validate()`
+    // precedent and produces a clearer error message than `missing
+    // .debug method` (which is technically true but unhelpful).
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      return new ConfigValidationError(
+        `Value must be a Logger (object with debug/info/warn/error methods)`,
+        path,
+        value
+      );
+    }
+    const obj = value as Record<string, unknown>;
+    for (const method of ['debug', 'info', 'warn', 'error']) {
+      if (typeof obj[method] !== 'function') {
+        return new ConfigValidationError(
+          `Value must be a Logger (missing or non-callable \`${method}\` method)`,
+          path,
+          value
+        );
+      }
+    }
+    return undefined;
+  }
+}
+
+/**
  * Array rule
  */
 export class ArrayRule implements ValidationRule {
@@ -240,13 +359,29 @@ export class ObjectRule implements ValidationRule {
 }
 
 /**
- * Optional rule - allows undefined or null
+ * Optional rule - allows undefined (NOT null).
+ *
+ * Sprint 29 audit (architect IMPORTANT-3): historically this also
+ * short-circuited on `null`, which meant `{ logger: null }` passed
+ * schema validation but then crashed at `this.logger.debug(...)` at
+ * runtime because the destructuring default `logger = DEFAULT_LOGGER`
+ * doesn't kick in for `null` (only `undefined`).
+ *
+ * Behaviour change rationale: `undefined` is the JS-canonical "absent
+ * value" sentinel — callers that omit a key get `undefined`, and the
+ * inner rule should NOT run. `null` is an EXPLICIT value supplied by
+ * the caller; it should flow into the inner rule for type-check. If
+ * a caller genuinely wants to clear a field, they should `delete` it
+ * or pass `undefined`.
+ *
+ * Impact: the only known consumer that passed `null` was test code
+ * that should have been passing `undefined` or omitting the key.
  */
 export class OptionalRule implements ValidationRule {
   constructor(private readonly rule: ValidationRule) {}
 
   validate(value: unknown, path?: string): ConfigValidationError | undefined {
-    if (value === undefined || value === null) {
+    if (value === undefined) {
       return undefined;
     }
 
@@ -335,6 +470,28 @@ export const Validators = {
 
   /** Function */
   function: new FunctionRule(),
+
+  /**
+   * Validator instance — accepts a bare callable OR an object with a
+   * `.validate` method. Sprint 29: use this for `validators` / `guards`
+   * config-array entries; the canonical interface is the object-shape.
+   * Plain callable-only rule rejects class instances.
+   */
+  validatorInstance: new ValidatorInstanceRule(),
+
+  /**
+   * Logger instance — accepts an object with the canonical 4-method
+   * `Logger` shape (debug/info/warn/error). Sprint 29: use this for
+   * `logger` config fields; the canonical interface is object-shape.
+   */
+  loggerInstance: new LoggerInstanceRule(),
+
+  /**
+   * AttackLogger instance — accepts an object with a
+   * `getInterceptCallback` method. Sprint 29: use this for the
+   * `attackLogger` config field in connector middleware schemas.
+   */
+  attackLoggerInstance: new AttackLoggerInstanceRule(),
 
   /** Array */
   array: (itemRule?: ValidationRule, minLength?: number, maxLength?: number) =>

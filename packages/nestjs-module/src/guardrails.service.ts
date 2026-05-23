@@ -34,18 +34,25 @@ import {
  * S013-003: Configuration validation schema for NestJS module.
  * Validates module configuration at initialization time.
  */
+// Sprint 29 fix: ALL fields wrapped in `Validators.optional(...)` — the
+// module factory destructures with defaults for every field, so the
+// schema must validate SHAPES when supplied without rejecting sparse
+// configs. The validators/guards arrays use `validatorInstance` (accepts
+// BOTH object-shape Validator instances AND bare callables).
 const NESTJS_CONFIG_SCHEMA = new Schema({
-  validators: Validators.array(Validators.function, 0, 100),
-  guards: Validators.array(Validators.function, 0, 100),
-  logger: Validators.function,
-  productionMode: Validators.boolean,
-  validationTimeout: Validators.timeout,
-  maxContentLength: Validators.positiveNumber(0),
-  bodyExtractor: Validators.function,
-  responseExtractor: Validators.function,
-  global: Validators.boolean,
-  // S013-004: AttackLogger is optional
-  attackLogger: Validators.optional(Validators.function),
+  validators: Validators.optional(Validators.array(Validators.validatorInstance, 0, 100)),
+  guards: Validators.optional(Validators.array(Validators.validatorInstance, 0, 100)),
+  logger: Validators.optional(Validators.loggerInstance),
+  productionMode: Validators.optional(Validators.boolean),
+  validationTimeout: Validators.optional(Validators.timeout),
+  maxContentLength: Validators.optional(Validators.positiveNumber(0)),
+  bodyExtractor: Validators.optional(Validators.function),
+  responseExtractor: Validators.optional(Validators.function),
+  global: Validators.optional(Validators.boolean),
+  // S013-004: AttackLogger is optional. Sprint 29: switched from
+  // `function` to `attackLoggerInstance` — canonical AttackLogger is
+  // a class instance, not a bare callable.
+  attackLogger: Validators.optional(Validators.attackLoggerInstance),
   // S013-005: Session tracking options
   enableSessionTracking: Validators.optional(Validators.boolean),
   sessionIdExtractor: Validators.optional(Validators.function),
@@ -213,42 +220,65 @@ export class GuardrailsService {
       ];
     }
 
-    // SEC-008: Timeout wrapper using AbortController
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.validationTimeout);
-
+    // SEC-008: Timeout wrapper via Promise.race.
+    //
+    // Sprint 29 audit CRITICAL (arch-1): the previous AbortController
+    // approach was broken — `engine.validate()` does not accept an
+    // AbortSignal, so the `controller.abort()` call never propagated.
+    // Slow validators silently exceeded the timeout budget and returned
+    // an `allowed: true` result (security regression). Port the
+    // Promise.race fix from fastify-plugin/src/plugin.ts.
+    //
+    // Sprint 29 security audit S29-002 hardening: the in-flight
+    // `engine.validate()` promise gets a `.catch()` BEFORE Promise.race
+    // so any post-timeout rejection is absorbed (Node ≥15 crashes the
+    // process on unhandled rejections by default).
+    const timeoutResult: GuardrailResult = {
+      allowed: false,
+      blocked: true,
+      severity: Severity.CRITICAL,
+      risk_level: RiskLevel.HIGH,
+      risk_score: 20,
+      reason: 'Validation timeout',
+      findings: [
+        {
+          category: 'timeout',
+          severity: Severity.CRITICAL,
+          description: `Validation exceeded ${this.validationTimeout}ms timeout`,
+        },
+      ],
+      timestamp: Date.now(),
+    };
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<GuardrailResult>((resolve) => {
+      timeoutId = setTimeout(() => {
+        this.logger.error('[Guardrails] Validation timeout');
+        resolve(timeoutResult);
+      }, this.validationTimeout);
+    });
+    const validatePromise = Promise.resolve(this.engine.validate(content, context)).catch(
+      (err: unknown) => {
+        this.logger.debug?.('[Guardrails] Validator rejected post-timeout', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return timeoutResult;
+      }
+    );
     try {
       // DEV-001: Use correct API signature (string context, not object)
-      const result = await this.engine.validate(content, context);
-      clearTimeout(timeoutId);
+      const result = await Promise.race([validatePromise, timeoutPromise]);
 
       // Return individual results if available, otherwise wrap the engine result
-      return 'results' in result && result.results.length > 0
-        ? result.results
+      return 'results' in result && (result as { results?: unknown[] }).results !== undefined &&
+        ((result as { results: unknown[] }).results.length) > 0
+        ? (result as { results: GuardrailResult[] }).results
         : [result];
     } catch (error) {
-      clearTimeout(timeoutId);
-
+      // AbortError branch retained for any future SDK that surfaces
+      // AbortError via engine.validate (defensive — Sprint 29 audit).
       if (error instanceof Error && error.name === 'AbortError') {
         this.logger.error('[Guardrails] Validation timeout');
-        return [
-          {
-            allowed: false,
-            blocked: true,
-            severity: Severity.CRITICAL,
-            risk_level: RiskLevel.HIGH,
-            risk_score: 20,
-            reason: 'Validation timeout',
-            findings: [
-              {
-                category: 'timeout',
-                severity: Severity.CRITICAL,
-                description: `Validation exceeded ${this.validationTimeout}ms timeout`,
-              },
-            ],
-            timestamp: Date.now(),
-          },
-        ];
+        return [timeoutResult];
       }
 
       this.logger.error('[Guardrails] Validation error', { error });
@@ -270,6 +300,10 @@ export class GuardrailsService {
           timestamp: Date.now(),
         },
       ];
+    } finally {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
     }
   }
 
