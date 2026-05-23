@@ -10,13 +10,11 @@
 // Main exports
 export { createGuardedAI, messagesToText } from './guarded-ai.js';
 
-/**
- * Story 1.4: alias for `messagesToText` named `messagesToTextLegacy`
- * per AC. Currently identical — when the v3/v4 type drop lands in a
- * follow-up PR, `messagesToTextLegacy` will retain the `CoreMessage`
- * shape while `messagesToText` switches to `ModelMessage`.
- */
-export { messagesToText as messagesToTextLegacy } from './guarded-ai.js';
+// Sprint 26 v1.0-RC1 API freeze: removed `messagesToTextLegacy` alias.
+// The v3/v4 CoreMessage→ModelMessage type drop never landed; the alias
+// duplicated the canonical `messagesToText` export with no semantic
+// distinction. Consumers using `messagesToTextLegacy` should rename to
+// `messagesToText` — the behavior is identical.
 
 // Story 1.4 v5/v6 middleware pattern + agent / MCP wrappers (Phase-1).
 export {

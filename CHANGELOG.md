@@ -5,6 +5,71 @@ All notable changes to BonkLM (`@blackunicorn/bonklm`) will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0-rc.1] — 2026-05-23 (Sprint 26)
+
+First release candidate. API-freeze prep per Story 4.7 / v1.0-RC
+stabilization buffer. Sprints 26-28 run a 60+ day public-comment
+window before v1.0.0.
+
+### Removed (BREAKING)
+
+- **`messagesToTextLegacy`** alias from
+  `@blackunicorn/bonklm-vercel`. The v3/v4 `CoreMessage` →
+  `ModelMessage` type drop the alias was reserved for never landed;
+  the alias was identical to `messagesToText`. **Migration**: rename
+  imports `messagesToTextLegacy` → `messagesToText`. Behavior is
+  identical.
+
+### API freeze (PUBLIC vs INTERNAL)
+
+Per `docs/user/public-api-surface.md`:
+
+- **PUBLIC** symbols — frozen until v2.0:
+  - All barrel exports from `@blackunicorn/bonklm` core
+    (`GuardrailEngine`, `Validator`, `ValidatorInput`, all named
+    validators + factories, `cachedValidate`, `BonklmBlockEvent`,
+    `bonklmTrace`, `assertNotWrapped` / `markWrapped` /
+    `ensureWrappedOnce`, `adaptValidatorToUniversalInput`,
+    `BufferedReleaseGate`, `StreamValidator`).
+  - One wrap function (or handler factory) + types per connector
+    package.
+  - `BonklmBlockEvent` 7-kind discriminated union locked.
+  - R2-10 locked `BonklmTraceSurface` vocabulary locked.
+
+- **INTERNAL** symbols — may change in any minor/patch:
+  - `_*`-prefixed exports (`_testOnlyClearSentinel`,
+    `_resetFailOpenWarnState`, `_defaultCodeValidator`, etc.).
+  - `RegexCache`, raw `pattern-engine.ts` arrays.
+  - `validateBytes` / `analyze*` family on individual validators
+    (use `validate(input)` instead).
+
+### Items reviewed for deprecation — RETAINED
+
+- **`validateToken`** (sync method on `OverrideTokenValidator`) —
+  reviewed; the previously-speculative async migration never
+  materialised. The sync API is the canonical primary interface and
+  remains PUBLIC.
+- **`GuardrailsCallbackHandler`** (langchain-connector) — reviewed;
+  the class IS the canonical export, not a deprecated alias.
+  Remains PUBLIC.
+
+### Deferred to v1.0-RC stabilization (Sprints 27-28)
+
+- Per-barrel `@public` / `@internal` JSDoc tag application (mechanical;
+  done over Sprints 27-28 as docs-only commits).
+- Real `@temporalio/testing` worker integration (current Sprint 21
+  worker-integration.test.ts uses mocks).
+- Story 2.14a — openclaw-adapter removal (date gate 2026-07-01;
+  today 2026-05-23 — defer to first sprint after gate).
+- Public-comment window triage (Sprint 27).
+- v1.0.0 publish (Sprint 28).
+
+### Tests
+
+1272/1272 passing + 1 multilingual-skip across 51 files. No
+regressions from the `messagesToTextLegacy` removal (no internal
+consumer used the alias).
+
 ## [0.7.0] — 2026-05-23 (Sprint 24)
 
 EPIC 4 consolidation release. Sandbox connectors graduate from

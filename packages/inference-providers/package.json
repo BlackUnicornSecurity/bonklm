@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-inference-providers",
-  "version": "0.7.0",
+  "version": "1.0.0-rc.1",
   "description": "BonkLM wrappers for Groq + Cerebras + Together inference providers (all OpenAI-compatible). Shared internal wrapOpenAICompatibleClient helper; 3 optional peer deps.",
   "type": "module",
   "main": "./dist/index.js",
