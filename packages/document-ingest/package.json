@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-document-ingest",
-  "version": "0.7.0",
+  "version": "1.0.0-rc.1",
   "description": "BonkLM document-ingest hooks — LlamaParse + Unstructured + Reducto wrappers + validateExtractedText helper for DIY parsers (Story 3.7)",
   "type": "module",
   "main": "./dist/index.js",

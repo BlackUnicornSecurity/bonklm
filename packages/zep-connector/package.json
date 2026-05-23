@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-zep",
-  "version": "0.7.0",
+  "version": "1.0.0-rc.1",
   "description": "Zep memory-client connector for BonkLM — wraps Zep thread.addMessages/getUserContext + graph.add/search with sealed write + composed-context recall validation",
   "type": "module",
   "main": "./dist/index.js",

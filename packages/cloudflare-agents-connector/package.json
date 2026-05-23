@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-cloudflare-agents",
-  "version": "0.7.0",
+  "version": "1.0.0-rc.1",
   "description": "BonkLM connector for Cloudflare Agents (Durable Objects + Workerd) — BonklmAgent extends Agent with setState / sql / ctx.storage validators (Story 3.8)",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-mem0",
-  "version": "0.7.0",
+  "version": "1.0.0-rc.1",
   "description": "Mem0 memory-client connector for BonkLM — wraps Mem0's add/search/update/get/getAll/history/reset with sealed write + composed-context recall validation",
   "type": "module",
   "main": "./dist/index.js",
