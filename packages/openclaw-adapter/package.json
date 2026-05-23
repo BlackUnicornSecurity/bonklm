@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-openclaw",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "[DEPRECATED — removed in v0.6.0 / Sprint 16] OpenClaw integration for BonkLM. See README for migration recipe.",
   "deprecated": "DEPRECATED at v0.4.0-rc1. Package will be removed in v0.6.0 (Sprint 16). Surface your use case at https://github.com/BlackUnicornSecurity/bonklm/issues with label dep:openclaw before 2026-07-01 OR migrate to a provider-specific connector. See README for migration recipe.",
   "type": "module",

@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-05-23T20:18:57.571Z",
+  "corpus_hash": "db9c1986a01ae0d4f5281c74a038b0392415132d21e38aac80b6aacea778fff4",
+  "corpus_size": {
+    "attack": 50,
+    "benign": 50
+  },
+  "confusion_matrix": {
+    "true_positives": 50,
+    "false_negatives": 0,
+    "true_negatives": 50,
+    "false_positives": 0
+  },
+  "metrics": {
+    "recall": 1,
+    "fpr": 0,
+    "precision": 1
+  },
+  "thresholds": {
+    "recall": 0.95,
+    "fpr": 0.05,
+    "precision": 0.8
+  },
+  "gate_results": {
+    "recall_pass": true,
+    "fpr_pass": true,
+    "precision_pass": true,
+    "all_pass": true,
+    "decision": "GRADUATE"
+  },
+  "gap_categories": {
+    "false_negatives_by_subcategory": {},
+    "false_positive_payloads": []
+  }
+}

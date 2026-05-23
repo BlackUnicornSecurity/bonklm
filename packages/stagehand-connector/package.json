@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-stagehand",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Browserbase Stagehand connector for BonkLM — act/extract/observe/agent.execute validation.",
   "type": "module",
   "main": "./dist/index.js",

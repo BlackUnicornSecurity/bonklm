@@ -33,23 +33,10 @@ export class E2BGuardrailBlockedError extends Error {
   }
 }
 
-/**
- * One-time-per-process EXPERIMENTAL banner. Sprint 19 audit security
- * C-5 closure: the `experimental: true` package.json flag had no
- * runtime signal — operators got zero indication they were running an
- * experimental package. Now a single `console.warn` fires on the FIRST
- * `wrapSandbox` call per process.
- */
-let _experimentalWarned = false;
-function emitExperimentalWarnOnce(): void {
-  if (_experimentalWarned) return;
-  _experimentalWarned = true;
-  // eslint-disable-next-line no-console
-  console.warn(
-    '[bonklm-e2b] EXPERIMENTAL: this connector is gated on Story 4.5 ' +
-      'recall benchmark (95% on sandbox-attack-corpus). Flag removal at v0.7.'
-  );
-}
+// Sprint 24 Story 4.5 GRADUATED: experimental banner removed.
+// R2-13 corpus gate passed (recall 100% / FPR 0% / precision 100%).
+// See packages/core/benchmarks/sandbox-attack-corpus/graduation-report.json
+// and packages/core/benchmarks/sandbox-attack-corpus/evidence.md.
 
 /**
  * Returns a Proxy-style wrapped sandbox. The original sandbox object
@@ -63,8 +50,6 @@ export function wrapSandbox<S extends E2BSandboxLike>(
   if (!sandbox || typeof sandbox !== 'object') {
     throw new TypeError('wrapSandbox: sandbox is required.');
   }
-
-  emitExperimentalWarnOnce();
 
   const cwd = options.cwd ?? '/';
   // Sprint 19 audit closure (architect B1 + security B-1 + code-reviewer

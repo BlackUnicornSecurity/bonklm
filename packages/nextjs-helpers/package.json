@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-nextjs",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "BonkLM Next.js helpers — withBonklm(action), bonklmRouteHandler, bonklmEdgeMiddleware (Story 3.9)",
   "type": "module",
   "main": "./dist/index.js",
