@@ -83,6 +83,7 @@ import {
   type BufferedReleaseGateConfig,
 } from '../connector-utils/buffered-release-gate.js';
 import { PromptInjectionValidator } from './prompt-injection.js';
+import { CodeInjectionValidator } from './code-injection.js';
 
 // =============================================================================
 // PUBLIC CONSTANTS
@@ -452,8 +453,20 @@ export class AudioStreamValidator implements Validator {
     };
     this.gate = new BufferedReleaseGate(gateConfig);
 
+    // Sprint 16 cumulative audit security BLOCK-2 closure: default
+    // finalValidators include CodeInjectionValidator. Voice payloads
+    // like "pip install evil-pkg" or spoken dynamic-call sinks
+    // otherwise bypass both AudioStream's small curated needle set
+    // AND PromptInjection's English-only injection regex (which
+    // targets prompt-override phrasings, not arbitrary code).
+    // Edge-runtime callers wanting to shed the CodeInjection import
+    // cost should pass `finalValidators: [new PromptInjectionValidator()]`
+    // explicitly.
     this.finalValidators =
-      config.finalValidators ?? [new PromptInjectionValidator()];
+      config.finalValidators ?? [
+        new PromptInjectionValidator(),
+        new CodeInjectionValidator(),
+      ];
   }
 
   // -------------------------------------------------------------------------

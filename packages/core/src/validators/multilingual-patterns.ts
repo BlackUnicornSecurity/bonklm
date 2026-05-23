@@ -10,6 +10,18 @@
 
 import { createResult, Severity as Sev, type Severity } from '../base/GuardrailResult.js';
 import { mergeConfig, type ValidatorConfig } from '../base/ValidatorConfig.js';
+import type {
+  Validator,
+  ValidatorInput,
+  HookSurface,
+} from '../engine/GuardrailEngine.types.js';
+import { unwrapValidatorInput } from './internal/unwrap-input.js';
+
+/**
+ * R2-10 locked vocab — multilingual detector operates on the text input
+ * surface (Sprint 16 cumulative audit architect B-2 closure).
+ */
+const SURFACE: HookSurface = 'text_input';
 
 // =============================================================================
 // TYPES
@@ -177,7 +189,26 @@ export function detectMultilingualInjection(
 // VALIDATOR CLASS
 // =============================================================================
 
-export class MultilingualDetector {
+/**
+ * Multilingual prompt-injection detector.
+ *
+ * Sprint 16 cumulative audit closures (architect B-1 + B-2 +
+ * code-reviewer NIT-1):
+ *  - Implements `Validator` interface — accepts string or any
+ *    `ValidatorInput` shape via the shared `unwrapValidatorInput`
+ *    helper. Drop-in for any `GuardrailEngine` validator chain.
+ *  - `name` field set to `'multilingual'`.
+ *  - Stamps `metadata.surface = 'text_input'` (R2-10 locked vocab)
+ *    so Story 3.11 OTel adapter can emit `bonklm.surface`.
+ *
+ * Known limitations (see `known-limitations.md` §25):
+ *  - 10 languages × 4 categories (no jailbreak / reformulation per
+ *    language yet — Story 3.12 Pass 2 backfill, Sprint 22 close).
+ *  - English-only code-injection / shell payloads bypass
+ *    `MultilingualDetector` — compose with `CodeInjectionValidator`.
+ */
+export class MultilingualDetector implements Validator {
+  readonly name = 'multilingual';
   private readonly config: Required<MultilingualDetectorConfig>;
 
   constructor(config?: MultilingualDetectorConfig) {
@@ -189,11 +220,25 @@ export class MultilingualDetector {
   }
 
   /**
-   * Validate content for multilingual injection patterns.
+   * `Validator` interface entry. Accepts plain string OR any
+   * `ValidatorInput` discriminated union shape (via shared unwrap).
+   * For non-string input, the wrapped text is extracted then routed
+   * through the same detection path.
    */
-  validate(content: string): import('../base/GuardrailResult.js').GuardrailResult {
+  validate(
+    input: string | ValidatorInput
+  ): import('../base/GuardrailResult.js').GuardrailResult {
+    const content = unwrapValidatorInput(input, 'MultilingualDetector');
+    return this.validateString(content);
+  }
+
+  private validateString(
+    content: string
+  ): import('../base/GuardrailResult.js').GuardrailResult {
     if (!content || content.trim().length === 0) {
-      return createResult(true, Sev.INFO, []);
+      const r = createResult(true, Sev.INFO, []);
+      r.metadata = { surface: SURFACE };
+      return r;
     }
 
     const findings = detectMultilingualInjection(
@@ -203,7 +248,9 @@ export class MultilingualDetector {
     );
 
     if (findings.length === 0) {
-      return createResult(true, Sev.INFO, []);
+      const r = createResult(true, Sev.INFO, []);
+      r.metadata = { surface: SURFACE };
+      return r;
     }
 
     // Convert findings to Finding format
@@ -220,11 +267,13 @@ export class MultilingualDetector {
     const hasCritical = findings.some((f) => f.severity === Sev.CRITICAL);
     const shouldBlock = this.config.action === 'block' && hasCritical;
 
-    return createResult(
+    const result = createResult(
       !shouldBlock,
       hasCritical ? Sev.CRITICAL : Sev.WARNING,
       convertedFindings
     );
+    result.metadata = { surface: SURFACE };
+    return result;
   }
 
   /**
