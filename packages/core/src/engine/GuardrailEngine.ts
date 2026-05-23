@@ -82,6 +82,10 @@ const DEFAULT_CIRCUIT_BREAKER_THRESHOLD = 3;
  *   console.log('Blocked:', result.reason);
  * }
  * ```
+ *
+ * @public Sprint 26/28 v1.0-RC1 API freeze. Class + ALL public method
+ * signatures frozen until v2.0. New optional config keys are additive.
+ * Removal/rename of any public method requires a major version bump.
  */
 export class GuardrailEngine {
   /**

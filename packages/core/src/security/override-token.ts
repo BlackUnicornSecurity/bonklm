@@ -94,6 +94,12 @@ interface ReplayCacheEntry {
  * - Token expiration checking
  * - Replay attack prevention
  * - Timing-safe comparison
+ *
+ * @public Sprint 26/28 v1.0-RC1 API freeze. Crypto contract frozen:
+ * HMAC-SHA256, 32-byte minimum secret, base64url payload, 5-min
+ * default expiry, `timingSafeEqual` comparison. Replay cache eviction
+ * policy is `@internal` (may switch from LRU to TTL-based without
+ * notice).
  */
 export class OverrideTokenValidator {
   private readonly secret: Buffer;

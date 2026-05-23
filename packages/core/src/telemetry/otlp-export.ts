@@ -90,6 +90,10 @@ export interface BonklmTraceOptions {
  * });
  * if (r.blocked) throw new Error('blocked');
  * ```
+ *
+ * @public Sprint 26/28 v1.0-RC1 API freeze. Caller-provides-tracer
+ * contract is frozen — bonklm will never instantiate its own SDK /
+ * exporter / processor. Surface vocabulary (R2-10 locked) is frozen.
  */
 export function bonklmTrace<R extends GuardrailResult>(
   result: R,

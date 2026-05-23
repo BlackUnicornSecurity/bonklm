@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-server",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "BonkLM Guardrail HTTP server — Fastify service exposing /litellm, /portkey, /openai-compatible endpoints with HMAC-SHA256 auth for LiteLLM + Portkey integration",
   "type": "module",
   "main": "./dist/index.js",

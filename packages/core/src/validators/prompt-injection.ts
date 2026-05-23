@@ -339,6 +339,12 @@ function detectHtmlCommentInjection(text: string): HtmlCommentFinding[] {
 
 /**
  * Prompt Injection Validator class.
+ *
+ * @public Sprint 26/28 v1.0-RC1 API freeze. `name = 'prompt-injection'`
+ * is frozen (cache keys depend on it). Pattern catalogue is `@internal`
+ * — new patterns ship in minor versions, refinement of an existing
+ * pattern is patch-level. `validate()` signature inherits from
+ * `Validator`.
  */
 export class PromptInjectionValidator {
   /**

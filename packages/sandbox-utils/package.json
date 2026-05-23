@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-sandbox-utils",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "Shared sandbox-validation primitives for BonkLM e2b-adapter + daytona-adapter — validateCode, validatePath, wrapStream. EXPERIMENTAL flag (Story 3.5 graduation gates flag removal at v0.7).",
   "type": "module",
   "main": "./dist/index.js",

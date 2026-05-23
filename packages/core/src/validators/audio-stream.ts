@@ -421,6 +421,11 @@ function validatePatternSet(patterns: AudioStreamPattern[]): void {
 // VALIDATOR
 // =============================================================================
 
+/**
+ * @public Sprint 26/28 v1.0-RC1 API freeze. `name = 'audio_stream'`
+ * is frozen. Story 3.1 partial-transcript semantics + BufferedReleaseGate
+ * release-only-validated contract are frozen.
+ */
 export class AudioStreamValidator implements Validator {
   readonly name = 'audio_stream';
 

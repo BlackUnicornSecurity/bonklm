@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-voltops-otel",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "BonkLM VoltOps OTel adapter — emits OTel spans with bonklm.scanner / severity / action / category attributes (Story 3.10)",
   "type": "module",
   "main": "./dist/index.js",

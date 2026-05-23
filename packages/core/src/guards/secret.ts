@@ -129,6 +129,10 @@ const ALL_PATTERNS = [...CRITICAL_PATTERNS, ...HIGH_PATTERNS, ...MEDIUM_PATTERNS
 
 /**
  * Secret Guard class.
+ *
+ * @public Sprint 26/28 v1.0-RC1 API freeze. Detection categories
+ * frozen. Adding a new pattern is patch-level; renaming/removing a
+ * category is major.
  */
 export class SecretGuard {
   private readonly config: Required<SecretGuardConfig> & ValidatorConfig;

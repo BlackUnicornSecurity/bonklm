@@ -187,6 +187,12 @@ export interface ShadowLogStorageAdapter {
  * Public `ShadowLog` interface — returned by `createShadowLog(adapter)`.
  * Consumers (ElizaOS connector Story 2.4a, future memory connectors)
  * interact with this; they do NOT directly touch the storage adapter.
+ *
+ * @public Sprint 26/28 v1.0-RC1 API freeze. `append` / `readByRoom` /
+ * `verifyChain` signatures + the canonical hash chain (sha256 of
+ * `text + sourceTrust + entityId`, chained via prev entry hash) are
+ * frozen. Storage adapters are an `@public` extension point —
+ * `ShadowLogStorageAdapter` shape is part of the freeze.
  */
 export interface ShadowLog {
   /**
