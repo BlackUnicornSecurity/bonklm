@@ -302,6 +302,64 @@ export class GuardrailEngine {
   }
 
   /**
+   * Sprint 14 carry-over closure (arch X3 part 2): public hook for
+   * connectors that route through `cachedValidate` (Inngest / Trigger)
+   * or that drive specialised validators outside the engine's
+   * `validate()` path (Lance / Turbopuffer / qdrant / pinecone /
+   * weaviate). Without this, validator decisions from those connectors
+   * never reach `engine.onIntercept(...)` audit hooks — telemetry
+   * coverage diverges silently across connectors.
+   *
+   * The method takes already-computed per-validator results
+   * (typically the output of `cachedValidate(...)`) plus the original
+   * content string, aggregates them into an `EngineResult` using the
+   * same path `validate()` uses, then fires all registered intercept
+   * callbacks. Calls are fire-and-forget: errors in callbacks are
+   * logged but do not propagate.
+   *
+   * Connectors should call this AFTER their per-call validation,
+   * passing the structurally-validated results. The aggregator is
+   * resilient to cached-result enrichment (`fromCache: true` flag is
+   * dropped during aggregation; only `ValidatorResult` fields are
+   * consumed).
+   *
+   * @param results - per-validator results to aggregate + dispatch.
+   *   Pass an empty array to fire callbacks for an all-allow no-op
+   *   (rare; consumers typically have at least one validator result).
+   * @param content - the validated content string used as the
+   *   `context.content` field in the intercept callback. Pass the
+   *   original input (post-canonical-serialization is acceptable for
+   *   non-text inputs).
+   * @param validationContext - optional context tag forwarded to the
+   *   callback's `context.validation_context` field. Useful for
+   *   distinguishing connector surfaces ("inngest:validateInput",
+   *   "lance:add", etc.).
+   *
+   * @example
+   * ```ts
+   * // Inside an Inngest middleware after cachedValidate(...):
+   * const results = await cachedValidate(validators, input, opts);
+   * await engine.notifyCachedResult(results, contentString, 'inngest:validateInput');
+   * ```
+   */
+  async notifyCachedResult(
+    results: ValidatorResult[],
+    content: string,
+    validationContext?: string
+  ): Promise<void> {
+    if (this.interceptCallbacks.length === 0) {
+      return;
+    }
+    // Aggregate via the same path `validate()` uses so callback
+    // consumers see a uniform EngineResult shape regardless of which
+    // connector fired the call. Pass `startTime = Date.now()` so the
+    // resulting executionTime is ~0 (connectors that want per-call
+    // timing should record it themselves at the call site).
+    const aggregated = this.aggregateResults(results, Date.now());
+    await this.invokeInterceptCallbacks(aggregated, content, validationContext);
+  }
+
+  /**
    * Invoke all registered intercept callbacks.
    * Callbacks are invoked asynchronously and errors are caught and logged.
    */

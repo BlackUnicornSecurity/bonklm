@@ -41,18 +41,23 @@
  *
  * @package @blackunicorn/bonklm-lance
  */
+import type {
+  Logger,
+  MemoryWritePayload,
+  MemoryWriteValidator,
+  RetrievedDoc,
+  RetrievedDocValidator,
+} from '@blackunicorn/bonklm';
+// Sprint 14 cumulative sec cross-S1 closure + arch X3-bundle-safety:
+// value imports route through the connector-utils subpath. The root
+// barrel re-exports Node-only modules (HookSandbox, OverrideToken
+// HMAC); the subpath is statically verified edge-safe. Inherited from
+// Story 2.11 arch X3 closure.
 import {
   ConnectorValidationError,
-  type Logger,
-  type MemoryWritePayload,
-  type MemoryWriteValidator,
-  type RetrievedDoc,
-  type RetrievedDocValidator,
-} from '@blackunicorn/bonklm';
-// `applyRetrievedDocValidatorToMatches` is exported from the
-// connector-utils subpath, not the root barrel. This matches the
-// pinecone / qdrant / weaviate import convention.
-import { applyRetrievedDocValidatorToMatches } from '@blackunicorn/bonklm/core/connector-utils';
+  applyRetrievedDocValidatorToMatches,
+  sanitizeReasonText,
+} from '@blackunicorn/bonklm/core/connector-utils';
 import type {
   GuardedLanceRecord,
   GuardedLanceTable,
@@ -326,10 +331,16 @@ async function validateWriteRecords(
       }
       const decision = await config.memoryWriteValidator.validateWrite(payload);
       if (decision.blocked) {
+        // Sprint 14 cumulative sec cross-S1 closure: sanitize the
+        // attacker-controlled validator reason before it lands in
+        // ConnectorValidationError.message (which downstream consumers
+        // route to Sentry / Datadog / OTel spans).
+        const sanitizedReason =
+          sanitizeReasonText(decision.result.reason) ?? 'no reason';
         throw new ConnectorValidationError(
           config.productionMode
             ? `lance: write at row ${i} column "${field}" blocked by memoryWriteValidator`
-            : `lance: write at row ${i} column "${field}" blocked: ${decision.result.reason ?? 'no reason'}`,
+            : `lance: write at row ${i} column "${field}" blocked: ${sanitizedReason}`,
           'validation_failed'
         );
       }

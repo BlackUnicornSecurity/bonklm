@@ -45,9 +45,14 @@
 // edge bundle and breaks the build. The /core/connector-utils subpath
 // is statically verified to be edge-safe (no node: imports, no Buffer,
 // no env-var lookups, no CJS require).
+//
+// Sprint 14 cumulative sec cross-S1 closure: `sanitizeReasonText` added
+// to the import set; previously the reason text was interpolated raw
+// into ConnectorValidationError.message.
 import {
   ConnectorValidationError,
   applyRetrievedDocValidatorToMatches,
+  sanitizeReasonText,
 } from '@blackunicorn/bonklm/core/connector-utils';
 // Type-only imports from the root barrel are erased at compile time
 // + carry no runtime cost. Safe to keep on the root path.
@@ -275,10 +280,13 @@ async function validateRows(
 
       const decision = await config.memoryWriteValidator.validateWrite(payload);
       if (decision.blocked) {
+        // Sprint 14 cumulative sec cross-S1 closure.
+        const sanitizedReason =
+          sanitizeReasonText(decision.result.reason) ?? 'no reason';
         throw new ConnectorValidationError(
           config.productionMode
             ? `turbopuffer: ${pathLabel} at row ${i} column "${field}" blocked by memoryWriteValidator`
-            : `turbopuffer: ${pathLabel} at row ${i} column "${field}" blocked: ${decision.result.reason ?? 'no reason'}`,
+            : `turbopuffer: ${pathLabel} at row ${i} column "${field}" blocked: ${sanitizedReason}`,
           'validation_failed'
         );
       }

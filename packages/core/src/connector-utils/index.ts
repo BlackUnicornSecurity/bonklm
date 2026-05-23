@@ -84,3 +84,9 @@ export {
 
 // Validation helpers
 export { validatePositiveNumber } from './validation-helpers.js';
+
+// Sprint 14 cumulative PB-6 closure: sanitizeReasonText canonical home.
+// (Browser-agents-core retains its own export for back-compat; new
+// connectors should import from this subpath to avoid a server-side
+// runtime dep on a browser-named package.)
+export { sanitizeReasonText } from './sanitize.js';

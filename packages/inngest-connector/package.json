@@ -53,6 +53,8 @@
     }
   },
   "devDependencies": {
+    "@blackunicorn/bonklm-stagehand": "workspace:*",
+    "@browserbasehq/stagehand": "^3.4.0",
     "@vitest/coverage-v8": "^4.1.7",
     "inngest": "^4.4.0",
     "typescript": "^5.3.3",
