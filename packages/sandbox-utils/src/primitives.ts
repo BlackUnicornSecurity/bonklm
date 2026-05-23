@@ -122,8 +122,13 @@ function emitFailOpenWarn(
   });
 }
 
-/** Reset internal WARN suppression state. Tests + callers needing
- *  global reset (rare). */
+/**
+ * Reset internal WARN suppression state. Tests + callers needing
+ * global reset (rare).
+ *
+ * @internal — may change without notice (v1.0-RC1 API freeze
+ * policy). Leading `_` prefix marks INTERNAL surface.
+ */
 export function _resetFailOpenWarnState(): void {
   _warnedWrappers = new WeakSet();
   _warnCounters = new WeakMap();

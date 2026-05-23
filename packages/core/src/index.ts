@@ -4,6 +4,20 @@
  * Comprehensive LLM security guardrails for Node.js applications.
  *
  * @package @blackunicorn/bonklm
+ *
+ * ## API Surface Policy (v1.0-RC1 onwards)
+ *
+ * Every symbol re-exported from this barrel is **`@public`** —
+ * frozen until v2.0 per SemVer. Removal or breaking-change of any
+ * `@public` symbol requires a major version bump.
+ *
+ * Symbols prefixed `_` (e.g. `_testOnlyClearSentinel`,
+ * `_resetFailOpenWarnState`) AND symbols NOT re-exported from this
+ * barrel are **`@internal`** — may change in any minor / patch.
+ *
+ * Sprint 26 Story 4.7 API freeze. See
+ * `docs/user/public-api-surface.md` for the full PUBLIC vs INTERNAL
+ * catalog.
  */
 
 // Base types and utilities
