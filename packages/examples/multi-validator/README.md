@@ -148,7 +148,7 @@ engine.addValidator(new PromptInjectionValidator());
 engine.addGuard(new SecretGuard());
 
 // Remove validators
-engine.removeValidator('PromptInjectionValidator');
+engine.removeValidator('prompt-injection');
 
 // Get current state
 const stats = engine.getStats();

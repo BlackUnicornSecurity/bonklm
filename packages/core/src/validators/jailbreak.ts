@@ -357,6 +357,14 @@ const DEFAULT_JAILBREAK_CONFIG: Required<
  * Jailbreak Validator class.
  */
 export class JailbreakValidator {
+  /**
+   * Stable validator name. Required for `cachedValidate` (B2 closure —
+   * constructor.name is minify-unsafe). Sprint 20 audit architect B1
+   * closure: pairs with PromptInjectionValidator's Sprint 20 rename so
+   * the full default validator bundle works with the new restate +
+   * temporal middleware.
+   */
+  readonly name = 'jailbreak';
   private readonly config: Required<JailbreakConfig> & ValidatorConfig;
   private readonly logger: Logger;
 

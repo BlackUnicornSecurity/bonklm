@@ -341,6 +341,12 @@ function detectHtmlCommentInjection(text: string): HtmlCommentFinding[] {
  * Prompt Injection Validator class.
  */
 export class PromptInjectionValidator {
+  /**
+   * Stable validator name. Required for `cachedValidate` (rejects
+   * validators with empty/missing name per Story 2.7 B2 closure —
+   * constructor.name is minify-unsafe). Sprint 20 / Story 4.4 START.
+   */
+  readonly name = 'prompt-injection';
   private readonly config: Required<PromptInjectionConfig> & ValidatorConfig;
   private readonly logger: Logger;
 
