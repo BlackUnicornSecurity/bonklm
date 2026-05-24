@@ -9,7 +9,7 @@
  * - Output response validation
  * - Model reference validation
  * - Production mode error messages
- * - Validation timeout with AbortController
+ * - Validation timeout via validateWithTimeoutSecure (Sprint 30)
  *
  * @package @blackunicorn/bonklm-huggingface
  */
@@ -150,7 +150,7 @@ export function createGuardedInference(
   });
 
   /**
-   * S012-003: Validation timeout wrapper with AbortController.
+   * S012-003: Validation timeout wrapper (Sprint 30: routes through canonical validateWithTimeoutSecure primitive).
    * Returns EngineResult and properly handles allowed property.
    *
    * @internal

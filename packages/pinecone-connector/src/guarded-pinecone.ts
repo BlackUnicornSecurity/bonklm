@@ -9,7 +9,7 @@
  * - Retrieved vector poisoning detection
  * - Metadata filter sanitization
  * - Production mode error messages
- * - Validation timeout with AbortController
+ * - Validation timeout via validateWithTimeoutSecure (Sprint 30)
  *
  * @package @blackunicorn/bonklm-pinecone
  */
@@ -106,7 +106,7 @@ export function createGuardedIndex(
   });
 
   /**
-   * S012-002: Validation timeout wrapper with AbortController.
+   * S012-002: Validation timeout wrapper (Sprint 30: routes through canonical validateWithTimeoutSecure primitive).
    * Handles EngineResult properly by checking allowed property.
    *
    * @internal

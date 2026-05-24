@@ -9,7 +9,7 @@
  * - Retrieved document poisoning detection
  * - Response synthesis validation
  * - Production mode error messages
- * - Validation timeout with AbortController
+ * - Validation timeout via validateWithTimeoutSecure (Sprint 30)
  *
  * @package @blackunicorn/bonklm-llamaindex
  */
@@ -96,7 +96,7 @@ export function createGuardedQueryEngine(
   });
 
   /**
-   * Validation timeout wrapper with AbortController.
+   * Validation timeout wrapper (Sprint 30: routes through canonical validateWithTimeoutSecure primitive).
    *
    * @internal
    */

@@ -9,7 +9,7 @@
  * - SEC-003: Max buffer size enforcement to prevent DoS
  * - SEC-006: Complex message content handling (arrays, images, structured data)
  * - SEC-007: Production mode error messages
- * - SEC-008: Validation timeout with AbortController
+ * - SEC-008: Validation timeout via validateWithTimeoutSecure (Sprint 30)
  * - DEV-001: Correct GuardrailEngine.validate() API (string context)
  * - DEV-002: Proper logger integration
  *
@@ -151,7 +151,7 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
   });
 
   /**
-   * SEC-008: Validation timeout wrapper with AbortController.
+   * SEC-008: Validation timeout wrapper (Sprint 30: routes through canonical validateWithTimeoutSecure primitive).
    *
    * @internal
    */

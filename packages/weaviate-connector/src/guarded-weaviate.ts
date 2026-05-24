@@ -10,7 +10,7 @@
  * - Class and field access control
  * - Filter expression validation
  * - Production mode error messages
- * - Validation timeout with AbortController
+ * - Validation timeout via validateWithTimeoutSecure (Sprint 30)
  *
  * @package @blackunicorn/bonklm-weaviate
  */
@@ -143,7 +143,7 @@ export function createGuardedClient(
   });
 
   /**
-   * Validation timeout wrapper with AbortController.
+   * Validation timeout wrapper (Sprint 30: routes through canonical validateWithTimeoutSecure primitive).
    *
    * @internal
    */
