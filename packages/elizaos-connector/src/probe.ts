@@ -39,7 +39,7 @@
  *
  * @package @blackunicorn/bonklm-elizaos
  */
-import { createLogger, sanitizeLogString } from '@blackunicorn/bonklm';
+import { createLogger, sanitizeMeta } from '@blackunicorn/bonklm';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 import type { Logger } from '@blackunicorn/bonklm';
 import { runWithoutCallContext } from './als-context.js';
@@ -356,14 +356,14 @@ export function applyProbeOutcome(
       // attacker-influenced content if the runtime config is
       // operator-edited from a downstream source.
       if (outcome.reason.startsWith('Probe completed')) {
-        logger.info(`[BonkLM] ${sanitizeLogString(outcome.reason)}`);
+        logger.info(`[BonkLM] ${sanitizeMeta(outcome.reason)}`);
       } else {
-        logger.warn(`[BonkLM] startup probe ${sanitizeLogString(outcome.reason)} Plugin continues normally.`);
+        logger.warn(`[BonkLM] startup probe ${sanitizeMeta(outcome.reason)} Plugin continues normally.`);
       }
       return;
     }
     case 'skipped': {
-      logger.info(`[BonkLM] startup probe skipped: ${sanitizeLogString(outcome.reason)}`);
+      logger.info(`[BonkLM] startup probe skipped: ${sanitizeMeta(outcome.reason)}`);
       return;
     }
   }

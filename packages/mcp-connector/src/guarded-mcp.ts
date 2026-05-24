@@ -21,7 +21,7 @@ import {
   GuardrailEngine,
   type GuardrailResult,
   type Logger,
-  sanitizeLogString,
+  sanitizeMeta,
   serializeError,
   Severity,
   validateWithTimeoutSecure,
@@ -386,7 +386,7 @@ export function createGuardedMCP(
               // `error` now uses Sprint 33's canonical `serializeError`
               // instead of inline `instanceof Error` extraction.
               logger.error('[Guardrails] Tool result validation error', {
-                tool: sanitizeLogString(String(name ?? '')),
+                tool: sanitizeMeta(name),
                 error: serializeError(error),
               });
               // Fail-closed: return filtered result on validation error.
@@ -399,8 +399,8 @@ export function createGuardedMCP(
               // interpolated value at the boundary.
               const filteredText = productionMode
                 ? 'Tool result validation error'
-                : `Tool result validation error: ${sanitizeLogString(
-                    error instanceof Error ? error.message : String(error)
+                : `Tool result validation error: ${sanitizeMeta(
+                    error instanceof Error ? error.message : error
                   )}`;
 
               return {

@@ -96,6 +96,7 @@ export {
   createStandardLogger,
   createConnectorLogger,
   sanitizeLogMetadata,
+  sanitizeMeta,
   stripLogControlChars,
   logValidationFailure,
   logTimeout,

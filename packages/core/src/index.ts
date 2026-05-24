@@ -115,6 +115,7 @@ export {
   createStandardLogger,
   createConnectorLogger,
   sanitizeLogMetadata,
+  sanitizeMeta,
   logValidationFailure,
   logTimeout,
   DEFAULT_MAX_BUFFER_SIZE,

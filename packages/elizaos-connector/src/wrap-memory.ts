@@ -32,7 +32,7 @@
  *
  * @package @blackunicorn/bonklm-elizaos
  */
-import { createLogger, sanitizeLogString } from '@blackunicorn/bonklm';
+import { createLogger, sanitizeMeta } from '@blackunicorn/bonklm';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 import { getCallContext } from './als-context.js';
 import type {
@@ -69,9 +69,12 @@ function assertMemoryWriteAllowed(
     computedSource !== 'authenticated' &&
     computedSource !== 'agent_internal'
   ) {
+    // Sprint 41 integration-test surfaced site: meta-field `caller`
+    // (callerPluginName from plugin registry) was unsanitized. Sprint
+    // 40 missed this — only the typo-squat CRITICAL log was covered.
     logger.warn(
-      `[BonkLM] Refusing ${pathLabel} 'messages' write — non-authenticated source.`,
-      { caller: callerPluginName, source: computedSource }
+      `[BonkLM] Refusing ${sanitizeMeta(pathLabel)} 'messages' write — non-authenticated source.`,
+      { caller: sanitizeMeta(callerPluginName), source: sanitizeMeta(computedSource) }
     );
     onRefused?.(
       productionMode
@@ -100,9 +103,9 @@ function assertMemoryWriteAllowed(
       // log lines via this CRITICAL diagnostic. Build the message
       // with sanitized fragments — `target` and `pathLabel` are
       // library-controlled but defensive sanitization is cheap.
-      const safeCallerName = sanitizeLogString(String(callerPluginName ?? ''));
-      const safeTarget = sanitizeLogString(String(typoCheck.nearestTypoSquat.target ?? ''));
-      const safePathLabel = sanitizeLogString(String(pathLabel ?? ''));
+      const safeCallerName = sanitizeMeta(callerPluginName);
+      const safeTarget = sanitizeMeta(typoCheck.nearestTypoSquat.target);
+      const safePathLabel = sanitizeMeta(pathLabel);
       const typoMsg =
         `Caller plugin "${safeCallerName}" is distance-${typoCheck.nearestTypoSquat.distance} ` +
         `from verified publisher "${safeTarget}" — likely typo-squat impersonation. ` +
@@ -120,19 +123,25 @@ function assertMemoryWriteAllowed(
     } else {
       // Unknown publisher — refuse with informational diagnostic
       // (Phase-1 behaviour preserved).
+      // Sprint 41 integration-test surfaced site: meta `caller` field
+      // + `onRefused` payload + ConnectorValidationError message all
+      // embed raw `callerPluginName` from the plugin registry. Sprint
+      // 40 missed these — only the typo-squat path was wrapped.
+      const safeCaller = sanitizeMeta(callerPluginName);
+      const safePathLabel = sanitizeMeta(pathLabel);
       logger.warn(
-        `[BonkLM] Refusing ${pathLabel} 'messages' write — caller plugin not in verified-publisher allowlist.`,
-        { caller: callerPluginName }
+        `[BonkLM] Refusing ${safePathLabel} 'messages' write — caller plugin not in verified-publisher allowlist.`,
+        { caller: safeCaller }
       );
       onRefused?.(
         productionMode
           ? 'memory_write_refused'
-          : `Memory write refused: ${callerPluginName} not in verified-publisher allowlist`
+          : `Memory write refused: ${safeCaller} not in verified-publisher allowlist`
       );
       throw new ConnectorValidationError(
         productionMode
           ? 'Memory write refused'
-          : `Memory write refused: ${callerPluginName} not in verified-publisher allowlist`,
+          : `Memory write refused: ${safeCaller} not in verified-publisher allowlist`,
         'validation_failed'
       );
     }

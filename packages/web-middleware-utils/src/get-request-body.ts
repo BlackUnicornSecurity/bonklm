@@ -53,8 +53,13 @@ export async function getRequestBody(
       if (typeof raw === 'string') return raw;
       if (raw instanceof URLSearchParams) return raw.toString();
       if (typeof FormData !== 'undefined' && raw instanceof FormData) {
+        // Sprint 41: use `.forEach` instead of `.entries()` iterator
+        // — the latter requires `lib: ["DOM.Iterable"]` which the root
+        // tsconfig does not bundle (kept Node-only). `.forEach` is
+        // available with just `lib: ["DOM"]` via @types/node's FormData
+        // global, so this stays portable across Node + edge runtimes.
         const entries: Array<[string, unknown]> = [];
-        for (const [k, v] of raw.entries()) entries.push([k, v]);
+        raw.forEach((value, key) => entries.push([key, value]));
         return safeStringify(Object.fromEntries(entries));
       }
       return safeStringify(raw);

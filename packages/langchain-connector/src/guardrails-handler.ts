@@ -24,7 +24,7 @@ import {
   GuardrailEngine,
   type GuardrailResult,
   type Logger,
-  sanitizeLogString,
+  sanitizeMeta,
   Severity,
   validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
@@ -245,8 +245,8 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
       // file's own dispatch and is safe.
       this.logger.warn('[Guardrails] Content blocked', {
         context,
-        reason: sanitizeLogString(blocked.reason ?? ''),
-        runId: sanitizeLogString(String(runId ?? '')),
+        reason: sanitizeMeta(blocked.reason),
+        runId: sanitizeMeta(runId),
       });
 
       if (this.onBlocked) {

@@ -8,9 +8,19 @@
  * extraction with the canonical `serializeError` primitive.
  *
  * This file unit-tests the sanitization helpers' presence in the
- * mcp-connector import surface — full integration test of the
- * guarded `callTool` catch path is exercised by the existing
- * `tests/guarded-mcp.test.ts`; this is a focused contract lock.
+ * mcp-connector import surface. **Sprint 41 follow-up (Sprint 42
+ * scope):** upgrade to a real integration test mirroring the
+ * elizaos `installSealedWrapMemory` integration pattern — instantiate
+ * `createGuardedMCPClient` with a mock MCP transport, trigger the
+ * tool-result error catch path with a hostile tool name, assert the
+ * spy logger captured a sanitized output. The contract-lock tests
+ * below remain a smoke-test layer above that integration test once
+ * it lands.
+ *
+ * Sprint 41 architect HIGH-2 + CR MEDIUM + security S40-4 partial
+ * closure: elizaos is fully closed via integration test;
+ * mcp + nestjs are still contract-lock-only pending mock-infra
+ * scaffolding for those packages.
  */
 import { describe, expect, it } from 'vitest';
 

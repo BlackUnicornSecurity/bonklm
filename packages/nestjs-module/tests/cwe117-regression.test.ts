@@ -17,6 +17,19 @@
  * `tests/guardrails.module.test.ts`; this file is a focused
  * contract-lock for the import surface + canonical-primitive
  * behaviour on the specific input shapes the interceptor surfaces.
+ *
+ * **Sprint 41 follow-up (Sprint 42 scope):** the integration test in
+ * `guardrails.module.test.ts` does NOT currently assert sanitized
+ * spy-logger output — it tests behavioural correctness of the
+ * blocked-request path but not the CWE-117 wrap fidelity. Sprint 42
+ * should extend that test (or add a focused integration test here)
+ * to instantiate the interceptor via `@nestjs/testing`, trigger a
+ * blocked path with control-char-laden `blocked.reason`, and assert
+ * the spy logger captured a sanitized output.
+ *
+ * Sprint 41 architect HIGH-2 + CR MEDIUM + security S40-4 partial
+ * closure: elizaos is fully closed via integration test; nestjs
+ * remains contract-lock-only pending NestJS Test-module scaffolding.
  */
 import { describe, expect, it } from 'vitest';
 

@@ -23,7 +23,7 @@ import { forkJoin, Observable, of, throwError } from 'rxjs';
 import { catchError, finalize, map, switchMap } from 'rxjs/operators';
 import { Reflector } from '@nestjs/core';
 import type { GuardrailResult } from '@blackunicorn/bonklm';
-import { RiskLevel, sanitizeLogString, serializeError, Severity } from '@blackunicorn/bonklm';
+import { RiskLevel, sanitizeMeta, serializeError, Severity } from '@blackunicorn/bonklm';
 import type { UseGuardrailsDecoratorOptions } from './types.js';
 import { GuardrailsService } from './guardrails.service.js';
 import { USE_GUARDRAILS_KEY } from './constants.js';
@@ -218,7 +218,7 @@ export class GuardrailsInterceptor implements NestInterceptor {
       // Sprint 40 connector CWE-117 sweep: `blocked.reason` is built
       // from validator output and may carry attacker-influenced text
       // (matched-pattern content). Wrap the template interpolation.
-      this.logger.warn(`Request blocked: ${sanitizeLogString(blocked.reason ?? '')}`);
+      this.logger.warn(`Request blocked: ${sanitizeMeta(blocked.reason)}`);
       // Call custom error handler if provided and is a function
       if (options.onError && typeof options.onError === 'function') {
         try {
@@ -293,7 +293,7 @@ export class GuardrailsInterceptor implements NestInterceptor {
 
             if (blocked) {
               // Sprint 40 connector CWE-117 sweep — see line 218 rationale.
-              this.logger.warn(`Response blocked: ${sanitizeLogString(blocked.reason ?? '')}`);
+              this.logger.warn(`Response blocked: ${sanitizeMeta(blocked.reason)}`);
               // Call custom error handler if provided and is a function
               if (options.onError && typeof options.onError === 'function') {
                 try {

@@ -8,6 +8,7 @@
  */
 
 import { createLogger, type Logger } from '../base/GenericLogger.js';
+import { sanitizeLogString } from '../common/index.js';
 
 /**
  * Standard logger options for connectors.
@@ -277,4 +278,49 @@ export function logTimeout(
   logger.warn(`Timeout: ${stripLogControlChars(operation)}`, {
     timeout: `${timeoutMs}ms`,
   });
+}
+
+/**
+ * Sanitize a value of unknown type for inclusion in a structured-
+ * logger meta object. Combines `String()` coercion (converts numbers,
+ * objects, symbols to their string representation) with
+ * `sanitizeLogString` CWE-117 hardening. Single source of truth for
+ * the `sanitizeLogString(String(x))` combo that proliferated across
+ * connector packages during Sprint 40.
+ *
+ * Use this at every connector-boundary meta-field that may carry
+ * caller-supplied content (`messageId`, `sessionId`, `toolName`,
+ * `channel`, `userId`, `reason`, `runId`, etc.). Per Sprint 40
+ * defensive-by-default policy: prefer over-sanitization to
+ * misclassification of attacker-control surface.
+ *
+ * Treats nullish input (`null` / `undefined`) as empty string so the
+ * meta object always serializes a string-typed value (downstream
+ * SIEM ingestors prefer stable shapes over conditional fields).
+ *
+ * **Symbol/object-toString safety (Sprint 41 security audit S41-1):**
+ * `String(Symbol('inject\nfake'))` returns `"Symbol(inject\nfake)"`
+ * — with the embedded `\n` intact. The CWE-117 defence is provided
+ * by the subsequent `sanitizeLogString` call, NOT by `String()`.
+ * Same applies to objects with hostile `toString()`. The `String()`
+ * step is shape-coercion only; sanitization is a separate layer.
+ *
+ * @public
+ *
+ * Sprint 41 — consolidates the
+ * `sanitizeLogString(String(x ?? ''))` combo from Sprint 40.
+ *
+ * @example
+ * ```ts
+ * logger.warn('Tool blocked', {
+ *   toolName: sanitizeMeta(context.toolName),
+ *   sessionId: sanitizeMeta(context.sessionId),
+ * });
+ * ```
+ */
+export function sanitizeMeta(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  return sanitizeLogString(String(value));
 }

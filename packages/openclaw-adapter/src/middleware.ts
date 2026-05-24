@@ -18,7 +18,7 @@ import {
   createResult,
   type GuardrailResult,
   PromptInjectionValidator,
-  sanitizeLogString,
+  sanitizeMeta,
   SecretGuard,
   Severity,
 } from '@blackunicorn/bonklm';
@@ -94,9 +94,9 @@ export class OpenClawGuardrailsMiddleware {
     // coercion stays as belt-and-braces against a JS caller bypassing
     // the type contract (passing a non-string symbol / number / object).
     this.logger.info('Validating OpenClaw message', {
-      messageId: sanitizeLogString(String(context.messageId)),
-      sessionId: sanitizeLogString(String(context.sessionId)),
-      channel: sanitizeLogString(String(context.channel)),
+      messageId: sanitizeMeta(context.messageId),
+      sessionId: sanitizeMeta(context.sessionId),
+      channel: sanitizeMeta(context.channel),
     });
 
     // Run validators
@@ -117,16 +117,16 @@ export class OpenClawGuardrailsMiddleware {
       if (result.allowed) {
         this.logger.info('Message validation passed', {
           // Sprint 40 connector CWE-117 sweep — same rationale as line 88.
-          messageId: sanitizeLogString(String(context.messageId)),
+          messageId: sanitizeMeta(context.messageId),
           findings_count: result.findings.length,
         });
       } else {
         this.logger.warn('Message validation blocked', {
-          messageId: sanitizeLogString(String(context.messageId)),
+          messageId: sanitizeMeta(context.messageId),
           // `blocked_by` is library-controlled (one of the validator
           // class names) but defensive sanitization is cheap and
           // future-proofs against custom validator naming.
-          blocked_by: result.blockedBy ? sanitizeLogString(result.blockedBy) : undefined,
+          blocked_by: result.blockedBy ? sanitizeMeta(result.blockedBy) : undefined,
           severity: result.severity,
           findings_count: result.findings.length,
         });
@@ -151,8 +151,8 @@ export class OpenClawGuardrailsMiddleware {
     // both flow in from caller context (MCP-style tool dispatch can
     // surface attacker-named tools).
     this.logger.info('Validating OpenClaw tool execution', {
-      toolName: sanitizeLogString(String(context.toolName)),
-      sessionId: sanitizeLogString(String(context.sessionId)),
+      toolName: sanitizeMeta(context.toolName),
+      sessionId: sanitizeMeta(context.sessionId),
     });
 
     // Get content from tool input
@@ -182,13 +182,13 @@ export class OpenClawGuardrailsMiddleware {
       if (result.allowed) {
         this.logger.info('Tool validation passed', {
           // Sprint 40 connector CWE-117 sweep — same rationale as line 138.
-          toolName: sanitizeLogString(String(context.toolName)),
+          toolName: sanitizeMeta(context.toolName),
           findings_count: result.findings.length,
         });
       } else {
         this.logger.warn('Tool validation blocked', {
-          toolName: sanitizeLogString(String(context.toolName)),
-          blocked_by: result.blockedBy ? sanitizeLogString(result.blockedBy) : undefined,
+          toolName: sanitizeMeta(context.toolName),
+          blocked_by: result.blockedBy ? sanitizeMeta(result.blockedBy) : undefined,
           severity: result.severity,
         });
       }

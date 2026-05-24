@@ -32,7 +32,7 @@ import {
   GuardrailEngine,
   type GuardrailResult,
   type Logger,
-  sanitizeLogString,
+  sanitizeMeta,
   Severity,
   validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
@@ -343,7 +343,7 @@ export function createGuardedAnthropic(
       // Sprint 40 security audit S40-1 closure: `blocked.reason` is
       // validator-extracted text and may carry attacker-influenced
       // matched-pattern content. Sanitize at the meta boundary.
-      logger.warn('[Guardrails] Input blocked', { reason: sanitizeLogString(blocked.reason ?? '') });
+      logger.warn('[Guardrails] Input blocked', { reason: sanitizeMeta(blocked.reason) });
       if (onBlocked) onBlocked(blocked);
 
       // SEC-007: Production mode - generic error
@@ -448,7 +448,7 @@ export function createGuardedAnthropic(
               if (outputBlocked) {
                 // Sprint 40 security audit S40-1 closure — see input-blocked rationale.
                 logger.warn('[Guardrails] Output blocked', {
-                  reason: sanitizeLogString(outputBlocked.reason ?? ''),
+                  reason: sanitizeMeta(outputBlocked.reason),
                 });
                 if (onBlocked) onBlocked(outputBlocked);
 

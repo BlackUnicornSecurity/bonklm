@@ -77,8 +77,9 @@ function serializeSingleArg(arg: unknown): string {
   if (arg === null || arg === undefined) return '';
   if (typeof arg === 'string') return arg;
   if (typeof FormData !== 'undefined' && arg instanceof FormData) {
+    // Sprint 41 portability fix — see web-middleware-utils equivalent.
     const entries: Array<[string, unknown]> = [];
-    for (const [k, v] of arg.entries()) entries.push([k, v]);
+    arg.forEach((value, key) => entries.push([key, value]));
     return safeStringify(Object.fromEntries(entries));
   }
   return safeStringify(arg);

@@ -25,6 +25,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   logTimeout,
   logValidationFailure,
+  sanitizeMeta,
   stripLogControlChars,
 } from '../../src/connector-utils/logger.js';
 
@@ -111,5 +112,75 @@ describe('stripLogControlChars — primitive', () => {
 
   it('preserves printable ASCII', () => {
     expect(stripLogControlChars('Hello, World!')).toBe('Hello, World!');
+  });
+});
+
+// Sprint 41 code-reviewer HIGH closure: direct unit tests for
+// `sanitizeMeta` — the helper was introduced + immediately re-exported
+// through 3 barrel layers without dedicated tests. The retrofit call
+// sites in connectors exercise the helper indirectly but do not cover
+// the nullish branches or edge inputs. Direct tests lock the contract.
+describe('sanitizeMeta — Sprint 41 helper', () => {
+  it('returns empty string for null input', () => {
+    expect(sanitizeMeta(null)).toBe('');
+  });
+
+  it('returns empty string for undefined input', () => {
+    expect(sanitizeMeta(undefined)).toBe('');
+  });
+
+  it('passes a plain string through sanitizeLogString', () => {
+    expect(sanitizeMeta('hello world')).toBe('hello world');
+  });
+
+  it('escapes control chars in string input (CWE-117 layer)', () => {
+    expect(sanitizeMeta('attack\nINJECTED')).toBe('attack\\nINJECTED');
+  });
+
+  it('escapes TAB in string input', () => {
+    expect(sanitizeMeta('a\tb')).toBe('a\\x09b');
+  });
+
+  it('stringifies numbers safely', () => {
+    expect(sanitizeMeta(42)).toBe('42');
+    expect(sanitizeMeta(0)).toBe('0');
+    expect(sanitizeMeta(-1.5)).toBe('-1.5');
+  });
+
+  it('stringifies boolean safely', () => {
+    expect(sanitizeMeta(true)).toBe('true');
+    expect(sanitizeMeta(false)).toBe('false');
+  });
+
+  it('stringifies NaN safely (does NOT short-circuit to empty)', () => {
+    // NaN is a number — `sanitizeMeta` MUST treat it as `'NaN'`,
+    // NOT as nullish. The nullish guard is strictly === null /
+    // === undefined per the contract.
+    expect(sanitizeMeta(NaN)).toBe('NaN');
+  });
+
+  it('stringifies empty string as empty', () => {
+    expect(sanitizeMeta('')).toBe('');
+  });
+
+  it('coerces an object via its toString and sanitizes the result', () => {
+    // Demonstrates the Symbol/object-toString safety note in the
+    // JSDoc: `String()` is shape-coercion only; CWE-117 defence
+    // comes from the sanitize step.
+    const hostile = { toString: () => 'normal\nINJECTED:fake' };
+    expect(sanitizeMeta(hostile)).toBe('normal\\nINJECTED:fake');
+  });
+
+  it('coerces a Symbol via its description and sanitizes', () => {
+    // `String(Symbol('inject\nfake'))` returns `'Symbol(inject\nfake)'`
+    // with the embedded `\n` intact. sanitizeLogString catches it.
+    const sym = Symbol('inject\nfake');
+    const out = sanitizeMeta(sym);
+    expect(out).toContain('Symbol(inject\\nfake)');
+    expect(out).not.toContain('\n'); // no literal newline survived
+  });
+
+  it('stringifies BigInt safely', () => {
+    expect(sanitizeMeta(123n)).toBe('123');
   });
 });
