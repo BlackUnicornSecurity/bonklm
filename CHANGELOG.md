@@ -5,13 +5,44 @@ All notable changes to BonkLM (`@blackunicorn/bonklm`) will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — Sprint 31 cumulative audit closure (2026-05-24)
+## [1.0.0-rc.3] — 2026-05-24 (Sprints 29 + 30 + 31 + cumulative audit closure)
 
-Post-Sprint-28-to-31 cumulative 3-lane audit (architect + code-reviewer +
-security-reviewer) ran across all v1.0.0-rc.1 → HEAD changes. Convergent
-findings closed inline before commit.
+Third release candidate. Consolidates four sprints of post-rc.2 security
+hardening work into a single tagged RC for the v1.0.0 public-comment
+window. **No new public-API surface beyond rc.2 except the three new
+`ValidatorInstanceRule` / `LoggerInstanceRule` / `AttackLoggerInstanceRule`
+config-schema helpers** (Sprint 29) plus the canonical
+`validateWithTimeoutSecure` connector primitive (Sprint 30) — all
+`@public` per v1.0-RC1 freeze policy.
 
-### Fixed (audit-driven security hardening)
+The four work-streams collapsed here:
+
+- **Sprint 29** — Config-schema layer fix. The canonical `Validator` /
+  `Logger` / `AttackLogger` interfaces are object-shape; the previous
+  `Validators.function` schema check rejected class instances, breaking
+  express / fastify / nestjs middleware schemas (110+ tests failing at
+  rc.1 + rc.2). New shape-aware rules + `OptionalRule` null-rejection
+  semantic fix.
+- **Sprint 30** — SEC-008 timeout-primitive extraction. The Sprint 29
+  audit uncovered fastify-plugin's validation-timeout was broken
+  (`engine.validate()` doesn't accept an `AbortSignal`, so the
+  AbortController-based timeout was a no-op). Sprint 30 swept the
+  workspace and found the SAME broken pattern in 20+ other connectors;
+  extracted a single canonical primitive instead of 22 near-identical
+  per-connector patches.
+- **Sprint 31** — Pre-existing test-tooling debt cleanup. 10 long-standing
+  test failures across 3 connector packages (vercel, pinecone, mastra)
+  that predate Sprints 28-30. The mastra fix was security-relevant —
+  prior test asserted the INSECURE silent-filter path; corrected to
+  assert the canonical S012-004 throw-contract.
+- **Cumulative audit closure** — Post-Sprint-28-to-31 3-lane audit
+  (architect + code-reviewer + security-reviewer) ran across all
+  v1.0.0-rc.1 → HEAD changes. Convergent findings closed inline before
+  commit (memoization bug, primitive `≤ 0` handling, log injection,
+  sentinel-factory throw fallback, langchain SEC-008 regression,
+  copilotkit + genkit sentinel shape divergence).
+
+### Fixed (audit-driven security hardening — cumulative-audit closure)
 
 - **`validateWithTimeoutSecure` memoization bug** (sec CRITICAL +
   review MEDIUM-1) — the prior `=== undefined` check would re-invoke
@@ -100,16 +131,13 @@ findings closed inline before commit.
   etc.). Frozen at rc.2 per v1.0-RC1 policy; cannot rename without
   major bump. Documented for posterity.
 
----
+### Sprint 31 detail — test-tooling debt cleanup
 
-## [Unreleased] — Sprint 31 (2026-05-24)
+Closes the spawn-task chip from Sprint 30: 10 long-standing test failures
+across 3 connector packages that predate Sprints 28-30 (verified by
+stashing + reproducing at HEAD).
 
-Pre-existing test-tooling debt cleanup. Closes the spawn-task chip
-from Sprint 30 close: 10 long-standing test failures across 3 connector
-packages that predate Sprints 28-30 (verified by stashing + reproducing
-at HEAD).
-
-### Security note (audit-flagged categorization correction)
+#### Security note (audit-flagged categorization correction)
 
 **The mastra test fix WAS security-relevant** (arch MEDIUM-1
 correction). The prior test asserted that `wrapped.execute()` returns
@@ -121,7 +149,7 @@ the throw. If a `git bisect` were used to find when S012-004 throw-
 contract coverage landed, Sprint 31 is the answer (not Sprint 30 when
 the throw was originally written).
 
-### Fixed (test-only — no src changes, no public-API change)
+#### Fixed (test-only — no src changes, no public-API change)
 
 - **vercel-connector** — 8 tests in `tests/guarded-ai.test.ts` used
   CommonJS `require('../src/guarded-ai.js')` inside test bodies. The
@@ -148,28 +176,27 @@ the throw was originally written).
   input-blocked / circuit-breaker paths would not silently match.
   Result: 34/34 pass.
 
-### Tests
+#### Tests (Sprint 31)
 
 - **Full workspace green for the first time across Sprints 1-31**:
   162/162 test files pass, **4665/4678** tests pass (13 documented
   skips per Sprint 23 multilingual Pass-2 retirement).
 - Core: 2767/2777 unchanged.
-- No src changes; no public-API change; no version bump.
 
-## [Unreleased] — Sprint 30 (2026-05-24)
+### Sprint 30 detail — SEC-008 timeout-primitive extraction
 
-SEC-008 timeout-primitive extraction. Sprint 29 audit uncovered that
-fastify-plugin's validation-timeout was broken — `engine.validate()`
-doesn't accept an `AbortSignal`, so the AbortController-based timeout
-was a no-op. Sprint 30 swept the workspace and found the SAME broken
-pattern in 20+ other connectors (anthropic, chroma, openai, langchain,
-llamaindex, google-genai, huggingface, mastra, openai-agents, vercel
-×2, weaviate, pinecone, qdrant, mcp, copilotkit, ollama, genkit,
-langchain-middleware). Per-connector porting would create 20+
-near-identical patches each needing independent audit. Extract a
-single canonical primitive instead.
+Sprint 29 audit uncovered fastify-plugin's validation-timeout was broken
+— `engine.validate()` doesn't accept an `AbortSignal`, so the
+AbortController-based timeout was a no-op. Sprint 30 swept the
+workspace and found the SAME broken pattern in 20+ other connectors
+(anthropic, chroma, openai, langchain, llamaindex, google-genai,
+huggingface, mastra, openai-agents, vercel ×2, weaviate, pinecone,
+qdrant, mcp, copilotkit, ollama, genkit, langchain-middleware).
+Per-connector porting would create 20+ near-identical patches each
+needing independent audit. Extracted a single canonical primitive
+instead.
 
-### Added
+#### Added (Sprint 30)
 
 - **`validateWithTimeoutSecure`** — shared SEC-008 timeout primitive
   at `@blackunicorn/bonklm` → `connector-utils/timeout-wrapper.ts`.
@@ -195,7 +222,7 @@ single canonical primitive instead.
   does not propagate to `engine.validate()` and the timeout becomes a
   no-op. Use this helper.
 
-### Fixed (22 connectors ported to `validateWithTimeoutSecure`)
+#### Fixed (22 connectors ported to `validateWithTimeoutSecure`)
 
 Per CLAUDE.md "100% pass rate required — no postponing" rule + 3-lane
 audit CRITICAL finding (architect: "Port all 20 before tagging RC2"),
@@ -229,7 +256,7 @@ Per-file sentinel SHAPES preserved (GuardrailResult / EngineResult /
 `{results:[...]}` / ad-hoc plain object) so caller-side type contracts
 are unchanged; only the timeout-orchestration mechanism switched.
 
-### Audit hardening (applied inline before commit)
+#### Audit hardening (applied inline before commit, Sprint 30)
 
 3-lane audit (architect + code-reviewer + security-reviewer) ran
 post-helper-extraction. Convergent findings closed:
@@ -249,7 +276,7 @@ post-helper-extraction. Convergent findings closed:
 - **LOW** (architect) — stale "AbortController" JSDoc in anthropic /
   fastify / nestjs types → updated all 4 to "validateWithTimeoutSecure".
 
-### Tests
+#### Tests (Sprint 30)
 
 - Core: **2767/2777** unchanged (10 multilingual Pass-2 skips).
 - 22 ported packages: full build green. Pre-existing test-tooling
@@ -258,7 +285,7 @@ post-helper-extraction. Convergent findings closed:
   documented unchanged (predate Sprint 30; tracked separately).
 - All affected packages build clean.
 
-## [Unreleased] — Sprint 29 (2026-05-24)
+### Sprint 29 detail — connector schema layer fix
 
 Connector test-tooling debt remediation. Pre-existing schema mismatch
 across express / fastify / nestjs middleware schemas exposed Sprint 28
@@ -269,7 +296,7 @@ core schema layer so future connector packages inherit it.
 3-lane audit (architect + code-reviewer + security-reviewer) ran
 post-fix; convergent findings closed in this same commit before tag.
 
-### Added
+#### Added (Sprint 29)
 
 - **`Validators.validatorInstance`** + **`ValidatorInstanceRule`**
   (`@blackunicorn/bonklm` → `validation/`) — config-schema rule that
@@ -295,7 +322,7 @@ All three new rules are `@public` per v1.0-RC1 freeze policy. New
 `@public` symbols added between rc.1 and v1.0 are explicitly part of
 the freeze once v1.0 ships.
 
-### Changed (semantic — was a footgun)
+#### Changed (Sprint 29, semantic — was a footgun)
 
 - **`OptionalRule`** now ONLY short-circuits on `undefined`, NOT on
   `null`. Per architect-IMPORTANT-3 audit: the prior null-short-circuit
@@ -307,7 +334,7 @@ the freeze once v1.0 ships.
   external consumer affected — all internal call-sites pass
   `undefined`/omit-key (the JS-canonical pattern).
 
-### Fixed
+#### Fixed (Sprint 29)
 
 - **express-middleware** — config schema rewritten to use
   `validatorInstance` + `loggerInstance` for validators/guards/logger
@@ -340,7 +367,7 @@ the freeze once v1.0 ships.
   response methods; the headers themselves are not silently dropped
   without a log entry.
 
-### Changed (no breaking)
+#### Changed (Sprint 29, no breaking)
 
 - The schema-wide `Validators.optional(...)` wrap loosens validation —
   previously the schemas rejected missing fields, now they accept them
@@ -348,7 +375,7 @@ the freeze once v1.0 ships.
   with defaults for every field). This matches the JSDoc-documented
   API contract; the strict mode was the bug.
 
-### Tests
+#### Tests (Sprint 29)
 
 - express-middleware: **40/40** (was 40 fail)
 - fastify-plugin: **43/43** (was 2 fail)
@@ -356,15 +383,22 @@ the freeze once v1.0 ships.
 - Core: **2767/2777** unchanged (10 multilingual Pass-2 skips per Sprint 23 retirement)
 - Build: all affected packages build clean
 
-### Deferred to Sprint 30+
+### Cumulative rc.3 tests
 
-- v1.0.0 cut decision (public-comment window extension continues)
-- Story 2.14a openclaw-adapter removal (date gate 2026-07-01)
-- Full `TestWorkflowEnvironment` Temporal integration
-- anthropic-connector + chroma-connector flaky test-timeout cleanup
-  (separate root cause from Sprint 29 schema work — both are
-  test-framework timeouts on intentionally-slow validators that
-  should be reduced to fit the 5s testTimeout budget).
+- Full workspace: **4686/4699** passing across **163/163** test files
+  (13 documented skips: 10 multilingual Pass-2 + 3 cross-package historic).
+- Core: **2788/2798** (+21 SEC-008 primitive tests landed in audit-close).
+- Build: all 54 published packages build clean at `1.0.0-rc.3`.
+
+### Deferred to v1.0.0 final (Sprint 33+)
+
+- v1.0.0 cut decision (continuing extended public-comment window through rc.3).
+- Story 2.14a openclaw-adapter removal (date gate `2026-07-01`; today
+  `2026-05-24` — defer until gate passes).
+- Full `TestWorkflowEnvironment` Temporal integration (Sprint 27 used
+  `MockActivityEnvironment` to ship; full workflow runtime still deferred).
+- `*Instance` suffix naming consistency in the `Validators` registry
+  (architect LOW-1, accepted; cannot rename without major bump).
 
 ## [1.0.0-rc.2] — 2026-05-24 (Sprint 28)
 

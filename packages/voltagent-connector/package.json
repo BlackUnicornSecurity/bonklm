@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-voltagent",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0-rc.3",
   "description": "BonkLM connector for VoltAgent — wrapVoltAgent(agent, engine) injects validators (Story 3.10)",
   "type": "module",
   "main": "./dist/index.js",

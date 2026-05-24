@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-weaviate",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0-rc.3",
   "description": "Weaviate connector for BonkLM - Vector database security for RAG applications",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

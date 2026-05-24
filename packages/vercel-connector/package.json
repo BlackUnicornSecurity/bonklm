@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-vercel",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0-rc.3",
   "description": "Vercel AI SDK connector for BonkLM with streaming validation support",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

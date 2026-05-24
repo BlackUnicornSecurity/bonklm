@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-genkit",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0-rc.3",
   "description": "Google Genkit plugin for BonkLM",
   "type": "module",
   "main": "dist/index.js",

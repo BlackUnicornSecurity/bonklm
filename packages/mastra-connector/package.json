@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-mastra",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0-rc.3",
   "description": "Mastra framework connector for BonkLM",
   "type": "module",
   "main": "dist/index.js",
