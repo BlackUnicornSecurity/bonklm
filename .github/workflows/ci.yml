@@ -163,3 +163,178 @@ jobs:
           flags: unittests
           name: codecov-node-22
           fail_ci_if_error: false
+
+  uat:
+    name: UAT Harness
+    runs-on: ubuntu-latest
+    # Sprint 34 architect HIGH closure: gate on `test` to avoid burning
+    # runner minutes on commits where the core test suite is already red.
+    needs: [test]
+    # Sprint 33 lessons-learned closure: the UAT harness (`pnpm run uat`)
+    # MUST be in the per-commit gate. Sprint 33 surfaced two latent bugs
+    # (missing `tsx` devDep + UAT-INT-004 stale class-name lookup) that
+    # had gone undetected through Sprints 28-32 because the UAT was not
+    # in CI. Failing this job blocks the build.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build core (UAT imports compiled dist)
+        run: pnpm --filter @blackunicorn/bonklm build
+
+      - name: Run UAT harness
+        run: pnpm run uat
+
+      - name: Upload UAT HTML report (if generated)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uat-report
+          path: packages/core/uat/reports/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  benchmark:
+    name: Performance Benchmark
+    runs-on: ubuntu-latest
+    # Sprint 34 architect HIGH closure: gate on `test` to avoid burning
+    # runner minutes on commits where the core test suite is already red.
+    needs: [test]
+    # Sprint 33 lessons-learned closure: the benchmark suite
+    # (`pnpm run benchmark`) MUST run on every commit. Sprint 33 surfaced
+    # 120 lines of `[ERROR] Error in guard SecretGuard` spam plus a
+    # `NaNx faster than` broken comparison that had survived multiple
+    # sprints undetected. Per Sprint 33 lesson #5, ANY NaN / Infinity
+    # in benchmark output is a broken-measurement signal and MUST fail
+    # the build.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build core (benchmark may resolve workspace alias to dist)
+        run: pnpm --filter @blackunicorn/bonklm build
+
+      - name: Run benchmark suite
+        # GitHub Actions bash already runs with `-e -o pipefail` by
+        # default (since runner v2.285.0). Sprint 34 code-reviewer LOW:
+        # the explicit `set -o pipefail` is redundant but kept for
+        # self-documentation — the pipe-to-tee REQUIRES pipefail
+        # semantics for the benchmark exit code to propagate.
+        run: |
+          set -o pipefail
+          pnpm run benchmark 2>&1 | tee packages/core/benchmarks/.last-run.log
+
+      - name: NaN / Infinity / Error-log guard
+        # Catch broken measurements (NaN/Infinity from divide-by-zero,
+        # missing data points, etc.) AND engine error-log spam during
+        # the bench (Sprint 33 SecretGuard-context regression class).
+        # A clean benchmark has zero `[ERROR]` lines from the engine
+        # catch sites and zero `NaN`/`Infinity` in measurement output.
+        #
+        # Sprint 34 code-reviewer HIGH closure: regex widened from
+        # `NaNx? faster` (only forward comparisons) to bare `\bNaN` /
+        # `\bInfinity` so the inverse-direction `slower` / `ops/sec`
+        # variants are also caught. False-positive risk in benchmark
+        # output is negligible — neither token appears in legitimate
+        # vitest bench summaries.
+        run: |
+          BENCH_LOG=packages/core/benchmarks/.last-run.log
+          if grep -qE '\bNaN|\bInfinity' "$BENCH_LOG"; then
+            echo "::error::Benchmark produced NaN/Infinity — broken measurement"
+            grep -E '\bNaN|\bInfinity' "$BENCH_LOG"
+            exit 1
+          fi
+          if grep -qE '\[ERROR\] Error in (guard|validator)' "$BENCH_LOG"; then
+            echo "::error::Engine catch-site fired during benchmark — interface/contract violation"
+            grep -E '\[ERROR\] Error in (guard|validator)' "$BENCH_LOG" | head -5
+            exit 1
+          fi
+
+      - name: Upload benchmark output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-output
+          path: packages/core/benchmarks/.last-run.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  sandbox-gate:
+    name: Sandbox Graduation Gate (R2-13)
+    runs-on: ubuntu-latest
+    # Sprint 34 architect HIGH closure: gate on `test` to avoid burning
+    # runner minutes on commits where the core test suite is already red.
+    needs: [test]
+    # Sprint 33 lessons-learned closure: the R2-13 hash-pinned sandbox
+    # graduation gate MUST re-verify on every commit. The gate script
+    # exits non-zero if recall < 95% OR FPR > 5% OR precision < 80%, OR
+    # if the corpus hash drifts from the Sprint 24 pin
+    # (db9c19...8fff4). Failing this job blocks the build.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build core (gate imports compiled validator dist)
+        run: pnpm --filter @blackunicorn/bonklm build
+
+      - name: Run R2-13 sandbox graduation gate
+        run: node packages/core/benchmarks/sandbox-attack-corpus/run-graduation-gate.mjs
+
+      - name: Upload graduation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sandbox-graduation-report
+          path: |
+            packages/core/benchmarks/sandbox-attack-corpus/graduation-report.json
+            packages/core/benchmarks/sandbox-attack-corpus/graduation-report.txt
+          retention-days: 30
+          # Sprint 34 code-reviewer HIGH closure: the gate script
+          # writes both files unconditionally before exit. A missing
+          # report means the script crashed before evaluation completed
+          # — that's a harder failure mode than a non-zero gate-decision
+          # exit and MUST surface as a CI error rather than silently
+          # being ignored.
+          if-no-files-found: error
