@@ -1036,16 +1036,22 @@ importers:
       '@blackunicorn/bonklm':
         specifier: workspace:*
         version: link:../core
-      '@temporalio/worker':
-        specifier: ^1.16.0
-        version: 1.16.2(@swc/helpers@0.5.21)(tslib@2.8.1)
     devDependencies:
       '@temporalio/activity':
+        specifier: ^1.16.0
+        version: 1.16.2
+      '@temporalio/client':
         specifier: ^1.16.0
         version: 1.16.2
       '@temporalio/testing':
         specifier: ^1.16.0
         version: 1.16.2(@swc/helpers@0.5.21)(tslib@2.8.1)
+      '@temporalio/worker':
+        specifier: ^1.16.0
+        version: 1.16.2(@swc/helpers@0.5.21)(tslib@2.8.1)
+      '@temporalio/workflow':
+        specifier: ^1.16.0
+        version: 1.16.2
       '@vitest/coverage-v8':
         specifier: ^4.1.7
         version: 4.1.7(vitest@4.1.7)
