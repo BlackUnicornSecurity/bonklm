@@ -7,7 +7,7 @@
  * Security Features:
  * - SEC-005: Tool call injection via JSON.stringify - schema validation
  * - SEC-007: Production mode error messages
- * - SEC-008: Validation timeout with AbortController
+ * - SEC-008: Validation timeout via validateWithTimeoutSecure (Sprint 30)
  * - DEV-001: Correct GuardrailEngine.validate() API (string context)
  * - DEV-002: Proper logger integration
  *
@@ -219,7 +219,7 @@ export function createGuardedMCP(
   });
 
   /**
-   * SEC-008: Validation timeout wrapper with AbortController.
+   * SEC-008: Validation timeout wrapper (Sprint 30: routes through canonical validateWithTimeoutSecure primitive).
    *
    * @internal
    */

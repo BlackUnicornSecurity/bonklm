@@ -10,7 +10,7 @@
  * - Payload filter sanitization
  * - Payload field access control
  * - Production mode error messages
- * - Validation timeout with AbortController
+ * - Validation timeout via validateWithTimeoutSecure (Sprint 30)
  *
  * @package @blackunicorn/bonklm-qdrant
  */
@@ -113,7 +113,7 @@ export function createGuardedClient(
   });
 
   /**
-   * Validation timeout wrapper with AbortController.
+   * Validation timeout wrapper (Sprint 30: routes through canonical validateWithTimeoutSecure primitive).
    *
    * @internal
    */

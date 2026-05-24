@@ -406,9 +406,12 @@ describe('Validators', () => {
     expect(Validators.percentage.validate(101)).toBeInstanceOf(ConfigValidationError);
   });
 
-  it('should provide timeout validator', () => {
+  it('should provide timeout validator (Sprint 31: strictly positive)', () => {
     expect(Validators.timeout.validate(5000)).toBeUndefined();
-    expect(Validators.timeout.validate(0)).toBeUndefined();
+    // Sprint 31 cumulative audit: 0 is REJECTED to align with
+    // validateWithTimeoutSecure (throws on timeoutMs ≤ 0). Defense-in-depth.
+    expect(Validators.timeout.validate(0)).toBeInstanceOf(ConfigValidationError);
+    expect(Validators.timeout.validate(1)).toBeUndefined();
     expect(Validators.timeout.validate(3600000)).toBeUndefined();
     expect(Validators.timeout.validate(-1)).toBeInstanceOf(ConfigValidationError);
     expect(Validators.timeout.validate(3600001)).toBeInstanceOf(ConfigValidationError);

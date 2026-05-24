@@ -9,7 +9,7 @@
  * - Retrieved document poisoning detection
  * - Metadata filter sanitization
  * - Production mode error messages
- * - Validation timeout with AbortController
+ * - Validation timeout via validateWithTimeoutSecure (Sprint 30)
  *
  * @package @blackunicorn/bonklm-chroma
  */

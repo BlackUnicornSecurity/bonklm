@@ -108,7 +108,8 @@ export interface GuardedChromaOptions {
    * @defaultValue 30000
    *
    * @remarks
-   * Prevents validation from hanging. Uses AbortController for enforcement.
+   * Prevents validation from hanging. Uses validateWithTimeoutSecure
+   * (canonical SEC-008 primitive) for enforcement.
    */
   validationTimeout?: number;
 

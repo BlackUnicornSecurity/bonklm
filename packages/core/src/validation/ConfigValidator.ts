@@ -449,15 +449,36 @@ export class Schema {
  * Pre-defined validators for common config options
  */
 export const Validators = {
-  /** Positive number */
+  /**
+   * Positive number with optional explicit minimum.
+   *
+   * Sprint 31 cumulative audit (security LOW-2 closure): the prior
+   * `min === 0 ? undefined : min` short-circuit silently turned
+   * `Validators.positiveNumber(0)` into an UNBOUNDED rule (accepts
+   * negatives). `maxContentLength: positiveNumber(0)` would have
+   * accepted `-1024` and disabled the size limit. Now `min` is
+   * always honoured; pass `min = 0` for "≥ 0" semantics explicitly.
+   */
   positiveNumber: (min: number = 0) =>
-    new NumberRangeRule(min === 0 ? undefined : min, undefined),
+    new NumberRangeRule(min, undefined),
 
   /** Percentage (0-100) */
   percentage: new NumberRangeRule(0, 100),
 
-  /** Timeout (ms) - must be positive */
-  timeout: new NumberRangeRule(0, 3600000), // Max 1 hour
+  /**
+   * Timeout (ms) — must be strictly positive (≥ 1).
+   *
+   * Sprint 31 cumulative audit (arch HIGH-1 + sec HIGH-1 closure):
+   * the prior `NumberRangeRule(0, ...)` was inclusive-zero, which
+   * conflicted with `validateWithTimeoutSecure` (throws TypeError on
+   * `timeoutMs ≤ 0`). An operator passing `validationTimeout: 0`
+   * (e.g. `parseInt('')` from a broken env-var) would pass schema
+   * validation, then crash the worker on EVERY request with an
+   * uncaught TypeError. The schema is now the FIRST defense-in-depth
+   * layer — 0 is rejected at config-load time with a clear error.
+   * Max 1 hour preserved.
+   */
+  timeout: new NumberRangeRule(1, 3600000),
 
   /** Boolean */
   boolean: new TypeRule('boolean'),

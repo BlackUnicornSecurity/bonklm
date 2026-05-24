@@ -10,7 +10,7 @@
  * - SEC-005: Action call injection protection via schema validation
  * - SEC-006: Complex message content handling (arrays, images, structured data)
  * - SEC-007: Production mode error messages
- * - SEC-008: Validation timeout with AbortController
+ * - SEC-008: Validation timeout via validateWithTimeoutSecure (Sprint 30)
  * - SEC-010: Request size limit
  * - DEV-001: Correct GuardrailEngine.validate() API (string context)
  * - DEV-002: Proper logger integration
@@ -250,7 +250,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
   };
 
   /**
-   * SEC-008: Validation timeout wrapper with AbortController.
+   * SEC-008: Validation timeout wrapper (Sprint 30: routes through canonical validateWithTimeoutSecure primitive).
    *
    * @internal
    */
@@ -260,21 +260,30 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
   ): Promise<GuardrailResult[]> => {
     // DEV-001: Correct API signature - use string context, not object
     // DEV-003: AWAIT the validation
-    const engineResult = await validateWithTimeoutSecure<{ results: GuardrailResult[] }>({
+    // Sprint 31 cumulative audit fix (architect CRITICAL-1): canonical
+    // sentinel carries the top-level GuardrailResult shape AS WELL AS
+    // the connector-specific `results` array. The prior
+    // `{ results: [...] }`-only shape diverged from the other
+    // connectors' top-level BLOCKED contract — operators inspecting a
+    // unified SIEM sink would see structurally different timeout events
+    // depending on which connector fired. Now uniform.
+    const sentinelGuardrail = (): GuardrailResult =>
+      createResult(false, Severity.CRITICAL, [
+        {
+          category: 'timeout',
+          severity: Severity.CRITICAL,
+          description: 'Validation timeout',
+        },
+      ]);
+    type CopilotkitWrappedResult = GuardrailResult & { results: GuardrailResult[] };
+    const engineResult = await validateWithTimeoutSecure<CopilotkitWrappedResult>({
       operation: () =>
-        engine.validate(content, context) as Promise<{ results: GuardrailResult[] }>,
+        engine.validate(content, context) as Promise<CopilotkitWrappedResult>,
       timeoutMs: validationTimeout,
-      timeoutSentinel: () => ({
-        results: [
-          createResult(false, Severity.CRITICAL, [
-            {
-              category: 'timeout',
-              severity: Severity.CRITICAL,
-              description: 'Validation timeout',
-            },
-          ]),
-        ],
-      }),
+      timeoutSentinel: () => {
+        const top = sentinelGuardrail();
+        return { ...top, results: [top] };
+      },
       logger,
     });
     return engineResult.results;

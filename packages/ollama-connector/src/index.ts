@@ -54,7 +54,7 @@
  * - **Output Validation**: Validates responses after generation
  * - **Streaming Support**: Incremental validation for streaming responses
  * - **Buffer Protection**: Prevents memory exhaustion attacks
- * - **Timeout Protection**: AbortController-based validation timeout
+ * - **Timeout Protection**: validateWithTimeoutSecure-based validation timeout
  * - **Production Mode**: Generic error messages in production
  *
  * ## Security Options

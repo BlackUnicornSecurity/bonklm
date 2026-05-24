@@ -114,7 +114,8 @@ function payloadToText(payload: unknown): string {
 /**
  * Internal: timeout-wrapped engine.validate adapter, returning the
  * canonical `{ allowed, reason }` shape so callers (guardrail
- * `execute` impls below) don't repeat the AbortController boilerplate.
+ * `execute` impls below) don't repeat the validateWithTimeoutSecure
+ * boilerplate.
  */
 function makeValidate(
   engine: GuardrailEngine,

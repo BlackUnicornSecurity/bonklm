@@ -113,6 +113,96 @@ See `docs/user/public-api-surface.md` for the full catalog.
 
 ---
 
+## §3a — `OptionalRule` rejects explicit `null` (rc.2)
+
+**Released: v1.0.0-rc.2, Sprint 29**
+
+`OptionalRule` (`@blackunicorn/bonklm` → `validation/`) previously
+short-circuited on BOTH `undefined` AND `null`. After Sprint 29 it
+only short-circuits on `undefined`; explicit `null` flows into the
+inner rule for type-check.
+
+**Why this changed**: the prior null-short-circuit was a footgun.
+Passing `{ logger: null }` would pass schema validation, then crash
+at `this.logger.debug(...)` at runtime because the destructuring
+default `logger = DEFAULT_LOGGER` ONLY fires for `undefined` (not
+`null`). The new behaviour rejects the bad config at schema-load
+time with a clear error message.
+
+```diff
+- // pre-rc.2 — passed schema, crashed at runtime:
+- const middleware = createGuardrailsMiddleware({
+-   validators: [new PromptInjectionValidator()],
+-   logger: null,  // ← silent footgun
+- });
+
++ // rc.2+ — either omit the key OR pass undefined:
++ const middleware = createGuardrailsMiddleware({
++   validators: [new PromptInjectionValidator()],
++   // logger omitted — destructure default applies (DEFAULT_LOGGER)
++ });
+```
+
+Affects every connector that uses `Validators.optional(...)` for an
+object-shape field (logger, attackLogger, sessionIdExtractor, etc.).
+External middleware wrappers (NestJS DI providers, factory functions
+that snapshot config) that relied on `null` as a "disable" sentinel
+must migrate to either omitting the key or passing `undefined`.
+
+---
+
+## §3b — `Validators.timeout` rejects `0` (rc.2)
+
+**Released: v1.0.0-rc.2, Sprint 31 cumulative audit closure**
+
+`Validators.timeout` (`@blackunicorn/bonklm` → `validation/`)
+previously accepted `0` ms as a valid timeout. After Sprint 31 it
+rejects `0` to align with `validateWithTimeoutSecure`, which throws
+`TypeError` on `timeoutMs <= 0`.
+
+**Why this changed**: an operator passing `validationTimeout: 0`
+(e.g. `parseInt('')` from a broken env-var) would pass schema
+validation, then crash the worker on EVERY request with an uncaught
+TypeError. The schema is now the FIRST defense-in-depth layer — 0
+is rejected at config-load time with a clear error.
+
+```diff
+- validationTimeout: 0   // pre-rc.2: passed schema, ran the engine
+- // with a 0ms budget (next-tick timeout = always blocked)
++ validationTimeout: 1   // rc.2+: minimum is 1ms (max 3,600,000 = 1h)
+```
+
+If you genuinely want to disable the timeout, set
+`validationTimeout: 3_600_000` (the 1-hour max) — there is no
+"disable" sentinel for SEC-008. Sub-ms granularity is enforced
+because race-with-timeout requires a positive integer.
+
+---
+
+## §3c — `Validators.positiveNumber(0)` honours the `0` floor (rc.2)
+
+**Released: v1.0.0-rc.2, Sprint 31 cumulative audit closure**
+
+`Validators.positiveNumber(0)` previously had a `min === 0 ?
+undefined : min` short-circuit that silently turned the rule into
+an UNBOUNDED rule (accepting negative numbers). After Sprint 31 the
+`min` argument is always honoured.
+
+```diff
+- // pre-rc.2 — Validators.positiveNumber(0) accepted -1024 silently:
+- maxContentLength: Validators.optional(Validators.positiveNumber(0))
+- // then config { maxContentLength: -1024 } passed schema validation
+
++ // rc.2+ — Validators.positiveNumber(0) means "≥ 0" strictly.
++ // Negative values are rejected.
+```
+
+If you have a connector schema with `Validators.positiveNumber(0)`,
+your runtime behaviour is unchanged for valid inputs but invalid
+(negative) inputs are now rejected at schema-load time.
+
+---
+
 ## §4 — Validator `validate(string)` legacy overload removed
 
 **Released: v0.5.0** (already a year stale by v1.0 — included here for

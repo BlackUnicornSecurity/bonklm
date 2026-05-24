@@ -61,6 +61,21 @@ This document enumerates what is **PUBLIC** (frozen for v2.0) vs
   canonical timeout primitive. ALL connector authors MUST use this
   instead of rolling their own AbortController-based timeout (the
   AbortSignal does not propagate to `engine.validate()`).
+- **`ValidateWithTimeoutOptions<R>` (interface)** — options bag for
+  `validateWithTimeoutSecure`. Frozen at rc.2: `operation` +
+  `timeoutMs` + `timeoutSentinel` + optional `logger`. Future
+  extensions are additive.
+- **`TimeoutSentinelShape` (interface)** — minimum shape every `R`
+  must satisfy (`{ allowed: boolean }`). The `allowed: false` invariant
+  is the SEC-008 security boundary on timeout. Connectors that surface
+  `GuardrailResult` / `EngineResult` / wrapped shapes automatically
+  satisfy this via structural typing.
+
+The hardcoded fallback sentinel (used when the caller's
+`timeoutSentinel()` factory itself throws) is shaped like
+`GuardrailResult` with `Severity.CRITICAL`. Connectors should keep
+their factory shape compatible with `GuardrailResult` to avoid
+sentinel-shape divergence in BonklmBlockEvent telemetry sinks.
 
 #### Telemetry
 - `BonklmBlockEvent` (discriminated union, 7 kinds)

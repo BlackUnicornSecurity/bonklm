@@ -116,7 +116,7 @@ export interface GuardedOllamaOptions {
    *
    * @remarks
    * Prevents hanging on slow or malicious inputs.
-   * Uses AbortController for timeout enforcement.
+   * Uses validateWithTimeoutSecure (canonical SEC-008 primitive) for timeout enforcement.
    *
    * Addresses SEC-008: Missing timeout enforcement.
    *

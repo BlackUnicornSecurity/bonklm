@@ -356,6 +356,17 @@ export interface WithRetrieverGuardrailsOptions {
   validators: Validator[];
   logger?: Logger;
   productionMode?: boolean;
+  /**
+   * SEC-008 per-document validation timeout in milliseconds.
+   *
+   * Sprint 31 cumulative audit (code-review MEDIUM-3 closure): the
+   * retriever path previously ran `v.validate(content)` calls without
+   * a timeout wrapper — slow validators silently hung the retriever
+   * `invoke` call. This option wraps each per-doc validator chain in
+   * `validateWithTimeoutSecure`. Default 5000ms matches the canonical
+   * SEC-008 budget across other connectors.
+   */
+  validationTimeout?: number;
 }
 
 /**
@@ -385,13 +396,25 @@ export function withRetrieverGuardrails<TRetriever extends BonklmRetrieverLike>(
   const logger = options.logger ?? createLogger('console');
   const productionMode = options.productionMode ?? false;
   const validators = options.validators;
+  // Sprint 31 cumulative audit (code-review MEDIUM-3): wrap per-doc
+  // validation in validateWithTimeoutSecure so slow validators can't
+  // silently hang the retriever invoke call (same SEC-008 regression
+  // Sprint 30 closed across all other connectors). Default 5000ms.
+  const validationTimeout = options.validationTimeout ?? 5000;
 
   const validateDoc = async (content: string): Promise<{ allowed: boolean; reason?: string }> => {
-    for (const v of validators) {
-      const r = await v.validate(content);
-      if (!r.allowed) return { allowed: false, reason: r.reason };
-    }
-    return { allowed: true };
+    return validateWithTimeoutSecure<{ allowed: boolean; reason?: string }>({
+      operation: async () => {
+        for (const v of validators) {
+          const r = await v.validate(content);
+          if (!r.allowed) return { allowed: false, reason: r.reason };
+        }
+        return { allowed: true };
+      },
+      timeoutMs: validationTimeout,
+      timeoutSentinel: () => ({ allowed: false, reason: 'Validation timeout' }),
+      logger,
+    });
   };
 
   const original = retriever;
@@ -471,11 +494,27 @@ export interface BonklmLangGraphState {
 export async function bonklmLangGraphNode(
   state: BonklmLangGraphState,
   engine: GuardrailEngine,
-  options: { productionMode?: boolean } = {}
+  options: { productionMode?: boolean; validationTimeout?: number; logger?: Logger } = {}
 ): Promise<BonklmLangGraphState> {
   const inputText = extractText(state as BonklmMiddlewareState);
   if (inputText.length === 0) return state;
-  const r = await engine.validate(inputText, 'bonklm_langgraph_node');
+  // Sprint 31 cumulative audit (code-review LOW-2): wrap engine.validate
+  // in validateWithTimeoutSecure so the LangGraph node honours SEC-008
+  // even when callers don't supply their own outer timeout. Default
+  // 5000ms matches the canonical SEC-008 budget.
+  // The node ONLY consumes `.allowed` and `.reason` from the result, so
+  // a minimal sentinel shape suffices (engine.validate's wider EngineResult
+  // return is narrowed by the generic).
+  type LangGraphValidationResult = { allowed: boolean; reason?: string };
+  const r = await validateWithTimeoutSecure<LangGraphValidationResult>({
+    operation: async () => {
+      const er = await engine.validate(inputText, 'bonklm_langgraph_node');
+      return { allowed: er.allowed, reason: er.reason };
+    },
+    timeoutMs: options.validationTimeout ?? 5000,
+    timeoutSentinel: () => ({ allowed: false, reason: 'Validation timeout' }),
+    logger: options.logger,
+  });
   if (!r.allowed) {
     throw new ConnectorValidationError(
       options.productionMode ? 'State blocked' : `State blocked: ${r.reason}`,

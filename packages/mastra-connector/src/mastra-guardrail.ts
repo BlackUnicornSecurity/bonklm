@@ -10,7 +10,7 @@
  * - SEC-005: Tool call injection protection via schema validation
  * - SEC-006: Complex message content handling (arrays, images, structured data)
  * - SEC-007: Production mode error messages
- * - SEC-008: Validation timeout with AbortController
+ * - SEC-008: Validation timeout via validateWithTimeoutSecure (Sprint 30)
  * - SEC-010: Request size limit
  * - DEV-001: Correct GuardrailEngine.validate() API (string context)
  * - DEV-002: Proper logger integration
@@ -254,7 +254,7 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
   };
 
   /**
-   * S012-004: Validation timeout wrapper with AbortController.
+   * S012-004: Validation timeout wrapper (Sprint 30: routes through canonical validateWithTimeoutSecure primitive).
    * Returns EngineResult and uses connector-utils for logging.
    *
    * @internal
@@ -593,7 +593,15 @@ export function wrapAgent<TAgent extends {
     // Validate input
     const beforeResult = await guardrails.beforeAgentExecution(messages);
     if (!beforeResult.allowed) {
-      throw new Error(beforeResult.blockedReason || 'Input blocked');
+      // Sprint 31 cumulative audit (security MEDIUM-4): use
+      // ConnectorValidationError to match the output-blocked path below
+      // (same throw type). Callers catching `ConnectorValidationError`
+      // to distinguish guardrail blocks from network errors will now
+      // see input-blocked events too.
+      throw new ConnectorValidationError(
+        beforeResult.blockedReason || 'Input blocked',
+        'validation_failed',
+      );
     }
 
     // Execute agent

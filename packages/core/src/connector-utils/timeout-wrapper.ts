@@ -55,6 +55,30 @@
  * interface prevents drift if the contract grows (e.g. `trace` method).
  */
 import type { Logger } from '../base/GenericLogger.js';
+import { Severity } from '../base/GuardrailResult.js';
+
+/**
+ * Sprint 31 audit closure (security MEDIUM-3 + general hardening):
+ * truncate and sanitize error-message strings before logging to prevent
+ * log-injection (CWE-117). Caps at 500 chars and strips control chars
+ * (\n / \r / NUL / DEL / 0x01-0x08 / 0x0b-0x1f / 0x7f) that could be
+ * used to forge log records in downstream aggregators (Datadog,
+ * Splunk, etc.).
+ */
+const MAX_ERROR_MESSAGE_LEN = 500;
+function sanitizeErrorMessage(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err);
+  // Replace control characters with their escaped form.
+  // eslint-disable-next-line no-control-regex
+  const stripped = raw.replace(/[\x00-\x08\x0b-\x1f\x7f]/g, (c) =>
+    `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`
+  );
+  // Replace newlines/CRs (most common injection vector) with literal markers.
+  const flat = stripped.replace(/\r\n|\n|\r/g, '\\n');
+  return flat.length > MAX_ERROR_MESSAGE_LEN
+    ? `${flat.slice(0, MAX_ERROR_MESSAGE_LEN)}…[truncated]`
+    : flat;
+}
 
 /**
  * Options for `validateWithTimeoutSecure`.
@@ -108,6 +132,26 @@ export interface ValidateWithTimeoutOptions<R> {
 }
 
 /**
+ * Minimum shape every `R` must satisfy. Sprint 31 cumulative audit
+ * (code-review HIGH-1 + architect CRITICAL-1): the helper's
+ * `HARDCODED_FALLBACK` is shaped like a blocked decision. Without a
+ * generic constraint, callers could pass `R = boolean` or `R = DBRow`
+ * and get a structurally-incompatible fallback that crashes the caller
+ * at runtime.
+ *
+ * We require ONLY `allowed: boolean` because that's the only invariant
+ * that matters for the SEC-008 security boundary — on timeout, the
+ * sentinel MUST set `allowed: false`. Connectors that surface richer
+ * shapes (`GuardrailResult` with `blocked`/`severity`/`reason`/etc.,
+ * or `EngineResult` with `results[]`) automatically satisfy the
+ * constraint via structural typing.
+ */
+export interface TimeoutSentinelShape {
+  /** Must be `false` on timeout. */
+  allowed: boolean;
+}
+
+/**
  * SEC-008 — race a validation operation against a timeout, returning
  * the operation's result if it completes in budget, or the timeout
  * sentinel if it does not.
@@ -118,7 +162,7 @@ export interface ValidateWithTimeoutOptions<R> {
  * @public Sprint 30 v1.0-RC2 stabilization. The helper signature is
  * frozen; future extensions are additive on the options object.
  */
-export async function validateWithTimeoutSecure<R>(
+export async function validateWithTimeoutSecure<R extends TimeoutSentinelShape>(
   options: ValidateWithTimeoutOptions<R>
 ): Promise<R> {
   const { operation, timeoutMs, timeoutSentinel, logger } = options;
@@ -139,16 +183,21 @@ export async function validateWithTimeoutSecure<R>(
   // unhandled rejection in the .catch handler (process exit on Node ≥15).
   // Hardcoded fallback sentinel preserves the security boundary even if
   // the connector's factory misbehaves.
+  //
+  // Sprint 31 cumulative audit (security MEDIUM-1): use `Severity.CRITICAL`
+  // enum instead of raw string 'critical' to avoid drift if the enum
+  // value ever changes. Today they're identical at runtime, but the
+  // type contract requires the enum reference.
   const HARDCODED_FALLBACK = {
     allowed: false,
     blocked: true,
-    severity: 'critical',
+    severity: Severity.CRITICAL,
     risk_level: 'HIGH',
     risk_score: 100,
     findings: [
       {
         category: 'timeout',
-        severity: 'critical',
+        severity: Severity.CRITICAL,
         description: 'Validation timeout (fallback sentinel — caller-supplied factory threw)',
       },
     ],
@@ -160,7 +209,7 @@ export async function validateWithTimeoutSecure<R>(
       return timeoutSentinel();
     } catch (err) {
       logger?.error?.('[Guardrails] timeoutSentinel factory threw — using hardcoded fallback', {
-        error: err instanceof Error ? err.message : String(err),
+        error: sanitizeErrorMessage(err),
       });
       return HARDCODED_FALLBACK;
     }
@@ -168,10 +217,20 @@ export async function validateWithTimeoutSecure<R>(
   // Sprint 30 audit (architect HIGH): memoize sentinel construction so
   // we never invoke the (potentially side-effecting) factory twice when
   // both the timeout fires AND the operation rejects.
-  let memoizedSentinel: R | undefined;
+  //
+  // Sprint 31 cumulative audit (security CRITICAL + code-review MEDIUM-1):
+  // use a separate boolean `built` flag instead of `=== undefined` check
+  // so memoization works even when a connector legitimately returns
+  // `undefined` as a sentinel (e.g. `R = void | undefined` for a
+  // fire-and-forget connector). The prior pattern would re-invoke the
+  // factory on every call when the factory returned undefined —
+  // defeating both memoization and the side-effect guarantee.
+  let memoizedSentinel: R;
+  let memoizedBuilt = false;
   const getSentinel = (): R => {
-    if (memoizedSentinel === undefined) {
+    if (!memoizedBuilt) {
       memoizedSentinel = safeSentinel();
+      memoizedBuilt = true;
     }
     return memoizedSentinel;
   };
@@ -189,11 +248,13 @@ export async function validateWithTimeoutSecure<R>(
   // Sprint 30 audit (security MEDIUM): log at WARN, not debug — a
   // validator that throws after timeout is a real failure operators
   // need to see, even though the timeout sentinel already won the race.
+  // Sprint 31 cumulative audit (security HIGH-3): sanitize err.message
+  // before logging (log-injection / CWE-117).
   const operationPromise = Promise.resolve()
     .then(operation)
     .catch((err: unknown) => {
       logger?.warn?.('[Guardrails] Validator rejected post-timeout', {
-        error: err instanceof Error ? err.message : String(err),
+        error: sanitizeErrorMessage(err),
       });
       return getSentinel();
     });

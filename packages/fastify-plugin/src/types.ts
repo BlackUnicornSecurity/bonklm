@@ -6,7 +6,7 @@
  * Security Fixes Applied:
  * - SEC-001: Path normalization via path.normalize()
  * - SEC-007: Production mode toggle for error messages
- * - SEC-008: Validation timeout with AbortController
+ * - SEC-008: Validation timeout via validateWithTimeoutSecure (Sprint 30)
  * - SEC-010: Request size limit option
  * - DEV-001: Correct GuardrailEngine API (string context)
  * - DEV-002: Logger type instead of GenericLogger
@@ -83,7 +83,7 @@ export interface GuardrailsPluginOptions {
 
   /**
    * Validation timeout in milliseconds (SEC-008).
-   * Uses AbortController to enforce timeout.
+   * Uses validateWithTimeoutSecure (canonical SEC-008 primitive) to enforce timeout.
    * @default 5000
    */
   validationTimeout?: number;

@@ -5,12 +5,121 @@ All notable changes to BonkLM (`@blackunicorn/bonklm`) will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Sprint 31 cumulative audit closure (2026-05-24)
+
+Post-Sprint-28-to-31 cumulative 3-lane audit (architect + code-reviewer +
+security-reviewer) ran across all v1.0.0-rc.1 → HEAD changes. Convergent
+findings closed inline before commit.
+
+### Fixed (audit-driven security hardening)
+
+- **`validateWithTimeoutSecure` memoization bug** (sec CRITICAL +
+  review MEDIUM-1) — the prior `=== undefined` check would re-invoke
+  the sentinel factory on every call when the factory legitimately
+  returned `undefined`, defeating both memoization and the side-effect
+  guarantee. Switched to a separate `built` boolean flag.
+- **`Validators.timeout` accepts 0 vs primitive throws on ≤ 0** (arch
+  HIGH-1 + sec HIGH-1) — schema layer now also rejects 0
+  (`NumberRangeRule(1, 3600000)`) so the defense-in-depth layers
+  agree. An operator-induced DoS (passing `validationTimeout: 0` via
+  broken env-var) is now caught at config-load time instead of
+  crashing every request.
+- **`Validators.positiveNumber(0)` silently unbounded** (sec LOW-2) —
+  the `min === 0 ? undefined : min` short-circuit accepted negative
+  numbers when called with `(0)`. Always honour the explicit `min`.
+- **`HARDCODED_FALLBACK` used string `'critical'` not `Severity.CRITICAL`**
+  (sec MEDIUM-1) — switched to enum reference to prevent drift if
+  the enum value ever changes.
+- **Log injection via `err.message`** (sec HIGH-3 / CWE-117) — added
+  `sanitizeErrorMessage()` that strips control chars (`\x00-\x08
+  \x0b-\x1f \x7f`), escapes newlines (`\\n`), and caps at 500 chars.
+  Applied at all logger call-sites in `timeout-wrapper.ts`.
+- **Sentinel-factory throw could re-introduce process crash**
+  (sec HIGH) — `safeSentinel()` wraps the factory call in try/catch
+  with the hardcoded fallback.
+- **TimeoutSentinelShape generic constraint** (review HIGH-1) — added
+  `R extends TimeoutSentinelShape` (minimum `{ allowed: boolean }`)
+  so callers cannot widen the generic to a type structurally
+  incompatible with the hardcoded fallback (which would crash the
+  caller at runtime when accessing `.allowed`).
+- **langchain `withRetrieverGuardrails` bypassed timeout** (review
+  MEDIUM-3) — per-doc validator loop now wrapped in
+  `validateWithTimeoutSecure` so slow validators can't silently hang
+  the retriever invoke call. Reintroduced SEC-008 regression Sprint
+  30 closed across all other connectors.
+- **`bonklmLangGraphNode` raw form bypassed timeout** (review LOW-2)
+  — added the same wrapper. Both call shapes (raw + factory) now
+  honour SEC-008 with a default 5000ms budget.
+- **mastra input-blocked threw plain `Error`, output-blocked threw
+  `ConnectorValidationError`** (sec MEDIUM-4) — unified to
+  `ConnectorValidationError` so callers catching by type see both
+  guardrail-block events consistently.
+- **copilotkit + genkit sentinel shape divergence** (arch CRITICAL-1)
+  — both wrapped only `{ results: [...] }` (no top-level
+  `allowed`/`blocked`/`severity`). Now spread a canonical top-level
+  `GuardrailResult` alongside the `results` array. SIEM sinks
+  consuming `BonklmBlockEvent` now see uniform timeout-event shapes
+  across all 22 connectors.
+
+### Added
+
+- **`packages/core/tests/connector-utils/timeout-wrapper.test.ts`**
+  (21 tests) — direct unit tests for the SEC-008 primitive. Covers
+  happy path, timeout fire, `timeoutMs` validation (9 bad-value
+  cases), post-timeout rejection absorption, log sanitization
+  (control chars + newlines + truncation), sentinel-factory throw
+  fallback, memoization (factory called exactly once), non-Error
+  rejection coercion, sync operations, optional logger. Code-review
+  HIGH-3 closure.
+
+### Changed (docs)
+
+- **`docs/user/migration-v0-to-v1.md`** — added §3a `OptionalRule`
+  null-rejection migration (arch HIGH-2), §3b `Validators.timeout`
+  zero-rejection migration, §3c `Validators.positiveNumber(0)`
+  semantics migration.
+- **`docs/user/public-api-surface.md`** — added
+  `ValidateWithTimeoutOptions<R>` + `TimeoutSentinelShape` to the
+  connector-utils PUBLIC catalog (arch MEDIUM-2).
+- **23 stale "AbortController" comment references** across 19
+  connector packages updated to "validateWithTimeoutSecure (Sprint
+  30)". Removes the future-contributor footgun the audit flagged.
+
+### Tests
+
+- Core: **2788/2798** passing (+21 new primitive tests; 10
+  multilingual Pass-2 skips unchanged).
+- All 22 ported connectors build clean. No regressions.
+
+### Audit residual (LOW, accepted)
+
+- **`*Instance` suffix in Validators registry** (arch LOW-1):
+  `validatorInstance` / `loggerInstance` / `attackLoggerInstance`
+  use a structural-annotation suffix that's inconsistent with the
+  rest of the registry (`positiveNumber` / `boolean` / `string` /
+  etc.). Frozen at rc.2 per v1.0-RC1 policy; cannot rename without
+  major bump. Documented for posterity.
+
+---
+
 ## [Unreleased] — Sprint 31 (2026-05-24)
 
 Pre-existing test-tooling debt cleanup. Closes the spawn-task chip
 from Sprint 30 close: 10 long-standing test failures across 3 connector
 packages that predate Sprints 28-30 (verified by stashing + reproducing
 at HEAD).
+
+### Security note (audit-flagged categorization correction)
+
+**The mastra test fix WAS security-relevant** (arch MEDIUM-1
+correction). The prior test asserted that `wrapped.execute()` returns
+a 'filtered' string for blocked output — the INSECURE silent-filter
+path. Src line 605 explicitly comments `S012-004: Throw error instead
+of returning filtered content` (canonical security contract). The
+test was validating the wrong branch; Sprint 31 corrected it to assert
+the throw. If a `git bisect` were used to find when S012-004 throw-
+contract coverage landed, Sprint 31 is the answer (not Sprint 30 when
+the throw was originally written).
 
 ### Fixed (test-only — no src changes, no public-API change)
 
