@@ -21,6 +21,8 @@ import {
   GuardrailEngine,
   type GuardrailResult,
   type Logger,
+  sanitizeLogString,
+  serializeError,
   Severity,
   validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
@@ -378,14 +380,28 @@ export function createGuardedMCP(
               }
             } catch (error) {
               // Handle unexpected validation errors
+              // Sprint 40 connector CWE-117 sweep: `name` is the MCP
+              // tool name, which arrives from a remote server and is
+              // attacker-controlled. Route through sanitizeLogString.
+              // `error` now uses Sprint 33's canonical `serializeError`
+              // instead of inline `instanceof Error` extraction.
               logger.error('[Guardrails] Tool result validation error', {
-                tool: name,
-                error: error instanceof Error ? error.message : String(error),
+                tool: sanitizeLogString(String(name ?? '')),
+                error: serializeError(error),
               });
-              // Fail-closed: return filtered result on validation error
+              // Fail-closed: return filtered result on validation error.
+              // Sprint 40 code-reviewer MEDIUM closure: in non-production
+              // mode the `error.message` interpolates directly into the
+              // MCP tool-result text returned to the caller. An adversarial
+              // remote MCP server could craft an error whose message
+              // contains HTML / ANSI / control-char sequences that hijack
+              // the developer's terminal or IDE output. Sanitize the
+              // interpolated value at the boundary.
               const filteredText = productionMode
                 ? 'Tool result validation error'
-                : `Tool result validation error: ${error instanceof Error ? error.message : String(error)}`;
+                : `Tool result validation error: ${sanitizeLogString(
+                    error instanceof Error ? error.message : String(error)
+                  )}`;
 
               return {
                 content: [

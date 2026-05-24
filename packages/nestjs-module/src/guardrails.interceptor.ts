@@ -23,7 +23,7 @@ import { forkJoin, Observable, of, throwError } from 'rxjs';
 import { catchError, finalize, map, switchMap } from 'rxjs/operators';
 import { Reflector } from '@nestjs/core';
 import type { GuardrailResult } from '@blackunicorn/bonklm';
-import { RiskLevel, Severity } from '@blackunicorn/bonklm';
+import { RiskLevel, sanitizeLogString, serializeError, Severity } from '@blackunicorn/bonklm';
 import type { UseGuardrailsDecoratorOptions } from './types.js';
 import { GuardrailsService } from './guardrails.service.js';
 import { USE_GUARDRAILS_KEY } from './constants.js';
@@ -215,13 +215,20 @@ export class GuardrailsInterceptor implements NestInterceptor {
     const blocked = this.guardrailsService.getBlockedResult(results);
 
     if (blocked) {
-      this.logger.warn(`Request blocked: ${blocked.reason}`);
+      // Sprint 40 connector CWE-117 sweep: `blocked.reason` is built
+      // from validator output and may carry attacker-influenced text
+      // (matched-pattern content). Wrap the template interpolation.
+      this.logger.warn(`Request blocked: ${sanitizeLogString(blocked.reason ?? '')}`);
       // Call custom error handler if provided and is a function
       if (options.onError && typeof options.onError === 'function') {
         try {
           options.onError(blocked, context);
         } catch (error) {
-          this.logger.error('Error in custom error handler', { error });
+          // Sprint 40 connector CWE-117 sweep: use canonical serializeError
+          // (Sprint 33 primitive) for the `error` meta field. Bare
+          // `{ error }` renders as `error={}` post-JSON.stringify because
+          // Error properties are non-enumerable.
+          this.logger.error('Error in custom error handler', { error: serializeError(error) });
         }
       }
       return blocked;
@@ -285,13 +292,18 @@ export class GuardrailsInterceptor implements NestInterceptor {
             const blocked = this.guardrailsService.getBlockedResult(validation);
 
             if (blocked) {
-              this.logger.warn(`Response blocked: ${blocked.reason}`);
+              // Sprint 40 connector CWE-117 sweep — see line 218 rationale.
+              this.logger.warn(`Response blocked: ${sanitizeLogString(blocked.reason ?? '')}`);
               // Call custom error handler if provided and is a function
               if (options.onError && typeof options.onError === 'function') {
                 try {
                   options.onError(blocked, context);
                 } catch (error) {
-                  this.logger.error('Error in custom error handler', { error });
+                  // Sprint 40 connector CWE-117 sweep: use canonical serializeError
+          // (Sprint 33 primitive) for the `error` meta field. Bare
+          // `{ error }` renders as `error={}` post-JSON.stringify because
+          // Error properties are non-enumerable.
+          this.logger.error('Error in custom error handler', { error: serializeError(error) });
                 }
               }
 
@@ -309,7 +321,11 @@ export class GuardrailsInterceptor implements NestInterceptor {
         );
       }),
       catchError((error) => {
-        this.logger.error('Error in output validation', { error });
+        // Sprint 40 audit closure (architect HIGH-1 + security S40-3):
+        // sister site to the interceptor's existing serializeError
+        // call sites (lines 231 + 306). The Sprint 40 first pass
+        // missed this `catchError` block 90 lines down.
+        this.logger.error('Error in output validation', { error: serializeError(error) });
         return throwError(() => error);
       }),
     );

@@ -32,7 +32,7 @@
  *
  * @package @blackunicorn/bonklm-elizaos
  */
-import { createLogger } from '@blackunicorn/bonklm';
+import { createLogger, sanitizeLogString } from '@blackunicorn/bonklm';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 import { getCallContext } from './als-context.js';
 import type {
@@ -94,10 +94,19 @@ function assertMemoryWriteAllowed(
     } else if (typoCheck.nearestTypoSquat !== undefined) {
       // Typo-squat — REFUSE with CRITICAL diagnostic. Phase-2
       // adds this layer atop the Phase-1 not-in-allowlist refuse.
+      // Sprint 40 connector CWE-117 sweep: `callerPluginName` arrives
+      // from the ElizaOS runtime's plugin registry; a hostile plugin
+      // can register with a name containing control chars to inject
+      // log lines via this CRITICAL diagnostic. Build the message
+      // with sanitized fragments — `target` and `pathLabel` are
+      // library-controlled but defensive sanitization is cheap.
+      const safeCallerName = sanitizeLogString(String(callerPluginName ?? ''));
+      const safeTarget = sanitizeLogString(String(typoCheck.nearestTypoSquat.target ?? ''));
+      const safePathLabel = sanitizeLogString(String(pathLabel ?? ''));
       const typoMsg =
-        `Caller plugin "${callerPluginName}" is distance-${typoCheck.nearestTypoSquat.distance} ` +
-        `from verified publisher "${typoCheck.nearestTypoSquat.target}" — likely typo-squat impersonation. ` +
-        `Refusing ${pathLabel} 'messages' write.`;
+        `Caller plugin "${safeCallerName}" is distance-${typoCheck.nearestTypoSquat.distance} ` +
+        `from verified publisher "${safeTarget}" — likely typo-squat impersonation. ` +
+        `Refusing ${safePathLabel} 'messages' write.`;
       logger.error(`[BonkLM] CRITICAL — ${typoMsg}`);
       onRefused?.(
         productionMode ? 'memory_write_refused_typo_squat' : typoMsg

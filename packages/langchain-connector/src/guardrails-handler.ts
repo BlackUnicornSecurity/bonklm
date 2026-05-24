@@ -24,6 +24,7 @@ import {
   GuardrailEngine,
   type GuardrailResult,
   type Logger,
+  sanitizeLogString,
   Severity,
   validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
@@ -237,10 +238,15 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
     const blocked = results.find((r) => !r.allowed);
 
     if (blocked) {
+      // Sprint 40 security audit S40-2 closure: `blocked.reason` is
+      // validator-extracted text; `runId` flows from LangChain's run
+      // system and may carry caller-supplied content. Sanitize both
+      // at the meta boundary. `context` is a string enum from this
+      // file's own dispatch and is safe.
       this.logger.warn('[Guardrails] Content blocked', {
         context,
-        reason: blocked.reason,
-        runId,
+        reason: sanitizeLogString(blocked.reason ?? ''),
+        runId: sanitizeLogString(String(runId ?? '')),
       });
 
       if (this.onBlocked) {

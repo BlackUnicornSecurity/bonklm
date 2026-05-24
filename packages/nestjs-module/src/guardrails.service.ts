@@ -16,6 +16,7 @@ import {
   LogLevel,
   RiskLevel,
   Schema,
+  serializeError,
   type SessionPatternFinding,
   Severity,
   updateSessionState,
@@ -257,7 +258,10 @@ export class GuardrailsService {
         ? (result as { results: GuardrailResult[] }).results
         : [result];
     } catch (error) {
-      this.logger.error('[Guardrails] Validation error', { error });
+      // Sprint 40 audit closure (architect HIGH-1 + security S40-3):
+      // bare `{ error }` renders as `error={}` because Error fields
+      // are non-enumerable. Use the canonical Sprint 33 primitive.
+      this.logger.error('[Guardrails] Validation error', { error: serializeError(error) });
       return [
         {
           allowed: false,

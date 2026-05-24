@@ -39,7 +39,7 @@
  *
  * @package @blackunicorn/bonklm-elizaos
  */
-import { createLogger } from '@blackunicorn/bonklm';
+import { createLogger, sanitizeLogString } from '@blackunicorn/bonklm';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 import type { Logger } from '@blackunicorn/bonklm';
 import { runWithoutCallContext } from './als-context.js';
@@ -350,15 +350,20 @@ export function applyProbeOutcome(
       // Per branch 3 (and the "safe" sub-case piggybacked on `unreachable`),
       // we log HIGH-or-INFO depending on whether the reason indicates
       // detection completion or genuine network failure.
+      // Sprint 40 connector CWE-117 sweep: `outcome.reason` is
+      // constructed inside `runStartupProbe` from runtime context
+      // (port, hostname, error.message). The error path may carry
+      // attacker-influenced content if the runtime config is
+      // operator-edited from a downstream source.
       if (outcome.reason.startsWith('Probe completed')) {
-        logger.info(`[BonkLM] ${outcome.reason}`);
+        logger.info(`[BonkLM] ${sanitizeLogString(outcome.reason)}`);
       } else {
-        logger.warn(`[BonkLM] startup probe ${outcome.reason} Plugin continues normally.`);
+        logger.warn(`[BonkLM] startup probe ${sanitizeLogString(outcome.reason)} Plugin continues normally.`);
       }
       return;
     }
     case 'skipped': {
-      logger.info(`[BonkLM] startup probe skipped: ${outcome.reason}`);
+      logger.info(`[BonkLM] startup probe skipped: ${sanitizeLogString(outcome.reason)}`);
       return;
     }
   }

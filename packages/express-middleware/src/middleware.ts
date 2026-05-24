@@ -34,6 +34,7 @@ import {
   LogLevel,
   RiskLevel,
   Schema,
+  serializeError,
   type SessionPatternFinding,
   Severity,
   updateSessionState,
@@ -503,7 +504,10 @@ export function createGuardrailsMiddleware(
           req._guardrailsValidated = true;
           next();
         } catch (error) {
-          logger.error('[Guardrails] Validation error', { error });
+          // Sprint 40 audit closure (architect HIGH-1 + security S40-3):
+          // sister site to nestjs.service.ts:263 + nestjs.interceptor.ts:324.
+          // Use the canonical Sprint 33 primitive.
+          logger.error('[Guardrails] Validation error', { error: serializeError(error) });
           // Fail-closed: block on error
           return errorHandler(
             {
