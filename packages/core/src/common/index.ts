@@ -135,8 +135,14 @@ export function isExpectedSecretFile(filePath: string): boolean {
 const DEFAULT_MAX_LOG_STRING_LEN = 500;
 
 export function sanitizeLogString(input: string, maxLen: number = DEFAULT_MAX_LOG_STRING_LEN): string {
+  // Sprint 37 security-MEDIUM M-1: include TAB (\x09) in the control-
+  // char strip set. TSV-format log ingestors (Splunk
+  // `sourcetype=syslog`, Datadog TCP syslog, several OTel exporters)
+  // treat TAB as a column delimiter — leaving it unencoded allows a
+  // CWE-117 column-injection attack where an attacker's error
+  // message contains `\t` to spawn a phantom column.
   // eslint-disable-next-line no-control-regex
-  const stripped = input.replace(/[\x00-\x08\x0b-\x1f\x7f]/g, (c) =>
+  const stripped = input.replace(/[\x00-\x09\x0b-\x1f\x7f]/g, (c) =>
     `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`
   );
   // Replace newlines/CRs (most common injection vector) with literal markers.
@@ -179,9 +185,14 @@ export interface SerializedError {
 
 export function serializeError(error: unknown): SerializedError {
   if (error instanceof Error) {
+    // Sprint 37 security-LOW L-1: sanitize `name` too. In practice
+    // `.name` is set at class definition time (e.g. `TypeError`), but
+    // a consumer subclass that derives `name` from caught user input
+    // (anti-pattern, but observed in the wild) would otherwise leak
+    // raw control chars into structured logs.
     return {
       message: sanitizeLogString(error.message),
-      name: error.name,
+      name: sanitizeLogString(error.name),
       stack: error.stack,
     };
   }
@@ -189,7 +200,9 @@ export function serializeError(error: unknown): SerializedError {
     return { message: sanitizeLogString(error) };
   }
   // Non-Error throw: capture a best-effort string representation.
-  let raw: string;
+  // `JSON.stringify(undefined)` returns the value `undefined` (not the
+  // string `'undefined'`), so defend the type before the sanitize step.
+  let raw: string | undefined;
   try {
     raw = JSON.stringify(error);
   } catch {
@@ -203,6 +216,13 @@ export function serializeError(error: unknown): SerializedError {
     message: typeof error === 'object' && error !== null
       ? '[non-Error object thrown]'
       : sanitizeLogString(String(error)),
-    raw,
+    // Sprint 37 security-MEDIUM M-2: `raw` is also a structured-log
+    // field and a custom validator that throws `{ msg: 'x\nfake_log' }`
+    // would otherwise inject log lines via the JSON.stringify output.
+    // JSON.stringify itself escapes raw newlines to `\\n` (safe), but
+    // a consumer object containing a nested object with attacker-
+    // controlled keys can still emit unicode line-separators (U+2028)
+    // or split-via-tab attacks. sanitizeLogString handles both.
+    raw: typeof raw === 'string' ? sanitizeLogString(raw) : raw,
   };
 }

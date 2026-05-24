@@ -46,7 +46,7 @@
     "typescript": "^5.3.3"
   },
   "peerDependencies": {
-    "openclaw": ">=1.0.0"
+    "openclaw": ">=2026.4.23"
   },
   "peerDependenciesMeta": {
     "openclaw": {

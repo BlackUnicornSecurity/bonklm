@@ -58,6 +58,11 @@
     "node": ">=20.4.0"
   },
   "packageManager": "pnpm@9.15.0",
+  "pnpm": {
+    "overrides": {
+      "handlebars": ">=4.7.9"
+    }
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/blackunicorn/bonklm"

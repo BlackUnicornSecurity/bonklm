@@ -16,6 +16,7 @@ import { resolve as resolvePath } from 'node:path';
 import { createResult, Severity as Sev } from '../base/GuardrailResult.js';
 import { mergeConfig, type ValidatorConfig } from '../base/ValidatorConfig.js';
 import type { Logger } from '../base/GenericLogger.js';
+import { sanitizeLogString } from '../common/index.js';
 import { normalizeText } from '../validators/text-normalizer.js';
 
 // =============================================================================
@@ -547,7 +548,16 @@ export class BashSafetyGuard {
     const shouldBlock = this.config.action === 'block' && hasCritical;
 
     if (shouldBlock) {
-      this.logger.error(`Bash command blocked: ${findings[0]?.description}`);
+      // Sprint 37 security-MEDIUM M-3: `findings[0].description` for
+      // `dangerous_rm` / `directory_escape` categories embeds the
+      // attacker-supplied path token directly (e.g.
+      // `ABSOLUTE BLOCK: rm -rf targets path outside repository:
+      // ${target}`). A crafted path like `/tmp/p\nfake_log_entry:`
+      // would inject a phantom log line. sanitizeLogString strips
+      // control chars + flattens newlines + caps length, defeating
+      // CWE-117 at this catch site to match the engine-wide
+      // convention established Sprint 33.
+      this.logger.error(`Bash command blocked: ${sanitizeLogString(findings[0]?.description ?? '')}`);
     }
 
     return createResult(
