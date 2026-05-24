@@ -338,3 +338,140 @@ jobs:
           # exit and MUST surface as a CI error rather than silently
           # being ignored.
           if-no-files-found: error
+
+  temporal-integration:
+    name: Temporal Integration (TestWorkflowEnvironment)
+    runs-on: ubuntu-latest
+    # Sprint 36 closure of Sprint 35 deferral: flip the
+    # `BONKLM_TEMPORAL_INTEGRATION_TESTS=1` gate so the full
+    # TestWorkflowEnvironment-backed suite actually runs in CI. The
+    # gate stays default-OFF for local-dev iteration (per the
+    # test-file env-var check) — this job is the canonical CI consumer.
+    #
+    # Closes Sprint 35 architect MEDIUM M-2 (binary caching).
+    # Sprint 36 security-audit correction (security MEDIUM-7): this
+    # job CAPTURES the post-download SHA as a forensic audit trail.
+    # That is the prerequisite observation for Sprint 37 closure of
+    # the security MEDIUM (post-download SHA verification gap). The
+    # enforce step — `shasum -c` against a pinned hash BEFORE the
+    # binary executes — lands in Sprint 37 once the first green CI
+    # run produces a SHA the maintainer can review + pin (local
+    # network policy blocks `temporal.download` so first observation
+    # MUST come from CI).
+    needs: [test]
+    # Sprint 36 architect LOW-2: bound the worst-case hang. The
+    # first-run binary download + cluster bring-up is bounded
+    # generously, but a wedged TestWorkflowEnvironment would otherwise
+    # burn the default 6h runner cap.
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      # Sprint 36 architect-MEDIUM closure: cache the ~50MB
+      # temporal-test-server binary across runs. First-run cost ~30s
+      # (download + extract); cached runs spin up in <2s. Key is
+      # versioned by pnpm-lock so a @temporalio/testing bump
+      # automatically invalidates the cache and triggers re-download.
+      - name: Cache Temporal test-server binary
+        id: temporal-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.config/temporalio
+          key: temporalio-test-server-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            temporalio-test-server-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        # The integration test imports the compiled
+        # `createValidateInputActivity` from the temporal-middleware
+        # dist + the @blackunicorn/bonklm barrel.
+        run: pnpm run build
+
+      - name: Run TestWorkflowEnvironment integration suite
+        env:
+          BONKLM_TEMPORAL_INTEGRATION_TESTS: '1'
+        # Sprint 36 code-reviewer MEDIUM: invoke vitest via `pnpm
+        # exec` (workspace-pinned binary from `node_modules/.bin`)
+        # rather than `npx vitest` (which can resolve a different
+        # registry version than `pnpm-lock.yaml` records). Keeps the
+        # integration job's vitest in lockstep with the rest of the
+        # CI matrix.
+        # Sprint 36 architect MEDIUM M-3: tee vitest output so the
+        # full transcript is captured on both pass and fail (the
+        # default GH Actions log truncates noisy stack traces).
+        run: |
+          set -o pipefail
+          pnpm exec vitest run \
+            packages/temporal-middleware/tests/test-workflow-environment.test.ts \
+            2>&1 | tee temporal-integration.log
+
+      - name: Upload Temporal integration log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: temporal-integration-log
+          path: temporal-integration.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # Sprint 36 captures the SHA of the binary @temporalio/testing
+      # downloaded into ~/.config/temporalio. The Sprint 37 enforce
+      # step pins this SHA in a checked-in `.ci/temporal-test-server-
+      # sha256.txt` and runs `shasum -c` BEFORE the integration test
+      # executes (currently the test runs first; that ordering MUST
+      # invert in Sprint 37 — see SECURITY-AUDIT note above).
+      #
+      # Capture/enforce split is the standard supply-chain control
+      # bootstrap pattern: the maintainer cannot pin a SHA they have
+      # not yet observed. Local download is firewall-blocked, so
+      # first observation MUST come from CI.
+      - name: Capture Temporal binary SHA-256
+        if: always()
+        # Sprint 36 code-reviewer HIGH: advisory capture step MUST
+        # NOT fail the job on a `shasum` / `find` error (e.g.
+        # permission denied on a transient FS state). Pipeline guard
+        # with `|| true` so the upload-artifact step still runs.
+        # Sprint 36 architect M-1 + code-reviewer MEDIUM: drop the
+        # `-perm -111` branch — it required ALL three execute bits
+        # (GNU find semantics), which would miss `0755`-mode
+        # binaries. The `-name 'temporal-test-server*'` predicate
+        # alone gives a tight, enforce-ready manifest (any Temporal
+        # helper executables shipped alongside the test server would
+        # otherwise inflate the manifest and complicate Sprint 37
+        # `shasum -c` review).
+        run: |
+          SHA_FILE=temporal-test-server-shas.txt
+          : > "$SHA_FILE"
+          if [ -d ~/.config/temporalio ]; then
+            find ~/.config/temporalio -type f -name 'temporal-test-server*' -print0 2>/dev/null \
+              | xargs -0 -r shasum -a 256 \
+              | tee "$SHA_FILE" \
+              || true
+          fi
+          if [ ! -s "$SHA_FILE" ]; then
+            echo "::warning::No Temporal binary found under ~/.config/temporalio after integration run"
+          fi
+
+      - name: Upload Temporal binary SHA manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: temporal-test-server-shas
+          path: temporal-test-server-shas.txt
+          retention-days: 30
+          if-no-files-found: ignore
