@@ -52,6 +52,20 @@ describe('langchain-connector — Sprint 43 CWE-117 sanitization contract', () =
     );
   });
 
+  it('sanitizes runId meta field at stream-related log sites (Sprint 44 architect LOW #9, #10)', () => {
+    // Sprint 44 closure: `guardrails-handler.ts` lines ~424 + ~476
+    // log `runId` from LangChain in the stream-buffer-exceeded +
+    // stream-blocked-at-final-validation warns. The `validateAndThrow`
+    // path at line ~249 already sanitized runId; Sprint 44 brings the
+    // two stream sites to parity. runId is typed `string` (UUID-shaped
+    // in practice) but typing alone is no defence — a custom
+    // LangChain integration could pass any string.
+    const hostileRunId = 'run-1234\nINJECTED:fake_status=PASS';
+    expect(sanitizeMeta(hostileRunId)).toBe(
+      'run-1234\\nINJECTED:fake_status=PASS'
+    );
+  });
+
   it('sanitizes ANSI escape sequences in handoff-blocked reasons', () => {
     // Terminal-hijacking via ANSI escapes: `\x1B` (ESC) is in the
     // 0x00-0x1F range that sanitizeLogString strips. Verify the

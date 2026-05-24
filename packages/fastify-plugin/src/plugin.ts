@@ -384,9 +384,25 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
           const sessionId = getSessionId(request);
           const escalationCheck = isSessionEscalated(sessionId);
           if (escalationCheck.escalated) {
+            // Sprint 44 architect HIGH #6 closure: `sessionId` comes
+            // from `defaultSessionIdExtractor` which reads from
+            // `req.session.id`, `req.sessionID`, `req.sessionId`, or
+            // a user-supplied `sessionIdExtractor` callback (which
+            // can read arbitrary request headers / cookies — the
+            // attacker-influenceable surface). `escalationCheck.reason`
+            // is library-controlled session-pattern logic (low risk)
+            // but defensive sanitization is cheap.
+            //
+            // Sprint 44 code-review MUST-FIX #1 closure: the
+            // `errorResult.reason` template literal below ALSO embeds
+            // raw `escalationCheck.reason`; passed to `errorHandler`
+            // which typically serializes into HTTP response body —
+            // restores the CWE-117 vector through a different sink.
+            // Sanitize both.
+            const safeEscalationReason = sanitizeMeta(escalationCheck.reason);
             logger.warn('[Guardrails] Session escalated, blocking request', {
-              sessionId,
-              reason: escalationCheck.reason,
+              sessionId: sanitizeMeta(sessionId),
+              reason: safeEscalationReason,
             });
             const errorResult: GuardrailResult = {
               allowed: false,
@@ -396,7 +412,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
               risk_score: escalationCheck.riskScore,
               findings: [],
               timestamp: Date.now(),
-              reason: `Session escalated: ${escalationCheck.reason}`,
+              reason: `Session escalated: ${safeEscalationReason}`,
             };
             await errorHandler(errorResult, request, reply);
             return;
@@ -426,9 +442,22 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
           if (findings.length > 0) {
             const sessionResult = updateSessionState(sessionId, findings);
             if (sessionResult.shouldEscalate) {
+              // Sprint 44 architect HIGH #6 closure: sister site to
+              // line ~388. Same vector — sessionId from extractor
+              // chain (caller-controllable via custom extractor);
+              // reason indirectly attacker-influenced through the
+              // session `category` field (custom validators set
+              // arbitrary category strings — SessionTracker.ts
+              // embeds them verbatim into the `Category "X" repeated
+              // N times` reason). Sprint 44 code-review MUST-FIX #1
+              // + security MEDIUM #1 closure: sanitize at the
+              // GuardrailResult.reason construction site too so the
+              // value is safe before it flows into `options.onError`
+              // callbacks the integrator controls.
+              const safeSessionReason = sanitizeMeta(sessionResult.reason);
               logger.warn('[Guardrails] Session escalated after validation', {
-                sessionId,
-                reason: sessionResult.reason,
+                sessionId: sanitizeMeta(sessionId),
+                reason: safeSessionReason,
               });
               const escalatedResult: GuardrailResult = {
                 allowed: false,
@@ -438,7 +467,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
                 risk_score: sessionResult.riskScore,
                 findings: result.findings || [],
                 timestamp: Date.now(),
-                reason: `Session escalation: ${sessionResult.reason}`,
+                reason: `Session escalation: ${safeSessionReason}`,
               };
               await errorHandler(escalatedResult, request, reply);
               return;

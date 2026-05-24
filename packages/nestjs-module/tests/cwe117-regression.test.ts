@@ -103,14 +103,18 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
    * Build a minimal ExecutionContext mock for HTTP with the given
    * request body. The interceptor only consumes `getType()`,
    * `switchToHttp().getRequest()`, `getHandler()`, and `getClass()`.
+   *
+   * Sprint 44 code-review MUST-FIX #2 closure: accepts optional `url`
+   * so `extractRequestUrl()` integration tests can exercise the
+   * `request.url` path without duplicating the helper inline.
    */
-  function makeHttpContext(body: unknown): ExecutionContext {
+  function makeHttpContext(body: unknown, url = ''): ExecutionContext {
     const handler = function dummyHandler() { /* test handler */ };
     class DummyController { /* test controller */ }
     return {
       getType: () => 'http',
       switchToHttp: () => ({
-        getRequest: () => ({ body }),
+        getRequest: () => ({ body, url }),
         getResponse: () => ({}),
         getNext: () => () => undefined,
       }),
@@ -282,6 +286,53 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
     expect(typeof reasonField).toBe('string');
     expect(reasonField).not.toContain('\n');
     expect(reasonField).toContain('INJECTED');
+  });
+
+  it('sanitizes request.url path in the blocked-input warn log meta (Sprint 44 architect MEDIUM #7)', async () => {
+    // Sprint 44 closure: nestjs interceptor now extracts request.url
+    // and includes a sanitized `path` field in the blocked-request
+    // warn meta. Mirrors the fastify-plugin Sprint 43 wrap. A hostile
+    // client can craft a URL with control chars in the path
+    // component; any log aggregator keying on `path` inherits the
+    // injection vector pre-Sprint-44.
+    const hostileReason = 'matched ignore_previous\nINJECTED';
+    const service = new GuardrailsService({
+      validators: [hostileValidator(hostileReason)],
+      productionMode: false,
+    });
+    const interceptor = new GuardrailsInterceptor(
+      makeReflector({ validateInput: true }),
+      service
+    );
+
+    // Build a context whose request.url carries control chars.
+    // Sprint 44 code-review MUST-FIX #2 closure: use the existing
+    // `makeHttpContext` helper (extended to accept a url parameter)
+    // instead of an inline duplicate.
+    const hostilePath = '/api/chat\nINJECTED:fake_audit=PASS';
+    const ctx = makeHttpContext({ message: 'irrelevant' }, hostilePath);
+
+    const nextHandler: CallHandler = {
+      handle: () => of({ response: 'should not run' }),
+    };
+
+    try {
+      await firstValueFrom(interceptor.intercept(ctx, nextHandler));
+    } catch {
+      // Expected — blocked input throws BadRequestException.
+    }
+
+    expect(warnSpy).toHaveBeenCalled();
+    const requestBlockedCall = warnSpy.mock.calls.find(
+      (call) => typeof call[0] === 'string' && call[0].startsWith('Request blocked:')
+    );
+    expect(requestBlockedCall).toBeDefined();
+    // The hostile path MUST appear sanitized in the second-arg meta.
+    const meta = requestBlockedCall![1] as { path?: string };
+    expect(meta.path).toBeDefined();
+    expect(meta.path).not.toContain('\n');
+    expect(meta.path).toContain('INJECTED');
+    expect(meta.path).toContain('/api/chat');
   });
 
   it('does not leak the raw reason in production-mode BadRequestException body', async () => {

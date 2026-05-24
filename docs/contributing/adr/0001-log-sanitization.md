@@ -189,6 +189,20 @@ body / error message returned to a caller, or any other emit:
   marker (security MEDIUM #5 — denial-of-logging vector closure).
   Re-validated Sprint 41 lesson 4th time: integration/audit finds
   what grep misses, including across-connector orphans.
+- **Sprint 44** — architect HIGH/MEDIUM/LOW closures from Sprint 43
+  audit: nestjs path-sanitization parity with fastify (MEDIUM #7),
+  fastify session-tracking sessionId at 2 sites (HIGH #6), langchain
+  handler runId at 2 stream sites (LOW #9 + #10). Sprint 44 audit
+  surfaced additional 6 fixes inline: `GuardrailResult.reason`
+  raw forwarding to integrator `onError` callbacks (CR MUST-FIX #1
+  + security MEDIUM #1), test-helper inline duplication (CR
+  MUST-FIX #2), nestjs content-too-large path uniformity (architect
+  MEDIUM #2), `extractRequestUrl` originalUrl preference for Express
+  sub-routers (architect LOW #4). NEW LESSON: when a value appears
+  in BOTH a log call AND a return struct, sanitize at the variable-
+  binding site, not at each sink — `GuardrailResult.reason` field
+  flows through integrator-controlled `onError` callbacks where
+  log-only sanitization is insufficient.
 
 ## Known gaps deferred to Sprint 40
 

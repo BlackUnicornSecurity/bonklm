@@ -198,7 +198,12 @@ export class GuardrailsInterceptor implements NestInterceptor {
     const maxLength = options.maxContentLength || 1048576; // Default 1MB
 
     if (contentByteLength > maxLength) {
-      this.logger.warn(`Content exceeds max length: ${contentByteLength} bytes > ${maxLength} bytes`);
+      // Sprint 44 architect MEDIUM #2 closure: per-log correlation
+      // uniformity — add sanitized `path` meta to match the
+      // blocked-request log shape. byte counts are numeric (safe).
+      this.logger.warn(`Content exceeds max length: ${contentByteLength} bytes > ${maxLength} bytes`, {
+        path: sanitizeMeta(this.extractRequestUrl(context)),
+      });
       return {
         allowed: false,
         blocked: true,
@@ -218,7 +223,15 @@ export class GuardrailsInterceptor implements NestInterceptor {
       // Sprint 40 connector CWE-117 sweep: `blocked.reason` is built
       // from validator output and may carry attacker-influenced text
       // (matched-pattern content). Wrap the template interpolation.
-      this.logger.warn(`Request blocked: ${sanitizeMeta(blocked.reason)}`);
+      //
+      // Sprint 44 architect MEDIUM #7 closure: parity with the fastify
+      // request-blocked log site — `request.url` (the path) is caller-
+      // supplied and a CWE-117 vector. Pull it from the same
+      // ExecutionContext the interceptor already consumes.
+      const requestUrl = this.extractRequestUrl(context);
+      this.logger.warn(`Request blocked: ${sanitizeMeta(blocked.reason)}`, {
+        path: sanitizeMeta(requestUrl),
+      });
       // Call custom error handler if provided and is a function
       if (options.onError && typeof options.onError === 'function') {
         try {
@@ -274,7 +287,11 @@ export class GuardrailsInterceptor implements NestInterceptor {
         const maxLength = options.maxContentLength || 1048576; // Default 1MB
 
         if (contentByteLength > maxLength) {
-          this.logger.warn(`Response content exceeds max length: ${contentByteLength} bytes > ${maxLength} bytes`);
+          // Sprint 44 architect MEDIUM #2 closure: response-leg
+          // sister to request-leg content-too-large log.
+          this.logger.warn(`Response content exceeds max length: ${contentByteLength} bytes > ${maxLength} bytes`, {
+            path: sanitizeMeta(this.extractRequestUrl(context)),
+          });
           return of({
             error: 'Response filtered by guardrails',
             ...(this.guardrailsService.getConfig().productionMode
@@ -293,7 +310,12 @@ export class GuardrailsInterceptor implements NestInterceptor {
 
             if (blocked) {
               // Sprint 40 connector CWE-117 sweep — see line 218 rationale.
-              this.logger.warn(`Response blocked: ${sanitizeMeta(blocked.reason)}`);
+              // Sprint 44 architect MEDIUM #7 closure: parity with
+              // the request-blocked log site — add sanitized path
+              // meta. Sister of fastify response-blocked log.
+              this.logger.warn(`Response blocked: ${sanitizeMeta(blocked.reason)}`, {
+                path: sanitizeMeta(this.extractRequestUrl(context)),
+              });
               // Call custom error handler if provided and is a function
               if (options.onError && typeof options.onError === 'function') {
                 try {
@@ -351,6 +373,51 @@ export class GuardrailsInterceptor implements NestInterceptor {
       default:
         return context.getArgByIndex(0);
     }
+  }
+
+  /**
+   * Sprint 44 architect MEDIUM #7 closure: extract `request.url`
+   * (or RPC equivalent) for inclusion as the `path` field in
+   * blocked-request log meta. Caller-supplied attacker vector;
+   * defensive-by-default per Sprint 41 policy. Returns empty string
+   * if the URL cannot be resolved (non-HTTP context with no equivalent
+   * field) so the log line is always well-shaped.
+   *
+   * Sprint 44 architect LOW #4 closure: prefer `request.originalUrl`
+   * (Express preserves the full pre-routing URL there; sub-routers
+   * rewrite `url` to the route-relative path). Fastify is unaffected
+   * (no `originalUrl`). Falls back to `url`.
+   *
+   * URL-instance values (some Bun/Deno adapters populate `request.url`
+   * with a `URL` object) are intentionally not coerced; the typeof
+   * string guard returns empty string. Add `.href` extraction if
+   * needed for those adapters.
+   *
+   * The returned value is RAW. Callers MUST wrap with `sanitizeMeta`
+   * before logging per the ADR-0001 boundary policy.
+   *
+   * @internal
+   */
+  private extractRequestUrl(context: ExecutionContext): string {
+    try {
+      const request = this.getRequest(context);
+      if (request && typeof request === 'object') {
+        // Express sub-router preservation: prefer `originalUrl`.
+        const originalUrl = (request as { originalUrl?: unknown }).originalUrl;
+        if (typeof originalUrl === 'string') {
+          return originalUrl;
+        }
+        // HTTP context fallback (Fastify + Express root) populates `url`.
+        const url = (request as { url?: unknown }).url;
+        if (typeof url === 'string') {
+          return url;
+        }
+      }
+    } catch {
+      // ExecutionContext access may fail in exotic non-HTTP contexts;
+      // fall through to empty string.
+    }
+    return '';
   }
 
   /**

@@ -53,6 +53,18 @@ describe('fastify-plugin — Sprint 43 CWE-117 sanitization contract', () => {
     expect(sanitizeMeta(path)).toBe('/api/chat\\nINJECTED:fake_audit=PASS');
   });
 
+  it('sanitizes a caller-supplied sessionId field (Sprint 44 architect HIGH #6)', () => {
+    // Sprint 44 closure: `defaultSessionIdExtractor` reads from
+    // `req.session.id`, `req.sessionID`, `req.sessionId`, OR the
+    // `x-session-id` request header. The header path is squarely
+    // attacker-controllable. Pre-Sprint-44, both session-escalated
+    // log sites (lines ~388, ~430) embedded sessionId raw in meta.
+    const hostileSessionId = 'session-abc\nINJECTED:fake_admin=true';
+    expect(sanitizeMeta(hostileSessionId)).toBe(
+      'session-abc\\nINJECTED:fake_admin=true'
+    );
+  });
+
   it('serializeError replaces raw error.message in validation-error log', () => {
     // Pre-Sprint-43 the fastify validation-error log called
     // `error instanceof Error ? error.message : String(error)` —

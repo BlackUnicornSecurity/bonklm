@@ -420,8 +420,12 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
 
     // SEC-003: Check buffer size BEFORE accumulating
     if (context.accumulatedText.length + token.length > this.maxStreamBufferSize) {
+      // Sprint 44 architect LOW #10 closure: `runId` is LangChain's
+      // run identifier (UUID-shaped in practice but typed as string).
+      // The validateAndThrow site at line 249 already sanitizes runId
+      // — Sprint 44 brings the two stream-related sites to parity.
       this.logger.warn('[Guardrails] Stream buffer exceeded', {
-        runId,
+        runId: sanitizeMeta(runId),
         size: context.accumulatedText.length + token.length,
         limit: this.maxStreamBufferSize,
       });
@@ -472,8 +476,10 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
         );
 
         if (results.some((r) => !r.allowed)) {
+          // Sprint 44 architect LOW #9 closure: same runId parity
+          // as line ~424.
           this.logger.warn('[Guardrails] Stream blocked at final validation', {
-            runId,
+            runId: sanitizeMeta(runId),
             tokenCount: streamContext.tokenCount,
           });
 
