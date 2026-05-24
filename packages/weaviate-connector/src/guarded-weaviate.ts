@@ -21,6 +21,7 @@ import {
   GuardrailEngine,
   type GuardrailResult,
   type Logger,
+  sanitizeMeta,
   Severity,
   validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
@@ -361,16 +362,23 @@ export function createGuardedClient(
         valid.push(obj);
       } else {
         blocked++;
+        // Sprint 43 cross-connector CWE-117 sweep — architect LOW
+        // closure carried over from Sprint 42: `obj.id` is caller-
+        // supplied (Weaviate object ID can be any string the client
+        // chose) and `result.reason` is validator output. Both wrap.
         logger.warn('[Guardrails] Object blocked', {
-          id: obj.id,
-          reason: result.reason,
+          id: sanitizeMeta(obj.id),
+          reason: sanitizeMeta(result.reason),
         });
         if (onObjectBlocked) {
           onObjectBlocked(obj, result);
         }
 
         if (onBlockedObject === 'abort') {
-          throw new Error(productionMode ? 'Object blocked' : `Object blocked: ${result.reason}`);
+          // Sprint 43: sanitize `reason` at dev-mode throw boundary
+          // per Sprint 41 defensive-by-default policy (caller may
+          // log error.message into a downstream aggregator).
+          throw new Error(productionMode ? 'Object blocked' : `Object blocked: ${sanitizeMeta(result.reason)}`);
         }
       }
     }
@@ -388,9 +396,13 @@ export function createGuardedClient(
     async query(options: WeaviateQueryOptions): Promise<GuardedWeaviateResult> {
       // Step 1: Validate class name
       if (!isClassAllowed(options.className)) {
-        logger.warn('[Guardrails] Class not allowed', { className: options.className });
+        // Sprint 43 CWE-117 sweep: `options.className` is caller-
+        // supplied by the application. Sanitize before logging +
+        // before embedding in dev-mode error message.
+        const safeClassName = sanitizeMeta(options.className);
+        logger.warn('[Guardrails] Class not allowed', { className: safeClassName });
         if (onClassNotAllowed) onClassNotAllowed(options.className);
-        throw new Error(productionMode ? 'Class not allowed' : `Class '${options.className}' is not allowed`);
+        throw new Error(productionMode ? 'Class not allowed' : `Class '${safeClassName}' is not allowed`);
       }
 
       // Step 2: Validate and sanitize fields
@@ -415,9 +427,12 @@ export function createGuardedClient(
       if (queryContent) {
         const result = await validateWithTimeout(queryContent, 'weaviate_query');
         if (!result.allowed) {
-          logger.warn('[Guardrails] Query blocked', { reason: result.reason });
+          // Sprint 43 CWE-117 sweep: sanitize `result.reason` at both
+          // the log-meta and dev-mode-throw boundaries.
+          const safeReason = sanitizeMeta(result.reason);
+          logger.warn('[Guardrails] Query blocked', { reason: safeReason });
           if (onQueryBlocked) onQueryBlocked(result);
-          throw new Error(productionMode ? 'Query blocked' : `Query blocked: ${result.reason}`);
+          throw new Error(productionMode ? 'Query blocked' : `Query blocked: ${safeReason}`);
         }
       }
 

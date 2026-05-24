@@ -183,4 +183,26 @@ describe('sanitizeMeta — Sprint 41 helper', () => {
   it('stringifies BigInt safely', () => {
     expect(sanitizeMeta(123n)).toBe('123');
   });
+
+  // Sprint 43 security MEDIUM #5 closure: hostile `toString()` that
+  // throws must not propagate out of sanitizeMeta. Pre-Sprint-43 the
+  // throw would crash the calling logger.warn invocation. Now wrapped
+  // in try/catch — fail-closed to '[unstringifiable]' marker.
+  it('fail-closes on a toString() that throws (Sprint 43 hardening)', () => {
+    const hostile = {
+      toString: () => {
+        throw new Error('hostile-toString boom');
+      },
+    };
+    expect(sanitizeMeta(hostile)).toBe('[unstringifiable]');
+  });
+
+  it('fail-closes on a Symbol.toPrimitive that throws', () => {
+    const hostile = {
+      [Symbol.toPrimitive]: () => {
+        throw new Error('toPrimitive boom');
+      },
+    };
+    expect(sanitizeMeta(hostile)).toBe('[unstringifiable]');
+  });
 });

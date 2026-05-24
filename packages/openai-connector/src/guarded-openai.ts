@@ -28,6 +28,7 @@ import {
   GuardrailEngine,
   type GuardrailResult,
   type Logger,
+  sanitizeMeta,
   Severity,
   validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
@@ -222,14 +223,17 @@ export function createGuardedOpenAI(
 
     const blocked = inputResults.find((r) => !r.allowed);
     if (blocked) {
-      logger.warn('[Guardrails] Input blocked', { reason: blocked.reason });
+      // Sprint 43 CWE-117 sweep: sanitize `blocked.reason` at both
+      // log-meta + dev-mode throw boundaries.
+      const safeReason = sanitizeMeta(blocked.reason);
+      logger.warn('[Guardrails] Input blocked', { reason: safeReason });
       if (onBlocked) onBlocked(blocked);
 
       // SEC-007: Production mode - generic error
       if (productionMode) {
         throw new Error('Content blocked');
       }
-      throw new Error(`Content blocked: ${blocked.reason}`);
+      throw new Error(`Content blocked: ${safeReason}`);
     }
   };
 
@@ -303,8 +307,11 @@ export function createGuardedOpenAI(
           const outputBlocked = outputResults.find((r) => !r.allowed);
 
           if (outputBlocked) {
+            // Sprint 43 CWE-117 sweep: sanitize `outputBlocked.reason`
+            // at log-meta + dev-mode filteredContent boundaries.
+            const safeReason = sanitizeMeta(outputBlocked.reason);
             logger.warn('[Guardrails] Output blocked', {
-              reason: outputBlocked.reason,
+              reason: safeReason,
             });
             if (onBlocked) onBlocked(outputBlocked);
 
@@ -314,7 +321,7 @@ export function createGuardedOpenAI(
             // Throwing would waste the API cost and not provide any user value.
             const filteredContent = productionMode
               ? '[Content filtered by guardrails]'
-              : `[Content filtered by guardrails: ${outputBlocked.reason}]`;
+              : `[Content filtered by guardrails: ${safeReason}]`;
 
             return {
               ...response,

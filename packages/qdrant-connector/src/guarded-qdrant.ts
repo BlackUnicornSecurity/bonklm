@@ -22,6 +22,7 @@ import {
   GuardrailEngine,
   type GuardrailResult,
   type Logger,
+  sanitizeMeta,
   Severity,
   validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
@@ -484,16 +485,21 @@ export function createGuardedClient(
         valid.push(filteredPoint);
       } else {
         blocked++;
+        // Sprint 43 cross-connector CWE-117 sweep (architect CRITICAL
+        // #3 closure): qdrant was a peer of weaviate/pinecone but
+        // initial scoping missed it. Sanitize `point.id` (caller-
+        // supplied) + `reason` (validator output) at log + throw.
+        const safeReason = sanitizeMeta(result.reason);
         logger.warn('[Guardrails] Point blocked', {
-          id: point.id,
-          reason: result.reason,
+          id: sanitizeMeta(point.id),
+          reason: safeReason,
         });
         if (onPointBlocked) {
           onPointBlocked(point.id, result);
         }
 
         if (onBlockedPoint === 'abort') {
-          throw new Error(productionMode ? 'Point blocked' : `Point blocked: ${result.reason}`);
+          throw new Error(productionMode ? 'Point blocked' : `Point blocked: ${safeReason}`);
         }
       }
     }
@@ -575,8 +581,10 @@ export function createGuardedClient(
         if (point.payload) {
           const result = await validateWithTimeout(JSON.stringify(point.payload), 'qdrant_upsert');
           if (!result.allowed) {
-            logger.warn('[Guardrails] Point upsert blocked', { reason: result.reason });
-            throw new Error(productionMode ? 'Point blocked' : `Point blocked: ${result.reason}`);
+            // Sprint 43 CWE-117 sweep: sister to point-blocked above.
+            const safeReason = sanitizeMeta(result.reason);
+            logger.warn('[Guardrails] Point upsert blocked', { reason: safeReason });
+            throw new Error(productionMode ? 'Point blocked' : `Point blocked: ${safeReason}`);
           }
         }
       }

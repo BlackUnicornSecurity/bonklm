@@ -37,6 +37,7 @@ import {
   createToolCallArgsValidator,
   GuardrailEngine,
   type Logger,
+  sanitizeMeta,
   validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
 import {
@@ -309,10 +310,13 @@ export function defineToolOutputGuardrail(
           findings: [],
           timestamp: Date.now(),
         });
+        // Sprint 43 CWE-117 sweep: sanitize `r.reason` in the
+        // dev-mode tripwire `outputInfo.reason` field (consumer
+        // may log this surface).
         return {
           tripwireTriggered: true,
           outputInfo: {
-            reason: productionMode ? 'Tool output blocked' : r.reason,
+            reason: productionMode ? 'Tool output blocked' : sanitizeMeta(r.reason),
           },
         };
       }
@@ -427,8 +431,10 @@ export function wrapHandoff(
             handoff.agent?.name,
             r.reason ?? 'handoff_blocked'
           );
+          // Sprint 43 CWE-117 sweep: sanitize `r.reason` at dev-mode
+          // throw boundary.
           throw new ConnectorValidationError(
-            productionMode ? 'Handoff blocked' : `Handoff blocked: ${r.reason}`,
+            productionMode ? 'Handoff blocked' : `Handoff blocked: ${sanitizeMeta(r.reason)}`,
             'validation_failed'
           );
         }
@@ -456,8 +462,12 @@ export function wrapHandoff(
               handoff.agent?.name,
               r.reason ?? 'handoff_tool_blocked'
             );
+            // Sprint 43 CWE-117 sweep: sister to handoff-input-filter
+            // throw above — tool-args path. Code-review BLOCK closure
+            // (initial `replace_all` edit missed this site due to
+            // different surrounding indentation).
             throw new ConnectorValidationError(
-              productionMode ? 'Handoff blocked' : `Handoff blocked: ${r.reason}`,
+              productionMode ? 'Handoff blocked' : `Handoff blocked: ${sanitizeMeta(r.reason)}`,
               'validation_failed'
             );
           }
@@ -536,10 +546,15 @@ export function wrapRealtime(
           try {
             await session.close();
           } catch (err) {
+            // Sprint 43 architect HIGH #4 closure: `err` from
+            // `session.close()` can carry attacker-influenced data
+            // from realtime SDK internal state. Sanitize via
+            // sanitizeMeta which fail-closes hostile-toString
+            // throws (Sprint 43 security MEDIUM #5).
             logger.warn?.(
               productionMode
                 ? 'Realtime session close failed after block'
-                : `Realtime session close failed: ${String(err)}`
+                : `Realtime session close failed: ${sanitizeMeta(err)}`
             );
           }
         }

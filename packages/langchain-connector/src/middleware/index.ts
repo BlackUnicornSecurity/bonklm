@@ -36,6 +36,7 @@ import {
   createLogger,
   type GuardrailEngine,
   type Logger,
+  sanitizeMeta,
   type Validator,
   validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
@@ -287,8 +288,10 @@ export function createBonklmMiddleware(
       const r = await validateContent(inputText, 'bonklm_langchain_input');
       if (!r.allowed) {
         logValidationFailure(logger, r.reason ?? 'Input blocked', { context: 'bonklm_langchain_input' });
+        // Sprint 43 CWE-117 sweep: sanitize `r.reason` at dev-mode
+        // throw boundary.
         throw new ConnectorValidationError(
-          productionMode ? 'Input blocked' : `Input blocked: ${r.reason}`,
+          productionMode ? 'Input blocked' : `Input blocked: ${sanitizeMeta(r.reason)}`,
           'validation_failed'
         );
       }
@@ -303,8 +306,9 @@ export function createBonklmMiddleware(
       const r = await validateContent(outText, 'bonklm_langchain_output');
       if (!r.allowed) {
         logValidationFailure(logger, r.reason ?? 'Output blocked', { context: 'bonklm_langchain_output' });
+        // Sprint 43 CWE-117 sweep: same shape on output leg.
         throw new ConnectorValidationError(
-          productionMode ? 'Output blocked' : `Output blocked: ${r.reason}`,
+          productionMode ? 'Output blocked' : `Output blocked: ${sanitizeMeta(r.reason)}`,
           'validation_failed'
         );
       }
@@ -323,8 +327,9 @@ export function createBonklmMiddleware(
       const r = await validateContent(blob, 'bonklm_langchain_tool_call');
       if (!r.allowed) {
         logValidationFailure(logger, r.reason ?? 'Tool call blocked', { name: toolCall.name });
+        // Sprint 43 CWE-117 sweep: same shape on tool-call leg.
         throw new ConnectorValidationError(
-          productionMode ? 'Tool call blocked' : `Tool call blocked: ${r.reason}`,
+          productionMode ? 'Tool call blocked' : `Tool call blocked: ${sanitizeMeta(r.reason)}`,
           'validation_failed'
         );
       }
@@ -439,7 +444,10 @@ export function withRetrieverGuardrails<TRetriever extends BonklmRetrieverLike>(
         if (r.allowed) {
           valid.push(d);
         } else {
-          logger.warn?.('[bonklm-langchain] retriever doc dropped', { reason: r.reason });
+          // Sprint 43 CWE-117 sweep: sanitize `r.reason` at log-meta
+          // boundary (retriever doc drop is silent-warn, but a future
+          // log aggregator can still inherit injection vectors).
+          logger.warn?.('[bonklm-langchain] retriever doc dropped', { reason: sanitizeMeta(r.reason) });
         }
       }
       // Documented behaviour: silently drop blocked docs (matches the
@@ -516,8 +524,10 @@ export async function bonklmLangGraphNode(
     logger: options.logger,
   });
   if (!r.allowed) {
+    // Sprint 43 CWE-117 sweep: sanitize `r.reason` at dev-mode throw
+    // boundary (LangGraph node consumer may log error.message).
     throw new ConnectorValidationError(
-      options.productionMode ? 'State blocked' : `State blocked: ${r.reason}`,
+      options.productionMode ? 'State blocked' : `State blocked: ${sanitizeMeta(r.reason)}`,
       'validation_failed'
     );
   }

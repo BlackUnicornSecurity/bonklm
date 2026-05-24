@@ -25,6 +25,7 @@ import {
   GuardrailEngine,
   type GuardrailResult,
   type Logger,
+  sanitizeMeta,
   Severity,
   validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
@@ -334,7 +335,8 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
     const blocked = results.find((r) => !r.allowed);
     if (blocked) {
       onBlocked?.(blocked, executionContext);
-      logger.warn('[CopilotKit Guardrails] Input blocked', { reason: blocked.reason });
+      // Sprint 43 cross-connector CWE-117 sweep.
+      logger.warn('[CopilotKit Guardrails] Input blocked', { reason: sanitizeMeta(blocked.reason) });
       return {
         allowed: false,
         blockedReason: createErrorMessage(blocked),
@@ -359,7 +361,8 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
     const blocked = results.find((r) => !r.allowed);
     if (blocked) {
       onBlocked?.(blocked, executionContext);
-      logger.warn('[CopilotKit Guardrails] Output blocked', { reason: blocked.reason });
+      // Sprint 43 CWE-117 sweep (sister to input-blocked above).
+      logger.warn('[CopilotKit Guardrails] Output blocked', { reason: sanitizeMeta(blocked.reason) });
       return {
         allowed: false,
         blockedReason: createErrorMessage(blocked),

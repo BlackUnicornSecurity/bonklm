@@ -23,6 +23,7 @@ import {
   GuardrailEngine,
   type GuardrailResult,
   type Logger,
+  sanitizeMeta,
   Severity,
   validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
@@ -202,14 +203,17 @@ export function createGuardedOllama(
 
     const blocked = inputResults.find((r) => !r.allowed);
     if (blocked) {
-      logger.warn('[Guardrails] Input blocked', { reason: blocked.reason });
+      // Sprint 43 cross-connector CWE-117 sweep (security HIGH #1
+      // closure): sanitize at log + dev-mode throw boundaries.
+      const safeReason = sanitizeMeta(blocked.reason);
+      logger.warn('[Guardrails] Input blocked', { reason: safeReason });
       if (onBlocked) onBlocked(blocked);
 
       // SEC-007: Production mode - generic error
       if (productionMode) {
         throw new Error('Content blocked');
       }
-      throw new Error(`Content blocked: ${blocked.reason}`);
+      throw new Error(`Content blocked: ${safeReason}`);
     }
   };
 
@@ -320,15 +324,18 @@ export function createGuardedOllama(
       const outputBlocked = outputResults.find((r) => !r.allowed);
 
       if (outputBlocked) {
+        // Sprint 43 CWE-117 sweep: filteredContent lands in
+        // `response.message.content` returned to caller. Sanitize.
+        const safeReason = sanitizeMeta(outputBlocked.reason);
         logger.warn('[Guardrails] Output blocked', {
-          reason: outputBlocked.reason,
+          reason: safeReason,
         });
         if (onBlocked) onBlocked(outputBlocked);
 
         // Return filtered response with clear marker
         const filteredContent = productionMode
           ? '[Content filtered by guardrails]'
-          : `[Content filtered by guardrails: ${outputBlocked.reason}]`;
+          : `[Content filtered by guardrails: ${safeReason}]`;
 
         return {
           message: {
@@ -407,15 +414,18 @@ export function createGuardedOllama(
       const outputBlocked = outputResults.find((r) => !r.allowed);
 
       if (outputBlocked) {
+        // Sprint 43 CWE-117 sweep: generate-path sister of chat-path
+        // output-blocked filteredContent.
+        const safeReason = sanitizeMeta(outputBlocked.reason);
         logger.warn('[Guardrails] Output blocked', {
-          reason: outputBlocked.reason,
+          reason: safeReason,
         });
         if (onBlocked) onBlocked(outputBlocked);
 
         // Return filtered response with clear marker
         const filteredContent = productionMode
           ? '[Content filtered by guardrails]'
-          : `[Content filtered by guardrails: ${outputBlocked.reason}]`;
+          : `[Content filtered by guardrails: ${safeReason}]`;
 
         return {
           ...response,

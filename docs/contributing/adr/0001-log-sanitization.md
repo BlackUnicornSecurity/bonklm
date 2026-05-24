@@ -175,6 +175,20 @@ body / error message returned to a caller, or any other emit:
   Sprint 38 lesson "enumerate by SINK PATTERN, not by FUNCTION
   NAME or directory" — engine sites were outside connector-utils
   enumeration scope across Sprints 38-41.
+- **Sprint 43** — cross-connector orphan sweep (Sprint 42 architect
+  LOW deferral). 14 connectors swept / 61 CWE-117 wraps applied:
+  26 from initial scoping (weaviate/pinecone/openai/openai-agents/
+  fastify-plugin/langchain) + 35 from 3-lane audit scope expansion
+  (anthropic/chroma/qdrant/ollama/vercel/llamaindex/copilotkit/
+  genkit/google-genai). NEW SURFACES: `path` (HTTP request URL)
+  sanitization in fastify; `documentPreview` (RAG retrieved-doc
+  content slice) in llamaindex; streamed JSON-chunk error fields
+  in vercel; application-output `filteredContent` strings in
+  openai/anthropic/ollama. Core hardening: `sanitizeMeta`
+  fail-closes hostile-toString throws to `[unstringifiable]`
+  marker (security MEDIUM #5 — denial-of-logging vector closure).
+  Re-validated Sprint 41 lesson 4th time: integration/audit finds
+  what grep misses, including across-connector orphans.
 
 ## Known gaps deferred to Sprint 40
 

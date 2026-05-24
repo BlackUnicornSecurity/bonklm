@@ -322,5 +322,14 @@ export function sanitizeMeta(value: unknown): string {
   if (value === null || value === undefined) {
     return '';
   }
-  return sanitizeLogString(String(value));
+  // Sprint 43 security MEDIUM #5 closure: a value with a hostile
+  // `toString()` that throws will propagate the exception out of
+  // `String(value)`, crashing the calling log line. Wrap in a
+  // try/catch — fail-closed to a static `[unstringifiable]` marker
+  // so the log call still completes with safe content.
+  try {
+    return sanitizeLogString(String(value));
+  } catch {
+    return '[unstringifiable]';
+  }
 }

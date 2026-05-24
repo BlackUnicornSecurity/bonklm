@@ -20,6 +20,7 @@ import {
   GuardrailEngine,
   type Logger,
   RiskLevel,
+  sanitizeMeta,
   Severity,
   validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
@@ -217,8 +218,10 @@ export function createGuardedIndex(
       logValidationFailure(logger, result.reason || 'Query blocked', { context: 'pinecone_query' });
       if (onQueryBlocked) onQueryBlocked(result);
 
+      // Sprint 43 CWE-117 sweep: sanitize `result.reason` at the
+      // dev-mode throw boundary (caller may log error.message).
       throw new ConnectorValidationError(
-        productionMode ? 'Query blocked' : `Query blocked: ${result.reason}`,
+        productionMode ? 'Query blocked' : `Query blocked: ${sanitizeMeta(result.reason)}`,
         'validation_failed',
       );
     }
@@ -288,8 +291,10 @@ export function createGuardedIndex(
         }
 
         if (onBlockedVector === 'abort') {
+          // Sprint 43 CWE-117 sweep: sanitize `result.reason` at the
+          // dev-mode throw boundary (sister to query-blocked at line ~221).
           throw new ConnectorValidationError(
-            productionMode ? 'Vector blocked' : `Vector blocked: ${result.reason}`,
+            productionMode ? 'Vector blocked' : `Vector blocked: ${sanitizeMeta(result.reason)}`,
             'validation_failed',
           );
         }

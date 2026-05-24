@@ -21,6 +21,7 @@ import {
   GuardrailEngine,
   type GuardrailResult,
   type Logger,
+  sanitizeMeta,
   Severity,
   validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
@@ -267,13 +268,18 @@ export function createGuardedCollection(
       const result = await validateWithTimeout(queryText, 'chroma_query');
 
       if (!result.allowed) {
-        logger.warn('[Guardrails] Query blocked', { reason: result.reason });
+        // Sprint 43 cross-connector CWE-117 sweep (architect CRITICAL
+        // #2 closure): chroma was a peer of weaviate/pinecone but
+        // initial scoping missed it. Same pattern: sanitize at log +
+        // dev-mode throw boundaries.
+        const safeReason = sanitizeMeta(result.reason);
+        logger.warn('[Guardrails] Query blocked', { reason: safeReason });
         if (onQueryBlocked) onQueryBlocked(result);
 
         if (productionMode) {
           throw new Error('Query blocked');
         }
-        throw new Error(`Query blocked: ${result.reason}`);
+        throw new Error(`Query blocked: ${safeReason}`);
       }
     }
 
@@ -613,8 +619,10 @@ export function createGuardedCollection(
         for (const doc of options.documents) {
           const result = await validateWithTimeout(String(doc), 'chroma_add');
           if (!result.allowed) {
-            logger.warn('[Guardrails] Document add blocked', { reason: result.reason });
-            throw new Error(productionMode ? 'Document blocked' : `Document blocked: ${result.reason}`);
+            // Sprint 43 CWE-117 sweep: sister to query-blocked above.
+            const safeReason = sanitizeMeta(result.reason);
+            logger.warn('[Guardrails] Document add blocked', { reason: safeReason });
+            throw new Error(productionMode ? 'Document blocked' : `Document blocked: ${safeReason}`);
           }
         }
       }

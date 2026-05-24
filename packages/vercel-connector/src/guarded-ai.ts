@@ -23,6 +23,7 @@ import {
   GuardrailEngine,
   type Logger,
   RiskLevel,
+  sanitizeMeta,
   Severity,
   validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
@@ -205,7 +206,9 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
       if (productionMode) {
         throw new Error('Content blocked');
       }
-      throw new Error(`Content blocked: ${inputResult.reason}`);
+      // Sprint 43 cross-connector CWE-117 sweep (security HIGH #2
+      // closure): sanitize at dev-mode throw boundary.
+      throw new Error(`Content blocked: ${sanitizeMeta(inputResult.reason)}`);
     }
   };
 
@@ -234,8 +237,9 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
         logValidationFailure(logger, outputResult.reason || 'Output blocked', { context: 'output' });
         if (onBlocked) onBlocked(outputResult as any);
 
+        // Sprint 43 CWE-117 sweep: output-leg dev-mode throw.
         throw new ConnectorValidationError(
-          productionMode ? 'Content blocked' : `Content blocked: ${outputResult.reason}`,
+          productionMode ? 'Content blocked' : `Content blocked: ${sanitizeMeta(outputResult.reason)}`,
           'validation_failed',
         );
       }
@@ -368,11 +372,15 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
                       logValidationFailure(logger, result.reason || 'Stream blocked', { context: 'stream_buffer' });
                       if (onStreamBlocked) onStreamBlocked(streamState.accumulated);
 
-                      // Send error and close
+                      // Send error and close.
+                      // Sprint 43 CWE-117 sweep (security HIGH #2):
+                      // this JSON chunk is streamed to the client; an
+                      // attacker-influenced `reason` lands in the
+                      // response stream. Sanitize at the boundary.
                       const errorChunk = new TextEncoder().encode(
                         JSON.stringify({
                           type: 'error',
-                          error: productionMode ? 'Content filtered' : `Content filtered: ${result.reason}`,
+                          error: productionMode ? 'Content filtered' : `Content filtered: ${sanitizeMeta(result.reason)}`,
                         }),
                       );
                       controller.enqueue(errorChunk);

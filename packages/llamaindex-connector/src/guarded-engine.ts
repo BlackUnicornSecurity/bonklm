@@ -14,7 +14,7 @@
  * @package @blackunicorn/bonklm-llamaindex
  */
 
-import { createLogger, createResult, GuardrailEngine, type GuardrailResult, type Logger, Severity, validateWithTimeoutSecure } from '@blackunicorn/bonklm';
+import { createLogger, createResult, GuardrailEngine, type GuardrailResult, type Logger, sanitizeMeta, Severity, validateWithTimeoutSecure } from '@blackunicorn/bonklm';
 import type {
   GuardedLlamaIndexOptions,
   GuardedQueryResult,
@@ -130,13 +130,15 @@ export function createGuardedQueryEngine(
     const result = await validateWithTimeout(queryStr, 'rag_query');
 
     if (!result.allowed) {
-      logger.warn('[Guardrails] Query blocked', { reason: result.reason });
+      // Sprint 43 cross-connector CWE-117 sweep (security HIGH #3).
+      const safeReason = sanitizeMeta(result.reason);
+      logger.warn('[Guardrails] Query blocked', { reason: safeReason });
       if (onQueryBlocked) onQueryBlocked(result);
 
       if (productionMode) {
         throw new Error('Query blocked');
       }
-      throw new Error(`Query blocked: ${result.reason}`);
+      throw new Error(`Query blocked: ${safeReason}`);
     }
   };
 
@@ -162,16 +164,19 @@ export function createGuardedQueryEngine(
         valid.push(node);
       } else {
         blocked++;
+        // Sprint 43 CWE-117 sweep: also sanitize documentPreview —
+        // it's a slice of attacker-controlled retrieved doc content.
+        const safeReason = sanitizeMeta(result.reason);
         logger.warn('[Guardrails] Document blocked', {
-          reason: result.reason,
-          documentPreview: content.substring(0, 100),
+          reason: safeReason,
+          documentPreview: sanitizeMeta(content.substring(0, 100)),
         });
         if (onDocumentBlocked) {
           onDocumentBlocked(content.substring(0, 200), result);
         }
 
         if (onBlockedDocument === 'abort') {
-          throw new Error(productionMode ? 'Retrieved document blocked' : `Document blocked: ${result.reason}`);
+          throw new Error(productionMode ? 'Retrieved document blocked' : `Document blocked: ${safeReason}`);
         }
       }
     }
@@ -209,7 +214,8 @@ export function createGuardedQueryEngine(
       const responseResult = await validateWithTimeout(responseText, 'rag_response');
 
       if (!responseResult.allowed) {
-        logger.warn('[Guardrails] Response blocked', { reason: responseResult.reason });
+        // Sprint 43 CWE-117 sweep.
+        logger.warn('[Guardrails] Response blocked', { reason: sanitizeMeta(responseResult.reason) });
         if (onResponseBlocked) onResponseBlocked(responseResult);
 
         return {
@@ -304,13 +310,15 @@ export function createGuardedRetriever(
       // Validate the query
       const queryResult = await validateWithTimeout(queryStr, 'rag_query');
       if (!queryResult.allowed) {
-        logger.warn('[Guardrails] Retrieval query blocked', { reason: queryResult.reason });
+        // Sprint 43 CWE-117 sweep.
+        logger.warn('[Guardrails] Retrieval query blocked', { reason: sanitizeMeta(queryResult.reason) });
         if (onQueryBlocked) onQueryBlocked(queryResult);
 
         if (productionMode) {
           throw new Error('Query blocked');
         }
-        throw new Error(`Query blocked: ${queryResult.reason}`);
+        // Sprint 43 CWE-117 sweep.
+        throw new Error(`Query blocked: ${sanitizeMeta(queryResult.reason)}`);
       }
 
       // Apply retrieval limit
@@ -335,16 +343,18 @@ export function createGuardedRetriever(
         if (result.allowed) {
           valid.push(node);
         } else {
+          // Sprint 43 CWE-117 sweep (sister to retrieved-doc-blocked above).
+          const safeReason = sanitizeMeta(result.reason);
           logger.warn('[Guardrails] Retrieved document blocked', {
-            reason: result.reason,
-            documentPreview: content.substring(0, 100),
+            reason: safeReason,
+            documentPreview: sanitizeMeta(content.substring(0, 100)),
           });
           if (onDocumentBlocked) {
             onDocumentBlocked(content.substring(0, 200), result);
           }
 
           if (onBlockedDocument === 'abort') {
-            throw new Error(productionMode ? 'Document blocked' : `Document blocked: ${result.reason}`);
+            throw new Error(productionMode ? 'Document blocked' : `Document blocked: ${safeReason}`);
           }
         }
       }

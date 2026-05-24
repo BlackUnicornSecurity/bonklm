@@ -350,7 +350,10 @@ export function createGuardedAnthropic(
       if (productionMode) {
         throw new Error('Content blocked');
       }
-      throw new Error(`Content blocked: ${blocked.reason}`);
+      // Sprint 43 cross-connector CWE-117 sweep: sanitize at dev-mode
+      // throw boundary (sister to log-meta wrap at line ~346 from
+      // Sprint 40). Caller may log error.message via downstream logger.
+      throw new Error(`Content blocked: ${sanitizeMeta(blocked.reason)}`);
     }
   };
 
@@ -452,10 +455,15 @@ export function createGuardedAnthropic(
                 });
                 if (onBlocked) onBlocked(outputBlocked);
 
-                // Return filtered response with clear marker
+                // Return filtered response with clear marker.
+                // Sprint 43 CWE-117 sweep: filteredContent lands in
+                // `response.content[0].text` which the application
+                // returns to the LLM caller (frontend / agent
+                // transcript). Sanitize at the boundary per Sprint 41
+                // defensive-by-default policy.
                 const filteredContent = productionMode
                   ? '[Content filtered by guardrails]'
-                  : `[Content filtered by guardrails: ${outputBlocked.reason}]`;
+                  : `[Content filtered by guardrails: ${sanitizeMeta(outputBlocked.reason)}]`;
 
                 result = {
                   ...response,

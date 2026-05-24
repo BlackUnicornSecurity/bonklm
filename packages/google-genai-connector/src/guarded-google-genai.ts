@@ -42,6 +42,7 @@ import {
   GuardrailEngine,
   type GuardrailResult,
   type Logger,
+  sanitizeMeta,
   Severity,
   validateWithTimeoutSecure,
 } from '@blackunicorn/bonklm';
@@ -217,7 +218,7 @@ export function wrapGenerateContent(
         logValidationFailure(logger, inputResult.reason ?? 'Input blocked', { context: 'google_genai_input' });
         onInputBlocked?.(inputResult);
         throw new ConnectorValidationError(
-          productionMode ? 'Input blocked' : `Input blocked: ${inputResult.reason}`,
+          productionMode ? 'Input blocked' : `Input blocked: ${sanitizeMeta(inputResult.reason)}`,
           'validation_failed'
         );
       }
@@ -230,7 +231,7 @@ export function wrapGenerateContent(
       if (!outputResult.allowed) {
         logValidationFailure(logger, outputResult.reason ?? 'Output blocked', { context: 'google_genai_output' });
         throw new ConnectorValidationError(
-          productionMode ? 'Output blocked' : `Output blocked: ${outputResult.reason}`,
+          productionMode ? 'Output blocked' : `Output blocked: ${sanitizeMeta(outputResult.reason)}`,
           'validation_failed'
         );
       }
@@ -246,7 +247,7 @@ export function wrapGenerateContent(
         logValidationFailure(logger, fcResult.reason ?? 'Function call blocked', { name: fc.name });
         options.onFunctionCallBlocked?.(fc.name, fc.args, fcResult);
         throw new ConnectorValidationError(
-          productionMode ? 'Function call blocked' : `Function call blocked: ${fcResult.reason}`,
+          productionMode ? 'Function call blocked' : `Function call blocked: ${sanitizeMeta(fcResult.reason)}`,
           'validation_failed'
         );
       }
@@ -298,7 +299,7 @@ export function wrapGenerateContentStream(
         logValidationFailure(logger, inputResult.reason ?? 'Input blocked', { context: 'google_genai_stream_input' });
         onInputBlocked?.(inputResult);
         throw new ConnectorValidationError(
-          productionMode ? 'Input blocked' : `Input blocked: ${inputResult.reason}`,
+          productionMode ? 'Input blocked' : `Input blocked: ${sanitizeMeta(inputResult.reason)}`,
           'validation_failed'
         );
       }
@@ -333,7 +334,7 @@ export function wrapGenerateContentStream(
               const r = await streamValidator.process(chunkText);
               if (r && !r.allowed) {
                 throw new ConnectorValidationError(
-                  productionMode ? 'Stream blocked' : `Stream blocked: ${r.reason}`,
+                  productionMode ? 'Stream blocked' : `Stream blocked: ${sanitizeMeta(r.reason)}`,
                   'validation_failed'
                 );
               }
@@ -361,7 +362,7 @@ export function wrapGenerateContentStream(
               logValidationFailure(logger, fcResult.reason ?? 'Function call blocked', { name: fc.name });
               onFunctionCallBlocked?.(fc.name, fc.args, fcResult);
               throw new ConnectorValidationError(
-                productionMode ? 'Function call blocked' : `Function call blocked: ${fcResult.reason}`,
+                productionMode ? 'Function call blocked' : `Function call blocked: ${sanitizeMeta(fcResult.reason)}`,
                 'validation_failed'
               );
             }
@@ -376,7 +377,7 @@ export function wrapGenerateContentStream(
           const tail = await streamValidator.finalize();
           if (tail && !tail.allowed) {
             throw new ConnectorValidationError(
-              productionMode ? 'Stream tail blocked' : `Stream tail blocked: ${tail.reason}`,
+              productionMode ? 'Stream tail blocked' : `Stream tail blocked: ${sanitizeMeta(tail.reason)}`,
               'validation_failed'
             );
           }
@@ -388,7 +389,7 @@ export function wrapGenerateContentStream(
             logValidationFailure(logger, fcResult.reason ?? 'Function call blocked', { name: fc.name });
             onFunctionCallBlocked?.(fc.name, fc.args, fcResult);
             throw new ConnectorValidationError(
-              productionMode ? 'Function call blocked' : `Function call blocked: ${fcResult.reason}`,
+              productionMode ? 'Function call blocked' : `Function call blocked: ${sanitizeMeta(fcResult.reason)}`,
               'validation_failed'
             );
           }
@@ -450,7 +451,7 @@ export function wrapChat(
           logValidationFailure(logger, inputResult.reason ?? 'Chat input blocked', { context: 'google_genai_chat_input' });
           onInputBlocked?.(inputResult);
           throw new ConnectorValidationError(
-            productionMode ? 'Input blocked' : `Input blocked: ${inputResult.reason}`,
+            productionMode ? 'Input blocked' : `Input blocked: ${sanitizeMeta(inputResult.reason)}`,
             'validation_failed'
           );
         }
@@ -462,7 +463,7 @@ export function wrapChat(
         if (!outputResult.allowed) {
           logValidationFailure(logger, outputResult.reason ?? 'Chat output blocked', { context: 'google_genai_chat_output' });
           throw new ConnectorValidationError(
-            productionMode ? 'Output blocked' : `Output blocked: ${outputResult.reason}`,
+            productionMode ? 'Output blocked' : `Output blocked: ${sanitizeMeta(outputResult.reason)}`,
             'validation_failed'
           );
         }
@@ -485,7 +486,7 @@ export function wrapChat(
           logValidationFailure(logger, inputResult.reason ?? 'Chat stream input blocked', { context: 'google_genai_chat_stream_input' });
           onInputBlocked?.(inputResult);
           throw new ConnectorValidationError(
-            productionMode ? 'Input blocked' : `Input blocked: ${inputResult.reason}`,
+            productionMode ? 'Input blocked' : `Input blocked: ${sanitizeMeta(inputResult.reason)}`,
             'validation_failed'
           );
         }
@@ -512,7 +513,7 @@ export function wrapChat(
                 const r = await streamValidator.process(chunkText);
                 if (r && !r.allowed) {
                   throw new ConnectorValidationError(
-                    productionMode ? 'Stream blocked' : `Stream blocked: ${r.reason}`,
+                    productionMode ? 'Stream blocked' : `Stream blocked: ${sanitizeMeta(r.reason)}`,
                     'validation_failed'
                   );
                 }
@@ -524,7 +525,7 @@ export function wrapChat(
             const tail = await streamValidator.finalize();
             if (tail && !tail.allowed) {
               throw new ConnectorValidationError(
-                productionMode ? 'Stream tail blocked' : `Stream tail blocked: ${tail.reason}`,
+                productionMode ? 'Stream tail blocked' : `Stream tail blocked: ${sanitizeMeta(tail.reason)}`,
                 'validation_failed'
               );
             }
@@ -614,7 +615,7 @@ export function wrapLive(
           logValidationFailure(logger, r.reason ?? 'Live message blocked', { context: 'google_genai_live_message' });
           onStreamBlocked?.(combined, r.reason ?? 'live_message_blocked');
           throw new ConnectorValidationError(
-            productionMode ? 'Live message blocked' : `Live message blocked: ${r.reason}`,
+            productionMode ? 'Live message blocked' : `Live message blocked: ${sanitizeMeta(r.reason)}`,
             'validation_failed'
           );
         }
@@ -626,7 +627,7 @@ export function wrapLive(
           logValidationFailure(logger, fcResult.reason ?? 'Live function call blocked', { name: call.name });
           onFunctionCallBlocked?.(call.name, call.args, fcResult);
           throw new ConnectorValidationError(
-            productionMode ? 'Function call blocked' : `Function call blocked: ${fcResult.reason}`,
+            productionMode ? 'Function call blocked' : `Function call blocked: ${sanitizeMeta(fcResult.reason)}`,
             'validation_failed'
           );
         }
@@ -666,7 +667,7 @@ export function wrapLive(
                 logValidationFailure(logger, r.reason ?? 'Live send blocked', { context: 'google_genai_live_send_text' });
                 onStreamBlocked?.(payload.text, r.reason ?? 'live_send_blocked');
                 throw new ConnectorValidationError(
-                  productionMode ? 'Live send blocked' : `Live send blocked: ${r.reason}`,
+                  productionMode ? 'Live send blocked' : `Live send blocked: ${sanitizeMeta(r.reason)}`,
                   'validation_failed'
                 );
               }
@@ -683,7 +684,7 @@ export function wrapLive(
                 logValidationFailure(logger, r.reason ?? 'Live send blocked', { context: 'google_genai_live_send_content' });
                 onStreamBlocked?.(combined, r.reason ?? 'live_send_blocked');
                 throw new ConnectorValidationError(
-                  productionMode ? 'Live send blocked' : `Live send blocked: ${r.reason}`,
+                  productionMode ? 'Live send blocked' : `Live send blocked: ${sanitizeMeta(r.reason)}`,
                   'validation_failed'
                 );
               }
@@ -704,7 +705,7 @@ export function wrapLive(
                 logValidationFailure(logger, r.reason ?? 'Live tool-response blocked', { name: fr.name });
                 onFunctionCallBlocked?.(fr.name, fr.response, r);
                 throw new ConnectorValidationError(
-                  productionMode ? 'Tool response blocked' : `Tool response blocked: ${r.reason}`,
+                  productionMode ? 'Tool response blocked' : `Tool response blocked: ${sanitizeMeta(r.reason)}`,
                   'validation_failed'
                 );
               }

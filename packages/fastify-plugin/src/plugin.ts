@@ -31,7 +31,9 @@ import {
   isSessionEscalated,
   LogLevel,
   RiskLevel,
+  sanitizeMeta,
   Schema,
+  serializeError,
   type SessionPatternFinding,
   Severity,
   updateSessionState,
@@ -78,9 +80,14 @@ const DEVELOPMENT_ERROR_HANDLER: ErrorHandler = async (
   _req: FastifyRequest,
   reply: FastifyReply
 ): Promise<void> => {
+  // Sprint 43 CWE-117 sweep: `result.reason` is validator output and
+  // may carry attacker-influenced text. The body is serialized into
+  // the HTTP response — sanitize at the boundary per Sprint 41
+  // defensive-by-default policy. `severity` + `risk_level` are
+  // library-controlled enum strings (safe).
   await reply.status(400).send({
     error: 'Request blocked by guardrails',
-    reason: result.reason,
+    reason: sanitizeMeta(result.reason),
     severity: result.severity,
     risk_level: result.risk_level,
   });
@@ -441,9 +448,12 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
 
         if (!result.allowed) {
           const reason = result.reason || 'Content blocked by security guardrails';
+          // Sprint 43 CWE-117 sweep: sanitize `reason` + `path` in
+          // log meta. `path` is request.url — caller-supplied;
+          // `reason` is validator output.
           logger.warn('[Guardrails] Request blocked', {
-            reason,
-            path,
+            reason: sanitizeMeta(reason),
+            path: sanitizeMeta(path),
           });
           // Provide a result with reason for the error handler
           const resultWithReason: GuardrailResult = {
@@ -460,8 +470,12 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
           return; // Already handled
         }
 
+        // Sprint 43 CWE-117 sweep: bare `error.message` was raw —
+        // switch to canonical `serializeError` per Sprint 33 pattern
+        // (handles non-Error throws + non-enumerable Error fields +
+        // sanitizes the message via sanitizeLogString internally).
         logger.error('[Guardrails] Validation error', {
-          error: error instanceof Error ? error.message : String(error),
+          error: serializeError(error),
         });
         // Fail-closed: block on error
         const errorResult: GuardrailResult = {
@@ -515,9 +529,13 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
 
         if (!result.allowed) {
           const reason = result.reason || 'Response blocked by security guardrails';
+          // Sprint 43 CWE-117 sweep: sister site to request-blocked log
+          // above. Sanitize `reason` + `path` at log + response-body
+          // boundaries.
+          const safeReason = sanitizeMeta(reason);
           logger.warn('[Guardrails] Response blocked', {
-            reason,
-            path,
+            reason: safeReason,
+            path: sanitizeMeta(path),
           });
 
           // Store result for potential logging
@@ -533,12 +551,14 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
 
           return JSON.stringify({
             error: 'Response filtered by guardrails',
-            reason,
+            reason: safeReason,
           });
         }
       } catch (error) {
+        // Sprint 43 CWE-117 sweep: switch to canonical serializeError
+        // (sister to request-leg validation-error log).
         logger.error('[Guardrails] Response validation error', {
-          error: error instanceof Error ? error.message : String(error),
+          error: serializeError(error),
         });
         // Fail-closed: replace response with error
         return JSON.stringify({ error: 'Validation error' });
