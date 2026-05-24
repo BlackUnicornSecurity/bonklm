@@ -224,6 +224,35 @@ describe('sanitizeLogString — CWE-117 log-injection guard', () => {
       'user=alice\\x09role=admin\\x09injected\\x09field=x'
     );
   });
+
+  // Sprint 39 security-MEDIUM #4 — U+2028 / U+2029 are line
+  // terminators in V8's JSON.stringify renderer + several SIEM
+  // ingestors, but live above 0x7F so the control-char regex skips
+  // them. The newline-replacement pass now covers them.
+  it('replaces U+2028 (LINE SEPARATOR) with literal \\n marker (Sprint 39 #4)', () => {
+    expect(sanitizeLogString('line1\u2028injected')).toBe('line1\\ninjected');
+  });
+
+  it('replaces U+2029 (PARAGRAPH SEPARATOR) with literal \\n marker (Sprint 39 #4)', () => {
+    expect(sanitizeLogString('para1\u2029injected')).toBe('para1\\ninjected');
+  });
+
+  it('replaces interleaved U+2028 and U+2029', () => {
+    expect(sanitizeLogString('a\u2028b\u2029c\u2028d')).toBe('a\\nb\\nc\\nd');
+  });
+
+  // Sprint 39 security-MEDIUM #5 — explicit NUL coverage + cap
+  // truncation marker coverage.
+  it('hex-escapes a NUL byte explicitly (Sprint 39 #5 coverage gap)', () => {
+    expect(sanitizeLogString('a\x00b')).toBe('a\\x00b');
+  });
+
+  it('emits the truncation marker exactly once at maxLen overflow', () => {
+    const input = 'x'.repeat(600);
+    const out = sanitizeLogString(input);
+    expect(out.endsWith('…[truncated]')).toBe(true);
+    expect((out.match(/…\[truncated\]/g) || []).length).toBe(1);
+  });
 });
 
 describe('serializeError — Sprint 37 security-MEDIUM closures', () => {

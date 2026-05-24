@@ -359,4 +359,53 @@ MHcCAQEEIFLu7LfVcWpL4M3baK4Yk4vLkhhGVxNL...
       expect(result.allowed).toBe(true);
     });
   });
+
+  // Sprint 39 meta-object sweep: secret guard logs `filePath` in
+  // structured-logger meta at two sites (info + warn). RFC 8259 §7
+  // permits literal TAB inside JSON strings; downstream TSV-format
+  // SIEM ingestors then column-split. Verify sanitizeLogString runs
+  // on `file` meta values at both sites.
+  describe('SG-013: filePath meta CWE-117 sanitization (Sprint 39)', () => {
+    function makeSpyLogger() {
+      const calls: Array<{ level: string; msg: string; meta?: unknown }> = [];
+      return {
+        calls,
+        logger: {
+          debug: (msg: string, meta?: unknown) => calls.push({ level: 'debug', msg, meta }),
+          info: (msg: string, meta?: unknown) => calls.push({ level: 'info', msg, meta }),
+          warn: (msg: string, meta?: unknown) => calls.push({ level: 'warn', msg, meta }),
+          error: (msg: string, meta?: unknown) => calls.push({ level: 'error', msg, meta }),
+        },
+      };
+    }
+
+    it('sanitizes filePath on the "Skipping expected secret file" info log', () => {
+      const { logger, calls } = makeSpyLogger();
+      const guard = new SecretGuard({ logger, checkExamples: true });
+      // `isExpectedSecretFile` matches the BASENAME after `split('/').pop()`,
+      // so embed the control-char attack in the DIRECTORY portion so the
+      // basename still equals the allowlist entry `.env.example` and the
+      // info-log branch fires. The full original `filePath` (with the
+      // attack payload) is what gets logged.
+      guard.validate('AKIAIOSFODNN7EXAMPLE', 'dir\nINJECTED_LINE/.env.example');
+
+      const info = calls.find((c) => c.level === 'info' && c.msg.startsWith('Skipping'));
+      expect(info).toBeDefined();
+      const meta = info!.meta as { file: string };
+      // \n → literal '\n' marker per sanitizeLogString contract.
+      expect(meta.file).toBe('dir\\nINJECTED_LINE/.env.example');
+    });
+
+    it('sanitizes filePath on the "Secrets detected" warn log', () => {
+      const { logger, calls } = makeSpyLogger();
+      const guard = new SecretGuard({ logger });
+      guard.validate('AKIAIOSFODNN7EXAMPLE', 'src/\tinjected\tcols.ts');
+
+      const warn = calls.find((c) => c.level === 'warn' && c.msg === 'Secrets detected');
+      expect(warn).toBeDefined();
+      const meta = warn!.meta as { file: string };
+      // TAB → '\x09' hex escape per sanitizeLogString contract.
+      expect(meta.file).toBe('src/\\x09injected\\x09cols.ts');
+    });
+  });
 });

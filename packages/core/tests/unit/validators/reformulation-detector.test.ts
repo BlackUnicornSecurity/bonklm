@@ -15,9 +15,9 @@ import {
   detectMathLogic,
   type ReformulationAnalysisResult,
   type ReformulationFinding,
-} from '../src/validators/reformulation-detector.js';
-import { clearAllSessions } from '../src/session/SessionTracker.js';
-import type { ReformulationConfig } from '../src/base/ValidatorConfig.js';
+} from '../../../src/validators/reformulation-detector.js';
+import { clearAllSessions } from '../../../src/session/SessionTracker.js';
+import type { ReformulationConfig } from '../../../src/base/ValidatorConfig.js';
 
 describe('ReformulationDetector', () => {
   beforeEach(() => {

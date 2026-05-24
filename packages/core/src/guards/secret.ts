@@ -12,7 +12,7 @@
 import { createResult, Finding, type GuardrailResult, RiskLevel, Severity } from '../base/GuardrailResult.js';
 import type { SecretGuardConfig, ValidatorConfig } from '../base/ValidatorConfig.js';
 import { createLogger, type Logger } from '../base/GenericLogger.js';
-import { isExampleContent, isExpectedSecretFile, isHighEntropy } from '../common/index.js';
+import { isExampleContent, isExpectedSecretFile, isHighEntropy, sanitizeLogString } from '../common/index.js';
 import { normalizeText } from '../validators/text-normalizer.js';
 
 const DEFAULT_CONFIG: Required<Pick<SecretGuardConfig, 'checkExamples' | 'entropyThreshold'>> = {
@@ -154,7 +154,13 @@ export class SecretGuard {
 
     // Skip if this is an expected example file
     if (this.config.checkExamples && isExpectedSecretFile(filePath)) {
-      this.logger.info('Skipping expected secret file', { file: filePath });
+      // Sprint 39 meta-object sweep: `filePath` is caller-supplied and
+      // attacker-influenceable (document-upload pipelines, MCP plugins
+      // scanning user-named files). Structured loggers JSON-stringify
+      // meta, but RFC 8259 §7 permits literal TAB inside JSON strings
+      // — Splunk/Datadog/OTel TSV exporters then column-split. Apply
+      // sanitizeLogString at the boundary.
+      this.logger.info('Skipping expected secret file', { file: sanitizeLogString(filePath) });
       return [];
     }
 
@@ -292,12 +298,21 @@ export class SecretGuard {
     const criticalCount = detections.filter((d) => d.confidence === 'critical').length;
     const allowed = this.config.action === 'allow' || (this.config.action === 'log' && criticalCount === 0);
 
+    // Sprint 39 security-audit MEDIUM #1 — meta-shape safety note:
+    // every other field in this object is library-controlled
+    // (`count`/`critical_count`/`risk_score` are numbers;
+    // `risk_level` is a `RiskLevel` enum string literal; `blocked`
+    // is a boolean derived from `this.config.action`). The ONLY
+    // attacker-influenceable string field is `file`, which is
+    // sanitized below. If a future change adds a detection-derived
+    // string field (e.g. `secret_type` from a user-extended pattern
+    // catalog), it MUST also route through `sanitizeLogString`.
     this.logger.warn('Secrets detected', {
       count: detections.length,
       critical_count: criticalCount,
       risk_score: riskScore,
       risk_level: riskLevel,
-      file: filePath,
+      file: sanitizeLogString(filePath),
       blocked: !allowed,
     });
 

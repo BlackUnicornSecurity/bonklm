@@ -167,6 +167,10 @@ export function sanitizeLogMetadata(
   for (const key of Object.keys(sanitized)) {
     const value = sanitized[key];
     if (typeof value === 'string') {
+      // Sprint 39: same-file tolerated caller of `stripLogControlChars`
+      // per ADR-0001 — three internal callers preserve their existing
+      // SPACE-replacement format for back-compat. New external code
+      // should call `sanitizeLogString` from common/index.ts instead.
       sanitized[key] = stripLogControlChars(value);
     }
   }
@@ -178,6 +182,35 @@ export function sanitizeLogMetadata(
  * Strip ASCII control characters (0x00-0x1F + DEL 0x7F) from a
  * string and truncate to 256 chars. Used by `sanitizeLogMetadata`
  * to defeat log-injection via attacker-controlled names.
+ *
+ * @public
+ *
+ * @deprecated Since Sprint 39 — prefer `sanitizeLogString` from
+ * `@blackunicorn/bonklm` (exported via `common/index.ts`) for new
+ * code. This function is retained for
+ * back-compat (it ships as the metadata-sanitizer for
+ * `sanitizeLogMetadata` + `logValidationFailure` + `logTimeout`)
+ * and remains `@public` per v1.0-RC1 freeze policy.
+ *
+ * **Behavioral divergence from `sanitizeLogString` (intentional):**
+ *
+ * | Aspect            | stripLogControlChars   | sanitizeLogString    |
+ * | ----------------- | ---------------------- | -------------------- |
+ * | Strip set         | `0x00-0x1F`, `0x7F`    | same                 |
+ * | Replacement       | SPACE (` `)            | `\xNN` hex escape    |
+ * | Cap               | 256 chars (no marker)  | 500 + `…[truncated]` |
+ * | Newline handling  | replaced with SPACE    | literal `\\n` marker |
+ *
+ * The SPACE replacement loses forensic signal (a TAB-injection
+ * attack becomes indistinguishable from legitimate space-padded
+ * input — `"name": "legit payload"` vs
+ * `"name": "malicious\x09phantom\x09column"` collapse to identical
+ * output post-sanitize), but produces more human-readable log
+ * lines for the connector-internal metadata use case. **This is
+ * an accepted residual risk** — the deprecation tag exists so
+ * new code prefers `sanitizeLogString`'s preserved-signal hex
+ * escape. Removal target: v2.0 — see Sprint 39 ADR
+ * `docs/contributing/adr/0001-log-sanitization.md`.
  */
 export function stripLogControlChars(value: string): string {
   // eslint-disable-next-line no-control-regex
@@ -208,6 +241,8 @@ export function logValidationFailure(
   // which can carry attacker-influenced text (e.g. matched pattern
   // content); strip control chars + truncate before logging.
   logger.warn('Validation blocked', {
+    // Sprint 39 ADR-0001: same-file tolerated caller of the
+    // deprecated `stripLogControlChars`. Removal target v2.0.
     reason: stripLogControlChars(reason),
     ...sanitizeLogMetadata(context ?? {}),
   });
@@ -237,6 +272,8 @@ export function logTimeout(
   // before template interpolation. Uses the same-file
   // `stripLogControlChars` helper for consistency with
   // `logValidationFailure` (which already strips its `reason` arg).
+  // Sprint 39 ADR-0001: same-file tolerated caller of the
+  // deprecated `stripLogControlChars`. Removal target v2.0.
   logger.warn(`Timeout: ${stripLogControlChars(operation)}`, {
     timeout: `${timeoutMs}ms`,
   });

@@ -146,7 +146,13 @@ export function sanitizeLogString(input: string, maxLen: number = DEFAULT_MAX_LO
     `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`
   );
   // Replace newlines/CRs (most common injection vector) with literal markers.
-  const flat = stripped.replace(/\r\n|\n|\r/g, '\\n');
+  // Sprint 39 security-MEDIUM #4: U+2028 (LINE SEPARATOR) + U+2029
+  // (PARAGRAPH SEPARATOR) are treated as line terminators by V8's
+  // JSON.stringify renderer + several SIEM ingestors, but live above
+  // 0x7F so the control-char regex misses them. Bundle them into the
+  // newline-replacement pass so the canonical primitive covers the
+  // full "line break the log line" attack surface.
+  const flat = stripped.replace(/\r\n|\n|\r|\u2028|\u2029/g, '\\n');
   return flat.length > maxLen ? `${flat.slice(0, maxLen)}…[truncated]` : flat;
 }
 
