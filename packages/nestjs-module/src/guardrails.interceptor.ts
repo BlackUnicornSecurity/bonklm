@@ -307,12 +307,17 @@ export class GuardrailsInterceptor implements NestInterceptor {
                 }
               }
 
-              // Return filtered response
+              // Return filtered response.
+              // Sprint 42 CWE-117 sweep — sister site to the input-leg
+              // `getErrorMessage` wrap surfaced by integration test:
+              // `blocked.reason` is built from validator output and
+              // serialized into the HTTP response body. Wrap at the
+              // boundary per Sprint 41 defensive-by-default policy.
               return {
                 error: 'Response filtered by guardrails',
                 ...(this.guardrailsService.getConfig().productionMode
                   ? {}
-                  : { reason: blocked.reason }),
+                  : { reason: sanitizeMeta(blocked.reason) }),
               };
             }
 
@@ -365,7 +370,13 @@ export class GuardrailsInterceptor implements NestInterceptor {
         const result = bodyExtractor(request);
         return String(result ?? '');
       } catch (error) {
-        this.logger.warn('Custom bodyExtractor failed, using default', { error });
+        // Sprint 42 security MEDIUM closure (sister site to lines
+        // 231, 306, 333): user-supplied extractor errors may carry
+        // attacker-influenced messages — apply the canonical
+        // serializeError + sanitizeLogString chain.
+        this.logger.warn('Custom bodyExtractor failed, using default', {
+          error: serializeError(error),
+        });
         // Fall through to default extraction
       }
     }
@@ -399,8 +410,12 @@ export class GuardrailsInterceptor implements NestInterceptor {
         return value;
       });
     } catch (error) {
-      // S013-006: Fallback to String if JSON.stringify fails
-      this.logger.warn('Failed to stringify body, using String conversion', { error });
+      // S013-006: Fallback to String if JSON.stringify fails.
+      // Sprint 42 security MEDIUM closure: canonical serializeError
+      // for the `error` meta field.
+      this.logger.warn('Failed to stringify body, using String conversion', {
+        error: serializeError(error),
+      });
       return String(request.body);
     }
   }
@@ -423,7 +438,11 @@ export class GuardrailsInterceptor implements NestInterceptor {
         const result = responseExtractor(data);
         return String(result ?? '');
       } catch (error) {
-        this.logger.warn('Custom responseExtractor failed, using default', { error });
+        // Sprint 42 security MEDIUM closure: canonical serializeError
+        // for the `error` meta field (sister site to bodyExtractor).
+        this.logger.warn('Custom responseExtractor failed, using default', {
+          error: serializeError(error),
+        });
         // Fall through to default extraction
       }
     }
@@ -461,8 +480,12 @@ export class GuardrailsInterceptor implements NestInterceptor {
         return value;
       });
     } catch (error) {
-      // S013-006: Fallback to String if JSON.stringify fails
-      this.logger.warn('Failed to stringify response data, using String conversion', { error });
+      // S013-006: Fallback to String if JSON.stringify fails.
+      // Sprint 42 security MEDIUM closure: canonical serializeError
+      // for the `error` meta field.
+      this.logger.warn('Failed to stringify response data, using String conversion', {
+        error: serializeError(error),
+      });
       return String(data);
     }
   }

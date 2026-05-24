@@ -284,7 +284,15 @@ export function createGuardedMCP(
       if (productionMode) {
         throw new Error('Tool call blocked');
       }
-      throw new Error(`Tool call blocked: ${blocked.reason}`);
+      // Sprint 42 CWE-117 sweep — surfaced by integration test:
+      // `blocked.reason` is built from validator output and may carry
+      // attacker-influenced text (matched-pattern slice with embedded
+      // `\n`). Pre-Sprint-42, the dev-mode error message embedded the
+      // raw value; if the caller logs `error.message` through a
+      // downstream logger, the raw CR/LF forges phantom log lines.
+      // Sanitize at the throw site per Sprint 41 defensive-by-default
+      // policy.
+      throw new Error(`Tool call blocked: ${sanitizeMeta(blocked.reason)}`);
     }
   };
 
@@ -308,10 +316,20 @@ export function createGuardedMCP(
         onToolResultBlocked(blocked, toolName);
       }
 
-      // Return filtered result
+      // Return filtered result.
+      // Sprint 42 CWE-117 sweep — surfaced by integration test: this
+      // is the SISTER site of the error-catch fallback filteredText
+      // (~line 402) that Sprint 40 wrapped. The Sprint 40 sweep missed
+      // this NON-error path. An adversarial remote MCP server's
+      // tool-result text can drive validator output with
+      // control-char-laden `blocked.reason`; the unsanitized
+      // filteredText propagates into chat UI / agent transcript /
+      // terminal output. Per Sprint 41 defensive-by-default policy:
+      // sanitize at the connector boundary regardless of downstream
+      // rendering context.
       const filteredText = productionMode
         ? 'Tool result filtered by guardrails'
-        : `Tool result filtered by guardrails: ${blocked.reason}`;
+        : `Tool result filtered by guardrails: ${sanitizeMeta(blocked.reason)}`;
 
       return {
         content: [

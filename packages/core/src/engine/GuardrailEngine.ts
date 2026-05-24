@@ -14,7 +14,7 @@ import {
   parseOverrideTokenConfig,
 } from '../security/override-token.js';
 import { StreamValidationError } from '../connector-utils/errors.js';
-import { serializeError } from '../common/index.js';
+import { sanitizeLogString, serializeError } from '../common/index.js';
 import { CircuitBreaker, type CircuitBreakerMetrics } from './CircuitBreaker.js';
 
 // Re-export so existing consumers importing StreamValidationError from this module
@@ -501,8 +501,16 @@ export class GuardrailEngine {
 
     // Check if we should short-circuit
     if (this.shortCircuit && allResults.some((r) => r.blocked)) {
+      // Sprint 42 CWE-117 sweep — surfaced by mcp integration test:
+      // validator-output `reason` can carry attacker-influenced text
+      // (matched-pattern slice with embedded `\n` etc.). Sprint 38 swept
+      // connector-utils sink patterns; the engine's short-circuit log
+      // was missed because it's in core/engine, outside the
+      // connector-utils enumeration scope. Wrap with the canonical
+      // `sanitizeLogString` primitive per ADR-0001.
+      const blockedReason = allResults.find((r) => r.blocked)?.reason;
       this.logger.warn('Validation blocked (short-circuit)', {
-        reason: allResults.find((r) => r.blocked)?.reason,
+        reason: blockedReason !== undefined ? sanitizeLogString(blockedReason) : undefined,
       });
 
       const result = this.aggregateResults(allResults, startTime);
@@ -596,7 +604,12 @@ export class GuardrailEngine {
             {
               category: 'validator_error',
               severity: Severity.CRITICAL,
-              description: `Validator ${name} threw an error: ${String(error)}`,
+              // Sprint 42 architect HIGH closure (sister site #1 of 4):
+              // `error.message` is attacker-influenceable when a validator
+              // wraps remote input in its error. The description flows
+              // into `aggregateResults` → `EngineResult.findings` →
+              // consumer log surfaces. Sanitize per ADR-0001.
+              description: `Validator ${name} threw an error: ${sanitizeLogString(String(error))}`,
             },
           ]),
           validatorName: name,
@@ -658,7 +671,9 @@ export class GuardrailEngine {
           ...createResult(false, Severity.CRITICAL, [{
             category: 'validator_error',
             severity: Severity.CRITICAL,
-            description: `Validator ${name} threw an error: ${String(error)}`,
+            // Sprint 42 architect HIGH closure (sister site #2 of 4):
+            // see #1 rationale above (validateInput catch).
+            description: `Validator ${name} threw an error: ${sanitizeLogString(String(error))}`,
           }]),
           validatorName: name,
         });
@@ -688,7 +703,9 @@ export class GuardrailEngine {
           ...createResult(false, Severity.CRITICAL, [{
             category: 'validator_error',
             severity: Severity.CRITICAL,
-            description: `Validator ${name} threw an error: ${String(error)}`,
+            // Sprint 42 architect HIGH closure (sister site #3 of 4):
+            // parallel-validator catch path.
+            description: `Validator ${name} threw an error: ${sanitizeLogString(String(error))}`,
           }]),
           validatorName: name,
         };
@@ -733,7 +750,9 @@ export class GuardrailEngine {
           ...createResult(false, Severity.CRITICAL, [{
             category: 'guard_error',
             severity: Severity.CRITICAL,
-            description: `Guard ${name} threw an error: ${String(error)}`,
+            // Sprint 42 architect HIGH closure (sister site #4 of 4):
+            // guard catch path mirrors validator catch.
+            description: `Guard ${name} threw an error: ${sanitizeLogString(String(error))}`,
           }]),
           validatorName: name,
         });

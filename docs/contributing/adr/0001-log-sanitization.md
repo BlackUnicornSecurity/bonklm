@@ -97,22 +97,43 @@ specific gap surfaced, none was retroactively consolidated.
 
 ## Audit checklist for new code
 
-When you add a `logger.*` call, a `span.add*` call, or any other
-log/telemetry emit:
+When you add a `logger.*` call, a `span.add*` call, **a synthetic
+`GuardrailResult.findings[].description` field**, an HTTP response
+body / error message returned to a caller, or any other emit:
 
 - [ ] Does the template literal interpolate any string that originated
       from user input (request body, file content, validator output,
-      file path)? → Wrap with `sanitizeLogString`.
+      file path, validator-thrown `error.message`)? → Wrap with
+      `sanitizeLogString` (or `sanitizeMeta` at connector boundaries).
 - [ ] Does the meta object include any string-typed value with the same
-      origin? → Wrap that field's value with `sanitizeLogString`.
+      origin? → Wrap that field's value with `sanitizeLogString` /
+      `sanitizeMeta`.
 - [ ] Does the OTel span attribute carry such a string? → Wrap.
+- [ ] **Sprint 42 addition**: Does a synthetic `GuardrailResult`
+      finding `description` embed `String(error)` or any other raw
+      caught value? Synthetic findings flow into `EngineResult` and
+      surface to consumer log surfaces — wrap the interpolation per
+      ADR-0001. Prefer `sanitizeLogString(serializeError(error).message)`
+      for consistency with sister log-meta sites.
+- [ ] **Sprint 42 addition**: Does a `logger.warn`/`logger.error`
+      meta carry a raw `error` value? Use `{ error: serializeError(error) }`
+      per Sprint 33 canonical pattern — bare `{ error }` renders as
+      `error={}` post-JSON.stringify because Error properties are
+      non-enumerable.
 - [ ] If you used `stripLogControlChars`: was it because the surrounding
       code already uses it (back-compat consistency)? If yes — document
       that. If no — switch to `sanitizeLogString`.
 - [ ] If your tests assert log output: do they catch the case where
       someone removes the sanitize wrap? (i.e., the test must FAIL when
       the wrap is removed — otherwise it is a happy-path test, not a
-      regression test).
+      regression test). **Integration tests preferred over contract-lock
+      tests** — Sprint 41/42 lesson: integration tests find what grep
+      sweeps miss.
+- [ ] **Sprint 42 addition**: enumeration of sink-pattern sites must
+      span the ENTIRE codebase, not just `connector-utils/` or
+      `connectors/`. Engine, validators, guards, telemetry, hooks, and
+      service-layer code all qualify. Grep by interpolation shape
+      (`\${`, `${String(`, `${name`), not by directory.
 
 ## Sprint history
 
@@ -130,6 +151,30 @@ log/telemetry emit:
   test-file layout standardization; U+2028 / U+2029 added to
   `sanitizeLogString` newline-replacement pass (security-MEDIUM #4
   closure); this document.
+- **Sprint 40** — connector-package sweep (7 connectors: openclaw,
+  mcp, elizaos, nestjs, anthropic, langchain, plus express-middleware
+  + nestjs.interceptor sister sites). 12 src wraps across 7 packages
+  + 4 new test files. Audit-driven scope expansion from initial 4
+  connectors to 7 after security audit surfaced 2 NEW HIGH findings
+  + architect HIGH sister-site finding.
+- **Sprint 41** — `sanitizeMeta` @public helper added at
+  `packages/core/src/connector-utils/logger.ts` consolidating the
+  `sanitizeLogString(String(x ?? ''))` combo. ~10 connector call
+  sites retrofitted. Pre-commit `tsc --noEmit` hook installed via
+  simple-git-hooks (architect HIGH-5 closure, 3 sprints overdue).
+  Real integration test for elizaos `installSealedWrapMemory`
+  surfaced 3 more unsanitized sites Sprint 40 missed (wrap-memory.ts
+  lines 74, 125, 130/135) — fixed inline.
+- **Sprint 42** — mcp + nestjs integration test upgrades
+  (architect HIGH-2 closure). 14 CWE-117 wraps applied: 5 surfaced
+  by integration tests (engine short-circuit reason, mcp dev-mode
+  Error + filteredText, nestjs getErrorMessage + response-leg body)
+  + 9 surfaced by 3-lane audit pass on those fixes (4 engine
+  validator/guard catch descriptions, 1 nestjs service finding
+  description, 4 interceptor extractor error metas). Confirms
+  Sprint 38 lesson "enumerate by SINK PATTERN, not by FUNCTION
+  NAME or directory" — engine sites were outside connector-utils
+  enumeration scope across Sprints 38-41.
 
 ## Known gaps deferred to Sprint 40
 

@@ -15,6 +15,8 @@ import {
   Logger,
   LogLevel,
   RiskLevel,
+  sanitizeLogString,
+  sanitizeMeta,
   Schema,
   serializeError,
   type SessionPatternFinding,
@@ -274,7 +276,13 @@ export class GuardrailsService {
             {
               category: 'validation_error',
               severity: Severity.CRITICAL,
-              description: `Validation failed: ${String(error)}`,
+              // Sprint 42 architect HIGH + security MEDIUM closure
+              // (sister site #5 of 5): `error.message` may carry
+              // attacker-influenced text when a validator wraps remote
+              // input. Description flows into the finding array,
+              // surfaces to any consumer logging the result. Sanitize
+              // via the canonical primitive per ADR-0001.
+              description: `Validation failed: ${sanitizeLogString(String(error))}`,
             },
           ],
           timestamp: Date.now(),
@@ -314,7 +322,24 @@ export class GuardrailsService {
     if (this.productionMode) {
       return 'Content blocked by security policy';
     }
-    return result.reason || 'Content blocked by guardrails';
+    // Sprint 42 CWE-117 sweep — surfaced by integration test:
+    // `result.reason` is built from validator output and may carry
+    // attacker-influenced text (matched-pattern slice with embedded
+    // `\n`). Pre-Sprint-42, dev-mode `getErrorMessage` returned the
+    // raw value, which the interceptor embeds into a
+    // `BadRequestException` body that NestJS serializes into the HTTP
+    // response. If a downstream aggregator logs the response body,
+    // the raw CR/LF forges phantom log lines. Per Sprint 41
+    // defensive-by-default policy: sanitize at the connector
+    // boundary regardless of downstream rendering context.
+    //
+    // Sprint 42 code-review SHOULD-FIX closure: use `.trim()` so a
+    // whitespace-only `reason` (e.g. validator surfaces `'  '`) is
+    // treated as empty and falls back to the static label rather than
+    // a sanitized-but-blank string. `sanitizeMeta` preserves plain
+    // whitespace verbatim, so without trim the consumer would see a
+    // blank reason field.
+    return result.reason?.trim() ? sanitizeMeta(result.reason) : 'Content blocked by guardrails';
   }
 
   /**
