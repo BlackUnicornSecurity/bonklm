@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-mistral",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0-rc.3",
   "description": "Mistral SDK v2 wrapper for BonkLM — chat/agents/fim/embeddings/classifiers guardrails with default-on multilingual + reformulation detection",
   "type": "module",
   "main": "./dist/index.js",

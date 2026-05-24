@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-turbopuffer",
-  "version": "1.0.0-rc.2",
+  "version": "1.0.0-rc.3",
   "description": "Turbopuffer Namespace wrapper for BonkLM — edge-compatible (Workerd/Deno/Bun/Vercel Edge) MemoryWriteValidator + RetrievedDocValidator guardrails",
   "type": "module",
   "main": "./dist/index.js",
