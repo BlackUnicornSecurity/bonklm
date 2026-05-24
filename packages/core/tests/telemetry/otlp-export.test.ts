@@ -217,3 +217,68 @@ describe('bonklmTrace — span lifecycle', () => {
     expect(capturedSpan.current!.end).toHaveBeenCalledTimes(1);
   });
 });
+
+// Sprint 38 security-HIGH closure: OTel span attributes are NOT
+// JSON-serialized by the SDK — they pass to the exporter as-is. TSV-
+// format exporter pipelines (Splunk TCP, Datadog agent syslog
+// forwarder, several OTel Collector contrib exporters) treat
+// unescaped TAB as a column separator, so attacker-influenced
+// finding text MUST be sanitized at the boundary. The audit caught
+// this as a CWE-117 hole that the engine-side `sanitizeLogString`
+// wraps did not cover.
+describe('bonklmTrace — CWE-117 sanitization (Sprint 38 security-HIGH)', () => {
+  it('sanitizes finding.description before addEvent', () => {
+    const { tracer, capturedEvents } = makeMockTracer();
+    bonklmTrace(
+      makeResult({
+        blocked: true,
+        findings: [
+          {
+            category: 'malicious',
+            severity: Severity.CRITICAL,
+            description: 'matched\ninjected_log: spoof',
+          },
+        ],
+      }),
+      { tracer, validator: 'x', surface: 'text_input' }
+    );
+    expect(capturedEvents).toHaveLength(1);
+    // sanitizeLogString replaces \n with the literal two-char marker
+    // `\\n` (NOT a space, NOT the byte 0x0a).
+    expect(capturedEvents[0]!.attrs!.description).toBe('matched\\ninjected_log: spoof');
+  });
+
+  it('sanitizes finding.category before addEvent (TAB column-injection defence)', () => {
+    const { tracer, capturedEvents } = makeMockTracer();
+    bonklmTrace(
+      makeResult({
+        blocked: true,
+        findings: [
+          {
+            category: 'cat\tinjected',
+            severity: Severity.WARNING,
+            description: 'd',
+          },
+        ],
+      }),
+      { tracer, validator: 'x', surface: 'text_input' }
+    );
+    // TAB → `\x09` hex escape per sanitizeLogString contract.
+    expect(capturedEvents[0]!.attrs!.category).toBe('cat\\x09injected');
+  });
+
+  it('sanitizes result.reason before setStatus on BLOCK', () => {
+    const { tracer, capturedStatus } = makeMockTracer();
+    bonklmTrace(
+      makeResult({
+        blocked: true,
+        reason: 'blocked\nfake_severity: critical',
+      }),
+      { tracer, validator: 'x', surface: 'text_input' }
+    );
+    expect(capturedStatus.current).toEqual({
+      code: 2,
+      message: 'blocked\\nfake_severity: critical',
+    });
+  });
+});

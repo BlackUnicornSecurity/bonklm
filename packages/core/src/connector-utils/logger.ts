@@ -230,7 +230,14 @@ export function logTimeout(
   operation: string,
   timeoutMs: number
 ): void {
-  logger.warn(`Timeout: ${operation}`, {
+  // Sprint 38 CWE-117 sweep: `operation` is a caller-supplied label
+  // (typically static like 'query validation'), but connector authors
+  // may derive it from request metadata (e.g. `${requestId} validate`)
+  // where attacker-influenced data could land. Strip control chars
+  // before template interpolation. Uses the same-file
+  // `stripLogControlChars` helper for consistency with
+  // `logValidationFailure` (which already strips its `reason` arg).
+  logger.warn(`Timeout: ${stripLogControlChars(operation)}`, {
     timeout: `${timeoutMs}ms`,
   });
 }

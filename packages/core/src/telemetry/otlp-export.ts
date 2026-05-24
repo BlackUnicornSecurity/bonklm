@@ -26,6 +26,7 @@
  * the same structural interface.
  */
 import type { GuardrailResult } from '../base/GuardrailResult.js';
+import { sanitizeLogString } from '../common/index.js';
 
 /** R2-10 locked surface vocabulary. */
 export type BonklmTraceSurface =
@@ -134,18 +135,32 @@ export function bonklmTrace<R extends GuardrailResult>(
       span.setAttribute(k, v);
     }
     // Per-finding event so downstream sinks can pivot on category.
+    //
+    // Sprint 38 security-HIGH closure: OTel span attributes are NOT
+    // JSON-serialized by the SDK — values pass to the exporter as-is.
+    // OTel collectors that emit TSV (Splunk TCP, Datadog agent syslog
+    // forwarder, several Collector exporter contrib modules) treat an
+    // unescaped TAB inside `description` / `category` as a column
+    // separator, enabling CWE-117 log injection via the telemetry
+    // path that entirely bypasses the engine-side `sanitizeLogString`
+    // wraps. `RFC 8259 §7` permits literal TAB inside JSON strings, so
+    // even a JSON-emitting exporter does not save us — TAB survives
+    // the JSON wire format. Sanitize at the boundary.
     if (Array.isArray(result.findings) && span.addEvent) {
       for (const finding of result.findings) {
         span.addEvent('bonklm.finding', {
-          category: String(finding.category ?? 'unknown'),
-          severity: String(finding.severity ?? severity),
-          description: String(finding.description ?? ''),
+          category: sanitizeLogString(String(finding.category ?? 'unknown')),
+          severity: sanitizeLogString(String(finding.severity ?? severity)),
+          description: sanitizeLogString(String(finding.description ?? '')),
         });
       }
     }
     if (action === 'block' && span.setStatus) {
-      // OpenTelemetry SpanStatusCode.ERROR = 2
-      span.setStatus({ code: 2, message: result.reason ?? 'bonklm block' });
+      // OpenTelemetry SpanStatusCode.ERROR = 2.
+      // Sprint 38 security-HIGH closure (same rationale as above):
+      // `result.reason` carries pattern-engine-derived text and MUST
+      // be sanitized before reaching the exporter wire-format.
+      span.setStatus({ code: 2, message: sanitizeLogString(result.reason ?? 'bonklm block') });
     }
     span.end();
   });

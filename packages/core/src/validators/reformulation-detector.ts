@@ -15,6 +15,7 @@
 import { createLogger, type Logger } from '../base/GenericLogger.js';
 import { createResult, Finding, type GuardrailResult, Severity } from '../base/GuardrailResult.js';
 import { getRiskThreshold, mergeConfig, type ReformulationConfig } from '../base/ValidatorConfig.js';
+import { sanitizeLogString } from '../common/index.js';
 import { CRITICAL_PATTERNS, detectPatterns } from './pattern-engine.js';
 import {
   type SessionPatternFinding,
@@ -635,7 +636,11 @@ export class ReformulationDetector {
       const sessionResult = updateSessionState(sessionId, sessionFindings);
       if (sessionResult.shouldEscalate) {
         session_escalated = true;
-        this.logger.warn(`Session escalation detected: ${sessionResult.reason}`);
+        // Sprint 38 CWE-117 sweep: `sessionResult.reason` is constructed
+        // from `finding.category` (validator-provided string, possibly
+        // attacker-influenced via custom validator categories). Wrap
+        // before template-interpolation to defeat log injection.
+        this.logger.warn(`Session escalation detected: ${sanitizeLogString(sessionResult.reason)}`);
       }
     }
 
@@ -703,7 +708,17 @@ export class ReformulationDetector {
     if (stdFindings.length > 0) {
       this.logger.debug(`ReformulationDetector found ${stdFindings.length} issues`);
       for (const finding of stdFindings) {
-        this.logger.debug(`  - ${finding.pattern_name}: ${finding.description}`);
+        // Sprint 38 CWE-117 sweep: `finding.description` may contain
+        // user-derived text (matched-pattern context, extracted token).
+        // `pattern_name` is currently safe because every value is
+        // derived from static library constants (pattern-engine.ts
+        // PatternDefinition arrays + jailbreak.ts `fuzzy_${keyword}`
+        // template over the static JAILBREAK_KEYWORDS array — Sprint
+        // 38 code-reviewer LOW closure tightens this claim from the
+        // earlier "enum-like" wording). Any future change that allows
+        // user-configurable pattern names MUST add sanitizeLogString
+        // here too.
+        this.logger.debug(`  - ${finding.pattern_name}: ${sanitizeLogString(finding.description)}`);
       }
     }
 
