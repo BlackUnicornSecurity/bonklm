@@ -200,6 +200,15 @@ describe('GuardrailEngine', () => {
       });
       expect(engine.getGuards()).toHaveLength(1);
 
+      // Sprint 33 audit note (code-reviewer MEDIUM): 'SecretGuard' here
+      // resolves via `g.name ?? g.constructor.name` — SecretGuard does
+      // NOT currently set a `readonly name` instance property, so the
+      // class-name fallback wins. If a future sprint adds e.g.
+      // `readonly name = 'secret'` to SecretGuard (as JailbreakValidator
+      // did Sprint 26 with `name = 'jailbreak'`), this lookup will
+      // silently start returning false. UAT-INT-004 (uat-suite.ts) hit
+      // exactly that latent bug. Either keep SecretGuard without an
+      // instance `name` OR update this lookup at the same time.
       const removed = engine.removeGuard('SecretGuard');
       expect(removed).toBe(true);
       expect(engine.getGuards()).toHaveLength(0);

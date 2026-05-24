@@ -92,9 +92,19 @@ export function readFileContent(filePath: string): string {
 }
 
 /**
- * Check if file path is an expected example file
+ * Check if file path is an expected example file.
+ *
+ * Defensive: non-string inputs (object / undefined / null / number)
+ * return `false` rather than throwing. The canonical Guard interface
+ * declares `context?: string` (see `GuardrailEngine.types.ts`); a caller
+ * passing a non-string is a contract violation but should not crash the
+ * detection pipeline. Sprint 33 closure (benchmark-bug surfacing).
  */
 export function isExpectedSecretFile(filePath: string): boolean {
+  if (typeof filePath !== 'string' || filePath.length === 0) {
+    return false;
+  }
+
   const EXPECTED_SECRET_FILES = [
     '.env.example',
     '.env.template',
@@ -107,4 +117,92 @@ export function isExpectedSecretFile(filePath: string): boolean {
 
   const basename = filePath.split('/').pop()?.toLowerCase() || '';
   return EXPECTED_SECRET_FILES.some((expected) => basename === expected.toLowerCase());
+}
+
+/**
+ * Sanitize a string for safe inclusion in structured-logger output.
+ *
+ * Defeats CWE-117 log injection: strips control characters
+ * (`\x00-\x08 \x0b-\x1f \x7f`) and escapes newlines to literal `\n`
+ * markers so an attacker-controlled string cannot forge log records in
+ * downstream aggregators (Datadog, Splunk, ELK, OTel collectors).
+ * Caps output at `maxLen` (default 500 chars).
+ *
+ * @public Sprint 33 — extracted from `timeout-wrapper.ts` (Sprint 31)
+ * to share the sanitization across `serializeError` + connector
+ * timeout primitives. Single source of truth for log-string hygiene.
+ */
+const DEFAULT_MAX_LOG_STRING_LEN = 500;
+
+export function sanitizeLogString(input: string, maxLen: number = DEFAULT_MAX_LOG_STRING_LEN): string {
+  // eslint-disable-next-line no-control-regex
+  const stripped = input.replace(/[\x00-\x08\x0b-\x1f\x7f]/g, (c) =>
+    `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`
+  );
+  // Replace newlines/CRs (most common injection vector) with literal markers.
+  const flat = stripped.replace(/\r\n|\n|\r/g, '\\n');
+  return flat.length > maxLen ? `${flat.slice(0, maxLen)}…[truncated]` : flat;
+}
+
+/**
+ * Serialize an unknown error value into a plain, enumerable object so
+ * it survives JSON serialization in structured loggers.
+ *
+ * `Error` instances have non-enumerable `message` / `stack` / `name`
+ * properties, so `JSON.stringify(new Error('x'))` produces `"{}"` and
+ * `{ error }` log meta renders as `error={}` — opacity that defeats
+ * observability. This helper extracts the salient fields explicitly
+ * and runs `message` through `sanitizeLogString` to defeat log
+ * injection (CWE-117) if the caller's `Error` was constructed with
+ * user-controlled input (e.g. `new Error(\`bad: \${userInput}\`)`).
+ *
+ * @public Sprint 33 — engine error-log hardening.
+ *
+ * **SIEM contract**: `stack` contains file paths from the install
+ * location and is intended for server-side debug logs only. Callers
+ * that forward log payloads to third-party SIEM / client-facing APIs
+ * MUST strip the `stack` field at the transport layer.
+ */
+export interface SerializedError {
+  /** Sanitized error message. Safe for inclusion in structured log lines. */
+  message: string;
+  name?: string;
+  /**
+   * Raw stack trace. Contains install-path fragments — DO NOT forward
+   * to client-facing APIs or untrusted SIEM destinations. Strip at the
+   * transport layer if the log payload leaves the trust boundary.
+   */
+  stack?: string;
+  /** Stringified representation for non-Error throws (strings / objects / primitives). */
+  raw?: string;
+}
+
+export function serializeError(error: unknown): SerializedError {
+  if (error instanceof Error) {
+    return {
+      message: sanitizeLogString(error.message),
+      name: error.name,
+      stack: error.stack,
+    };
+  }
+  if (typeof error === 'string') {
+    return { message: sanitizeLogString(error) };
+  }
+  // Non-Error throw: capture a best-effort string representation.
+  let raw: string;
+  try {
+    raw = JSON.stringify(error);
+  } catch {
+    // JSON.stringify throws on circular structures, getter throws,
+    // BigInt values, etc. Use an explicit marker rather than falling
+    // back to `String(error)` (which produces the misleading
+    // `'[object Object]'` for plain objects).
+    raw = '[circular or non-serialisable]';
+  }
+  return {
+    message: typeof error === 'object' && error !== null
+      ? '[non-Error object thrown]'
+      : sanitizeLogString(String(error)),
+    raw,
+  };
 }

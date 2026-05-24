@@ -56,6 +56,7 @@
  */
 import type { Logger } from '../base/GenericLogger.js';
 import { Severity } from '../base/GuardrailResult.js';
+import { sanitizeLogString } from '../common/index.js';
 
 /**
  * Sprint 31 audit closure (security MEDIUM-3 + general hardening):
@@ -64,20 +65,15 @@ import { Severity } from '../base/GuardrailResult.js';
  * (\n / \r / NUL / DEL / 0x01-0x08 / 0x0b-0x1f / 0x7f) that could be
  * used to forge log records in downstream aggregators (Datadog,
  * Splunk, etc.).
+ *
+ * Sprint 33 audit closure: moved the canonical implementation to
+ * `common/index.ts` as `sanitizeLogString` so it can be shared with
+ * `serializeError`. This adapter preserves the original `unknown` →
+ * sanitised-string signature.
  */
-const MAX_ERROR_MESSAGE_LEN = 500;
 function sanitizeErrorMessage(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
-  // Replace control characters with their escaped form.
-  // eslint-disable-next-line no-control-regex
-  const stripped = raw.replace(/[\x00-\x08\x0b-\x1f\x7f]/g, (c) =>
-    `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`
-  );
-  // Replace newlines/CRs (most common injection vector) with literal markers.
-  const flat = stripped.replace(/\r\n|\n|\r/g, '\\n');
-  return flat.length > MAX_ERROR_MESSAGE_LEN
-    ? `${flat.slice(0, MAX_ERROR_MESSAGE_LEN)}…[truncated]`
-    : flat;
+  return sanitizeLogString(raw);
 }
 
 /**

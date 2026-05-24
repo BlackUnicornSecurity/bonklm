@@ -14,6 +14,7 @@ import {
   parseOverrideTokenConfig,
 } from '../security/override-token.js';
 import { StreamValidationError } from '../connector-utils/errors.js';
+import { serializeError } from '../common/index.js';
 import { CircuitBreaker, type CircuitBreakerMetrics } from './CircuitBreaker.js';
 
 // Re-export so existing consumers importing StreamValidationError from this module
@@ -383,7 +384,7 @@ export class GuardrailEngine {
           await callback(result, { content, validation_context: validationContext });
         } catch (error) {
           // Log error but don't fail validation
-          this.logger.warn('Intercept callback failed', { error });
+          this.logger.warn('Intercept callback failed', { error: serializeError(error) });
         }
       })
     );
@@ -589,7 +590,7 @@ export class GuardrailEngine {
         allResults.push({ ...result, validatorName: name });
         if (this.shortCircuit && result.blocked) break;
       } catch (error) {
-        this.logger.error(`Error in validator ${name} (validateInput)`, { error });
+        this.logger.error(`Error in validator ${name} (validateInput)`, { error: serializeError(error) });
         allResults.push({
           ...createResult(false, Severity.CRITICAL, [
             {
@@ -652,7 +653,7 @@ export class GuardrailEngine {
           break;
         }
       } catch (error) {
-        this.logger.error(`Error in validator ${name}`, { error });
+        this.logger.error(`Error in validator ${name}`, { error: serializeError(error) });
         results.push({
           ...createResult(false, Severity.CRITICAL, [{
             category: 'validator_error',
@@ -682,7 +683,7 @@ export class GuardrailEngine {
           validatorName: name,
         };
       } catch (error) {
-        this.logger.error(`Error in validator ${name}`, { error });
+        this.logger.error(`Error in validator ${name}`, { error: serializeError(error) });
         return {
           ...createResult(false, Severity.CRITICAL, [{
             category: 'validator_error',
@@ -727,7 +728,7 @@ export class GuardrailEngine {
           break;
         }
       } catch (error) {
-        this.logger.error(`Error in guard ${name}`, { error });
+        this.logger.error(`Error in guard ${name}`, { error: serializeError(error) });
         results.push({
           ...createResult(false, Severity.CRITICAL, [{
             category: 'guard_error',

@@ -38,65 +38,65 @@ const testCases = {
 describe('Performance Benchmarks', () => {
   describe('Single Validator - PromptInjectionValidator', () => {
     bench('short text (10ms target)', () => {
-      promptInjectionValidator.validate(testCases.short, { direction: 'input' });
+      promptInjectionValidator.validate(testCases.short);
     });
 
     bench('medium text (10ms target)', () => {
-      promptInjectionValidator.validate(testCases.medium, { direction: 'input' });
+      promptInjectionValidator.validate(testCases.medium);
     });
 
     bench('long text (50ms target)', () => {
-      promptInjectionValidator.validate(testCases.long, { direction: 'input' });
+      promptInjectionValidator.validate(testCases.long);
     });
   });
 
   describe('Single Validator - JailbreakValidator', () => {
     bench('short text (10ms target)', () => {
-      jailbreakValidator.validate(testCases.short, { direction: 'input' });
+      jailbreakValidator.validate(testCases.short);
     });
 
     bench('with jailbreak pattern (10ms target)', () => {
-      jailbreakValidator.validate(testCases.withInjection, { direction: 'input' });
+      jailbreakValidator.validate(testCases.withInjection);
     });
   });
 
   describe('Single Guard - SecretGuard', () => {
     bench('short text (5ms target)', () => {
-      secretGuard.validate(testCases.short, { direction: 'input' });
+      secretGuard.validate(testCases.short);
     });
 
     bench('with API key pattern (5ms target)', () => {
-      secretGuard.validate('My API key is sk-1234567890abcdef', { direction: 'input' });
+      secretGuard.validate('My API key is sk-1234567890abcdef');
     });
   });
 
   describe('GuardrailEngine (full validation)', () => {
     bench('short text with 2 validators + 1 guard (100ms target)', async () => {
-      await engine.validate(testCases.short, { direction: 'input' });
+      await engine.validate(testCases.short);
     });
 
     bench('medium text with 2 validators + 1 guard (100ms target)', async () => {
-      await engine.validate(testCases.medium, { direction: 'input' });
+      await engine.validate(testCases.medium);
     });
 
     bench('long text with 2 validators + 1 guard (200ms target)', async () => {
-      await engine.validate(testCases.long, { direction: 'input' });
+      await engine.validate(testCases.long);
     });
   });
 
   describe('Multiple validations (simulate concurrent requests)', () => {
     bench('10 concurrent validations (100ms target)', async () => {
       await Promise.all([
-        engine.validate(testCases.short, { direction: 'input' }),
-        engine.validate(testCases.medium, { direction: 'input' }),
-        engine.validate('Hello world', { direction: 'input' }),
-        engine.validate('How are you?', { direction: 'input' }),
-        engine.validate('What is the weather?', { direction: 'input' }),
-        engine.validate('Tell me a joke', { direction: 'input' }),
-        engine.validate('Explain TypeScript', { direction: 'input' }),
-        engine.validate('Help me with code', { direction: 'input' }),
-        engine.validate('Review this PR', { direction: 'input' }),
-        engine.validate('Deploy the app', { direction: 'input' }),
+        engine.validate(testCases.short),
+        engine.validate(testCases.medium),
+        engine.validate('Hello world'),
+        engine.validate('How are you?'),
+        engine.validate('What is the weather?'),
+        engine.validate('Tell me a joke'),
+        engine.validate('Explain TypeScript'),
+        engine.validate('Help me with code'),
+        engine.validate('Review this PR'),
+        engine.validate('Deploy the app'),
       ]);
     });
   });

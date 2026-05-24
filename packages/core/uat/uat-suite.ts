@@ -1162,8 +1162,13 @@ My SSN is 333-44-5555
         engine.addValidator(new JailbreakValidator());
         const afterAddCount = engine.getStats().validatorCount;
 
-        // Remove validator
-        engine.removeValidator('JailbreakValidator');
+        // Remove validator by its canonical instance-level `name`.
+        // Sprint 26/28 froze `name = 'jailbreak'` (lowercase) on the
+        // JailbreakValidator class as @public; the class-name
+        // 'JailbreakValidator' is NOT the lookup key. `removeValidator`
+        // checks `v.name ?? v.constructor.name`, so the instance name
+        // wins. Sprint 33 closure (UAT stale-test fix).
+        engine.removeValidator('jailbreak');
         const afterRemoveCount = engine.getStats().validatorCount;
 
         if (afterAddCount !== initialCount + 1) {
