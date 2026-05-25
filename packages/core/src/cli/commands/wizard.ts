@@ -18,6 +18,7 @@
 
 import { Command } from 'commander';
 import * as p from '@clack/prompts';
+import { sanitizeMeta } from '../../connector-utils/logger.js';
 import { getAllConnectors, getConnector } from '../connectors/registry.js';
 import { detectFrameworks } from '../detection/framework.js';
 import { detectServices } from '../detection/services.js';
@@ -414,7 +415,11 @@ export const wizardCommand = new Command('wizard')
         if (testResult.result.connection && testResult.result.validation) {
           p.log.success(`${connector.name} is working!`);
         } else {
-          p.log.error(`${connector.name} test failed: ${testResult.result.error || 'Unknown error'}`);
+          // Sprint 47 CWE-117 sweep (security LOW closure from Sprint
+          // 46 audit): `testResult.result.error` is a connector-
+          // supplied error string. ANSI/control-char strip prevents
+          // terminal-control injection from a hostile provider.
+          p.log.error(`${connector.name} test failed: ${sanitizeMeta(testResult.result.error || 'Unknown error')}`);
         }
       }
 

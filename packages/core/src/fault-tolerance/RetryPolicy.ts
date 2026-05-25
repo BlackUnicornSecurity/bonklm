@@ -7,6 +7,7 @@
  */
 
 import type { Logger } from '../base/GenericLogger.js';
+import { serializeError } from '../common/index.js';
 
 /**
  * Retry configuration
@@ -163,8 +164,16 @@ export class RetryPolicy {
 
         // Check if error is retryable
         if (!this.isRetryableError(error as Error) || attempt === this.config.maxAttempts) {
+          // Sprint 47 cross-subsystem CWE-117 sweep (architect MEDIUM #6
+          // from Sprint 46 audit): `lastError.message` is upstream-
+          // provider error text — attacker-influenceable when the
+          // provider wraps user input. Switch to canonical
+          // `serializeError(...).message` per Sprint 33 (handles
+          // non-enumerable Error fields + sanitizes via
+          // sanitizeLogString internally — no double-wrap needed per
+          // Sprint 46 lesson).
           this.logger.warn(
-            `[Retry] Non-retryable error or max attempts reached: ${lastError.message}`
+            `[Retry] Non-retryable error or max attempts reached: ${serializeError(lastError).message}`
           );
           break;
         }
@@ -173,8 +182,9 @@ export class RetryPolicy {
         const actualDelay = this.calculateDelay(delay);
         totalDelay += actualDelay;
 
+        // Sprint 47 CWE-117 sweep (sister site).
         this.logger.warn(
-          `[Retry] Attempt ${attempt}/${this.config.maxAttempts} failed, retrying in ${actualDelay}ms: ${lastError.message}`
+          `[Retry] Attempt ${attempt}/${this.config.maxAttempts} failed, retrying in ${actualDelay}ms: ${serializeError(lastError).message}`
         );
 
         // Wait before retry

@@ -245,6 +245,16 @@ body / error message returned to a caller, or any other emit:
   is the 3rd instance of the "sanitize-at-construction-site" pattern
   (Sprint 42 getErrorMessage, Sprint 44 GuardrailResult.reason,
   Sprint 46 HookResult.message).
+- **Sprint 47** — fault-tolerance + cli sweep. 5 wraps:
+  `RetryPolicy.ts` × 2 (raw `lastError.message` → canonical
+  `serializeError(...)` in non-retryable + retry-attempt warn logs),
+  `cli/testing/display.ts` × 2 (connector-supplied `test.result.error`
+  in console.log with ANSI color sequences — terminal-control
+  hijacking vector), `cli/commands/wizard.ts` × 1
+  (`testResult.result.error` in p.log.error). `CircuitBreaker.ts`
+  verified safe (numeric stats only — no fix). NOTE: 3-lane audit
+  hit session limit; commit landed with single-architect coverage
+  attempted but no findings returned.
 
 ## Known gaps deferred to Sprint 40
 

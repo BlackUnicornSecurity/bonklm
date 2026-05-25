@@ -13,6 +13,7 @@
  */
 
 import type { TestResult } from '../connectors/base.js';
+import { sanitizeMeta } from '../../connector-utils/logger.js';
 import { getTerminalCapabilities } from '../utils/terminal.js';
 
 /**
@@ -114,7 +115,13 @@ export function displayTestResults(tests: TestDisplay[], jsonMode = false): void
     if (test.result.error) {
       const errorColor = supportsColor ? COLORS.red : '';
       const resetColor = supportsColor ? COLORS.reset : '';
-      console.log(`  ${errorColor}Error:${resetColor} ${test.result.error}`);
+      // Sprint 47 CWE-117 sweep (security LOW closure from Sprint 46
+      // audit): `test.result.error` is a connector-supplied error
+      // string. Pre-Sprint-47 raw newlines + ANSI escape sequences in
+      // the error could hijack the terminal renderer (terminal-control
+      // injection, not log-injection). `sanitizeMeta` strips ESC
+      // (0x1B) + control chars per sanitizeLogString.
+      console.log(`  ${errorColor}Error:${resetColor} ${sanitizeMeta(test.result.error)}`);
     }
   }
 }
@@ -202,7 +209,8 @@ export function displaySingleTestResult(
   if (result.error) {
     const errorColor = useColor ? COLORS.red : '';
     const resetColor = useColor ? COLORS.reset : '';
-    console.log(`  ${errorColor}Error:${resetColor} ${result.error}`);
+    // Sprint 47 CWE-117 sweep (sister to line ~117 — single-test display).
+    console.log(`  ${errorColor}Error:${resetColor} ${sanitizeMeta(result.error)}`);
   }
 }
 
