@@ -7,6 +7,7 @@
  */
 
 import type { Logger } from '../base/GenericLogger.js';
+import { serializeError } from '../common/index.js';
 import { sanitizeMeta } from '../connector-utils/logger.js';
 
 /**
@@ -267,7 +268,11 @@ export class TelemetryService {
       try {
         collector.collect(event);
       } catch (error) {
-        this.logger.warn('[Telemetry] Error collecting event', { error });
+        // Sprint 48 cross-subsystem CWE-117 sweep closure: raw
+        // `{ error }` renders `error={}` post-JSON.stringify because
+        // Error properties are non-enumerable; switch to canonical
+        // serializeError per Sprint 33.
+        this.logger.warn('[Telemetry] Error collecting event', { error: serializeError(error) });
       }
     }
   }
@@ -455,7 +460,8 @@ export class TelemetryService {
         try {
           collector.flush();
         } catch (err) {
-          this.logger.warn('[Telemetry] Error flushing collector', { error: err });
+          // Sprint 48 sister site to line ~270.
+          this.logger.warn('[Telemetry] Error flushing collector', { error: serializeError(err) });
         }
       }
     }
@@ -470,7 +476,8 @@ export class TelemetryService {
         try {
           collector.shutdown();
         } catch (err) {
-          this.logger.warn('[Telemetry] Error shutting down collector', { error: err });
+          // Sprint 48 sister site.
+          this.logger.warn('[Telemetry] Error shutting down collector', { error: serializeError(err) });
         }
       }
     }

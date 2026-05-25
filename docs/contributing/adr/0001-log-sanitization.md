@@ -255,6 +255,18 @@ body / error message returned to a caller, or any other emit:
   verified safe (numeric stats only — no fix). NOTE: 3-lane audit
   hit session limit; commit landed with single-architect coverage
   attempted but no findings returned.
+- **Sprint 48** — TelemetryService missed-sites + core-sweep
+  closure. 3 wraps in `TelemetryService.ts` (collect / flush /
+  shutdown catch blocks passed `{ error }` / `{ error: err }`
+  raw — switched to canonical `serializeError`). Final
+  workspace-wide grep verification produced ZERO remaining
+  unwrapped `error` meta sites in core/src. NEW LESSON:
+  `grep -rn "logger\.\(warn\|error\)" | grep -v sanitize | grep
+  error` is the canonical post-sprint verification grep — run it
+  BEFORE dispatching audit lanes. Cross-subsystem coverage now
+  complete across engine + connector-utils + 14 connectors +
+  telemetry + hooks + fault-tolerance + cli + edge + base +
+  validation + adapters + security + validators + guards.
 
 ## Known gaps deferred to Sprint 40
 
