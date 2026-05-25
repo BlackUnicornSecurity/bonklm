@@ -335,6 +335,70 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
     expect(meta.path).toContain('/api/chat');
   });
 
+  it('sanitizes session-escalation reason at GuardrailsService boundary (Sprint 49 closure)', async () => {
+    // Sprint 49 closure (Sprint 44 INFO #5): nestjs parity with the
+    // fastify Sprint 44 fix. `checkSessionEscalation` +
+    // `updateSessionWithFindings` return objects whose `reason` field
+    // is built by SessionTracker from `finding.category` strings
+    // (verbatim into `Category "X" detected N times`). Custom
+    // validator categories can be attacker-influenced. Sanitize at
+    // the service-method return boundary.
+    const { clearAllSessions, CATEGORY_REPEAT_THRESHOLD } = await import('@blackunicorn/bonklm');
+    clearAllSessions();
+
+    const hostileCategory = 'cat-name\nINJECTED:fake_escalation';
+    const service = new GuardrailsService({
+      enableSessionTracking: true,
+      sessionIdExtractor: () => 'sprint-49-session',
+      validators: [
+        {
+          name: 'HostileCategoryV',
+          validate: vi.fn().mockReturnValue({
+            allowed: true,
+            blocked: false,
+            severity: 'critical',
+            risk_level: 'high',
+            risk_score: 100,
+            findings: [
+              {
+                category: hostileCategory,
+                severity: 'critical',
+                description: 'test',
+                weight: 1,
+              },
+            ],
+            timestamp: Date.now(),
+          } satisfies GuardrailResult),
+        } as unknown as Validator,
+      ],
+      productionMode: false,
+    });
+
+    // Build a request shape compatible with the default sessionIdExtractor.
+    const request = { session: { id: 'sprint-49-session' } };
+
+    // Push CATEGORY_REPEAT_THRESHOLD findings to trigger escalation.
+    const validatorResults: GuardrailResult[] = [];
+    for (let i = 0; i < CATEGORY_REPEAT_THRESHOLD; i++) {
+      const r = await service.validateInput('any');
+      validatorResults.push(...r);
+    }
+
+    // updateSessionWithFindings should return escalation with sanitized reason.
+    const updateResult = service.updateSessionWithFindings(request, validatorResults);
+    expect(updateResult.shouldEscalate).toBe(true);
+    expect(updateResult.reason).not.toContain('\n');
+    expect(updateResult.reason).toContain('INJECTED');
+
+    // checkSessionEscalation should also return sanitized reason.
+    const checkResult = service.checkSessionEscalation(request);
+    expect(checkResult.escalated).toBe(true);
+    expect(checkResult.reason).not.toContain('\n');
+    expect(checkResult.reason).toContain('INJECTED');
+
+    clearAllSessions();
+  });
+
   it('does not leak the raw reason in production-mode BadRequestException body', async () => {
     // Production mode: `getErrorMessage` returns the static
     // 'Content blocked by security policy' string — the raw reason

@@ -404,7 +404,16 @@ export class GuardrailsService {
     }
 
     const sessionId = this.getSessionId(request);
-    return isSessionEscalated(sessionId);
+    // Sprint 49 closure (Sprint 44 INFO #5 open): nestjs parity with
+    // fastify Sprint 44 fix. `SessionTracker.ts:321` embeds
+    // `finding.category` verbatim into the reason string
+    // (`Category "X" detected N times`). Custom validators set
+    // arbitrary category strings → attacker-influence chain. Sanitize
+    // at the service-boundary return site so consumers (controllers,
+    // logs, response bodies) inherit safety per Sprint 44
+    // sanitize-at-variable-binding lesson.
+    const result = isSessionEscalated(sessionId);
+    return { ...result, reason: sanitizeMeta(result.reason) };
   }
 
   /**
@@ -445,7 +454,12 @@ export class GuardrailsService {
       return { shouldEscalate: false, reason: '', riskScore: 0 };
     }
 
-    return updateSessionState(sessionId, findings);
+    // Sprint 49 closure (sister to checkSessionEscalation):
+    // `updateSessionState` returns `{ shouldEscalate, reason,
+    // riskScore, ... }` where `reason` may embed validator-supplied
+    // `category` strings verbatim. Sanitize at boundary.
+    const result = updateSessionState(sessionId, findings);
+    return { ...result, reason: sanitizeMeta(result.reason) };
   }
 
   /**

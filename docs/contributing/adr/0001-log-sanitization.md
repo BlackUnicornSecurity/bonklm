@@ -267,6 +267,16 @@ body / error message returned to a caller, or any other emit:
   complete across engine + connector-utils + 14 connectors +
   telemetry + hooks + fault-tolerance + cli + edge + base +
   validation + adapters + security + validators + guards.
+- **Sprint 49** — nestjs session-category parity (Sprint 44 INFO
+  #5 closure). 2 wraps in `guardrails.service.ts`
+  (checkSessionEscalation + updateSessionWithFindings — sanitize
+  `result.reason` at the return-spread site since
+  `SessionTracker.ts:321` embeds `finding.category` verbatim).
+  Fastify already had this fix (Sprint 44); nestjs catches up.
+  Variable-binding-site sanitization pattern now applied in 4
+  places: getErrorMessage (Sprint 42) / GuardrailResult.reason
+  (Sprint 44) / HookResult.message (Sprint 46) / nestjs
+  session-escalation result (Sprint 49).
 
 ## Known gaps deferred to Sprint 40
 
