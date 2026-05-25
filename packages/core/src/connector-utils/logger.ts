@@ -158,21 +158,34 @@ export function sanitizeLogMetadata(
   }
 
   // Audit-loop HIGH fix #6 (adversarial): every string value in
-  // metadata gets ASCII-control / newline / ANSI stripped + truncated.
-  // Attacker-influenced names (handoff names, tool names, plugin
-  // names) flow into structured logs unsanitised; a name carrying
+  // metadata gets CWE-117 hardened. Attacker-influenced names
+  // (handoff names, tool names, plugin names) flow into structured
+  // logs unsanitised; a name carrying
   // `\nCRITICAL [BonkLM] Admin override: validation=disabled` injects
   // a fake log line into any structured logger that splits on
-  // newlines or any SIEM parsing the stream. Strips the entire C0
-  // control range + DEL.
+  // newlines or any SIEM parsing the stream.
+  //
+  // Sprint 50 (ADR-0001 D#2 revision): migrated from the deprecated
+  // `stripLogControlChars` (SPACE-replacement, 256-cap) to the
+  // canonical `sanitizeLogString` (hex-escape, 500-cap, `\n` marker).
+  // Pre-publish v1.0.0-rc.4 cut is the right window to break the
+  // legacy log format: zero downstream consumers depend on the SPACE
+  // form, and the hex-escape preserves forensic signal a SOC analyst
+  // needs to triage a TAB-injection attempt apart from a legitimate
+  // space-padded input.
+  //
+  // **Order invariant (re-validated Sprint 50):** the sensitive-key
+  // redaction loop above runs FIRST. The per-value sanitize pass
+  // here runs over already-redacted partial-reveal strings (e.g.
+  // `sk-a****1234`) — never over raw secret material. This is by
+  // design: re-running `sanitizeLogString` over an already-safe
+  // partial-reveal is a no-op for printable ASCII and a defence-in-
+  // depth measure for any non-sensitive key whose value carries
+  // control chars.
   for (const key of Object.keys(sanitized)) {
     const value = sanitized[key];
     if (typeof value === 'string') {
-      // Sprint 39: same-file tolerated caller of `stripLogControlChars`
-      // per ADR-0001 — three internal callers preserve their existing
-      // SPACE-replacement format for back-compat. New external code
-      // should call `sanitizeLogString` from common/index.ts instead.
-      sanitized[key] = stripLogControlChars(value);
+      sanitized[key] = sanitizeLogString(value);
     }
   }
 
@@ -181,19 +194,21 @@ export function sanitizeLogMetadata(
 
 /**
  * Strip ASCII control characters (0x00-0x1F + DEL 0x7F) from a
- * string and truncate to 256 chars. Used by `sanitizeLogMetadata`
- * to defeat log-injection via attacker-controlled names.
+ * string and truncate to 256 chars. Replaces with SPACE.
  *
  * @public
  *
  * @deprecated Since Sprint 39 — prefer `sanitizeLogString` from
  * `@blackunicorn/bonklm` (exported via `common/index.ts`) for new
- * code. This function is retained for
- * back-compat (it ships as the metadata-sanitizer for
- * `sanitizeLogMetadata` + `logValidationFailure` + `logTimeout`)
- * and remains `@public` per v1.0-RC1 freeze policy.
+ * code. The three previous internal callers (`sanitizeLogMetadata`
+ * / `logValidationFailure` / `logTimeout`) migrated to
+ * `sanitizeLogString` in Sprint 50 (ADR-0001 Decision #2 revision).
+ * This function is retained as `@public` for back-compat with any
+ * external consumer who imported it during the rc.1 → rc.3 window;
+ * removal target is v2.0 per ADR-0001 Decision #4.
  *
- * **Behavioral divergence from `sanitizeLogString` (intentional):**
+ * **Behavioral divergence from `sanitizeLogString` (why you should
+ * prefer the canonical):**
  *
  * | Aspect            | stripLogControlChars   | sanitizeLogString    |
  * | ----------------- | ---------------------- | -------------------- |
@@ -206,11 +221,8 @@ export function sanitizeLogMetadata(
  * attack becomes indistinguishable from legitimate space-padded
  * input — `"name": "legit payload"` vs
  * `"name": "malicious\x09phantom\x09column"` collapse to identical
- * output post-sanitize), but produces more human-readable log
- * lines for the connector-internal metadata use case. **This is
- * an accepted residual risk** — the deprecation tag exists so
- * new code prefers `sanitizeLogString`'s preserved-signal hex
- * escape. Removal target: v2.0 — see Sprint 39 ADR
+ * output post-sanitize). `sanitizeLogString`'s hex-escape preserves
+ * the attack fingerprint for SOC triage. See
  * `docs/contributing/adr/0001-log-sanitization.md`.
  */
 export function stripLogControlChars(value: string): string {
@@ -240,11 +252,15 @@ export function logValidationFailure(
 ): void {
   // Audit-loop HIGH fix #6: `reason` originates from validator output
   // which can carry attacker-influenced text (e.g. matched pattern
-  // content); strip control chars + truncate before logging.
+  // content); hex-escape control chars + cap before logging.
+  //
+  // Sprint 50 (ADR-0001 D#2 revision): migrated from the deprecated
+  // `stripLogControlChars` to the canonical `sanitizeLogString` so
+  // the forensic signal (TAB-injection, CRLF-injection) survives
+  // the sanitisation layer instead of collapsing to indistinguishable
+  // SPACE padding.
   logger.warn('Validation blocked', {
-    // Sprint 39 ADR-0001: same-file tolerated caller of the
-    // deprecated `stripLogControlChars`. Removal target v2.0.
-    reason: stripLogControlChars(reason),
+    reason: sanitizeLogString(reason),
     ...sanitizeLogMetadata(context ?? {}),
   });
 }
@@ -269,13 +285,12 @@ export function logTimeout(
   // Sprint 38 CWE-117 sweep: `operation` is a caller-supplied label
   // (typically static like 'query validation'), but connector authors
   // may derive it from request metadata (e.g. `${requestId} validate`)
-  // where attacker-influenced data could land. Strip control chars
-  // before template interpolation. Uses the same-file
-  // `stripLogControlChars` helper for consistency with
-  // `logValidationFailure` (which already strips its `reason` arg).
-  // Sprint 39 ADR-0001: same-file tolerated caller of the
-  // deprecated `stripLogControlChars`. Removal target v2.0.
-  logger.warn(`Timeout: ${stripLogControlChars(operation)}`, {
+  // where attacker-influenced data could land. Hex-escape control
+  // chars before template interpolation.
+  //
+  // Sprint 50 (ADR-0001 D#2 revision): migrated from the deprecated
+  // `stripLogControlChars` to the canonical `sanitizeLogString`.
+  logger.warn(`Timeout: ${sanitizeLogString(operation)}`, {
     timeout: `${timeoutMs}ms`,
   });
 }

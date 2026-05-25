@@ -14,6 +14,7 @@ import { Command } from 'commander';
 import { wizardCommand } from '../cli/commands/wizard.js';
 import { connectorCommand } from '../cli/commands/connector.js';
 import { statusCommand } from '../cli/commands/status.js';
+import { doctorCommand } from '../cli/commands/doctor.js';
 
 // Read version from the package.json at runtime so CLI --version stays in lockstep
 // with the published package version (no manual bumps needed).
@@ -37,6 +38,7 @@ program.action(() => {
 program.addCommand(wizardCommand);
 program.addCommand(connectorCommand);
 program.addCommand(statusCommand);
+program.addCommand(doctorCommand);
 
 // Parse and execute
 program.parse();

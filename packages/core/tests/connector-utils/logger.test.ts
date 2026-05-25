@@ -3,28 +3,32 @@
  *
  * Sprint 38 CWE-117 sweep: surface coverage for `logTimeout`'s
  * control-char sanitization of the `operation` arg (previously missed;
- * the sibling `logValidationFailure` already had `stripLogControlChars`
- * applied to its `reason` arg).
+ * the sibling `logValidationFailure` already had a sanitizer applied
+ * to its `reason` arg).
  *
- * NOTE: this file covers the connector-utils/logger.ts local sanitizer
- * `stripLogControlChars` — distinct from `common/index.ts`'s
- * `sanitizeLogString`. Both exist in production by Sprint 38 (Sprint
- * 39 will consolidate; see lessons-learned). `stripLogControlChars`
- * replaces with SPACE + 256-char cap; `sanitizeLogString` replaces
- * with `\xNN` hex escape + 500-char cap + explicit `\n` markers.
+ * Sprint 50 (ADR-0001 D#2 revision): `logTimeout` /
+ * `logValidationFailure` / `sanitizeLogMetadata` migrated from the
+ * deprecated `stripLogControlChars` (SPACE-replacement + 256-cap) to
+ * the canonical `sanitizeLogString` (hex-escape + 500-cap + literal
+ * `\n` markers). Expectations updated accordingly — a TAB-injection
+ * attempt now surfaces as `\x09` rather than collapsing to SPACE.
  *
  * Test surface:
- *   - logTimeout: control-char strip on `operation`
+ *   - logTimeout: hex-escape sanitization on `operation`
  *   - logTimeout: meta `timeout` shape stable
- *   - logValidationFailure: control-char strip on `reason` (regression
- *     lock on the existing audit-loop fix)
- *   - stripLogControlChars: 0x00-0x1F + DEL handling + length cap
+ *   - logValidationFailure: hex-escape sanitization on `reason` +
+ *     CRLF-injection regression lock
+ *   - sanitizeLogMetadata: hex-escape on string meta values (Sprint
+ *     50 migration regression lock)
+ *   - stripLogControlChars: primitive behaviour preserved on the
+ *     deprecated surface (still ships as @public through v1.x)
  */
 import { describe, it, expect, vi } from 'vitest';
 
 import {
   logTimeout,
   logValidationFailure,
+  sanitizeLogMetadata,
   sanitizeMeta,
   stripLogControlChars,
 } from '../../src/connector-utils/logger.js';
@@ -38,31 +42,40 @@ function makeSpyLogger() {
   };
 }
 
-describe('logTimeout — Sprint 38 CWE-117 sweep', () => {
-  it('strips control chars from operation before template interpolation', () => {
+describe('logTimeout — Sprint 38 CWE-117 sweep + Sprint 50 hex-escape migration', () => {
+  it('hex-escapes newline-injection in operation before template interpolation', () => {
     const logger = makeSpyLogger();
     logTimeout(logger, 'query\nINJECTED log line', 30_000);
 
     expect(logger.warn).toHaveBeenCalledTimes(1);
     const [message, meta] = logger.warn.mock.calls[0]!;
-    expect(message).toBe('Timeout: query INJECTED log line');
+    // Sprint 50: `\n` collapses to literal `\n` marker (sanitizeLogString
+    // newline-replacement pass), preserving the forensic signal a SOC
+    // analyst needs to triage a CRLF-injection attempt.
+    expect(message).toBe('Timeout: query\\nINJECTED log line');
     expect(meta).toEqual({ timeout: '30000ms' });
   });
 
-  it('strips TAB from operation (TSV column-injection defence)', () => {
+  it('hex-escapes TAB in operation (TSV column-injection defence)', () => {
     const logger = makeSpyLogger();
     logTimeout(logger, 'op\twith\ttabs', 5000);
 
-    expect(logger.warn).toHaveBeenCalledWith('Timeout: op with tabs', {
+    // Sprint 50: TAB hex-escapes to `\x09` (was SPACE under
+    // stripLogControlChars). The hex form is what makes the
+    // TSV-column-injection attempt visible in the log line — the
+    // legacy SPACE form rendered the attack indistinguishable from
+    // legitimate space-padded input.
+    expect(logger.warn).toHaveBeenCalledWith('Timeout: op\\x09with\\x09tabs', {
       timeout: '5000ms',
     });
   });
 
-  it('strips NUL and DEL bytes from operation', () => {
+  it('hex-escapes NUL and DEL bytes from operation', () => {
     const logger = makeSpyLogger();
     logTimeout(logger, 'op\x00nul\x7fdel', 1000);
 
-    expect(logger.warn).toHaveBeenCalledWith('Timeout: op nul del', {
+    // Sprint 50: NUL → `\x00`, DEL → `\x7f`.
+    expect(logger.warn).toHaveBeenCalledWith('Timeout: op\\x00nul\\x7fdel', {
       timeout: '1000ms',
     });
   });
@@ -77,8 +90,8 @@ describe('logTimeout — Sprint 38 CWE-117 sweep', () => {
   });
 });
 
-describe('logValidationFailure — regression lock on prior CWE-117 fix', () => {
-  it('strips control chars from reason in meta', () => {
+describe('logValidationFailure — Sprint 50 hex-escape migration', () => {
+  it('hex-escapes CRLF-injection in reason meta', () => {
     const logger = makeSpyLogger();
     logValidationFailure(logger, 'blocked\nfake_audit_entry: bypass', {
       contentType: 'query',
@@ -87,8 +100,64 @@ describe('logValidationFailure — regression lock on prior CWE-117 fix', () => 
     expect(logger.warn).toHaveBeenCalledTimes(1);
     const [message, meta] = logger.warn.mock.calls[0]!;
     expect(message).toBe('Validation blocked');
-    expect(meta.reason).toBe('blocked fake_audit_entry: bypass');
+    // Sprint 50: `\n` collapses to literal `\n` marker (was SPACE).
+    expect(meta.reason).toBe('blocked\\nfake_audit_entry: bypass');
     expect(meta.contentType).toBe('query');
+  });
+
+  it('hex-escapes TAB in reason (TSV column-injection)', () => {
+    const logger = makeSpyLogger();
+    logValidationFailure(logger, 'blocked\tphantom\tcolumn', undefined);
+
+    const [, meta] = logger.warn.mock.calls[0]!;
+    expect(meta.reason).toBe('blocked\\x09phantom\\x09column');
+  });
+
+  it('caps reason at sanitizeLogString limit + appends truncation marker', () => {
+    const logger = makeSpyLogger();
+    const long = 'x'.repeat(800);
+    logValidationFailure(logger, long, undefined);
+
+    const [, meta] = logger.warn.mock.calls[0]!;
+    // sanitizeLogString cap is 500 chars + `…[truncated]` marker;
+    // legacy stripLogControlChars capped at 256 with no marker.
+    // Sprint 50 audit (code-review SHOULD-FIX 6): tightened from a
+    // loose `> 256` check to the exact post-truncate shape so a
+    // future regression that silently changes the cap to e.g. 300
+    // would still fail this test.
+    expect(meta.reason).toBe(`${'x'.repeat(500)}…[truncated]`);
+    // 500 'x' chars + 1 `…` (U+2026, JS string length 1) +
+    // 11 chars of `[truncated]` = 512.
+    expect((meta.reason as string).length).toBe(512);
+  });
+});
+
+describe('sanitizeLogMetadata — Sprint 50 hex-escape migration', () => {
+  it('hex-escapes control chars in string meta values (CWE-117 layer)', () => {
+    const out = sanitizeLogMetadata({
+      toolName: 'shell\nINJECTED',
+      model: 'gpt-4',
+    });
+    expect(out.toolName).toBe('shell\\nINJECTED');
+    // Plain printable strings pass through untouched.
+    expect(out.model).toBe('gpt-4');
+  });
+
+  it('hex-escapes TAB in meta values (TSV-column-injection defence)', () => {
+    const out = sanitizeLogMetadata({ name: 'a\tb\tc' });
+    expect(out.name).toBe('a\\x09b\\x09c');
+  });
+
+  it('still redacts sensitive keys before hex-escape sanitisation runs', () => {
+    // Redaction precedes the per-value sanitize loop — a hostile API
+    // key with embedded control chars should still mask, not surface
+    // partial hex-escaped fragments.
+    const out = sanitizeLogMetadata({
+      apiKey: 'sk-abcd\nefgh1234',
+      query: 'normal text',
+    });
+    expect(out.apiKey).toBe('sk-a****1234');
+    expect(out.query).toBe('normal text');
   });
 });
 

@@ -1,8 +1,11 @@
 # ADR-0001: Log Sanitization (CWE-117) — Internal Contributor Guide
 
-> Status: Living document — Sprint 39 (2026-05-24)
+> Status: Living document — Sprint 50 (2026-05-25)
 > Scope: Internal contributor guide. Public consumers should never need this.
 > Authority: Architect + security-reviewer convergent HIGH (Sprint 38 + Sprint 39).
+> Latest revision: Sprint 50 — Decision #2 revised; the three legacy
+> internal callers of `stripLogControlChars` migrated to the canonical
+> `sanitizeLogString` ahead of v1.0.0-rc.4 cut.
 
 ## Problem
 
@@ -43,17 +46,22 @@ specific gap surfaced, none was retroactively consolidated.
   replacement produces more human-readable log lines — the trade-off was
   reasonable when the function was internal to connector-utils. Once
   re-exported through `connector-utils/index.ts`, it became `@public`
-  by accident. **Marked `@deprecated` in Sprint 39; removal target v2.0.**
+  by accident. **Marked `@deprecated` in Sprint 39; the three internal
+  callers migrated to `sanitizeLogString` in Sprint 50 (see Decision #2
+  below). Removal of the `@public` surface target v2.0** — preserved
+  through v1.x for any external consumer who imported it during the
+  rc.1 → rc.3 window.
 
-  **Residual risk (security-reviewer MEDIUM, Sprint 39):** SPACE
-  replacement destroys the attacker's forensic fingerprint. After
-  sanitization a TAB-injected log line is visually indistinguishable
-  from a legitimately space-padded one — a SOC analyst cannot tell
-  `"name": "legit payload"` apart from
-  `"name": "malicious\x09phantom\x09column"` once both render with
-  spaces. The hex-escape form in `sanitizeLogString` preserves this
-  signal. This is an accepted residual risk for the three legacy
-  call sites; new code MUST NOT introduce additional ones.
+  **Residual risk closure (Sprint 50):** the SPACE-replacement
+  forensic-loss risk flagged by security-reviewer MEDIUM (Sprint 39)
+  is now closed on the three internal call sites. Post-Sprint-50,
+  a TAB-injected log line surfaces as `\x09` in the rendered output
+  — a SOC analyst can distinguish
+  `"name": "legit payload"` from
+  `"name": "malicious\x09phantom\x09column"` directly. New code
+  MUST continue to prefer `sanitizeLogString`; the only remaining
+  caller of `stripLogControlChars` is its own `@public` export
+  surface (no internal call sites).
 - `sanitiseShell` is a closure inside `bash-safety.ts:validate()`. It
   populates the `Finding.match` field of `GuardrailResult` — an
   **API-result** field, not a log field. Shell-command readability
@@ -82,11 +90,26 @@ specific gap surfaced, none was retroactively consolidated.
      both as line terminators, but they live above 0x7F so the
      control-char regex misses them.
    - Caps output at 500 chars + appends `…[truncated]` marker.
-2. **`stripLogControlChars` stays for back-compat through 1.x.** Marked
-   `@deprecated`. The three existing callers (`sanitizeLogMetadata`,
-   `logValidationFailure`, `logTimeout`) keep their current
-   space-replacement behavior to avoid breaking downstream SIEM rules
-   keyed on the existing format.
+2. **`stripLogControlChars` is `@public` + `@deprecated` through 1.x;
+   internal callers migrated to `sanitizeLogString` in Sprint 50.**
+   The three previous internal callers (`sanitizeLogMetadata`,
+   `logValidationFailure`, `logTimeout`) all now use the canonical
+   `sanitizeLogString`, restoring forensic signal across the
+   connector-utils log surface. The `@public` deprecated export
+   itself remains exported through v1.x so any external consumer
+   who imported it during the rc.1 → rc.3 window does not face a
+   breaking change mid-1.x; v2.0 removes the export (see Decision
+   #4).
+
+   **Revision rationale (Sprint 50):** the original D#2 preserved
+   SPACE-replacement for SIEM back-compat through 1.x. The actual
+   pre-publish state at rc.3 — zero downstream consumers, no SIEM
+   rules in production keyed on BonkLM's output format — meant the
+   "preserve format" guarantee had no users to protect. Sprint 50
+   migrated ahead of v1.0.0-rc.4 cut so the very first published
+   release ships with the preferred forensic-preserving behaviour.
+   The behaviour change is documented under `CHANGELOG.md` →
+   `[1.0.0-rc.4]` → "Behavior changes".
 3. **`sanitiseShell` stays inline in `bash-safety.ts`.** Not exported,
    not part of any contract. The local closure makes the use-case
    boundary explicit.
@@ -277,6 +300,24 @@ body / error message returned to a caller, or any other emit:
   places: getErrorMessage (Sprint 42) / GuardrailResult.reason
   (Sprint 44) / HookResult.message (Sprint 46) / nestjs
   session-escalation result (Sprint 49).
+- **Sprint 50** — ADR-0001 Decision #2 revision + `bonklm doctor`
+  pre-commit hook check. The three internal callers of the
+  deprecated `stripLogControlChars` (`sanitizeLogMetadata`,
+  `logValidationFailure`, `logTimeout`) migrated to the canonical
+  `sanitizeLogString` ahead of v1.0.0-rc.4 cut — closes architect
+  HIGH #5 (open since Sprint 43). Behaviour change: SPACE → hex-
+  escape on these three sinks, restoring SOC forensic signal
+  (TAB-injection now surfaces as `\x09` instead of collapsing to
+  SPACE). Three new test cases lock the migration: hex-escape on
+  TAB, hex-escape on CRLF in `logValidationFailure.reason`, and a
+  truncation-marker canary asserting the 500-char `sanitizeLogString`
+  cap is now in effect (was 256 under `stripLogControlChars`).
+  `stripLogControlChars` itself stays `@public` + `@deprecated` for
+  back-compat with any rc.1 → rc.3 importer; removal target
+  unchanged at v2.0 per Decision #4. Independent ITEM 2:
+  `bonklm doctor` command added (cli/commands/doctor.ts) with a
+  pre-commit hook check verifying the simple-git-hooks postinstall
+  landed (architect M-2 closure from Sprint 41).
 
 ## Known gaps deferred to Sprint 40
 

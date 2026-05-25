@@ -5,6 +5,49 @@ All notable changes to BonkLM (`@blackunicorn/bonklm`) will be documented in thi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Post-rc.3 hardening pass continued across Sprints 42–50. Sprint 50
+ships the final two queued items before the v1.0.0-rc.4 cut.
+
+### Added
+
+- **`bonklm doctor` command** (Sprint 50 — closes architect M-2 from
+  Sprint 41). Diagnoses the local contributor environment with a
+  pre-commit hook check verifying the simple-git-hooks postinstall
+  step landed. Reads `.git/config` directly (honours
+  `core.hooksPath` override) so the command stays runnable without
+  `git` on PATH. Reports PASS / WARN / FAIL with a concrete
+  remediation hint on non-PASS outcomes; `--json` flag for machine
+  output. Exit code `1` on FAIL. Future sprints can extend
+  `runDoctor` with additional checks without changing the public
+  command surface. Re-exported `runDoctor`, `checkPreCommitHook`,
+  `resolveHooksPath`, `readConfiguredPreCommit`, `doctorCommand`,
+  `DoctorReport`, `DoctorCheckResult` from
+  `packages/core/src/cli/commands/index.ts` for programmatic use.
+
+### Behavior changes
+
+- **`stripLogControlChars` internal callers migrated to
+  `sanitizeLogString`** (Sprint 50 — ADR-0001 Decision #2 revision;
+  closes architect HIGH #5 open since Sprint 43). The three
+  `connector-utils/logger.ts` sinks that previously used
+  `stripLogControlChars` (`sanitizeLogMetadata`,
+  `logValidationFailure`, `logTimeout`) now use the canonical
+  `sanitizeLogString` from `common/index.ts`. **Observable change in
+  log output:** control characters (TAB / CR / LF / NUL / DEL /
+  U+2028 / U+2029) now render as hex-escape (`\x09`, literal `\n`
+  marker) rather than collapsing to SPACE. The truncation cap moves
+  from 256 chars (no marker) to 500 chars (`…[truncated]` marker).
+  Restores SOC forensic signal — a TAB-injection attack is now
+  visible in the rendered log line instead of indistinguishable
+  from legitimate space-padded input. **Pre-publish window:** zero
+  downstream consumers depended on the legacy SPACE form, so the
+  migration lands ahead of the v1.0.0-rc.4 cut. The
+  `stripLogControlChars` function itself remains `@public` +
+  `@deprecated` for back-compat with any rc.1 → rc.3 importer;
+  removal target unchanged at v2.0 per ADR-0001 Decision #4.
+
 ## [1.0.0-rc.3] — 2026-05-24 (Sprints 29 + 30 + 31 + cumulative audit closure)
 
 Third release candidate. Consolidates four sprints of post-rc.2 security
