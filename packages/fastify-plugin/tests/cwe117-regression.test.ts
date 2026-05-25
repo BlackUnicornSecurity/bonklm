@@ -1,5 +1,9 @@
 /**
  * Sprint 43 cross-connector CWE-117 sweep — fastify-plugin regression.
+ * Sprint 44 added contract-lock for sessionId wrap.
+ * Sprint 45 added end-to-end integration test for the session-tracking
+ * escalation path (architect MEDIUM #8 + Sprint 41/42 lesson:
+ * integration tests find what contract-lock misses).
  *
  * Six src sites in `plugin.ts` carry attacker-influenced template-
  * literal log calls + raw error.message + HTTP response body raw
@@ -20,9 +24,17 @@
  *
  * Sprint 42 architect LOW deferral → Sprint 43 closure.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 
-import { sanitizeLogString, sanitizeMeta, serializeError } from '@blackunicorn/bonklm';
+import {
+  CATEGORY_REPEAT_THRESHOLD,
+  clearAllSessions,
+  sanitizeLogString,
+  sanitizeMeta,
+  serializeError,
+} from '@blackunicorn/bonklm';
+import Fastify, { type FastifyInstance } from 'fastify';
+import { guardrailsPlugin } from '../src/plugin.js';
 
 describe('fastify-plugin — Sprint 43 CWE-117 sanitization contract', () => {
   it('imports sanitizeMeta from the core barrel', () => {
@@ -76,5 +88,109 @@ describe('fastify-plugin — Sprint 43 CWE-117 sanitization contract', () => {
       'validator boom\\nINJECTED:CRITICAL fake_error_code'
     );
     expect(out.name).toBe('Error');
+  });
+});
+
+// Sprint 45 integration test (Sprint 44 deferral): end-to-end fastify
+// session-tracking escalation path with a hostile validator that emits
+// findings carrying control-char-laden `category` strings. The session
+// pattern logic embeds `category` verbatim into the escalation reason
+// (`SessionTracker.ts:321`); pre-Sprint-44 the reason flowed raw into
+// the log meta AND the GuardrailResult.reason struct field. Sprint 44
+// sanitized both at the variable-binding site; this test pins the
+// end-to-end behaviour through real fastify HTTP injection.
+describe('fastify-plugin — Sprint 45 session-tracking integration', () => {
+  let fastify: FastifyInstance;
+  let warnSpy: ReturnType<typeof vi.fn>;
+  let errorSpy: ReturnType<typeof vi.fn>;
+  const SESSION_ID = 'sprint-45-test-session';
+
+  beforeEach(() => {
+    // Isolation: clear all session state so the escalation threshold
+    // is exercised cleanly per test.
+    clearAllSessions();
+    warnSpy = vi.fn();
+    errorSpy = vi.fn();
+    fastify = Fastify({ logger: false });
+  });
+
+  afterEach(async () => {
+    await fastify.close();
+    clearAllSessions();
+  });
+
+  it('sanitizes hostile-category session-escalation reason at end-to-end log + response body', async () => {
+    const hostileCategory = 'category-name\nINJECTED:fake_escalation=PASS';
+
+    // Custom validator returning a blocked result whose `findings[0]`
+    // has a hostile `category` string. SessionTracker accumulates by
+    // category — after CATEGORY_REPEAT_THRESHOLD (3) occurrences, the
+    // post-validation escalation log fires.
+    const hostileValidator = {
+      name: 'HostileCategoryValidator',
+      validate: vi.fn().mockReturnValue({
+        allowed: true,
+        blocked: false,
+        severity: 'critical' as const,
+        risk_level: 'high' as const,
+        risk_score: 100,
+        findings: [
+          {
+            category: hostileCategory,
+            severity: 'critical' as const,
+            description: 'hostile pattern',
+            weight: 1,
+          },
+        ],
+        timestamp: Date.now(),
+      }),
+    };
+
+    await fastify.register(guardrailsPlugin, {
+      validators: [hostileValidator as never],
+      enableSessionTracking: true,
+      sessionIdExtractor: () => SESSION_ID,
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: warnSpy,
+        error: errorSpy,
+      },
+      productionMode: false,
+    });
+
+    fastify.post('/test', async () => {
+      return { ok: true };
+    });
+
+    // Sprint 45 architect MEDIUM #3 closure: drive the loop from the
+    // exported CATEGORY_REPEAT_THRESHOLD constant rather than a magic
+    // `3`. If SessionTracker raises the threshold, this test scales
+    // self-healingly. The post-validation `Session escalated after
+    // validation` warn fires on the threshold-th inject call.
+    for (let i = 0; i < CATEGORY_REPEAT_THRESHOLD; i++) {
+      await fastify.inject({
+        method: 'POST',
+        url: '/test',
+        payload: { message: `turn ${i}` },
+      });
+    }
+
+    // The escalation warn fires with sanitized meta.
+    const escalationCalls = warnSpy.mock.calls.filter(
+      (call) => typeof call[0] === 'string' && call[0].includes('Session escalated after validation')
+    );
+    expect(escalationCalls.length).toBeGreaterThan(0);
+    const [, meta] = escalationCalls[0]!;
+    expect(meta).toBeDefined();
+    const sessionMeta = meta as { sessionId?: string; reason?: string };
+    // sessionId is library-controlled here (we set it static) but the
+    // Sprint 44 wrap applies regardless.
+    expect(sessionMeta.sessionId).toBe(SESSION_ID);
+    // The reason MUST NOT contain the raw control char — the literal
+    // hostile category newline becomes the literal `\\n` marker.
+    expect(sessionMeta.reason).toBeDefined();
+    expect(sessionMeta.reason).not.toContain('\n');
+    expect(sessionMeta.reason).toContain('INJECTED');
   });
 });

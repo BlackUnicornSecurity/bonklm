@@ -7,6 +7,7 @@
  */
 
 import type { Logger } from '../base/GenericLogger.js';
+import { sanitizeMeta } from '../connector-utils/logger.js';
 
 /**
  * Telemetry event types
@@ -126,15 +127,21 @@ export class ConsoleTelemetryCollector implements TelemetryCollector {
   constructor(private readonly logger?: Logger) {}
 
   collect(event: TelemetryEvent): void {
+    // Sprint 45 security MEDIUM #4 closure: `runId` and `operation`
+    // flow from connector callers (e.g. LangChain runId, arbitrary
+    // connector names) and may carry attacker-influenced content.
+    // The langchain-handler Sprint 44 fix sanitizes at the warn-log
+    // site in the handler; the TelemetryService is a separate sink
+    // and must sanitize at the collect() boundary too.
     if (this.logger) {
       this.logger.debug('[Telemetry]', {
         type: event.type,
-        runId: event.runId,
-        operation: event.operation,
+        runId: sanitizeMeta(event.runId),
+        operation: sanitizeMeta(event.operation),
         metrics: event.metrics,
       });
     } else {
-      console.debug('[Telemetry]', event.type, event.runId, event.metrics);
+      console.debug('[Telemetry]', event.type, sanitizeMeta(event.runId), event.metrics);
     }
   }
 }
@@ -327,14 +334,19 @@ export class TelemetryService {
     connector?: string;
     error: Error;
   }): void {
+    // Sprint 45 security MEDIUM #4 closure: `config.error.message` /
+    // `.name` can carry attacker-influenced text when the error wraps
+    // user input (e.g. an upstream validator throws with a hostile
+    // message). Sanitize at the record-event boundary so all
+    // downstream collectors see safe values.
     this.record({
       type: TelemetryEventType.VALIDATION_ERROR,
       runId: config.runId,
       connector: config.connector,
       operation: 'validation',
       error: {
-        name: config.error.name,
-        message: config.error.message,
+        name: sanitizeMeta(config.error.name),
+        message: sanitizeMeta(config.error.message),
         code: (config.error as any).code,
       },
     });

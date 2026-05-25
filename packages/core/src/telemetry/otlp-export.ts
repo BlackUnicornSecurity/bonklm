@@ -26,7 +26,7 @@
  * the same structural interface.
  */
 import type { GuardrailResult } from '../base/GuardrailResult.js';
-import { sanitizeLogString } from '../common/index.js';
+import { sanitizeMeta } from '../connector-utils/logger.js';
 
 /** R2-10 locked surface vocabulary. */
 export type BonklmTraceSurface =
@@ -114,13 +114,21 @@ export function bonklmTrace<R extends GuardrailResult>(
     );
   }
 
-  const spanName = options.spanName ?? `bonklm.validator.${options.surface}`;
+  // Sprint 45 security HIGH #1 + #2 closure: `options.validator` and
+  // `options.spanName` are caller-supplied strings (library-integrator
+  // controls them but no enforcement). Both flow to the OTel exporter
+  // wire format — same threat class as the Sprint 38 finding-event
+  // sites. Wrap at the boundary per Sprint 41 defensive-by-default.
+  // `options.surface` is enum-guarded by `isValidSurface` (safe);
+  // `severity` is `result.severity` enum-coerced (library-controlled).
+  const safeValidator = sanitizeMeta(options.validator);
+  const spanName = sanitizeMeta(options.spanName ?? `bonklm.validator.${options.surface}`);
   const action: BonklmTraceAction = result.blocked ? 'block' : 'allow';
   const findingCount = Array.isArray(result.findings) ? result.findings.length : 0;
   const severity = String(result.severity ?? 'info');
 
   const attributes: Record<string, string | number | boolean> = {
-    'bonklm.validator': options.validator,
+    'bonklm.validator': safeValidator,
     'bonklm.severity': severity,
     'bonklm.action': action,
     'bonklm.finding_count': findingCount,
@@ -131,8 +139,13 @@ export function bonklmTrace<R extends GuardrailResult>(
   options.tracer.startActiveSpan(spanName, { attributes }, (span) => {
     // Set attributes individually as well — some OTel implementations
     // ignore the constructor `attributes` field on activated spans.
+    //
+    // Sprint 45 security MEDIUM #3 closure: `extraAttributes` string
+    // values are fully caller-controlled. Sanitize string values
+    // before reaching the OTel exporter wire format. Numeric +
+    // boolean values pass through unchanged (no CWE-117 vector).
     for (const [k, v] of Object.entries(attributes)) {
-      span.setAttribute(k, v);
+      span.setAttribute(k, typeof v === 'string' ? sanitizeMeta(v) : v);
     }
     // Per-finding event so downstream sinks can pivot on category.
     //
@@ -148,10 +161,17 @@ export function bonklmTrace<R extends GuardrailResult>(
     // the JSON wire format. Sanitize at the boundary.
     if (Array.isArray(result.findings) && span.addEvent) {
       for (const finding of result.findings) {
+        // Sprint 45 S41-2 LOW closure (Sprint 41 deferred): retrofit
+        // the `sanitizeLogString(String(x ?? '<default>'))` combo to
+        // the canonical Sprint 41 helper `sanitizeMeta`. The `??
+        // '<default>'` survives outside the call because sanitizeMeta
+        // returns empty string for nullish — preserving the explicit
+        // per-site defaults requires the coalescing operator at the
+        // argument site.
         span.addEvent('bonklm.finding', {
-          category: sanitizeLogString(String(finding.category ?? 'unknown')),
-          severity: sanitizeLogString(String(finding.severity ?? severity)),
-          description: sanitizeLogString(String(finding.description ?? '')),
+          category: sanitizeMeta(finding.category ?? 'unknown'),
+          severity: sanitizeMeta(finding.severity ?? severity),
+          description: sanitizeMeta(finding.description ?? ''),
         });
       }
     }
@@ -160,7 +180,9 @@ export function bonklmTrace<R extends GuardrailResult>(
       // Sprint 38 security-HIGH closure (same rationale as above):
       // `result.reason` carries pattern-engine-derived text and MUST
       // be sanitized before reaching the exporter wire-format.
-      span.setStatus({ code: 2, message: sanitizeLogString(result.reason ?? 'bonklm block') });
+      // Sprint 45 retrofit: switched to `sanitizeMeta` for consistency
+      // with the finding-event branch above.
+      span.setStatus({ code: 2, message: sanitizeMeta(result.reason ?? 'bonklm block') });
     }
     span.end();
   });

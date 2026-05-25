@@ -134,6 +134,19 @@ body / error message returned to a caller, or any other emit:
       `connectors/`. Engine, validators, guards, telemetry, hooks, and
       service-layer code all qualify. Grep by interpolation shape
       (`\${`, `${String(`, `${name`), not by directory.
+- [ ] **Sprint 45 addition**: when re-touching a file for any reason,
+      re-run the sink-pattern grep on the WHOLE file, not just the
+      touched region. Sprint 38 swept the otlp-export.ts addEvent loop
+      but missed `options.validator` + `spanName` pre-loop sites in
+      the SAME file; Sprint 45 audit caught them on the 5th sprint
+      examining the file. Within-file orphan-site sweep is mandatory.
+- [ ] **Sprint 45 addition**: telemetry boundary (`packages/core/src/
+      telemetry/`) is a separate sink class. `OTel addEvent`,
+      `setAttribute`, `setStatus`, and the `TelemetryEvent.collect()`
+      path all qualify. Don't assume "telemetry = library-controlled"
+      — caller-supplied fields (validator name, span name,
+      extraAttributes, runId, operation, error.message) all reach
+      this boundary.
 
 ## Sprint history
 
@@ -203,6 +216,21 @@ body / error message returned to a caller, or any other emit:
   binding site, not at each sink — `GuardrailResult.reason` field
   flows through integrator-controlled `onError` callbacks where
   log-only sanitization is insufficient.
+- **Sprint 45** — Sprint 41 S41-2 LOW closure: `otlp-export.ts`
+  retrofit of 4 sites from legacy `sanitizeLogString(String(x ??
+  '<default>'))` combo to canonical `sanitizeMeta(x ?? '<default>')`.
+  Sprint 44 integration test deferrals closed: real fastify session-
+  tracking escalation + real langchain stream-buffer-exceeded.
+  Audit pass surfaced HIGH × 2 + MEDIUM × 2 expansion: otlp-export
+  `options.validator` span attribute (security HIGH #1) + `spanName`
+  (security HIGH #2) + `extraAttributes` string values (MEDIUM #3)
+  + `TelemetryService.ts` ConsoleTelemetryCollector runId/operation
+  + recordValidationError error.name/message (MEDIUM #4). All
+  fixed inline. NEW LESSON: telemetry subsystem is a third sink
+  class outside the connector-utils + engine enumeration scopes
+  established in earlier sprints. Contributor checklist now mandates
+  cross-subsystem enumeration: engine + connector-utils + connectors
+  + telemetry + hooks + service-layer.
 
 ## Known gaps deferred to Sprint 40
 

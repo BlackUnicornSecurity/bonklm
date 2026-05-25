@@ -16,9 +16,11 @@
  *
  * Sprint 42 architect LOW deferral → Sprint 43 closure.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { sanitizeLogString, sanitizeMeta, serializeError } from '@blackunicorn/bonklm';
+import type { NewTokenIndices } from '@langchain/core/callbacks/base';
+import { GuardrailsCallbackHandler } from '../src/guardrails-handler.js';
 
 describe('langchain-connector — Sprint 43 CWE-117 sanitization contract', () => {
   it('imports sanitizeMeta from the core barrel', () => {
@@ -64,6 +66,75 @@ describe('langchain-connector — Sprint 43 CWE-117 sanitization contract', () =
     expect(sanitizeMeta(hostileRunId)).toBe(
       'run-1234\\nINJECTED:fake_status=PASS'
     );
+  });
+
+  it('end-to-end: hostile runId at stream-buffer-exceeded log site (Sprint 45 integration)', async () => {
+    // Sprint 45 integration test (Sprint 44 deferral): drive the
+    // real `handleLLMNewToken` path until the buffer-exceeded warn
+    // fires, then assert the spy logger captured a sanitized runId
+    // in the meta. Pre-Sprint-44 the raw runId would land in meta
+    // unchanged.
+    const spyLogger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    };
+    const handler = new GuardrailsCallbackHandler({
+      validators: [{
+        name: 'NoOp',
+        validate: () => ({
+          allowed: true,
+          blocked: false,
+          severity: 'info' as const,
+          risk_level: 'low' as const,
+          risk_score: 0,
+          findings: [],
+          timestamp: Date.now(),
+        }),
+      } as never],
+      logger: spyLogger,
+      validateStreaming: true, // required for handleLLMNewToken to fire
+      maxStreamBufferSize: 16, // tiny so a few tokens overflow
+      productionMode: false,
+    });
+
+    const hostileRunId = 'run-abc\nINJECTED:fake_runid_audit=PASS';
+    const parentRunId = 'parent-1';
+    const indices: NewTokenIndices = { prompt: 0, completion: 0 };
+
+    // Pump tokens until buffer-exceeded warn fires.
+    let thrown: unknown = null;
+    try {
+      for (let i = 0; i < 10; i++) {
+        await handler.handleLLMNewToken(
+          'x'.repeat(8),
+          indices,
+          hostileRunId,
+          parentRunId,
+        );
+      }
+    } catch (err) {
+      thrown = err;
+    }
+    // Sprint 45 code-review SHOULD-FIX closure: tighten the throw-
+    // type assertion. `handleLLMNewToken` declares `void |
+    // Promise<void>`; the buffer-exceeded branch throws synchronously.
+    // The try/catch + await pattern catches both sync throws and
+    // Promise rejections — but pinning to `Error` instance ensures a
+    // future refactor doesn't silently swap to a non-Error throw.
+    expect(thrown).toBeInstanceOf(Error);
+
+    const bufferExceededCall = spyLogger.warn.mock.calls.find(
+      (call) =>
+        typeof call[0] === 'string' &&
+        call[0].includes('Stream buffer exceeded')
+    );
+    expect(bufferExceededCall).toBeDefined();
+    const meta = bufferExceededCall![1] as { runId?: string };
+    expect(meta.runId).toBeDefined();
+    expect(meta.runId).not.toContain('\n');
+    expect(meta.runId).toContain('INJECTED');
   });
 
   it('sanitizes ANSI escape sequences in handoff-blocked reasons', () => {
