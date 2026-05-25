@@ -231,6 +231,20 @@ body / error message returned to a caller, or any other emit:
   established in earlier sprints. Contributor checklist now mandates
   cross-subsystem enumeration: engine + connector-utils + connectors
   + telemetry + hooks + service-layer.
+- **Sprint 46** — hooks subsystem CWE-117 sweep. 10 wraps across 3
+  files: `hooks/index.ts` (5 sites — caller-supplied `hook.name` +
+  raw `error.message` in HookResult.message construction),
+  `HookSandbox.ts` (3 sites — log + event + ExecutionResult.message),
+  `EdgeHookManager.ts` (2 sites — log + EdgeExecutionResult.message).
+  Audit-pass closure of CR SHOULD-FIX double-sanitize bug:
+  `sanitizeMeta(serializeError(error).message)` collapsed to bare
+  `serializeError(error).message` (serializeError already sanitizes
+  internally via Sprint 33 implementation). NEW LESSON: don't
+  double-wrap with sanitizers of the same class — audit the inner
+  codec's body to confirm what it ALREADY does. `HookResult.message`
+  is the 3rd instance of the "sanitize-at-construction-site" pattern
+  (Sprint 42 getErrorMessage, Sprint 44 GuardrailResult.reason,
+  Sprint 46 HookResult.message).
 
 ## Known gaps deferred to Sprint 40
 

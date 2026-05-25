@@ -26,6 +26,7 @@
 
 import { ConnectorValidationError } from '../connector-utils/errors.js';
 import { portableRandomUUID } from '../common/edge-codec.js';
+import { serializeError } from '../common/index.js';
 
 /**
  * Edge-compatible execution context (mirrors HookSandbox.ExecutionContext).
@@ -173,12 +174,19 @@ export class EdgeHookManager {
       const duration = Date.now() - startTime;
       const err = error as Error;
 
+      // Sprint 46 cross-subsystem CWE-117 sweep (architect HIGH + security
+      // HIGH closure): edge-runtime sister of HookSandbox.ts:282. Function-
+      // only handlers can throw crafted errors; `err.message` flowed raw
+      // into the executionLog AND the EdgeExecutionResult.message returned
+      // to caller. Sprint 33 `serializeError` sanitizes via sanitizeLogString.
+      const safeMessage = serializeError(err).message;
+
       this.executionLog.push({
         executionId,
         timestamp: startTime,
         duration,
         success: false,
-        error: err.message,
+        error: safeMessage,
       });
       if (this.executionLog.length > MAX_EXECUTION_LOG) {
         this.executionLog = this.executionLog.slice(-MAX_EXECUTION_LOG);
@@ -188,7 +196,7 @@ export class EdgeHookManager {
         success: false,
         executionId,
         error: 'EXECUTION_ERROR',
-        message: err.message,
+        message: safeMessage,
         duration,
         sandboxed: false,
       };

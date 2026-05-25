@@ -19,6 +19,7 @@
 // `@blackunicorn/bonklm/edge` instead.
 import { randomUUID } from 'node:crypto';
 import * as vm from 'node:vm';
+import { serializeError } from '../common/index.js';
 import { PortableEventEmitter } from '../common/portable-emitter.js';
 
 // ============================================================================
@@ -276,15 +277,25 @@ export class HookSandbox {
       const duration = Date.now() - startTime;
       const err = error as Error;
 
+      // Sprint 46 cross-subsystem CWE-117 sweep (architect HIGH + security
+      // HIGH closure): a sandboxed hook can deliberately throw `new Error("…
+      // newline/ANSI…")` and have `err.message` flow unsanitized into 3
+      // boundaries — the internal log entry, the `hook-error` event payload
+      // (forwarded to subscribers), and the `ExecutionResult.message` returned
+      // to the caller. Sprint 33 `serializeError` sanitizes the message via
+      // `sanitizeLogString` internally — single source of truth, no
+      // double-encoding.
+      const safeMessage = serializeError(err).message;
+
       this.logExecution(executionId, {
         duration,
         success: false,
-        error: err.message,
+        error: safeMessage,
       });
 
       this.emit('hook-error', {
         executionId,
-        error: err.message,
+        error: safeMessage,
         duration,
       });
 
@@ -292,7 +303,7 @@ export class HookSandbox {
         success: false,
         executionId,
         error: err.name === 'TimeoutError' ? 'EXECUTION_TIMEOUT' : 'EXECUTION_ERROR',
-        message: err.message,
+        message: safeMessage,
         duration,
         sandboxed: true,
       };

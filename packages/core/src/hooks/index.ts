@@ -5,6 +5,8 @@
  */
 
 import { createLogger, type Logger } from '../base/GenericLogger.js';
+import { serializeError } from '../common/index.js';
+import { sanitizeMeta } from '../connector-utils/logger.js';
 import type { HookSurface } from '../engine/GuardrailEngine.types.js';
 
 // Export HookSandbox (Node-only — uses node:vm + node:crypto).
@@ -168,7 +170,12 @@ export class HookManager<TContext extends HookContext = HookContext> {
     this.hooks.get(hook.phase)!.push(hook);
     this.hooks.get(hook.phase)!.sort((a, b) => a.priority - b.priority);
 
-    this.logger.info('Hook registered', { id, name: hook.name, phase: hook.phase, surface });
+    // Sprint 46 cross-subsystem CWE-117 sweep: `hook.name` is
+    // caller-supplied — the hook author chooses the string. If the
+    // application allows user-supplied hook names (e.g. a plugin
+    // SDK), the name surface is attacker-influenceable. id + phase +
+    // surface are library-controlled enums/UUIDs (safe).
+    this.logger.info('Hook registered', { id, name: sanitizeMeta(hook.name), phase: hook.phase, surface });
     return id;
   }
 
@@ -224,19 +231,35 @@ export class HookManager<TContext extends HookContext = HookContext> {
         results.push(result);
 
         if (result.shouldBlock) {
-          this.logger.warn('Hook blocked execution', { hookId: hook.id, name: hook.name });
+          // Sprint 46 cross-subsystem CWE-117 sweep: same `hook.name`
+          // attacker-influence as registration site (line ~171).
+          this.logger.warn('Hook blocked execution', { hookId: hook.id, name: sanitizeMeta(hook.name) });
           // Continue executing other hooks for logging purposes
         }
       } catch (error) {
+        // Sprint 46 cross-subsystem CWE-117 sweep: switch raw
+        // `error.message` to canonical `serializeError` per Sprint 33
+        // pattern. `hook.name` sanitized at the meta boundary.
         this.logger.error('Hook execution failed', {
           hookId: hook.id,
-          name: hook.name,
-          error: error instanceof Error ? error.message : String(error),
+          name: sanitizeMeta(hook.name),
+          error: serializeError(error),
         });
         results.push({
           success: false,
           shouldBlock: false,
-          message: `Hook ${hook.name} failed: ${error}`,
+          // Sprint 46: `hook.name` + `error` flow into `HookResult.message`
+          // returned to caller. Sanitize at the construction site so
+          // the value is safe everywhere downstream (matches Sprint 44
+          // GuardrailResult.reason lesson).
+          //
+          // Sprint 46 CR SHOULD-FIX closure: `serializeError(error).message`
+          // already routes through `sanitizeLogString` internally (Sprint
+          // 33 common/index.ts `serializeError` body). Do NOT wrap again
+          // with sanitizeMeta — double-encoding through the same codec
+          // is a no-op in the happy path and a correctness hazard if
+          // either function's encoding ever diverges.
+          message: `Hook ${sanitizeMeta(hook.name)} failed: ${serializeError(error).message}`,
         });
       }
     }
@@ -309,7 +332,9 @@ export class HookManager<TContext extends HookContext = HookContext> {
             resolve({
               success: false,
               shouldBlock: false,
-              message: `Hook ${hook.name} timed out after ${timeout}ms`,
+              // Sprint 46 cross-subsystem CWE-117 sweep: sister to
+              // line ~239 — `hook.name` in caller-visible message.
+              message: `Hook ${sanitizeMeta(hook.name)} timed out after ${timeout}ms`,
             }),
           timeout
         )
