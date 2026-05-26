@@ -1,5 +1,0 @@
----
-description: 'Systematic validation of workflows against BMAD standards with adversarial analysis and detailed reporting'
----
-
-IT IS CRITICAL THAT YOU FOLLOW THIS COMMAND: LOAD the FULL @src/bmb/workflows/workflow-compliance-check/workflow.md, READ its entire contents and follow its directions exactly!

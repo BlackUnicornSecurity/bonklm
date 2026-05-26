@@ -26,8 +26,7 @@ Spanish, French, German, Italian, Portuguese, Chinese, Japanese, Korean, Polish,
 
 1. **Sets Language**: Stores your language preference in `.claude/tts-language.txt`
 2. **Voice Selection**: Automatically uses multilingual voices (Antoni, Rachel, Domi, Bella)
-3. **BMAD Integration**: Works with BMAD plugin - agents speak in your language
-4. **Personality Preserved**: Keeps your current personality/sentiment style
+3. **Personality Preserved**: Keeps your current personality/sentiment style
 
 ## Multilingual Voice Recommendations
 

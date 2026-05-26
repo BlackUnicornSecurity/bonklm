@@ -1,4 +1,4 @@
-# BMAD Security State Files - NEVER COMMIT
+# Bonklm Security State Files - NEVER COMMIT
 # These files contain runtime security state and must not be tracked
 
 # Session and state files
@@ -20,10 +20,6 @@ validators-node/state/
 
 # Telemetry files
 logs/*.jsonl
-
-# Token files (if stored here)
-.bmad-token
-.bmad-key
 
 # Temporary files
 *.tmp

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# BMAD Performance Monitoring Script
+# Performance Monitoring Script
 # Phase 5 - Validator Response Time and Resource Tracking
 #
 # Security improvements:
@@ -13,9 +13,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Validate we're in a proper BMAD project
+# Validate we're in a proper project
 if [[ ! -d "$PROJECT_DIR/.claude" ]]; then
-    echo "ERROR: Not in a valid BMAD project directory" >&2
+    echo "ERROR: Not in a valid project directory" >&2
     exit 1
 fi
 
@@ -234,7 +234,7 @@ generate_performance_summary() {
 }
 
 # Main execution
-echo "BMAD Performance Monitor - Phase 5 Activation"
+echo "Performance Monitor - Phase 5 Activation"
 echo "Monitoring validator response times and resource usage..."
 echo ""
 

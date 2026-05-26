@@ -1,10 +1,10 @@
 #!/usr/bin/env npx ts-node
 /**
- * BMAD Agent Compressor
+ * Agent Compressor
  *
  * Story: CONCURA-3.3 - Implement Compressed Agent Files
  *
- * This script generates compressed versions of BMAD agent files following the
+ * This script generates compressed versions of agent files following the
  * persona compression specification (persona-compression-spec.md).
  *
  * Compression achieves ~70-85% token reduction by:

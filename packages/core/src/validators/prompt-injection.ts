@@ -315,7 +315,7 @@ function detectBase64Payloads(text: string): Base64Finding[] {
 /**
  * Detect injection patterns in HTML comments.
  *
- * ReDoS guard (B.1 / ST-05-101): the previous regex `/<!--([\s\S]*?)-->/g`
+ * ReDoS guard: the previous regex `/<!--([\s\S]*?)-->/g`
  * exhibited O(n^2) quadratic backtracking on inputs composed of many `<!--`
  * tokens with no closing `-->`.  Benchmark: 100 KB → 838 ms (pre-fix),
  * 0.4 ms (post-fix).  Replaced with a plain-string `indexOf` scanner that
@@ -323,7 +323,7 @@ function detectBase64Payloads(text: string): Base64Finding[] {
  * content between a matched `<!--` / `-->` pair is inspected; an unclosed
  * opener is ignored (no findings produced, consistent with prior behaviour).
  *
- * CWE-1333 mitigation.  Sprint 51 / B.1.
+ * CWE-1333 mitigation.
  */
 function detectHtmlCommentInjection(text: string): HtmlCommentFinding[] {
   const findings: HtmlCommentFinding[] = [];

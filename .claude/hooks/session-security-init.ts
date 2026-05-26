@@ -22,15 +22,15 @@ const REQUIRED_VALIDATORS = [
 ];
 
 const DANGEROUS_ENV_VARS: Array<[string, string]> = [
-    ['BMAD_ALLOW_DANGEROUS', 'Dangerous operations override'],
-    ['BMAD_ALLOW_SECRETS', 'Secrets override'],
-    ['BMAD_ALLOW_PRODUCTION', 'Production operations override'],
-    ['BMAD_ALLOW_OUTSIDE_REPO', 'Outside repository override'],
-    ['BMAD_ALLOW_SENSITIVE_FILES', 'Sensitive files override'],
-    ['BMAD_ALLOW_ESCAPE', 'Directory escape override'],
-    ['BMAD_ALLOW_PII', 'PII detection override'],
-    ['BMAD_ALLOW_INJECTION_CONTENT', 'Prompt injection content override'],
-    ['BMAD_ALLOW_JAILBREAK', 'Jailbreak detection override'],
+    ['BONKLM_ALLOW_DANGEROUS', 'Dangerous operations override'],
+    ['BONKLM_ALLOW_SECRETS', 'Secrets override'],
+    ['BONKLM_ALLOW_PRODUCTION', 'Production operations override'],
+    ['BONKLM_ALLOW_OUTSIDE_REPO', 'Outside repository override'],
+    ['BONKLM_ALLOW_SENSITIVE_FILES', 'Sensitive files override'],
+    ['BONKLM_ALLOW_ESCAPE', 'Directory escape override'],
+    ['BONKLM_ALLOW_PII', 'PII detection override'],
+    ['BONKLM_ALLOW_INJECTION_CONTENT', 'Prompt injection content override'],
+    ['BONKLM_ALLOW_JAILBREAK', 'Jailbreak detection override'],
 ];
 
 function checkValidators() {
@@ -165,10 +165,10 @@ function main(): void {
     const warnings: string[] = [];
 
     console.error(`\n${'='.repeat(60)}`);
-    console.error(`BMAD GUARDRAILS: Security Initialization`);
+    console.error(`BONKLM GUARDRAILS: Security Initialization`);
     console.error(`${'='.repeat(60)}`);
 
-    const tokenRequired = (process.env.BMAD_TOKEN_REQUIRED || 'true').toLowerCase() !== 'false';
+    const tokenRequired = (process.env.BONKLM_TOKEN_REQUIRED || 'true').toLowerCase() !== 'false';
 
     if (tokenRequired) {
         const authResult = validateAuthentication();
@@ -183,12 +183,12 @@ function main(): void {
             console.error(`  To authenticate, generate a token:`);
             console.error(`    node src/core/security/quick-token.cjs "Name" "role" 168`);
             console.error(`\n  Or disable token requirement (NOT RECOMMENDED):`);
-            console.error(`    export BMAD_TOKEN_REQUIRED=false`);
+            console.error(`    export BONKLM_TOKEN_REQUIRED=false`);
             console.error(`${'='.repeat(60)}\n`);
             process.exit(2);
         }
     } else {
-        console.error(`  [!!] Token validation SKIPPED (BMAD_TOKEN_REQUIRED=false)`);
+        console.error(`  [!!] Token validation SKIPPED (BONKLM_TOKEN_REQUIRED=false)`);
         warnings.push("Token validation disabled");
     }
 

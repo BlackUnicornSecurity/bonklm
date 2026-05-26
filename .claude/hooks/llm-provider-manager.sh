@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ============================================================================
-# BMAD LLM Provider Manager
+# LLM Provider Manager
 # ============================================================================
-# Centralized management of LLM providers for BMAD framework
+# Centralized management of LLM providers
 # Mirrors the TTS provider-manager pattern for consistency
 #
 # Usage:
@@ -34,11 +34,11 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 BOLD='\033[1m'
 
-# Find project root (search up for _bmad directory)
+# Find project root (search up for marker directory)
 find_project_root() {
     local current_dir="${PWD}"
     while [[ "$current_dir" != "/" ]]; do
-        if [[ -d "$current_dir/_bmad" ]]; then
+        if [[ -d "$current_dir/.claude" ]]; then
             echo "$current_dir"
             return 0
         fi
@@ -49,7 +49,7 @@ find_project_root() {
 }
 
 PROJECT_ROOT=$(find_project_root)
-LLM_CONFIG="$PROJECT_ROOT/_bmad/_config/llm-config.yaml"
+LLM_CONFIG="$PROJECT_ROOT/.claude/llm-config.yaml"
 PROVIDER_FILE="$PROJECT_ROOT/.claude/llm-provider.txt"
 GLOBAL_PROVIDER_FILE="$HOME/.claude/llm-provider.txt"
 
@@ -380,7 +380,7 @@ check_all_health() {
 
 # Show usage help
 show_help() {
-    echo -e "${BOLD}BMAD LLM Provider Manager${NC}"
+    echo -e "${BOLD}LLM Provider Manager${NC}"
     echo ""
     echo "Usage: llm-provider-manager.sh <command> [options]"
     echo ""

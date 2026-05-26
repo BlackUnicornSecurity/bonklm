@@ -12,7 +12,7 @@ ships the final two queued items before the v1.0.0-rc.4 cut.
 
 ### Added
 
-- Per-package README finalized for 11 connectors (cloudflare-agents, hono, voltops-otel, letta, zep, voltagent, elysia, mem0, memory-utils, nextjs, web-middleware-utils). All `[needs-info:` draft markers resolved with authoritative source-derived answers or explicit v1.0.x backlog deferrals (CHM:cloudflare validateUserInput export, hono validatedStream helper, zep thread.* tenant-derived ID enforcement). Closes ST-01-006.
+- Per-package README finalized for 11 connectors (cloudflare-agents, hono, voltops-otel, letta, zep, voltagent, elysia, mem0, memory-utils, nextjs, web-middleware-utils). All `[needs-info:` draft markers resolved with authoritative source-derived answers or explicit v1.0.x backlog deferrals (CHM:cloudflare validateUserInput export, hono validatedStream helper, zep thread.* tenant-derived ID enforcement).
 - **`bonklm doctor` command** (Sprint 50 — closes architect M-2 from
   Sprint 41). Diagnoses the local contributor environment with a
   pre-commit hook check verifying the simple-git-hooks postinstall
@@ -29,14 +29,14 @@ ships the final two queued items before the v1.0.0-rc.4 cut.
 
 ### Changed
 
-- `exports` map added to 8 connectors (chroma, huggingface, llamaindex, pinecone, qdrant, vercel, weaviate, wizard); strict-TS consumer resolves under `bundler`/`node16`/`nodenext`. CJS dist confirmed at runtime — uses `require`+`default`+`types` conditions. Closes ST-01-002. (Sprint 51 Wave 2)
-- LICENSE file added to 25 previously-missing publishable packages (MIT, root-copied). Closes ST-01-005. (Sprint 51 Wave 1)
-- LICENSE refreshed on 2 stale per-package copies (anthropic-connector, vercel-connector) from `(c) 2025 Black Unicorn` to root `(c) 2026 Black Unicorn <security@blackunicorn.tech>`. All 52 publishable now byte-identical. Closes D-001. (Sprint 51 Wave 1.5)
-- Engines floor normalized to Node 20.4 across 24 packages (was 20.0). Closes ST-01-001. (Sprint 51 Wave 1)
-- `@opentelemetry/api ^1.9.0` declared as optional `peerDependency` of `@blackunicorn/bonklm-voltops-otel` (consumer brings via tracer SDK; pin reflects structural-typing compatibility). Closes D-002 surface alignment. (Sprint 51 Wave 1.5)
-- CHANGELOG duplicate `## [Unreleased]` heading at line 978 collapsed; 70 bullets relocated to `## [0.5.0]` section (correct destination — they were v0.5.0 in-flight, not v1.0.0). Single `## [Unreleased]` heading remains. Closes ST-01-008 + R-16. (Sprint 51 Wave 2)
-- `engines.node` floor on `@blackunicorn/bonklm-voltops-otel` corrected from `>=20.0.0` to `>=20.4.0` (auto-aligned via ST-01-001 sweep). Closes ST-01-001 expansion. (Sprint 51 Wave 1)
-- Cloudflare-agents `bonklm-agent.ts` JSDoc corrected to remove reference to non-existent `validateUserInput` helper; recommends `engine.validate(text)` directly. Source surface now aligned with README. Closes D-002 surface side. (Sprint 51 Wave 1.5)
+- `exports` map added to 8 connectors (chroma, huggingface, llamaindex, pinecone, qdrant, vercel, weaviate, wizard); strict-TS consumer resolves under `bundler`/`node16`/`nodenext`. CJS dist confirmed at runtime — uses `require`+`default`+`types` conditions.
+- LICENSE file added to 25 previously-missing publishable packages (MIT, root-copied).
+- LICENSE refreshed on 2 stale per-package copies (anthropic-connector, vercel-connector) from `(c) 2025 Black Unicorn` to root `(c) 2026 Black Unicorn <security@blackunicorn.tech>`. All 52 publishable now byte-identical.
+- Engines floor normalized to Node 20.4 across 24 packages (was 20.0).
+- `@opentelemetry/api ^1.9.0` declared as optional `peerDependency` of `@blackunicorn/bonklm-voltops-otel` (consumer brings via tracer SDK; pin reflects structural-typing compatibility).
+- CHANGELOG duplicate `## [Unreleased]` heading at line 978 collapsed; 70 bullets relocated to `## [0.5.0]` section (correct destination — they were v0.5.0 in-flight, not v1.0.0). Single `## [Unreleased]` heading remains.
+- `engines.node` floor on `@blackunicorn/bonklm-voltops-otel` corrected from `>=20.0.0` to `>=20.4.0` (auto-aligned via sweep).
+- Cloudflare-agents `bonklm-agent.ts` JSDoc corrected to remove reference to non-existent `validateUserInput` helper; recommends `engine.validate(text)` directly. Source surface now aligned with README.
 
 ### Behavior changes
 
@@ -62,25 +62,25 @@ ships the final two queued items before the v1.0.0-rc.4 cut.
 
 ### Removed
 
-- `openclaw-adapter` dropped from v1.0.0 publish set (per D-9; original deprecated removal date 2026-07-01 retained). Marked `"private": true` in `packages/openclaw-adapter/package.json`; `pnpm publish -r --dry-run` no longer lists `@blackunicorn/bonklm-openclaw`. `docs/openclaw-integration.md` deprecation banner retained for rc.x consumers. `docs/user/package-matrix.md` + `docs/user/public-api-surface.md` updated in-place to mark as REMOVED v1.0.0 (content preserved per CLAUDE.md). Migrate to native framework middleware (Express, Fastify, NestJS, Hono, Elysia, Next.js). Closes ST-01-003. (Sprint 51 Wave 2)
+- `openclaw-adapter` dropped from v1.0.0 publish set (per D-9; original deprecated removal date 2026-07-01 retained). Marked `"private": true` in `packages/openclaw-adapter/package.json`; `pnpm publish -r --dry-run` no longer lists `@blackunicorn/bonklm-openclaw`. `docs/openclaw-integration.md` deprecation banner retained for rc.x consumers. `docs/user/package-matrix.md` + `docs/user/public-api-surface.md` updated in-place to mark as REMOVED v1.0.0 (content preserved per CLAUDE.md). Migrate to native framework middleware (Express, Fastify, NestJS, Hono, Elysia, Next.js).
 
 ### Security
 
-- **HB-2 override-token replay-cache starvation patched** (Sprint 51 Wave 3). FIFO eviction allowed nonce-replay via cache flood; replaced with TTL-based eviction + fail-closed on active-entry capacity overflow. Regression test simulates flood of unexpired tokens exhausting cache (fail-closed throw) and post-expiry flood (replay rejected as expired). Closes HB-2 / ST-05-002 / B.2.
-- **HB-3 sanitizeLogString hex-escapes bidi-override (U+202A..E) + bidi-isolates (U+2066..9)** (Sprint 51 Wave 3). CWE-1007 visual-spoof mitigation. 12-payload regression corpus (9 individual code points + 3 combination attacks). Output format `\uNNNN` consistent with existing U+2028/U+2029 precedent. Closes HB-3 / ST-05-003.
-- **HB-4 HookSandbox SAFE_GLOBALS no longer exposes host setTimeout/setInterval/setImmediate/clearTimeout/clearInterval/clearImmediate/queueMicrotask** (Sprint 51 Wave 3). CWE-913 sandbox-escape via async timer mitigation. Sandboxed `sleep(ms)` primitive bounded to wall-clock; rejects with `SANDBOX_ESCAPE_BLOCKED` if exceeded. Two-layer defense: removed from SAFE_GLOBALS + validateCode statically blocks call patterns. 11 regression tests (HB-4-R01..R11). Closes HB-4 / ST-05-004 / B.9.
-- **HB-5 BufferedTelemetryCollector.flush() now routes errors through serializeError** (Sprint 51 Wave 3). CWE-117 residual from Sprint 48 sweep (nested-class method body missed by outer-class line-number anchors). Hostile-error regression suite covers terminal-control-char (BEL, ESC `[2J[H`) + ANSI-escape + log-injection (`\nINFO: fake_entry`) + TAB payloads. Closes HB-5 / ST-05-005 / B.6.
-- **B.3 HookSandbox validateCode Proxy-bypass edge closed** (Sprint 51 Wave 3). `Function.prototype.toString.call(fn)` bypasses Proxy `[[Get]]` traps that intercept `.toString` to spoof native code as benign. Closes B.3 / ST-05-102.
-- **B.4 sanitizeReasonText TAB handling aligned with sanitizeLogString** (Sprint 51 Wave 3). TAB now hex-escapes to `\x09` instead of being deleted by the printable-strip pass. ADR-0001 D#2 Decision-history entry added. Closes B.4 / ST-05-103.
-- **B.7 hashContent HMAC key + threat model documented** (Sprint 51 Wave 3). Function clarified as deterministic audit-trail fingerprint, NOT a security MAC; hardcoded key is intentional (length-extension attack prevention); correct MAC pattern named for users who need authenticity. `@internal` marker added. Closes B.7 / ST-05-105.
-- **B.10 validateCode regex extended from 5 to 16+ banned primitives** (Sprint 51 Wave 3). Added: EventSource, Worker, setTimeout/setInterval/setImmediate/clearTimeout/clearInterval/clearImmediate, queueMicrotask, eval, Function constructor (call + new forms). 13 blocked-payload tests + 1 safe-baseline. Closes B.10 / ST-05-107.
-- **B.11 TelemetryService no longer mutates caller-supplied event timestamps** (Sprint 51 Wave 3). CLAUDE.md immutability rule compliance. Shallow-clone via spread `{ ...event, timestamp: event.timestamp ?? Date.now() }`. 4 regression tests covering explicit `undefined` + omitted + pre-supplied + auto-generated paths. Closes B.11 / ST-05-108.
-- **HB-1 secret-scan baseline established.** workspace + history scanned (scan results tracked internally per project security policy) and git history (details tracked internally per project security policy). `ripsecrets` unavailable in tooling (install pending — recommended addition to `framework/TOOLS.md`). Scaffolded reusable `team/qa/scripts/tarball-secret-scan.sh` for Sprint 52+ tarball-time integration with structured JSON output + `--help` + cleanup trap. `team/qa/1.0.0/evidence/gate-5/ST-05-001/policy.md` documents HB-1 invariant + escalation path. Closes ST-05-001 setup phase; tarball-time invariant remains gated to Gate 9 (Sprint 54). Defense-in-depth: root `.gitignore` reinforced with `demo/**/.env*` patterns. (Sprint 51 Wave 2)
-- **secret/pii/guards-secret: ReDoS spot-check completed (D-005 final layer-1 sweep). All 81 regexes across guards/secret.ts (38), guards/pii/patterns.ts (43), and guards/pii/validators.ts (0 variable-length) classified LINEAR; 9 DiD regression tests added across 3 test files. No fix required. Closes ReDoS sweep program for v1.0.0 validator/guard surface.** (Sprint 51 Wave 1.5)
+- **override-token replay-cache starvation patched** FIFO eviction allowed nonce-replay via cache flood; replaced with TTL-based eviction + fail-closed on active-entry capacity overflow. Regression test simulates flood of unexpired tokens exhausting cache (fail-closed throw) and post-expiry flood (replay rejected as expired).
+- **sanitizeLogString hex-escapes bidi-override (U+202A..E) + bidi-isolates (U+2066..9)** CWE-1007 visual-spoof mitigation. 12-payload regression corpus (9 individual code points + 3 combination attacks). Output format `\uNNNN` consistent with existing U+2028/U+2029 precedent.
+- **HookSandbox SAFE_GLOBALS no longer exposes host setTimeout/setInterval/setImmediate/clearTimeout/clearInterval/clearImmediate/queueMicrotask** CWE-913 sandbox-escape via async timer mitigation. Sandboxed `sleep(ms)` primitive bounded to wall-clock; rejects with `SANDBOX_ESCAPE_BLOCKED` if exceeded. Two-layer defense: removed from SAFE_GLOBALS + validateCode statically blocks call patterns. 11 regression tests.
+- **BufferedTelemetryCollector.flush() now routes errors through serializeError** CWE-117 residual from Sprint 48 sweep (nested-class method body missed by outer-class line-number anchors). Hostile-error regression suite covers terminal-control-char (BEL, ESC `[2J[H`) + ANSI-escape + log-injection (`\nINFO: fake_entry`) + TAB payloads.
+- **B.3 HookSandbox validateCode Proxy-bypass edge closed** `Function.prototype.toString.call(fn)` bypasses Proxy `[[Get]]` traps that intercept `.toString` to spoof native code as benign.
+- **B.4 sanitizeReasonText TAB handling aligned with sanitizeLogString** TAB now hex-escapes to `\x09` instead of being deleted by the printable-strip pass. ADR-0001 D#2 Decision-history entry added.
+- **B.7 hashContent HMAC key + threat model documented** Function clarified as deterministic audit-trail fingerprint, NOT a security MAC; hardcoded key is intentional (length-extension attack prevention); correct MAC pattern named for users who need authenticity. `@internal` marker added.
+- **B.10 validateCode regex extended from 5 to 16+ banned primitives** Added: EventSource, Worker, setTimeout/setInterval/setImmediate/clearTimeout/clearInterval/clearImmediate, queueMicrotask, eval, Function constructor (call + new forms). 13 blocked-payload tests + 1 safe-baseline.
+- **B.11 TelemetryService no longer mutates caller-supplied event timestamps** CLAUDE.md immutability rule compliance. Shallow-clone via spread `{...event, timestamp: event.timestamp ?? Date.now() }`. 4 regression tests covering explicit `undefined` + omitted + pre-supplied + auto-generated paths.
+- **secret-scan baseline established.** workspace + history scanned (scan results tracked internally per project security policy) and git history (details tracked internally per project security policy). `ripsecrets` unavailable in tooling (install pending — recommended addition to `framework/TOOLS.md`). Scaffolded reusable `team/qa/scripts/tarball-secret-scan.sh` for Sprint 52+ tarball-time integration with structured JSON output + `--help` + cleanup trap. `team/qa/1.0.0/evidence/gate-5/policy.md` documents invariant + escalation path. Tarball-time invariant remains gated to Gate 9 (Sprint 54). Defense-in-depth: root `.gitignore` reinforced with `demo/**/.env*` patterns.
+- **secret/pii/guards-secret: ReDoS spot-check completed (D-005 final layer-1 sweep). All 81 regexes across guards/secret.ts (38), guards/pii/patterns.ts (43), and guards/pii/validators.ts (0 variable-length) classified LINEAR; 9 DiD regression tests added across 3 test files. No fix required. Closes ReDoS sweep program for v1.0.0 validator/guard surface.**
 
-- **jailbreak.ts: ReDoS sister-site sweep completed (D-004). All 54 regexes across jailbreak-patterns.ts, jailbreak.ts, and jailbreak-heuristic.ts classified LINEAR; 15 defense-in-depth regression tests added to jailbreak.test.ts to lock CI classification. No fix required.** (Sprint 51)
+- **jailbreak.ts: ReDoS sister-site sweep completed (D-004). All 54 regexes across jailbreak-patterns.ts, jailbreak.ts, and jailbreak-heuristic.ts classified LINEAR; 15 defense-in-depth regression tests added to jailbreak.test.ts to lock CI classification. No fix required.**
 
-- **PromptInjectionValidator: regex DoS guard added with 100ms input-bound regression test. CWE-1333 mitigation. Closes ST-05-101 / B.1.** (Sprint 51) The `detectHtmlCommentInjection()` function used `/<!--([\s\S]*?)-->/g` which exhibited O(n^2) quadratic backtracking on inputs of repeated unclosed `<!--` tokens. Measured: 10 KB → 9 ms, 100 KB → 866 ms (pre-fix). Replaced with an `indexOf`-based linear scanner: 100 KB → 0.4 ms post-fix (2000x improvement). Four regression tests added to `prompt-injection.test.ts` under describe `'ReDoS guard (B.1 / ST-05-101)'`. All 13 other regexes in the file confirmed LINEAR via stress probe. The existing `MAX_INPUT_LENGTH = 100_000` pre-check in `analyze()` is preserved as a defence-in-depth ceiling.
+- **PromptInjectionValidator: regex DoS guard added with 100ms input-bound regression test. CWE-1333 mitigation.** The `detectHtmlCommentInjection()` function used `/<!--([\s\S]*?)-->/g` which exhibited O(n^2) quadratic backtracking on inputs of repeated unclosed `<!--` tokens. Measured: 10 KB → 9 ms, 100 KB → 866 ms (pre-fix). Replaced with an `indexOf`-based linear scanner: 100 KB → 0.4 ms post-fix (2000x improvement). Four regression tests added to `prompt-injection.test.ts` under describe `'ReDoS guard'`. All 13 other regexes in the file confirmed LINEAR via stress probe. The existing `MAX_INPUT_LENGTH = 100_000` pre-check in `analyze()` is preserved as a defence-in-depth ceiling.
 
 ## [1.0.0-rc.3] — 2026-05-24 (Sprints 29 + 30 + 31 + cumulative audit closure)
 
@@ -379,7 +379,7 @@ post-fix; convergent findings closed in this same commit before tag.
   (`@blackunicorn/bonklm` → `validation/`) — config-schema rule that
   accepts EITHER a bare callable OR an object-with-`.validate`-method.
   The canonical `Validator` / `Guard` interface is object-shape
-  (`{ validate(input): ..., name?: string }`); the previous
+  (`{ validate(input):..., name?: string }`); the previous
   `Validators.function` check rejected class instances.
 
 - **`Validators.loggerInstance`** + **`LoggerInstanceRule`** — same
@@ -659,9 +659,9 @@ Public identifiers (5 of 10 hand-curated):
 5. OWASP-LLM-2025-06 + CWE-78 → sh-005 (find-exec + egress)
 
 Metrics:
-  Recall:    100.00%  (threshold ≥95%)  PASS
+  Recall:    100.00% (threshold ≥95%) PASS
   FPR:       0.00%   (threshold ≤5%)    PASS
-  Precision: 100.00%  (threshold ≥80%)  PASS
+  Precision: 100.00% (threshold ≥80%) PASS
 ```
 
 ### Deferred (Sprint 25+)
@@ -776,7 +776,7 @@ v0.7-graduation-gate sandbox-attack-corpus.
   bypassed the cap). New `onOversize: 'truncate' | 'block' |
   'allow'` policy; configurable `maxBytes`.
 - `withRestateGuardrails`: `lastDecisionStateKey` option (string or
-  `false` to opt out of `ctx.set('bonklm:last_decision', ...)`
+  `false` to opt out of `ctx.set('bonklm:last_decision',...)`
   persistence on every ALLOW).
 - Restate `ctx.key()` sanitization (`%3A` for `:`) prevents
   journal-key collision attacks.
@@ -1049,7 +1049,7 @@ green across the entire Sprint 13–15 surface.
   cache entries in shared-process deployments (iter-1 security BLOCK-6).
 - `runtime.bonklm` namespace object frozen (`Object.freeze(sealedBonklm)`)
   in addition to the slot seal — hostile plugins cannot write
-  `runtime.bonklm.foo = ...` even on the empty namespace (iter-1
+  `runtime.bonklm.foo =...` even on the empty namespace (iter-1
   security BLOCK-8).
 - `BonklmPluginOptions` frozen in `bonklmPlugin()` — hostile plugins
   sharing the options reference cannot mutate `acknowledgeClass4Risk`
@@ -1231,7 +1231,7 @@ work:
   Regression test added.
 - **Mailgun secret pattern reworked.** Previous "tightened" regex missed 4/5
   real naming conventions (`MAILGUN_TOKEN`, `MG_AUTH_KEY`, yaml
-  `mailgun:\n  key: …`, `mailgun_secret`). Replaced with two complementary
+  `mailgun:\n key: …`, `mailgun_secret`). Replaced with two complementary
   patterns: one keyed on a Mailgun identifier within 120 chars of the value,
   one keyed on any credential noun (key/token/secret/auth/api/mg-*) within
   40 chars.
@@ -1298,7 +1298,7 @@ work:
 
 
 ### Removed
-- Dropped the internal BMAD development framework from the repo: deleted `_bmad/`, `.claude/validators-node/`, `tools/`, `tests/` (root-level), `examples/automation/`, `examples/installer/`, `examples/versioning/`, `.githooks/`, BMAD scripts, stale BMAD build artifacts under `dist/`.
+- Dropped internal development scaffolding from the repo: deleted `.claude/validators-node/`, `tools/`, `tests/` (root-level), `examples/automation/`, `examples/installer/`, `examples/versioning/`, `.githooks/`, internal scripts, stale build artifacts under `dist/`.
 
 ### Fixed
 - `bash-safety` guard no longer crashes at runtime — replaced `require('path')` (which is unavailable in this ESM package) with a proper `node:path` import. Path containment for `rm -rf` targets now actually executes.

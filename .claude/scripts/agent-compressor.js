@@ -1,9 +1,9 @@
 /**
- * BMAD Agent Compressor
+ * Agent Compressor
  *
  * Story: CONCURA-3.3 - Implement Compressed Agent Files
  *
- * This script generates compressed versions of BMAD agent files following the
+ * This script generates compressed versions of agent files following the
  * persona compression specification (persona-compression-spec.md).
  *
  * Compression achieves ~70-85% token reduction by:
@@ -24,8 +24,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 // Configuration
-const BMAD_ROOT = path.resolve(__dirname, '../../_bmad');
-const OUTPUT_ROOT = path.resolve(__dirname, '../../_bmad/_compact/agents');
+const ARCHIVE_ROOT = path.resolve(__dirname, '../../_archive');
+const OUTPUT_ROOT = path.resolve(__dirname, '../../_archive/_compact/agents');
 // Token estimation (rough approximation: ~4 chars per token)
 const CHARS_PER_TOKEN = 4;
 // ============================================================================
@@ -35,8 +35,8 @@ function parseAgentFile(filePath) {
     const content = fs.readFileSync(filePath, 'utf-8');
     // Extract module from path
     const pathParts = filePath.split(path.sep);
-    const bmadIdx = pathParts.findIndex(p => p === '_bmad');
-    const module = bmadIdx >= 0 ? pathParts[bmadIdx + 1] : 'unknown';
+    const archiveIdx = pathParts.findIndex(p => p === '_archive');
+    const module = archiveIdx >= 0 ? pathParts[archiveIdx + 1] : 'unknown';
     // Parse XML agent tag
     const agentTagMatch = content.match(/<agent\s+id="([^"]+)"\s+name="([^"]+)"\s+title="([^"]+)"\s+icon="([^"]+)">/);
     if (!agentTagMatch || !agentTagMatch[1] || !agentTagMatch[2] || !agentTagMatch[3] || !agentTagMatch[4]) {
@@ -217,9 +217,9 @@ function compressAgent(metadata, persona) {
 function generateCompactMarkdown(compressed) {
     const { essential, extended } = compressed;
     let md = `---
-# Compressed Agent File (BMAD-CONCURA)
+# Compressed Agent File (CONCURA)
 # Target: ~200 tokens for essential persona
-# Full agent: _bmad/${essential.module}/agents/${essential.agent_id}.md
+# Full agent: _archive/${essential.module}/agents/${essential.agent_id}.md
 agent_id: "${essential.agent_id}"
 name: "${essential.name}"
 title: "${essential.title}"
@@ -246,7 +246,7 @@ ${essential.core_principle}
 
 <!--
 RUNTIME NOTE: This is a compressed agent file for minimal token activation.
-- Activation protocol, menu handlers, and rules are handled by BMAD runtime
+- Activation protocol, menu handlers, and rules are handled by runtime
 - Extended persona layers load on demand from original agent file
 - Use this file for quick activation; load full agent for deep engagement
 -->
@@ -262,7 +262,7 @@ Extended content available in original agent file:
 - Communication style details
 ${extended.inherent_biases ? '- Inherent biases and self-awareness' : ''}
 
-Reference: \`_bmad/${essential.module}/agents/${essential.agent_id}.md\`
+Reference: \`_archive/${essential.module}/agents/${essential.agent_id}.md\`
 `;
     }
     return md;
@@ -277,13 +277,13 @@ function estimateTokens(text) {
 // FILE DISCOVERY
 // ============================================================================
 function discoverAgentFiles() {
-    const modules = fs.readdirSync(BMAD_ROOT).filter(d => {
-        const fullPath = path.join(BMAD_ROOT, d);
+    const modules = fs.readdirSync(ARCHIVE_ROOT).filter(d => {
+        const fullPath = path.join(ARCHIVE_ROOT, d);
         return fs.statSync(fullPath).isDirectory() && d !== '_compact' && d !== '_config';
     });
     const agentFiles = [];
     for (const module of modules) {
-        const agentsDir = path.join(BMAD_ROOT, module, 'agents');
+        const agentsDir = path.join(ARCHIVE_ROOT, module, 'agents');
         if (fs.existsSync(agentsDir)) {
             const files = fs.readdirSync(agentsDir).filter(f => f.endsWith('.md'));
             agentFiles.push(...files.map(f => path.join(agentsDir, f)));
@@ -393,7 +393,7 @@ function main() {
     const statsOnly = args.includes('--stats');
     const moduleArg = args.find(a => a.startsWith('--module='))?.split('=')[1];
     const agentArg = args.find(a => a.startsWith('--agent='))?.split('=')[1];
-    console.log('BMAD Agent Compressor');
+    console.log('Agent Compressor');
     console.log('='.repeat(50));
     console.log(`Mode: ${dryRun ? 'DRY RUN' : 'WRITE'}`);
     console.log(`Output: ${OUTPUT_ROOT}`);

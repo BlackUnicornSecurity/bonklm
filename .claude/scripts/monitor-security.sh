@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# BMAD Security Monitoring Script
+# Security Monitoring Script
 # Phase 5 - Real-time Security Event Monitoring
 #
 # Security improvements:
@@ -13,9 +13,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Validate we're in a proper BMAD project
+# Validate we're in a proper project
 if [[ ! -d "$PROJECT_DIR/.claude" ]]; then
-    echo "ERROR: Not in a valid BMAD project directory" >&2
+    echo "ERROR: Not in a valid project directory" >&2
     exit 1
 fi
 
@@ -182,7 +182,7 @@ validate_audit_chain() {
 }
 
 # Main monitoring loop
-echo "BMAD Security Monitor - Phase 5 Activation"
+echo "Security Monitor - Phase 5 Activation"
 echo "Monitoring: $SECURITY_LOG"
 echo "Validator Log: $VALIDATOR_LOG"
 echo "Telemetry: $TELEMETRY_LOG"

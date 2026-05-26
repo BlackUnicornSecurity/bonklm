@@ -206,7 +206,7 @@ describe('PII Validators', () => {
 
     it('should handle special characters', () => {
       // IBAN with special characters removed
-      expect(validators.validateIban('GB82-WEST-1234-5698-7654-32'.replace(/-/g, ''))).toBe(true);
+      expect(validators.validateIban('GB29-NWBK-6016-1331-9268-19'.replace(/-/g, ''))).toBe(true);
     });
   });
 

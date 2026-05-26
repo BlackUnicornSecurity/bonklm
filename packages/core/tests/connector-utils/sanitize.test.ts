@@ -1,11 +1,10 @@
 /**
  * Unit tests for connector-utils/sanitize.ts
  *
- * Sprint 51 B.4 (ST-05-103): regression lock for sanitizeReasonText TAB
- * alignment with sanitizeLogString. Pre-fix, TAB (\x09) was silently
- * deleted by the [^\x20-\x7E] strip pass. Post-fix, TAB is hex-escaped
- * to the literal 4-char sequence \x09, matching sanitizeLogString's
- * forensic-signal contract (ADR-0001 D#2).
+ * Regression lock for sanitizeReasonText TAB alignment with sanitizeLogString.
+ * Pre-fix, TAB (\x09) was silently deleted by the [^\x20-\x7E] strip pass.
+ * Post-fix, TAB is hex-escaped to the literal 4-char sequence \x09, matching
+ * sanitizeLogString's forensic-signal contract (ADR-0001 D#2).
  */
 
 import { describe, it, expect } from 'vitest';
@@ -55,8 +54,8 @@ describe('sanitizeReasonText', () => {
     expect(sanitizeReasonText(highUnicode)).toBeUndefined();
   });
 
-  // B.4 regression lock (ST-05-103)
-  describe('B.4 — TAB alignment with sanitizeLogString', () => {
+  // TAB alignment regression lock
+  describe('TAB alignment with sanitizeLogString', () => {
     it('hex-escapes TAB as \\x09 (not silently deleted)', () => {
       // Pre-fix: TAB was deleted by [^\x20-\x7E] strip pass → output was 'beforeafter'
       // Post-fix: TAB is hex-escaped to literal \x09 first → output is 'before\\x09after'

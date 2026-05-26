@@ -53,7 +53,7 @@ export interface SandboxConfig {
    * Allow async operations via the sandboxed sleep() primitive.
    * Host timer globals (setTimeout, setInterval, etc.) are NEVER exposed
    * regardless of this flag — they are unconditional sandbox-escape vectors
-   * (CWE-913 / HB-4). This flag is retained for API compatibility only.
+   * (CWE-913). This flag is retained for API compatibility only.
    * @deprecated has no effect; sandboxed sleep() is always available
    */
   allowAsyncOperations?: boolean;
@@ -159,7 +159,7 @@ export const SAFE_GLOBALS = [
   'encodeURIComponent',
   'decodeURI',
   'decodeURIComponent',
-  // HB-4 (ST-05-004, CWE-913): host timer globals intentionally excluded.
+  // CWE-913: host timer globals intentionally excluded.
   // setTimeout / setInterval / setImmediate / clearTimeout / clearInterval /
   // clearImmediate / queueMicrotask can schedule work that outlives the
   // sandbox's sync wall-clock timeout, creating an async sandbox-escape.
@@ -232,8 +232,8 @@ export class HookSandbox {
       const sandboxContext = this.createSandboxContext(context, options);
 
       // Convert function to string if needed, or wrap string code.
-      // extractFunctionCode may throw SECURITY_VIOLATION for native functions
-      // (B.3 / ST-05-102); catch and surface as a blocked attempt.
+      // extractFunctionCode may throw SECURITY_VIOLATION for native functions;
+      // catch and surface as a blocked attempt.
       let code: string;
       try {
         if (typeof handler === 'function') {
@@ -391,7 +391,7 @@ export class HookSandbox {
     // Create safe console
     sandbox.console = this.createSafeConsole();
 
-    // HB-4 (ST-05-004): Provide a sandboxed sleep() primitive that resolves a
+    // Provide a sandboxed sleep() primitive that resolves a
     // Promise but is bounded to the sandbox wall-clock timeout. If the
     // remaining wall-clock budget would be exceeded the Promise rejects with a
     // sandbox-escape error rather than scheduling work beyond the deadline.
@@ -468,7 +468,7 @@ export class HookSandbox {
   }
 
   private extractFunctionCode(fn: (...args: unknown[]) => unknown): string {
-    // B.3 (ST-05-102): Use Function.prototype.toString.call(fn) rather than
+    // Use Function.prototype.toString.call(fn) rather than
     // fn.toString() to bypass Proxy traps. A Proxy can override the .toString
     // accessor and return benign-looking source text while the target is a
     // native / dangerous function (e.g. eval). Calling via .call on the
@@ -514,7 +514,7 @@ export class HookSandbox {
 
     // Check for dangerous patterns.
     //
-    // B.10 (ST-05-107): Network-primitive regex extended from fetch-only to
+    // Network-primitive regex extended from fetch-only to
     // cover all major async exfiltration / covert-channel vectors.
     // Each entry is: [pattern, human-readable issue label].
     const dangerousPatterns: Array<[RegExp, string]> = [
@@ -545,7 +545,7 @@ export class HookSandbox {
       [/\bspawn\s*\(/, 'spawn() call'],
       // --- Filesystem ---
       [/\bfs\s*\.\s*(write|unlink|rm|mkdir|chmod)/, 'fs write operations'],
-      // --- Network / async covert channels (B.10) ---
+      // --- Network / async covert channels ---
       // fetch(): browser + Node 18+ built-in HTTP client
       [/\bfetch\s*\(/, 'fetch() call'],
       // WebSocket: bidirectional persistent connection exfil
@@ -560,7 +560,7 @@ export class HookSandbox {
       [/\bhttp[s]?\s*\./, 'HTTP access'],
       [/\bnet\s*\./, 'Network access'],
       [/\bdns\s*\./, 'DNS access'],
-      // HB-4 (ST-05-004): host timer globals — absent from SAFE_GLOBALS but
+      // Host timer globals — absent from SAFE_GLOBALS but
       // reject at static-analysis time as defence-in-depth.
       [/\bsetTimeout\s*\(/, 'setTimeout() call (host timer — sandbox-escape vector)'],
       [/\bsetInterval\s*\(/, 'setInterval() call (host timer — sandbox-escape vector)'],

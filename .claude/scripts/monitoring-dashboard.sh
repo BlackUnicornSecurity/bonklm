@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# BMAD Monitoring Dashboard Script
+# Monitoring Dashboard Script
 # Phase 5 - Real-time KPI Dashboard and Operational Status
 #
 # Security improvements:
@@ -13,9 +13,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Validate we're in a proper BMAD project
+# Validate we're in a proper project
 if [[ ! -d "$PROJECT_DIR/.claude" ]]; then
-    echo "ERROR: Not in a valid BMAD project directory" >&2
+    echo "ERROR: Not in a valid project directory" >&2
     exit 1
 fi
 
@@ -144,7 +144,7 @@ display_header() {
     timestamp=$(date "+%Y-%m-%d %H:%M:%S")
 
     echo "=================================================================="
-    echo "                    BMAD MONITORING DASHBOARD                    "
+    echo "                    MONITORING DASHBOARD                    "
     echo "                      Phase 5 - Real-time KPIs                  "
     echo "                                                                  "
     echo " Last Updated: $timestamp                            "
@@ -299,7 +299,7 @@ create_static_dashboard() {
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
     <meta http-equiv="X-Content-Type-Options" content="nosniff">
     <meta http-equiv="X-Frame-Options" content="DENY">
-    <title>BMAD Monitoring Dashboard - Phase 5</title>
+    <title>Monitoring Dashboard - Phase 5</title>
     <style>
         body { font-family: monospace; background: #1a1a1a; color: #00ff00; padding: 20px; }
         .container { max-width: 1200px; margin: 0 auto; }
@@ -316,7 +316,7 @@ create_static_dashboard() {
 <body>
     <div class="container">
         <div class="header">
-            <h1>BMAD MONITORING DASHBOARD</h1>
+            <h1>MONITORING DASHBOARD</h1>
             <h2>Phase 5 - Production Monitoring</h2>
             <div class="timestamp">Last Updated: <span id="timestamp"></span></div>
             <div class="auth-notice">This dashboard contains sensitive operational data. Authorized access only.</div>
@@ -376,7 +376,7 @@ display_main_dashboard() {
 }
 
 # Main execution
-echo "BMAD Monitoring Dashboard - Phase 5 Initialization"
+echo "Monitoring Dashboard - Phase 5 Initialization"
 echo "Setting up real-time KPIs and operational status displays..."
 echo ""
 

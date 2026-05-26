@@ -192,7 +192,7 @@ export class BufferedTelemetryCollector implements TelemetryCollector {
       try {
         this.delegate.collect(event);
       } catch (error) {
-        // HB-5 (ST-05-005) Sprint 51 Wave 3: use serializeError to route
+        // Use serializeError to route
         // the error through sanitizeLogString before writing to stderr.
         // A hostile delegate whose .toString() returns ANSI/control chars
         // would otherwise inject terminal-control sequences into CI logs
@@ -264,7 +264,7 @@ export class TelemetryService {
       return;
     }
 
-    // B.11 (ST-05-108) Sprint 51 Wave 3: never mutate the caller-supplied
+    // Never mutate the caller-supplied
     // event object. Shallow-clone before assigning timestamp so the
     // caller's original object is left untouched (CLAUDE.md immutability
     // rule). Observable side-effect: caller holding a reference to the

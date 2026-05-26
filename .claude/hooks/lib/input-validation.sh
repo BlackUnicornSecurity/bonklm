@@ -2,8 +2,8 @@
 #
 # File: .claude/hooks/lib/input-validation.sh
 #
-# BMAD Input Validation Library
-# =============================
+# Input Validation Library
+# ========================
 # Provides functions for sanitizing user input in shell scripts.
 # This library prevents shell injection attacks by validating and sanitizing
 # user-controlled input before use in commands.
@@ -13,7 +13,7 @@
 #   validate_agent_name "$AGENT_NAME" || exit 1
 #
 # Security Note:
-#   This library is part of the BMAD security guardrails system.
+#   This library is part of the security guardrails system.
 #   All validation functions return 0 for valid input, 1 for invalid.
 
 # Dangerous characters that could enable command injection

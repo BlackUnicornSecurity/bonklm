@@ -62,7 +62,7 @@ Target language (Spanish, Antoni): "Lo verificaré para ti"
 
 - Translations are **direct translations** of what was said in the main language
 - Same **personality/sentiment** applies to both languages
-- Works with all AgentVibes features (BMAD, personalities, etc.)
+- Works with all AgentVibes features (personalities, etc.)
 - Requires multilingual voices for target language (Antoni, Rachel, Domi, Bella, etc.)
 - Small pause (0.5s) between main and target language announcements
 

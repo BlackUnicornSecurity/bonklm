@@ -10,8 +10,6 @@
  * 4. Fuzzy matching for keyword variations
  * 5. Heuristic behavioral analysis
  * 6. Session risk tracking with decay and escalation
- *
- * Ported from BMAD-CYBERSEC with framework-agnostic design.
  */
 
 import { createLogger, type Logger } from '../base/GenericLogger.js';

@@ -5,7 +5,7 @@
  * Story: CONCURA-3.1 - Implement Micro-Manifest Generator
  * Author: BlackUnicorn.Tech
  *
- * Purpose: Generate compressed micro-manifests from full BMAD manifests
+ * Purpose: Generate compressed micro-manifests from full manifests
  * achieving 80%+ token reduction while preserving routing capability.
  *
  * Compression Rules (from micro-manifest-spec.md):

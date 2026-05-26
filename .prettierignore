@@ -9,11 +9,6 @@ build/
 # Test coverage
 coverage/
 
-# BMAD framework (external)
-_bmad/
-_bmad-backup*/
-_bmad-output/
-
 # Team workspace (internal docs)
 team/
 

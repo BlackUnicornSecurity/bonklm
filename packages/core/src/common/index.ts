@@ -153,7 +153,7 @@ export function sanitizeLogString(input: string, maxLen: number = DEFAULT_MAX_LO
   // newline-replacement pass so the canonical primitive covers the
   // full "line break the log line" attack surface.
   const flat = stripped.replace(/\r\n|\n|\r|\u2028|\u2029/g, '\\n');
-  // Sprint 51 HB-3 (ST-05-003): hex-escape Unicode bidi-override and
+  // Hex-escape Unicode bidi-override and
   // bidi-isolate code points (U+202A..U+202E, U+2066..U+2069).
   // These live above 0x7F so the control-char regex above misses them.
   // An attacker who injects U+202E (RIGHT-TO-LEFT OVERRIDE) into a log

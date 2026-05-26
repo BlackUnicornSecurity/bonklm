@@ -128,10 +128,6 @@
     {
       "name": "agent-vibes",
       "description": "TTS voice management commands"
-    },
-    {
-      "name": "bmad",
-      "description": "BMAD voice integration and agent voice assignment"
     }
   ]
 }

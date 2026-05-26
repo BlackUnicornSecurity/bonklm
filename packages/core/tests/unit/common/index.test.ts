@@ -250,13 +250,13 @@ describe('isExpectedSecretFile', () => {
 
 
 // ---------------------------------------------------------------------------
-// Sprint 51 HB-3 (ST-05-003) — sanitizeLogString bidi-range hex-escape
+// sanitizeLogString bidi-range hex-escape
 // 12-payload regression corpus. Each payload is attacker-controlled input
 // containing one or more bidi code points. The test asserts:
 //   (a) the raw code point does NOT appear in the output (visual-spoof neutralised)
 //   (b) the expected \uNNNN hex-escape DOES appear (forensic signal preserved)
 // ---------------------------------------------------------------------------
-describe('sanitizeLogString — HB-3 bidi-override regression corpus (ST-05-003)', () => {
+describe('sanitizeLogString — bidi-override regression corpus', () => {
   // Individual code point payloads (9 code points)
   it('hex-escapes U+202A LEFT-TO-RIGHT EMBEDDING', () => {
     const input = 'log entry \u202A hidden';

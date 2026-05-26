@@ -117,11 +117,11 @@ interface TelemetryEvent {
 }
 ```
 
-**No-mutation guarantee (B.11 / ST-05-108):** `TelemetryService.record()` never
+**No-mutation guarantee:** `TelemetryService.record()` never
 modifies the caller-supplied `event` object. If `timestamp` is absent or
 `undefined`, a shallow clone is created internally (`{ ...event, timestamp:
 Date.now() }`) before dispatch to collectors. The caller's reference is
-unchanged. This was fixed in Sprint 51 Wave 3.
+unchanged.
 
 ### Pluggable collectors
 
@@ -151,8 +151,8 @@ collect / record boundary (per ADR-0001 Sprint 45 closure):
 - Catch blocks in `record()`, `flush()`, `shutdown()` use
   `serializeError(error)` for error metadata (Sprint 48 closure).
 - `BufferedTelemetryCollector.flush()` — routes delegate errors through
-  `serializeError` before writing to `console.error` (HB-5 / ST-05-005 Sprint
-  51 Wave 3 closure; Sprint 48 sweep had missed this nested-class site).
+  `serializeError` before writing to `console.error` (Sprint 48 sweep had
+  missed this nested-class site; closed in a later revision).
 
 Custom collectors that forward `runId`, `operation`, or `error.message` to
 log surfaces MUST sanitize at their own boundary. See §7.
@@ -301,7 +301,7 @@ attacker-influenceable strings before they reach exporters.
 
 | Primitive | Location | Use |
 |---|---|---|
-| `sanitizeLogString` | `packages/core/src/common/index.ts` | Canonical primitive. Hex-escapes `\x00-\x09`, `\x0B-\x1F`, `\x7F`; replaces `\r\n` / `\n` / `\r` / U+2028 / U+2029 with literal `\n`; hex-escapes bidi-override (U+202A-U+202E) and bidi-isolate (U+2066-U+2069) to `\uNNNN` (Sprint 51 HB-3); caps at 500 chars + `…[truncated]` marker. |
+| `sanitizeLogString` | `packages/core/src/common/index.ts` | Canonical primitive. Hex-escapes `\x00-\x09`, `\x0B-\x1F`, `\x7F`; replaces `\r\n` / `\n` / `\r` / U+2028 / U+2029 with literal `\n`; hex-escapes bidi-override (U+202A-U+202E) and bidi-isolate (U+2066-U+2069) to `\uNNNN`; caps at 500 chars + `…[truncated]` marker. |
 | `sanitizeMeta` | `packages/core/src/connector-utils/logger.ts:336` | Wraps `sanitizeLogString(String(x ?? ''))` for the most common combo. Fail-closes hostile `toString()` throws to `[unstringifiable]`. |
 | `serializeError` | `packages/core/src/common/index.ts:192` | Canonical Error → safe `{ name, message, code, raw }` shape. Use as `{ error: serializeError(err) }` — bare `{ error }` renders empty post-`JSON.stringify`. |
 

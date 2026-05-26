@@ -8,8 +8,6 @@
  * 2. Character-level encoding: ROT13, ROT47, reverse text, acrostic, pig latin
  * 3. Context overload: Token flooding, many-shot, repetitive content
  * 4. Mathematical/logical encoding: Formal logic, pseudomath, conditional logic
- *
- * Ported from BMAD-CYBERSEC with framework-agnostic design.
  */
 
 import { createLogger, type Logger } from '../base/GenericLogger.js';

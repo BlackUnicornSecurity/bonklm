@@ -9,8 +9,6 @@
  * - Category-based repetition detection
  * - Accumulated weight threshold monitoring
  * - In-memory storage (framework-agnostic, no file dependencies)
- *
- * Ported from BMAD-CYBERSEC with file I/O removed for framework-agnostic use.
  */
 
 // =============================================================================

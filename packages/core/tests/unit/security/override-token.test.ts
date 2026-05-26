@@ -205,7 +205,7 @@ describe('OverrideTokenValidator (S011-006)', () => {
     });
 
     it('should reject new token when cache is full with active entries (fail-closed)', () => {
-      // HB-2 / ST-05-002: TTL-based eviction policy.
+      // TTL-based eviction policy.
       // When all cached entries are still within their validity window,
       // accepting a new entry would require evicting a live used-nonce,
       // breaking the replay-protection guarantee. The fix: fail-closed.
@@ -259,7 +259,7 @@ describe('OverrideTokenValidator (S011-006)', () => {
     });
   });
 
-  describe('HB-2 / ST-05-002 — replay-cache starvation regression', () => {
+  describe('replay-cache starvation regression', () => {
     // CRITICAL regression guard: demonstrates that the FIFO vulnerability
     // (attacker floods cache → evicts used nonce → replays token) is closed.
     // Strategy: use short TTL (100 ms) so expired entries CAN be evicted;
@@ -310,7 +310,7 @@ describe('OverrideTokenValidator (S011-006)', () => {
     });
 
     it('should reject replay when cache is actively flooded with unexpired tokens', () => {
-      // This is the core HB-2 attack: flood with valid tokens within expiry window.
+      // Core replay-cache starvation attack: flood with valid tokens within expiry window.
       // With TTL-based eviction the cache hits capacity with active entries and
       // throws (fail-closed) — the attacker cannot open a replay window.
       const cacheSize = 5;

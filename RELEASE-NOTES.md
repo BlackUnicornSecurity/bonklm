@@ -16,7 +16,7 @@ archive. For all releases after v0.3.0, see the CHANGELOG.
 
 ### Overview
 
-BonkLM v0.3.0 aligns the entire package family (core, logger, wizard, 20+ connectors, openclaw adapter) at version `0.3.0`, removes the internal BMAD development framework from the public repo, lands several runtime and security correctness fixes, and switches the monorepo to changesets-driven publishing.
+BonkLM v0.3.0 aligns the entire package family (core, logger, wizard, 20+ connectors, openclaw adapter) at version `0.3.0`, removes internal development scaffolding from the public repo, lands several runtime and security correctness fixes, and switches the monorepo to changesets-driven publishing.
 
 This is the first release where every package in the monorepo ships from the same `pnpm exec changeset publish` invocation. Previously only `@blackunicorn/bonklm` (core) made it to npm.
 
@@ -49,7 +49,7 @@ All packages now release together at the same version, governed by a `fixed` gro
 
 #### Removed
 
-- Entire internal BMAD development framework (`_bmad/`, `.claude/validators-node/`, `tools/`, root-level `tests/`, `examples/`, `scripts/`, `.githooks/`, stale BMAD `dist/`, `package-lock.json`). Path aliases in `vitest.config.ts` (`@bmad`, `@framework`, `@validators`) removed.
+- Entire internal development scaffolding (`.claude/validators-node/`, `tools/`, root-level `tests/`, `examples/`, `scripts/`, `.githooks/`, stale `dist/`, `package-lock.json`). Path aliases in `vitest.config.ts` (`@framework`, `@validators`) removed.
 - 688 stale `.js` / `.d.ts` / `.js.map` / `.d.ts.map` files alongside `.ts` source under `packages/*/src/` — leftover build outputs that were masking real type errors.
 - Broken `cli` entry from `packages/core/package.json`'s `bin` field (pointed at a non-existent `.ts` source).
 - The wizard package's `-deprecated` tag.

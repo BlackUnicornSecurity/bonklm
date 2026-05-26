@@ -4,7 +4,7 @@
  * Story: CONCURA-3.1 - Implement Micro-Manifest Generator
  * Author: BlackUnicorn.Tech
  *
- * Purpose: Generate compressed micro-manifests from full BMAD manifests
+ * Purpose: Generate compressed micro-manifests from full manifests
  * achieving 80%+ token reduction while preserving routing capability.
  *
  * Compression Rules (from micro-manifest-spec.md):
@@ -20,12 +20,12 @@ import * as path from 'path';
 // CONFIGURATION
 // =============================================================================
 const CONFIG = {
-    // Input paths (relative to _bmad/_config/)
-    agentManifestPath: '_bmad/_config/agent-manifest.csv',
-    workflowManifestPath: '_bmad/_config/workflow-manifest.csv',
+    // Input paths (relative to _archive/_config/)
+    agentManifestPath: '_archive/_config/agent-manifest.csv',
+    workflowManifestPath: '_archive/_config/workflow-manifest.csv',
     // Output paths (same directory as inputs)
-    microAgentManifestPath: '_bmad/_config/micro-agent-manifest.csv',
-    microWorkflowManifestPath: '_bmad/_config/micro-workflow-manifest.csv',
+    microAgentManifestPath: '_archive/_config/micro-agent-manifest.csv',
+    microWorkflowManifestPath: '_archive/_config/micro-workflow-manifest.csv',
     // Compression settings
     maxSummaryWords: 15,
     maxSummaryChars: 80,
@@ -570,17 +570,17 @@ async function main() {
         verbose: args.includes('--verbose'),
         basePath: args.find(a => a.startsWith('--base-path='))?.split('=')[1] || process.cwd(),
     };
-    // Find project root (look for _bmad directory)
+    // Find project root (look for _archive directory)
     let basePath = options.basePath;
-    while (!fs.existsSync(path.join(basePath, '_bmad')) && basePath !== '/') {
+    while (!fs.existsSync(path.join(basePath, '_archive')) && basePath !== '/') {
         basePath = path.dirname(basePath);
     }
-    if (!fs.existsSync(path.join(basePath, '_bmad'))) {
-        console.error('Error: Could not find _bmad directory. Run from BMAD project root.');
+    if (!fs.existsSync(path.join(basePath, '_archive'))) {
+        console.error('Error: Could not find _archive directory. Run from project root.');
         process.exit(1);
     }
     console.log('='.repeat(70));
-    console.log('BMAD Micro-Manifest Generator');
+    console.log('Micro-Manifest Generator');
     console.log('='.repeat(70));
     console.log(`Base path: ${basePath}`);
     console.log(`Mode: ${options.dryRun ? 'DRY RUN' : 'WRITE'}`);

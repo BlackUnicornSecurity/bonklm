@@ -223,7 +223,7 @@ handle_learning_mode() {
 
 # @function handle_translation_mode
 # @intent Translate and speak in target language (non-learning mode)
-# @why Issue #50 - BMAD multi-language TTS support
+# @why Issue #50 - multi-language TTS support
 # @returns 0 if translation handled, 1 if not translating
 handle_translation_mode() {
   # Source translate-manager to get translation settings

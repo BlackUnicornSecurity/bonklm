@@ -169,7 +169,7 @@ Per Story 4.7 (Sprints 26-28):
 | `messagesToTextLegacy` | Replaced by `messagesToText` (Story 1.5) | Sprint 26 |
 | `GuardrailsCallbackHandler` | Replaced by `wrapLangChain` (Story 1.5) | Sprint 26 |
 | sync `validateToken` | Replaced by async `validate` (Story 1.6) | Sprint 27 |
-| `openclaw-adapter` package | **REMOVED FROM PUBLISH SET v1.0.0** (Sprint 51 ST-01-003 per D-9). Pre-existing deprecation banner retained at `docs/openclaw-integration.md` for rc.x consumers. | Migrate to native framework middleware (Express, Fastify, NestJS, Hono, Elysia, Next.js) before 2026-07-01 date gate. |
+| `openclaw-adapter` package | **REMOVED FROM PUBLISH SET v1.0.0** (per D-9). Pre-existing deprecation banner retained at `docs/openclaw-integration.md` for rc.x consumers. | Migrate to native framework middleware (Express, Fastify, NestJS, Hono, Elysia, Next.js) before 2026-07-01 date gate. |
 
 ## API freeze plan
 
@@ -195,4 +195,4 @@ After v1.0.0, removing any `@public` symbol triggers a major version
 bump. Adding symbols is a minor bump. Bug fixes and internal-only
 changes are patches.
 
-Last updated: Sprint 51 (v1.0.0-rc.3 + rc.4 audit prep).
+Last updated: v1.0.0-rc.3 (rc.4 audit prep).

@@ -274,7 +274,7 @@ export class OverrideTokenValidator {
    * corresponding token is still within its validity window
    * (`expirationMs`). FIFO / size-only eviction violates this because an
    * attacker can flood the cache with valid junk tokens, evict the oldest
-   * used-nonce, and then replay the original token (HB-2 / ST-05-002).
+   * used-nonce, and then replay the original token.
    *
    * Strategy:
    * 1. Before inserting a new entry, sweep the cache and remove any

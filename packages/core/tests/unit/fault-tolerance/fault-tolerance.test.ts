@@ -2213,8 +2213,7 @@ describe('Telemetry Service', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // HB-5 (ST-05-005) Sprint 51 Wave 3 — BufferedTelemetryCollector.flush()
-  // serializeError regression tests.
+  // BufferedTelemetryCollector.flush() serializeError regression tests.
   //
   // Pre-fix: console.error wrote the raw error object; a hostile error whose
   // .toString() returns ANSI/control sequences injected those bytes directly
@@ -2224,7 +2223,7 @@ describe('Telemetry Service', () => {
   // Post-fix: the error passes through serializeError → sanitizeLogString,
   // so control chars are hex-escaped before reaching the console sink.
   // ---------------------------------------------------------------------------
-  describe('HB-5 (ST-05-005): BufferedTelemetryCollector.flush() serializeError regression', () => {
+  describe('BufferedTelemetryCollector.flush() serializeError regression', () => {
     it('sanitizes a hostile error with ANSI terminal-clear payload — no raw control chars in stderr', () => {
       // The hostile error: .toString() returns a string containing BEL (\x07)
       // and ANSI terminal-clear sequence (\x1b[2J\x1b[H). Pre-fix these bytes
@@ -2326,8 +2325,7 @@ describe('Telemetry Service', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // B.11 (ST-05-108) Sprint 51 Wave 3 — TelemetryService.record() timestamp
-  // immutability regression tests.
+  // TelemetryService.record() timestamp immutability regression tests.
   //
   // Pre-fix: record() assigned `event.timestamp = Date.now()` in-place,
   // mutating the caller's object (violates CLAUDE.md immutability rule).
@@ -2335,7 +2333,7 @@ describe('Telemetry Service', () => {
   // Post-fix: a shallow clone is created before the timestamp assignment;
   // the caller's original object is never mutated.
   // ---------------------------------------------------------------------------
-  describe('B.11 (ST-05-108): TelemetryService.record() caller timestamp immutability', () => {
+  describe('TelemetryService.record() caller timestamp immutability', () => {
     it('does NOT mutate caller event when timestamp is undefined', () => {
       const collector = { collect: vi.fn() };
       const service = new TelemetryService({

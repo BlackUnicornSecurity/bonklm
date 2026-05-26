@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# BMAD Alerting System Test Script
+# Alerting System Test Script
 # Phase 5 - Test Alert Mechanisms and Send Deployment Completion Alert
 #
 # Security improvements:
@@ -13,9 +13,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-# Validate we're in a proper BMAD project
+# Validate we're in a proper project
 if [[ ! -d "$PROJECT_DIR/.claude" ]]; then
-    echo "ERROR: Not in a valid BMAD project directory" >&2
+    echo "ERROR: Not in a valid project directory" >&2
     exit 1
 fi
 
@@ -192,7 +192,7 @@ test_alert_filtering() {
 send_deployment_completion_alert() {
     echo "$(date -Iseconds) [ALERT] Sending deployment completion alert..." >> "$ALERT_LOG"
 
-    local deployment_details="BMAD Phase 5 - Monitoring and Alerting System Activation"
+    local deployment_details="Phase 5 - Monitoring and Alerting System Activation"
     local completion_time
     completion_time=$(date -Iseconds)
     local system_status="OPERATIONAL"
@@ -288,7 +288,7 @@ generate_alerting_summary() {
 }
 
 # Main execution
-echo "BMAD Alerting System Test - Phase 5"
+echo "Alerting System Test - Phase 5"
 echo "Testing notification systems and sending deployment alerts..."
 echo ""
 

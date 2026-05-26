@@ -119,7 +119,7 @@ Sprint 24 Story 4.5 graduation gate passed at 100% recall / 0% FPR /
 
 | Package | Status | Migration |
 |---|---|---|
-| `@blackunicorn/bonklm-openclaw` | **REMOVED FROM PUBLISH SET v1.0.0** (per D-9, 2026-05-26 Sprint 51 ST-01-003; marked `private:true`). Original deprecation date gate 2026-07-01 retained for rc.x consumers via `docs/openclaw-integration.md` deprecation banner. | Migrate to native framework middleware (Express, Fastify, NestJS, Hono, Elysia, Next.js) — see [Connectors index](./connectors/framework-middleware.md). |
+| `@blackunicorn/bonklm-openclaw` | **REMOVED FROM PUBLISH SET v1.0.0** (per D-9, 2026-05-26; marked `private:true`). Original deprecation date gate 2026-07-01 retained for rc.x consumers via `docs/openclaw-integration.md` deprecation banner. | Migrate to native framework middleware (Express, Fastify, NestJS, Hono, Elysia, Next.js) — see [Connectors index](./connectors/framework-middleware.md). |
 
 ## Cross-package patterns
 
@@ -181,4 +181,4 @@ peer deps are listed disjunctively (`^4.0.0 ‖ ^5.0.0`) where the BonkLM
 wrap surface is stable across vendor majors. Workerd `nodejs_compat`
 flag required for edge bundles.
 
-Last updated: Sprint 51 (v1.0.0-rc.3, rc.4 cut imminent).
+Last updated: v1.0.0-rc.3 (rc.4 cut imminent).

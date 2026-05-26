@@ -12,7 +12,6 @@ dev-tools/
 scripts/
 
 # Build artifacts and output
-_bmad-output/
 _output/
 coverage/
 dist/
@@ -23,8 +22,6 @@ sme-reviews/
 
 # Source files (only dist/ ships)
 src/
-_bmad/
-!_bmad/framework/dist/**/*
 !src/utility/cli/**/*
 !src/utility/tools/**/*
 !src/utility/normalize-line-endings.js

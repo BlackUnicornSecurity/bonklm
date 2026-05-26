@@ -58,18 +58,18 @@ fi
 
 # Common voice models to download
 COMMON_VOICES=(
-  "en_US-ryan-high"          # Default, expressive male (30MB) - BMAD: John (pm)
-  "en_US-amy-medium"         # Warm female (13MB) - BMAD: Mary (analyst)
-  "en_US-hfc_female-medium"  # Professional female (13MB) - BMAD: Amelia (dev)
-  "en_US-lessac-medium"      # Clear female (13MB) - BMAD: Murat (tea) - NOTE: Female voice
-  "en_US-danny-low"          # Calm male (13MB) - BMAD: Winston (architect)
-  "en_US-bryce-medium"       # Professional male (13MB) - BMAD: Bob (sm)
-  "en_US-kathleen-low"       # Clear female (13MB) - BMAD: Paige (tech-writer)
-  "en_US-kusal-medium"       # Male voice (13MB) - BMAD: Saif (frame-expert)
-  "en_US-kristin-medium"     # Female voice (13MB) - BMAD: Sally (ux-designer)
-  "en_US-libritts_r-high"    # Premium male (57MB) - BMAD: BMad Master
+  "en_US-ryan-high"          # Default, expressive male (30MB) - Persona: John (pm)
+  "en_US-amy-medium"         # Warm female (13MB) - Persona: Mary (analyst)
+  "en_US-hfc_female-medium"  # Professional female (13MB) - Persona: Amelia (dev)
+  "en_US-lessac-medium"      # Clear female (13MB) - Persona: Murat (tea) - NOTE: Female voice
+  "en_US-danny-low"          # Calm male (13MB) - Persona: Winston (architect)
+  "en_US-bryce-medium"       # Professional male (13MB) - Persona: Bob (sm)
+  "en_US-kathleen-low"       # Clear female (13MB) - Persona: Paige (tech-writer)
+  "en_US-kusal-medium"       # Male voice (13MB) - Persona: Saif (frame-expert)
+  "en_US-kristin-medium"     # Female voice (13MB) - Persona: Sally (ux-designer)
+  "en_US-libritts_r-high"    # Premium male (57MB) - Persona: Default
   "en_US-libritts-high"      # Premium quality (57MB)
-  "16Speakers"               # Multi-speaker: 12 US + 4 UK voices (77MB) - REQUIRED for BMAD agents
+  "16Speakers"               # Multi-speaker: 12 US + 4 UK voices (77MB) - REQUIRED for multi-agent setups
 )
 
 echo "🎙️  Piper Voice Model Downloader"

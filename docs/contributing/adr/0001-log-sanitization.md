@@ -1,6 +1,6 @@
 # ADR-0001: Log Sanitization (CWE-117) — Internal Contributor Guide
 
-> Status: Living document — Sprint 50 (2026-05-25) (revised 2026-05-26 per Sprint 51 HB-3 + B.4)
+> Status: Living document — Sprint 50 (2026-05-25) (revised 2026-05-26 for bidi-range escape extension + sanitizeReasonText TAB alignment)
 > Scope: Internal contributor guide. Public consumers should never need this.
 > Authority: Architect + security-reviewer convergent HIGH (Sprint 38 + Sprint 39).
 > Latest revision: Sprint 50 — Decision #2 revised; the three legacy
@@ -91,7 +91,7 @@ specific gap surfaced, none was retroactively consolidated.
      control-char regex misses them.
    - Hex-escapes bidi-override code points `U+202A–U+202E` and
      bidi-isolate code points `U+2066–U+2069` to `\uNNNN` markers.
-     This closes Sprint 51 HB-3 / ST-05-003 (CWE-1007 visual-spoof):
+     This closes the CWE-1007 visual-spoof attack surface:
      a `U+202E` RIGHT-TO-LEFT OVERRIDE in an attacker-controlled string
      can reverse subsequent characters in any Unicode-aware terminal or
      SIEM UI — making the rendered log line differ from the byte stream
@@ -119,7 +119,7 @@ specific gap surfaced, none was retroactively consolidated.
    `[1.0.0-rc.4]` → "Behavior changes".
 
    ### Decision history
-   - Sprint 51 (2026-05-26 / agent-J-sanitize-bidi): extended escape-set to bidi-override (U+202A..E) + bidi-isolates (U+2066..9). Closes HB-3 + B.4. Sister-sanitizer `sanitizeReasonText` aligned to TAB hex-escape.
+   - 2026-05-26: extended escape-set to bidi-override (U+202A..E) + bidi-isolates (U+2066..9). Sister-sanitizer `sanitizeReasonText` aligned to TAB hex-escape.
 
 3. **`sanitiseShell` stays inline in `bash-safety.ts`.** Not exported,
    not part of any contract. The local closure makes the use-case
@@ -329,8 +329,8 @@ body / error message returned to a caller, or any other emit:
   `bonklm doctor` command added (cli/commands/doctor.ts) with a
   pre-commit hook check verifying the simple-git-hooks postinstall
   landed (architect M-2 closure from Sprint 41).
-- **Sprint 51** — HB-3 (ST-05-003) bidi-override escape extension +
-  B.4 (ST-05-103) `sanitizeReasonText` TAB alignment. Nine bidi code
+- **2026-05-26 revision** — bidi-override escape extension +
+  `sanitizeReasonText` TAB alignment. Nine bidi code
   points added to `sanitizeLogString` escape-set (U+202A..U+202E +
   U+2066..U+2069) — closes CWE-1007 visual-spoof attack surface.
   Output format: `\uNNNN` (4-digit Unicode hex-escape, consistent with
@@ -338,7 +338,7 @@ body / error message returned to a caller, or any other emit:
   updated to hex-escape C0 control chars before the printable-strip
   pass, bringing TAB output to `\x09` (was silently deleted) — aligns
   the sister sanitizer with ADR-0001 D#2 forensic-signal contract.
-  12-payload regression corpus added under ST-05-003. Decision #2
+  12-payload regression corpus added for the bidi escape extension. Decision #2
   history entry + canonical surface table updated.
 
 ## Known gaps deferred to Sprint 40
