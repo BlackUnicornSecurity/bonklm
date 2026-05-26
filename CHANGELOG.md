@@ -7,8 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-(Sprint 51 Day 1 closure landed in 1.0.0-rc.4 below. Next entries land
-during Sprint 52 — install + publish dry-runs + runtime matrix.)
+Sprint 52 Day 2 — Gate 2 unblocking + Gate 5.8 reproducibility:
+
+### Fixed
+
+- **D-007: eslint-plugin-edge `prepublishOnly` chain failure resolved.** Added local `tools/eslint-plugin-bonklm-edge/vitest.config.ts` (11 lines) mirroring the 20 connector packages' convention. Without it, `vitest` walked up to the workspace-root config whose include patterns (`packages/**/*.test.ts`, `tools/**/*.test.ts`) resolved relative to the plugin CWD found zero files and exited 1. Verified: `npm test` from plugin dir now passes 32/32 tests across 3 test files; `pnpm publish -r --dry-run` from repo root now iterates the full workspace (53 publishables clean, was 2 before fix). Architect advisory at `team/qa/1.0.0/evidence/gate-2/ST-02-001/D-007-ADVISORY.md`.
+
+### Security
+
+- **Gate 5.8 — Tarball reproducibility verified at v1.0.0-rc.4.** Two consecutive `npm pack` passes against HEAD `1b04eb7` produced byte-identical SHA-256 hashes across all 54 tarballs (52 publishable + 2 private — openclaw + wizard). Zero non-reproducible packages. Closes ST-02-009 / ST-05-008 Gate 5.8 PASS criterion 1. Evidence: `team/qa/1.0.0/evidence/gate-5/ST-05-008/reproducibility.json`.
+
+(Sprint 51 Day 1 closure landed in 1.0.0-rc.4 below.)
 
 ## [1.0.0-rc.4] — 2026-05-26 (Sprint 51 Day 1 cut)
 
