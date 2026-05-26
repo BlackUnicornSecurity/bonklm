@@ -50,7 +50,11 @@ export interface SandboxConfig {
   maxCpuTime?: number;
 
   /**
-   * Allow async operations (setTimeout, setInterval)
+   * Allow async operations via the sandboxed sleep() primitive.
+   * Host timer globals (setTimeout, setInterval, etc.) are NEVER exposed
+   * regardless of this flag — they are unconditional sandbox-escape vectors
+   * (CWE-913 / HB-4). This flag is retained for API compatibility only.
+   * @deprecated has no effect; sandboxed sleep() is always available
    */
   allowAsyncOperations?: boolean;
 
@@ -155,10 +159,12 @@ export const SAFE_GLOBALS = [
   'encodeURIComponent',
   'decodeURI',
   'decodeURIComponent',
-  'setTimeout',
-  'setInterval',
-  'clearTimeout',
-  'clearInterval',
+  // HB-4 (ST-05-004, CWE-913): host timer globals intentionally excluded.
+  // setTimeout / setInterval / setImmediate / clearTimeout / clearInterval /
+  // clearImmediate / queueMicrotask can schedule work that outlives the
+  // sandbox's sync wall-clock timeout, creating an async sandbox-escape.
+  // Delayed execution is available via the sandboxed sleep() primitive injected
+  // in createSandboxContext(), which is bounded to the sandbox wall-clock.
 ] as const;
 
 // ============================================================================
@@ -225,13 +231,33 @@ export class HookSandbox {
       // Create sandboxed context
       const sandboxContext = this.createSandboxContext(context, options);
 
-      // Convert function to string if needed, or wrap string code
+      // Convert function to string if needed, or wrap string code.
+      // extractFunctionCode may throw SECURITY_VIOLATION for native functions
+      // (B.3 / ST-05-102); catch and surface as a blocked attempt.
       let code: string;
-      if (typeof handler === 'function') {
-        code = this.extractFunctionCode((handler as (...args: unknown[]) => unknown));
-      } else {
-        // Wrap string code in a function to allow return statements
-        code = this.wrapStringCode(handler);
+      try {
+        if (typeof handler === 'function') {
+          code = this.extractFunctionCode((handler as (...args: unknown[]) => unknown));
+        } else {
+          // Wrap string code in a function to allow return statements
+          code = this.wrapStringCode(handler);
+        }
+      } catch (extractErr) {
+        const extractMsg = (extractErr as Error).message ?? 'SECURITY_VIOLATION: unknown extraction error';
+        if (extractMsg.startsWith('SECURITY_VIOLATION')) {
+          const issue = extractMsg.replace('SECURITY_VIOLATION: ', '');
+          this.logBlockedAttempt(executionId, [issue]);
+          return {
+            success: false,
+            executionId,
+            error: 'SECURITY_VIOLATION',
+            message: extractMsg,
+            blocked: true,
+            sandboxed: true,
+          };
+        }
+        // Not a security error — re-throw for the outer handler
+        throw extractErr;
       }
 
       // Validate code for dangerous patterns
@@ -352,7 +378,7 @@ export class HookSandbox {
     // engines.node >=20 guarantees its presence; no runtime check needed.
   }
 
-  private createSandboxContext(context: ExecutionContext, _options?: Partial<SandboxConfig>): Record<string, unknown> {
+  private createSandboxContext(context: ExecutionContext, options?: Partial<SandboxConfig>): Record<string, unknown> {
     const sandbox: Record<string, unknown> = {};
 
     // Add safe globals
@@ -364,6 +390,32 @@ export class HookSandbox {
 
     // Create safe console
     sandbox.console = this.createSafeConsole();
+
+    // HB-4 (ST-05-004): Provide a sandboxed sleep() primitive that resolves a
+    // Promise but is bounded to the sandbox wall-clock timeout. If the
+    // remaining wall-clock budget would be exceeded the Promise rejects with a
+    // sandbox-escape error rather than scheduling work beyond the deadline.
+    const wallClockTimeoutMs = options?.timeout ?? this.config.timeout;
+    const sandboxStart = Date.now();
+    sandbox.sleep = (ms: unknown): Promise<void> => {
+      if (typeof ms !== 'number' || ms < 0 || !Number.isFinite(ms)) {
+        return Promise.reject(new TypeError('sleep(ms): ms must be a non-negative finite number'));
+      }
+      const elapsed = Date.now() - sandboxStart;
+      const remaining = wallClockTimeoutMs - elapsed;
+      if (ms > remaining) {
+        return Promise.reject(
+          new Error(
+            `SANDBOX_ESCAPE_BLOCKED: sleep(${ms}) would exceed sandbox wall-clock budget (${remaining}ms remaining)`
+          )
+        );
+      }
+      return new Promise<void>((resolve) => {
+        // Use host setTimeout — but only internally within this closure.
+        // The sandbox context itself never receives the host timer reference.
+        setTimeout(resolve, ms);
+      });
+    };
 
     // Add frozen context object
     sandbox.context = this.deepFreeze({ ...context });
@@ -416,7 +468,26 @@ export class HookSandbox {
   }
 
   private extractFunctionCode(fn: (...args: unknown[]) => unknown): string {
-    const fnString = fn.toString();
+    // B.3 (ST-05-102): Use Function.prototype.toString.call(fn) rather than
+    // fn.toString() to bypass Proxy traps. A Proxy can override the .toString
+    // accessor and return benign-looking source text while the target is a
+    // native / dangerous function (e.g. eval). Calling via .call on the
+    // unbound Function.prototype.toString bypasses the Proxy [[Get]] trap for
+    // "toString" because the Proxy's handler.get is not consulted — the method
+    // is retrieved directly from Function.prototype and invoked with the Proxy
+    // as `this`. In V8 / SpiderMonkey the underlying [[Call]] then operates on
+    // the REAL target, so native builtins still produce "[native code]".
+    //
+    // Note: this does NOT prevent all Proxy attacks (a Proxy around an async
+    // generator or around an arrow function can still lie in some edge cases)
+    // but closes the primary toString-override attack vector.
+    const fnString = Function.prototype.toString.call(fn);
+
+    // Reject functions that expose native code — these cannot be inspected for
+    // dangerous patterns, so they are treated as untrusted.
+    if (fnString.includes('[native code]')) {
+      throw new Error('SECURITY_VIOLATION: native function detected; only user-defined functions may be used as hooks');
+    }
 
     // Wrap in an IIFE that captures the result
     return `
@@ -441,34 +512,63 @@ export class HookSandbox {
   private validateCode(code: string): CodeValidationResult {
     const issues: string[] = [];
 
-    // Check for dangerous patterns
+    // Check for dangerous patterns.
+    //
+    // B.10 (ST-05-107): Network-primitive regex extended from fetch-only to
+    // cover all major async exfiltration / covert-channel vectors.
+    // Each entry is: [pattern, human-readable issue label].
     const dangerousPatterns: Array<[RegExp, string]> = [
+      // --- Node.js internals ---
       [/\bprocess\b/, 'process access'],
+      // require(): Node.js module loader — filesystem + native addon access
       [/\brequire\s*\(/, 'require() call'],
+      // import(): dynamic ESM import — can load arbitrary modules at runtime
       [/\bimport\s*\(/, 'dynamic import'],
+      // --- Code execution primitives ---
       [/\beval\s*\(/, 'eval() call'],
       [/\bFunction\s*\(/, 'Function() constructor'],
       [/\bnew\s+Function\b/, 'new Function()'],
+      // --- Prototype chain attacks ---
       [/\b__proto__\b/, '__proto__ access'],
       [/\bconstructor\s*\[/, 'constructor access via bracket notation'],
       [/\.constructor\.constructor\b/, 'nested constructor bypass attempt'],
       // S011-007: Catch Reflect.construct with constructor access
-      // Match patterns where Reflect.construct result is used with .constructor
       [/Reflect\.construct[^;]*\.constructor/, 'Reflect.construct with constructor access'],
       [/Reflect\.construct\([^)]+\)\s*\.\s*constructor/, 'Reflect.construct with constructor property access'],
       [/\bprototype\b/, 'prototype manipulation'],
+      // --- Global scope / environment access ---
       [/\bglobalThis\b/, 'globalThis access'],
       [/\bglobal\b/, 'global access'],
-      [/\bchild_process\b/, 'child_process access'],
+      // --- Subprocess / shell access ---
+      [/\bchild_process\b/, 'subprocess module access'],
       [/\bexec\s*\(/, 'exec() call'],
       [/\bspawn\s*\(/, 'spawn() call'],
+      // --- Filesystem ---
       [/\bfs\s*\.\s*(write|unlink|rm|mkdir|chmod)/, 'fs write operations'],
+      // --- Network / async covert channels (B.10) ---
+      // fetch(): browser + Node 18+ built-in HTTP client
+      [/\bfetch\s*\(/, 'fetch() call'],
+      // WebSocket: bidirectional persistent connection exfil
+      [/\bWebSocket\b/, 'WebSocket access'],
+      // XMLHttpRequest: legacy browser HTTP client
+      [/\bXMLHttpRequest\b/, 'XMLHttpRequest access'],
+      // EventSource: server-sent-events — one-way persistent channel
+      [/\bEventSource\b/, 'EventSource access'],
+      // Worker / SharedWorker / ServiceWorker: spawns a separate context
+      [/\bWorker\b/, 'Worker access'],
+      // Low-level Node.js network primitives
       [/\bhttp[s]?\s*\./, 'HTTP access'],
       [/\bnet\s*\./, 'Network access'],
       [/\bdns\s*\./, 'DNS access'],
-      [/\bWebSocket\b/, 'WebSocket access'],
-      [/\bfetch\s*\(/, 'fetch() call'],
-      [/\bXMLHttpRequest\b/, 'XMLHttpRequest access'],
+      // HB-4 (ST-05-004): host timer globals — absent from SAFE_GLOBALS but
+      // reject at static-analysis time as defence-in-depth.
+      [/\bsetTimeout\s*\(/, 'setTimeout() call (host timer — sandbox-escape vector)'],
+      [/\bsetInterval\s*\(/, 'setInterval() call (host timer — sandbox-escape vector)'],
+      [/\bsetImmediate\s*\(/, 'setImmediate() call (host timer — sandbox-escape vector)'],
+      [/\bclearTimeout\s*\(/, 'clearTimeout() call (host timer)'],
+      [/\bclearInterval\s*\(/, 'clearInterval() call (host timer)'],
+      [/\bclearImmediate\s*\(/, 'clearImmediate() call (host timer)'],
+      [/\bqueueMicrotask\s*\(/, 'queueMicrotask() call (host microtask — sandbox-escape vector)'],
     ];
 
     for (const [pattern, issue] of dangerousPatterns) {

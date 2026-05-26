@@ -192,7 +192,13 @@ export class BufferedTelemetryCollector implements TelemetryCollector {
       try {
         this.delegate.collect(event);
       } catch (error) {
-        console.error('[Telemetry] Error flushing event:', error);
+        // HB-5 (ST-05-005) Sprint 51 Wave 3: use serializeError to route
+        // the error through sanitizeLogString before writing to stderr.
+        // A hostile delegate whose .toString() returns ANSI/control chars
+        // would otherwise inject terminal-control sequences into CI logs
+        // and OTel exporters that capture stderr (CWE-117 residual from
+        // Sprint 48 sweep which missed this nested-class site).
+        console.error('[Telemetry] Error flushing event:', serializeError(error));
       }
     }
   }
@@ -258,15 +264,21 @@ export class TelemetryService {
       return;
     }
 
-    // Ensure timestamp is set
-    if (!event.timestamp) {
-      event.timestamp = Date.now();
-    }
+    // B.11 (ST-05-108) Sprint 51 Wave 3: never mutate the caller-supplied
+    // event object. Shallow-clone before assigning timestamp so the
+    // caller's original object is left untouched (CLAUDE.md immutability
+    // rule). Observable side-effect: caller holding a reference to the
+    // passed object would see their timestamp property silently set,
+    // violating the principle of least surprise.
+    const safeEvent: TelemetryEvent = {
+      ...event,
+      timestamp: event.timestamp ?? Date.now(),
+    };
 
     // Send to all collectors
     for (const collector of this.collectors) {
       try {
-        collector.collect(event);
+        collector.collect(safeEvent);
       } catch (error) {
         // Sprint 48 cross-subsystem CWE-117 sweep closure: raw
         // `{ error }` renders `error={}` post-JSON.stringify because

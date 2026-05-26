@@ -11,6 +11,7 @@ import {
   isExampleContent,
   readFileContent,
   isExpectedSecretFile,
+  sanitizeLogString,
 } from '../../../src/common/index.js';
 
 describe('calculateEntropy', () => {
@@ -244,5 +245,123 @@ describe('isExpectedSecretFile', () => {
   it('should return false for non-example files', () => {
     expect(isExpectedSecretFile('config.json')).toBe(false);
     expect(isExpectedSecretFile('secrets.txt')).toBe(false);
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// Sprint 51 HB-3 (ST-05-003) — sanitizeLogString bidi-range hex-escape
+// 12-payload regression corpus. Each payload is attacker-controlled input
+// containing one or more bidi code points. The test asserts:
+//   (a) the raw code point does NOT appear in the output (visual-spoof neutralised)
+//   (b) the expected \uNNNN hex-escape DOES appear (forensic signal preserved)
+// ---------------------------------------------------------------------------
+describe('sanitizeLogString — HB-3 bidi-override regression corpus (ST-05-003)', () => {
+  // Individual code point payloads (9 code points)
+  it('hex-escapes U+202A LEFT-TO-RIGHT EMBEDDING', () => {
+    const input = 'log entry \u202A hidden';
+    const result = sanitizeLogString(input);
+    expect(result).toContain('\\u202a');
+    expect(result).not.toContain('\u202A');
+  });
+
+  it('hex-escapes U+202B RIGHT-TO-LEFT EMBEDDING', () => {
+    const input = 'log entry \u202B hidden';
+    const result = sanitizeLogString(input);
+    expect(result).toContain('\\u202b');
+    expect(result).not.toContain('\u202B');
+  });
+
+  it('hex-escapes U+202C POP DIRECTIONAL FORMATTING', () => {
+    const input = 'log entry \u202C hidden';
+    const result = sanitizeLogString(input);
+    expect(result).toContain('\\u202c');
+    expect(result).not.toContain('\u202C');
+  });
+
+  it('hex-escapes U+202D LEFT-TO-RIGHT OVERRIDE', () => {
+    const input = 'log entry \u202D hidden';
+    const result = sanitizeLogString(input);
+    expect(result).toContain('\\u202d');
+    expect(result).not.toContain('\u202D');
+  });
+
+  it('hex-escapes U+202E RIGHT-TO-LEFT OVERRIDE (visual-spoof classic)', () => {
+    // Classic attack: attacker injects U+202E before filename to display
+    // "gpj.tpircs-suoicilam" as "malicious-script.jpg" in terminal/SIEM.
+    const input = 'file: evil\u202Egpj.tpircs';
+    const result = sanitizeLogString(input);
+    expect(result).toContain('\\u202e');
+    expect(result).not.toContain('\u202E');
+  });
+
+  it('hex-escapes U+2066 LEFT-TO-RIGHT ISOLATE', () => {
+    const input = 'log entry \u2066 isolated';
+    const result = sanitizeLogString(input);
+    expect(result).toContain('\\u2066');
+    expect(result).not.toContain('\u2066');
+  });
+
+  it('hex-escapes U+2067 RIGHT-TO-LEFT ISOLATE', () => {
+    const input = 'log entry \u2067 isolated';
+    const result = sanitizeLogString(input);
+    expect(result).toContain('\\u2067');
+    expect(result).not.toContain('\u2067');
+  });
+
+  it('hex-escapes U+2068 FIRST STRONG ISOLATE', () => {
+    const input = 'log entry \u2068 isolated';
+    const result = sanitizeLogString(input);
+    expect(result).toContain('\\u2068');
+    expect(result).not.toContain('\u2068');
+  });
+
+  it('hex-escapes U+2069 POP DIRECTIONAL ISOLATE', () => {
+    const input = 'log entry \u2069 end';
+    const result = sanitizeLogString(input);
+    expect(result).toContain('\\u2069');
+    expect(result).not.toContain('\u2069');
+  });
+
+  // Combination payloads (3 combo tests)
+  it('combo-1: RLO + LRE wrapping to spoof a log field name', () => {
+    // Attacker wraps a field name with RLO + LRE to make "EVIL" render as
+    // "LIVE" in a right-to-left segment followed by a reset.
+    const input = 'user=\u202EEVIL\u202A reset';
+    const result = sanitizeLogString(input);
+    expect(result).toContain('\\u202e');
+    expect(result).toContain('\\u202a');
+    expect(result).not.toContain('\u202E');
+    expect(result).not.toContain('\u202A');
+  });
+
+  it('combo-2: FSI + PDI isolate spoofing in structured log field', () => {
+    // Bidi isolate brackets can make a structured log value appear to
+    // contain a different record when rendered in a Unicode SIEM UI.
+    const input = 'reason=\u2068BLOCKED\u2069 next_field=ok';
+    const result = sanitizeLogString(input);
+    expect(result).toContain('\\u2068');
+    expect(result).toContain('\\u2069');
+    expect(result).not.toContain('\u2068');
+    expect(result).not.toContain('\u2069');
+  });
+
+  it('combo-3: all 9 bidi code points in a single payload are all hex-escaped', () => {
+    const allBidi = '\u202A\u202B\u202C\u202D\u202E\u2066\u2067\u2068\u2069';
+    const result = sanitizeLogString(allBidi);
+    // None of the raw code points should remain
+    for (const cp of ['\u202A','\u202B','\u202C','\u202D','\u202E','\u2066','\u2067','\u2068','\u2069']) {
+      expect(result).not.toContain(cp);
+    }
+    // All hex-escape forms must appear
+    expect(result).toContain('\\u202a');
+    expect(result).toContain('\\u202b');
+    expect(result).toContain('\\u202c');
+    expect(result).toContain('\\u202d');
+    expect(result).toContain('\\u202e');
+    expect(result).toContain('\\u2066');
+    expect(result).toContain('\\u2067');
+    expect(result).toContain('\\u2068');
+    expect(result).toContain('\\u2069');
   });
 });

@@ -2211,4 +2211,214 @@ describe('Telemetry Service', () => {
       );
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // HB-5 (ST-05-005) Sprint 51 Wave 3 — BufferedTelemetryCollector.flush()
+  // serializeError regression tests.
+  //
+  // Pre-fix: console.error wrote the raw error object; a hostile error whose
+  // .toString() returns ANSI/control sequences injected those bytes directly
+  // into stderr (CWE-117 residual from Sprint 48 sweep which missed this
+  // nested-class site).
+  //
+  // Post-fix: the error passes through serializeError → sanitizeLogString,
+  // so control chars are hex-escaped before reaching the console sink.
+  // ---------------------------------------------------------------------------
+  describe('HB-5 (ST-05-005): BufferedTelemetryCollector.flush() serializeError regression', () => {
+    it('sanitizes a hostile error with ANSI terminal-clear payload — no raw control chars in stderr', () => {
+      // The hostile error: .toString() returns a string containing BEL (\x07)
+      // and ANSI terminal-clear sequence (\x1b[2J\x1b[H). Pre-fix these bytes
+      // would be written verbatim to stderr.
+      const hostileError = new Error('OK\x07\x1b[2J\x1b[H');
+
+      const delegate = {
+        collect: vi.fn().mockImplementation(() => {
+          throw hostileError;
+        }),
+      };
+
+      const errorArgs: unknown[][] = [];
+      const consoleError = vi.spyOn(console, 'error').mockImplementation((...args) => {
+        errorArgs.push(args);
+      });
+
+      const collector = new BufferedTelemetryCollector(delegate, 1, 1000);
+      collector.collect({ type: TelemetryEventType.VALIDATION_START });
+
+      consoleError.mockRestore();
+
+      expect(errorArgs.length).toBeGreaterThan(0);
+
+      // Flatten all arguments to a single string for inspection.
+      const logOutput = errorArgs
+        .flat()
+        .map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a)))
+        .join(' ');
+
+      // POST-FIX: the message field in the serialized error must contain the
+      // hex-escaped representations, not the raw bytes.
+      expect(logOutput).toContain('\\x07');
+      expect(logOutput).toContain('\\x1b');
+
+      // POST-FIX: no raw BEL or ANSI escape bytes in the output.
+      expect(logOutput).not.toContain('\x07');
+      expect(logOutput).not.toContain('\x1b');
+    });
+
+    it('sanitizes a hostile error with newline log-injection payload', () => {
+      const hostileError = new Error('error\nINFO: fake_log_entry injected');
+
+      const delegate = {
+        collect: vi.fn().mockImplementation(() => {
+          throw hostileError;
+        }),
+      };
+
+      const errorArgs: unknown[][] = [];
+      const consoleError = vi.spyOn(console, 'error').mockImplementation((...args) => {
+        errorArgs.push(args);
+      });
+
+      const collector = new BufferedTelemetryCollector(delegate, 1, 1000);
+      collector.collect({ type: TelemetryEventType.VALIDATION_START });
+
+      consoleError.mockRestore();
+
+      const logOutput = errorArgs
+        .flat()
+        .map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a)))
+        .join(' ');
+
+      // POST-FIX: newline is replaced with literal \n marker, not raw 0x0a byte.
+      expect(logOutput).toContain('\\n');
+      // The raw newline byte must not appear in the serialized output.
+      expect(logOutput).not.toContain('\nINFO:');
+    });
+
+    it('sanitizes a hostile error with TAB column-injection payload', () => {
+      const hostileError = new Error('real_error\tINJECTED_COLUMN');
+
+      const delegate = {
+        collect: vi.fn().mockImplementation(() => {
+          throw hostileError;
+        }),
+      };
+
+      const errorArgs: unknown[][] = [];
+      const consoleError = vi.spyOn(console, 'error').mockImplementation((...args) => {
+        errorArgs.push(args);
+      });
+
+      const collector = new BufferedTelemetryCollector(delegate, 1, 1000);
+      collector.collect({ type: TelemetryEventType.VALIDATION_START });
+
+      consoleError.mockRestore();
+
+      const logOutput = errorArgs
+        .flat()
+        .map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a)))
+        .join(' ');
+
+      // POST-FIX: TAB is escaped to \x09, not left as a raw column separator.
+      expect(logOutput).toContain('\\x09');
+      expect(logOutput).not.toContain('\tINJECTED_COLUMN');
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // B.11 (ST-05-108) Sprint 51 Wave 3 — TelemetryService.record() timestamp
+  // immutability regression tests.
+  //
+  // Pre-fix: record() assigned `event.timestamp = Date.now()` in-place,
+  // mutating the caller's object (violates CLAUDE.md immutability rule).
+  //
+  // Post-fix: a shallow clone is created before the timestamp assignment;
+  // the caller's original object is never mutated.
+  // ---------------------------------------------------------------------------
+  describe('B.11 (ST-05-108): TelemetryService.record() caller timestamp immutability', () => {
+    it('does NOT mutate caller event when timestamp is undefined', () => {
+      const collector = { collect: vi.fn() };
+      const service = new TelemetryService({
+        collectors: [collector],
+        maxBufferSize: 0,
+      });
+
+      // Caller holds a reference with explicit undefined timestamp.
+      const callerEvent: TelemetryEvent = {
+        type: TelemetryEventType.VALIDATION_START,
+        runId: 'immutability-test',
+        timestamp: undefined,
+      };
+
+      service.record(callerEvent);
+
+      // POST-FIX: caller's object must remain unchanged — timestamp still undefined.
+      expect(callerEvent.timestamp).toBeUndefined();
+    });
+
+    it('does NOT mutate caller event when timestamp is omitted entirely', () => {
+      const collector = { collect: vi.fn() };
+      const service = new TelemetryService({
+        collectors: [collector],
+        maxBufferSize: 0,
+      });
+
+      // Caller passes an event with no timestamp property at all.
+      const callerEvent: TelemetryEvent = {
+        type: TelemetryEventType.VALIDATION_COMPLETE,
+        runId: 'immutability-omit-test',
+      };
+
+      service.record(callerEvent);
+
+      // POST-FIX: timestamp property must not have been added to the caller's object.
+      expect(Object.prototype.hasOwnProperty.call(callerEvent, 'timestamp')).toBe(false);
+    });
+
+    it('preserves caller-supplied timestamp and does NOT overwrite it', () => {
+      const collector = { collect: vi.fn() };
+      const service = new TelemetryService({
+        collectors: [collector],
+        maxBufferSize: 0,
+      });
+
+      const callerTimestamp = 1234567890123;
+      const callerEvent: TelemetryEvent = {
+        type: TelemetryEventType.VALIDATION_COMPLETE,
+        runId: 'preserve-ts-test',
+        timestamp: callerTimestamp,
+      };
+
+      service.record(callerEvent);
+
+      // Caller timestamp must be unchanged.
+      expect(callerEvent.timestamp).toBe(callerTimestamp);
+
+      // The event delivered to the collector must carry the caller's timestamp.
+      expect(collector.collect).toHaveBeenCalledWith(
+        expect.objectContaining({ timestamp: callerTimestamp })
+      );
+    });
+
+    it('delivers event with auto-assigned timestamp to collector when caller has none', () => {
+      const collector = { collect: vi.fn() };
+      const service = new TelemetryService({
+        collectors: [collector],
+        maxBufferSize: 0,
+      });
+
+      const before = Date.now();
+      service.record({
+        type: TelemetryEventType.VALIDATION_START,
+        runId: 'auto-ts-test',
+        timestamp: undefined,
+      });
+      const after = Date.now();
+
+      const delivered = collector.collect.mock.calls[0]?.[0] as TelemetryEvent;
+      // Collector receives a valid timestamp even though caller did not supply one.
+      expect(delivered.timestamp).toBeGreaterThanOrEqual(before);
+      expect(delivered.timestamp).toBeLessThanOrEqual(after);
+    });
+  });
 });

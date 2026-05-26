@@ -1,6 +1,6 @@
 # ADR-0001: Log Sanitization (CWE-117) — Internal Contributor Guide
 
-> Status: Living document — Sprint 50 (2026-05-25)
+> Status: Living document — Sprint 50 (2026-05-25) (revised 2026-05-26 per Sprint 51 HB-3 + B.4)
 > Scope: Internal contributor guide. Public consumers should never need this.
 > Authority: Architect + security-reviewer convergent HIGH (Sprint 38 + Sprint 39).
 > Latest revision: Sprint 50 — Decision #2 revised; the three legacy
@@ -81,7 +81,7 @@ specific gap surfaced, none was retroactively consolidated.
      `span.setStatus`, `span.setAttribute`) — these are NOT JSON-serialized
      by the OTel SDK; they reach the exporter as-is.
 
-   **Canonical primitive's strip surface (post-Sprint-39):**
+   **Canonical primitive's strip surface (post-Sprint-51):**
    - Hex-escapes `\x00–\x09`, `\x0B–\x1F`, `\x7F` to `\xNN` markers.
    - Replaces `\r\n` / `\n` / `\r` / `U+2028` (LINE SEPARATOR) /
      `U+2029` (PARAGRAPH SEPARATOR) with the literal `\n` marker.
@@ -89,6 +89,13 @@ specific gap surfaced, none was retroactively consolidated.
      V8's `JSON.stringify` renderer + several SIEM ingestors treat
      both as line terminators, but they live above 0x7F so the
      control-char regex misses them.
+   - Hex-escapes bidi-override code points `U+202A–U+202E` and
+     bidi-isolate code points `U+2066–U+2069` to `\uNNNN` markers.
+     This closes Sprint 51 HB-3 / ST-05-003 (CWE-1007 visual-spoof):
+     a `U+202E` RIGHT-TO-LEFT OVERRIDE in an attacker-controlled string
+     can reverse subsequent characters in any Unicode-aware terminal or
+     SIEM UI — making the rendered log line differ from the byte stream
+     a parser reads. Hex-escaping makes the attack visible.
    - Caps output at 500 chars + appends `…[truncated]` marker.
 2. **`stripLogControlChars` is `@public` + `@deprecated` through 1.x;
    internal callers migrated to `sanitizeLogString` in Sprint 50.**
@@ -110,6 +117,10 @@ specific gap surfaced, none was retroactively consolidated.
    release ships with the preferred forensic-preserving behaviour.
    The behaviour change is documented under `CHANGELOG.md` →
    `[1.0.0-rc.4]` → "Behavior changes".
+
+   ### Decision history
+   - Sprint 51 (2026-05-26 / agent-J-sanitize-bidi): extended escape-set to bidi-override (U+202A..E) + bidi-isolates (U+2066..9). Closes HB-3 + B.4. Sister-sanitizer `sanitizeReasonText` aligned to TAB hex-escape.
+
 3. **`sanitiseShell` stays inline in `bash-safety.ts`.** Not exported,
    not part of any contract. The local closure makes the use-case
    boundary explicit.
@@ -318,6 +329,17 @@ body / error message returned to a caller, or any other emit:
   `bonklm doctor` command added (cli/commands/doctor.ts) with a
   pre-commit hook check verifying the simple-git-hooks postinstall
   landed (architect M-2 closure from Sprint 41).
+- **Sprint 51** — HB-3 (ST-05-003) bidi-override escape extension +
+  B.4 (ST-05-103) `sanitizeReasonText` TAB alignment. Nine bidi code
+  points added to `sanitizeLogString` escape-set (U+202A..U+202E +
+  U+2066..U+2069) — closes CWE-1007 visual-spoof attack surface.
+  Output format: `\uNNNN` (4-digit Unicode hex-escape, consistent with
+  existing U+2028/U+2029 treatment pattern). `sanitizeReasonText`
+  updated to hex-escape C0 control chars before the printable-strip
+  pass, bringing TAB output to `\x09` (was silently deleted) — aligns
+  the sister sanitizer with ADR-0001 D#2 forensic-signal contract.
+  12-payload regression corpus added under ST-05-003. Decision #2
+  history entry + canonical surface table updated.
 
 ## Known gaps deferred to Sprint 40
 

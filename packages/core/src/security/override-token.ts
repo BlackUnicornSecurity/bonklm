@@ -266,20 +266,47 @@ export class OverrideTokenValidator {
   }
 
   /**
-   * Mark a token as used (replay protection)
+   * Mark a token as used (replay protection).
+   *
+   * @internal Eviction policy: TTL-based only.
+   *
+   * Security contract: a used-nonce entry MUST NOT be evicted while the
+   * corresponding token is still within its validity window
+   * (`expirationMs`). FIFO / size-only eviction violates this because an
+   * attacker can flood the cache with valid junk tokens, evict the oldest
+   * used-nonce, and then replay the original token (HB-2 / ST-05-002).
+   *
+   * Strategy:
+   * 1. Before inserting a new entry, sweep the cache and remove any
+   *    entry whose TTL has elapsed (`usedAt + expirationMs <= now`).
+   * 2. If, after the sweep, the cache is still at or above capacity, the
+   *    token is refused (fail-closed) — this prevents memory exhaustion
+   *    while preserving replay protection for all active tokens.
    */
   private markTokenUsed(key: string): void {
-    // Evict oldest entries if cache is full
-    if (this.replayCache.size >= this.maxReplayCache) {
-      const oldestKey = this.replayCache.keys().next().value;
-      if (oldestKey) {
-        this.replayCache.delete(oldestKey);
+    const now = Date.now();
+
+    // Step 1: evict only TTL-expired entries.
+    for (const [entryKey, entry] of this.replayCache.entries()) {
+      if (entry.usedAt + this.expirationMs <= now) {
+        this.replayCache.delete(entryKey);
       }
+    }
+
+    // Step 2: fail-closed if capacity still exceeded after TTL sweep.
+    // Every remaining live entry is still within its validity window —
+    // evicting any of them would break replay protection.
+    if (this.replayCache.size >= this.maxReplayCache) {
+      throw new Error(
+        'Override token replay cache is at capacity with active entries. ' +
+        'Token rejected to preserve replay protection. ' +
+        'Increase maxReplayCache or wait for active tokens to expire.',
+      );
     }
 
     this.replayCache.set(key, {
       nonce: key,
-      usedAt: Date.now(),
+      usedAt: now,
     });
   }
 
@@ -327,10 +354,43 @@ export class OverrideTokenValidator {
 }
 
 /**
- * Create content hash for audit logging
+ * Create a deterministic content fingerprint for audit-log correlation.
  *
- * @param content - Content to hash
- * @returns Hash string (first 16 chars)
+ * @internal
+ *
+ * **Threat model — what this IS:**
+ * This is a deterministic content fingerprint, NOT a security MAC. Its
+ * purpose is to correlate a token-validation event in one log line with
+ * the content that triggered it in another, without storing the raw content.
+ * Collision resistance is provided by HMAC-SHA256's construction; the fixed
+ * key is intentional (see below).
+ *
+ * **Threat model — what this IS NOT:**
+ * Do NOT use this function to verify the authenticity or integrity of a
+ * message. The hardcoded key `'audit-hash'` is public knowledge; any party
+ * can reproduce the same fingerprint for arbitrary content. There is no
+ * secret here. Using this output as a MAC would provide zero protection
+ * against a motivated attacker.
+ *
+ * **Why HMAC-SHA256 with a constant key instead of plain SHA-256?**
+ * Raw SHA-256 over a variable-length input is vulnerable to length-extension
+ * attacks: an attacker who knows `SHA256(content)` can compute
+ * `SHA256(content || attacker_suffix)` without knowing `content`. HMAC
+ * eliminates this class of attack via its inner/outer key padding — even
+ * with a public constant key. For a read-only audit fingerprint this is
+ * a meaningful defence-in-depth measure.
+ *
+ * **For ACTUAL MAC use** (e.g. verifying an override token's end-to-end
+ * integrity with a user-supplied secret):
+ * ```ts
+ * import { createHmac } from 'node:crypto';
+ * const mac = createHmac('sha256', userProvidedSecret)
+ *   .update(payload)
+ *   .digest('hex');
+ * ```
+ *
+ * @param content - Content to fingerprint (first 1000 chars are used)
+ * @returns 16-character hex fingerprint
  */
 export function hashContent(content: string): string {
   return createHmac(HMAC_ALGORITHM, 'audit-hash')

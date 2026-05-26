@@ -29,10 +29,12 @@
  * @example
  * ```ts
  * const ctlChars = '\x1b[31mEVIL\x1b[0m';
- * sanitizeReasonText(ctlChars); // → '[31mEVIL[0m' (with ANSI escapes stripped)
+ * sanitizeReasonText(ctlChars); // → '\\x1b[31mEVIL\\x1b[0m' (ESC hex-escaped, rest printable)
+ *
+ * sanitizeReasonText('before\tafter'); // → 'before\\x09after' (TAB hex-escaped, Sprint 51 B.4)
  *
  * sanitizeReasonText('Blocked: ' + attackerControlledReason);
- * // → '<sanitized first 200 printable-ASCII chars>'
+ * // → '<sanitized first 200 chars; control chars hex-escaped, non-ASCII stripped>'
  * ```
  *
  * Used by:
@@ -49,7 +51,24 @@ export function sanitizeReasonText(
 ): string | undefined {
   if (typeof reason !== 'string') return undefined;
   if (reason.length === 0) return undefined;
+  // B.4 (ST-05-103) Sprint 51: align TAB handling with sanitizeLogString.
+  // Previously this function stripped all chars outside the printable-ASCII
+  // range [0x20–0x7E] by deleting them, which meant TAB (\x09) was silently
+  // dropped rather than hex-escaped. sanitizeLogString hex-escapes TAB as
+  // `\x09` (Sprint 37 security-MEDIUM M-1) to expose TSV column-injection
+  // attempts. This inconsistency between the two canonical sanitizers was
+  // identified as B.4 in the Sprint 51 code-review pass.
+  //
+  // Fix: hex-escape C0 control chars (\x00-\x1f) and DEL (\x7f) instead of
+  // deleting them, then strip any remaining non-printable chars above 0x7E
+  // (as before). This brings TAB to `\x09` — visible in reason text returned
+  // to callers — matching sanitizeLogString's forensic-signal contract while
+  // keeping the 200-char + empty-return semantics unchanged.
   // eslint-disable-next-line no-control-regex
-  const stripped = reason.replace(/[^\x20-\x7E]/g, '').slice(0, 200);
+  const hexEscaped = reason.replace(/[\x00-\x1f\x7f]/g, (c) =>
+    `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`
+  );
+  // eslint-disable-next-line no-control-regex
+  const stripped = hexEscaped.replace(/[^\x20-\x7E]/g, '').slice(0, 200);
   return stripped.length > 0 ? stripped : undefined;
 }

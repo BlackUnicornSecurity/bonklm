@@ -153,7 +153,33 @@ export function sanitizeLogString(input: string, maxLen: number = DEFAULT_MAX_LO
   // newline-replacement pass so the canonical primitive covers the
   // full "line break the log line" attack surface.
   const flat = stripped.replace(/\r\n|\n|\r|\u2028|\u2029/g, '\\n');
-  return flat.length > maxLen ? `${flat.slice(0, maxLen)}…[truncated]` : flat;
+  // Sprint 51 HB-3 (ST-05-003): hex-escape Unicode bidi-override and
+  // bidi-isolate code points (U+202A..U+202E, U+2066..U+2069).
+  // These live above 0x7F so the control-char regex above misses them.
+  // An attacker who injects U+202E (RIGHT-TO-LEFT OVERRIDE) into a log
+  // line can visually reverse subsequent characters in any terminal or
+  // SIEM UI that renders Unicode directionality (CWE-1007 visual-spoof).
+  // Bidi-isolates (U+2066..U+2069) similarly let an attacker bracket a
+  // spoofed segment with a directional isolate, making the rendered text
+  // differ arbitrarily from the byte sequence seen by a log parser.
+  // Hex-escaping these preserves forensic signal while neutralising the
+  // visual-spoof attack surface: a SOC analyst can distinguish a bidi-
+  // override attempt from legitimate Unicode in the hex representation.
+  //
+  // Code points covered:
+  //   U+202A  LEFT-TO-RIGHT EMBEDDING
+  //   U+202B  RIGHT-TO-LEFT EMBEDDING
+  //   U+202C  POP DIRECTIONAL FORMATTING
+  //   U+202D  LEFT-TO-RIGHT OVERRIDE
+  //   U+202E  RIGHT-TO-LEFT OVERRIDE (classic visual-spoof attack char)
+  //   U+2066  LEFT-TO-RIGHT ISOLATE
+  //   U+2067  RIGHT-TO-LEFT ISOLATE
+  //   U+2068  FIRST STRONG ISOLATE
+  //   U+2069  POP DIRECTIONAL ISOLATE
+  const bidiSafe = flat.replace(/[\u202a-\u202e\u2066-\u2069]/g, (c) =>
+    `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`
+  );
+  return bidiSafe.length > maxLen ? `${bidiSafe.slice(0, maxLen)}…[truncated]` : bidiSafe;
 }
 
 /**

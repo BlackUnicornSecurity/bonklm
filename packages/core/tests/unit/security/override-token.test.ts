@@ -204,13 +204,18 @@ describe('OverrideTokenValidator (S011-006)', () => {
       expect(result.error).toContain('replay');
     });
 
-    it('should evict old entries when cache is full', () => {
+    it('should reject new token when cache is full with active entries (fail-closed)', () => {
+      // HB-2 / ST-05-002: TTL-based eviction policy.
+      // When all cached entries are still within their validity window,
+      // accepting a new entry would require evicting a live used-nonce,
+      // breaking the replay-protection guarantee. The fix: fail-closed.
+      const shortExpiry = 5000; // 5 seconds — well within test run time
       const smallCacheValidator = new OverrideTokenValidator({
         secret: testSecret,
         maxReplayCache: 3,
+        expirationMs: shortExpiry,
       });
 
-      // Generate and use 4 tokens
       const tokens = [
         smallCacheValidator.generateToken(TokenScope.ADMIN),
         smallCacheValidator.generateToken(TokenScope.ADMIN),
@@ -218,20 +223,15 @@ describe('OverrideTokenValidator (S011-006)', () => {
         smallCacheValidator.generateToken(TokenScope.ADMIN),
       ];
 
-      // Use first 3 tokens
-      smallCacheValidator.validateToken(tokens[0]!);
-      smallCacheValidator.validateToken(tokens[1]!);
-      smallCacheValidator.validateToken(tokens[2]!);
+      // Fill cache to capacity with 3 used nonces
+      expect(smallCacheValidator.validateToken(tokens[0]!).valid).toBe(true);
+      expect(smallCacheValidator.validateToken(tokens[1]!).valid).toBe(true);
+      expect(smallCacheValidator.validateToken(tokens[2]!).valid).toBe(true);
 
-      // Use 4th token - should evict first
-      smallCacheValidator.validateToken(tokens[3]!);
-
-      // First token should no longer be tracked (evicted)
-      // Note: This depends on LRU eviction implementation
-      const result = smallCacheValidator.validateToken(tokens[0]!);
-      // The first token might be evicted, but we can't guarantee which one
-      // Just verify cache size doesn't exceed max
-      expect(result.valid).toBeDefined();
+      // Attempting to use the 4th token while cache is full with active entries
+      // MUST throw, not silently evict a live nonce (fail-closed behaviour)
+      expect(() => smallCacheValidator.validateToken(tokens[3]!))
+        .toThrow('replay cache is at capacity');
     });
 
     it('should clean up old cache entries', () => {
@@ -256,6 +256,91 @@ describe('OverrideTokenValidator (S011-006)', () => {
       const result = validator.validateToken(token);
       // After clearing cache, token should be valid again
       expect(result.valid).toBe(true);
+    });
+  });
+
+  describe('HB-2 / ST-05-002 — replay-cache starvation regression', () => {
+    // CRITICAL regression guard: demonstrates that the FIFO vulnerability
+    // (attacker floods cache → evicts used nonce → replays token) is closed.
+    // Strategy: use short TTL (100 ms) so expired entries CAN be evicted;
+    // fill cache with N-1 junk tokens, use target token T, add 1 more junk
+    // token (triggering TTL sweep on valid entries → none expired → fail-closed),
+    // then try to replay T. With short TTL we test eviction of EXPIRED entries
+    // allows room, but active entries block the flood path.
+
+    it('should reject replay of token T even after N junk tokens fill and expire from cache', async () => {
+      const cacheSize = 5;
+      const shortExpiry = 80; // 80 ms — tokens expire during the test
+      const floodValidator = new OverrideTokenValidator({
+        secret: testSecret,
+        maxReplayCache: cacheSize,
+        expirationMs: shortExpiry,
+      });
+
+      // Step 1: fill cache with (cacheSize - 1) junk tokens
+      for (let i = 0; i < cacheSize - 1; i++) {
+        const junk = floodValidator.generateToken(TokenScope.ADMIN);
+        expect(floodValidator.validateToken(junk).valid).toBe(true);
+      }
+
+      // Step 2: use the target token T (cache is now at cacheSize - 1, T fills slot)
+      const targetToken = floodValidator.generateToken(TokenScope.ADMIN);
+      expect(floodValidator.validateToken(targetToken).valid).toBe(true);
+      // cache is now FULL (cacheSize entries, all active)
+
+      // Step 3: wait for tokens to expire (past shortExpiry)
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Step 4: add one more junk token — TTL sweep should evict the now-expired
+      // entries (including T's nonce), making room. BUT T is now also expired —
+      // the expiration check fires BEFORE the replay check, so T is rejected on
+      // "Token expired", not "replay". This is correct: expired tokens are invalid
+      // regardless of whether their nonce is in the cache.
+      const newJunk = floodValidator.generateToken(TokenScope.ADMIN);
+      // newJunk itself is fresh so it validates OK after TTL sweep clears space
+      expect(floodValidator.validateToken(newJunk).valid).toBe(true);
+
+      // Step 5: attempt replay of T — MUST be rejected (expired, not replayed)
+      const replayResult = floodValidator.validateToken(targetToken);
+      expect(replayResult.valid).toBe(false);
+      // Either "Token expired" (correct — token window closed) or
+      // "Token already used" (also correct — nonce still in cache).
+      // Both mean the replay is blocked; the important thing is valid === false.
+      expect(replayResult.error).toBeDefined();
+    });
+
+    it('should reject replay when cache is actively flooded with unexpired tokens', () => {
+      // This is the core HB-2 attack: flood with valid tokens within expiry window.
+      // With TTL-based eviction the cache hits capacity with active entries and
+      // throws (fail-closed) — the attacker cannot open a replay window.
+      const cacheSize = 5;
+      const floodValidator = new OverrideTokenValidator({
+        secret: testSecret,
+        maxReplayCache: cacheSize,
+        expirationMs: 3600000, // 1 hour — nothing expires during this test
+      });
+
+      // Fill cache to capacity
+      const usedTokens: string[] = [];
+      for (let i = 0; i < cacheSize; i++) {
+        const t = floodValidator.generateToken(TokenScope.ADMIN);
+        usedTokens.push(t);
+        floodValidator.validateToken(t);
+      }
+
+      // Attempt flood: the (cacheSize + 1)-th token triggers fail-closed throw
+      const floodToken = floodValidator.generateToken(TokenScope.ADMIN);
+      expect(() => floodValidator.validateToken(floodToken))
+        .toThrow('replay cache is at capacity');
+
+      // Original tokens remain protected — no nonce was evicted
+      for (const used of usedTokens) {
+        // Each should be either "replay" (nonce still in cache) or "expired" —
+        // neither is valid === true.  Signature check runs after format/expiry/replay
+        // so the important guarantee is: replayed tokens are NEVER valid.
+        const r = floodValidator.validateToken(used);
+        expect(r.valid).toBe(false);
+      }
     });
   });
 
