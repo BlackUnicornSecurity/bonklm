@@ -43,6 +43,6 @@
   "bugs": "https://github.com/BlackUnicornSecurity/bonklm/issues",
   "license": "MIT",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.4.0"
   }
 }

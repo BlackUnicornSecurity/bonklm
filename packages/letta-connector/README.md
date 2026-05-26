@@ -81,7 +81,7 @@ See [`docs/user/threat-surfaces.md`](../../docs/user/threat-surfaces.md) for the
 - **`memory_write`** — `messages.create`, `archival_memory.insert`.
 - **`composed_context`** — `messages.list`, `archival_memory.list` (post-call validation of the concatenated recall blob).
 
-Not covered: `text_input` / `text_output` / `tool_call` / `retrieved_doc` / `audio_partial`. [needs-info: whether `core_memory` namespace methods route to any surface — the namespace is allowlisted in the proxy but the adapter `LETTA_METHODS` set covers only `create`/`send_message`/`sendMessage`/`list`/`insert`/`update`].
+Not covered: `text_input` / `text_output` / `tool_call` / `retrieved_doc` / `audio_partial`. `core_memory` (and its camelCase `coreMemory` alias) ARE allowlisted in `LETTA_AGENTS_SUB_NAMESPACES` and route through the leaf-namespace wrap → `memory_write` surface. The per-method coverage is gated by `LETTA_METHODS` (`create`, `send_message`, `sendMessage`, `list`, `insert`, `update`); methods on `core_memory` outside that allowlist throw `ConnectorValidationError` (configuration error) — fail-closed by design. Add new methods to `LETTA_METHODS` if the upstream Letta SDK introduces them.
 
 ## Limitations
 

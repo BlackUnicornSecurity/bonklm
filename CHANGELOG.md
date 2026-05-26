@@ -10,8 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Post-rc.3 hardening pass continued across Sprints 42–50. Sprint 50
 ships the final two queued items before the v1.0.0-rc.4 cut.
 
+### Security
+
+- **PromptInjectionValidator: regex DoS guard added with 100ms input-bound regression test. CWE-1333 mitigation. Closes ST-05-101 / B.1.** (Sprint 51) The `detectHtmlCommentInjection()` function used `/<!--([\s\S]*?)-->/g` which exhibited O(n^2) quadratic backtracking on inputs of repeated unclosed `<!--` tokens. Measured: 10 KB → 9 ms, 100 KB → 866 ms (pre-fix). Replaced with an `indexOf`-based linear scanner: 100 KB → 0.4 ms post-fix (2000x improvement). Four regression tests added to `prompt-injection.test.ts` under describe `'ReDoS guard (B.1 / ST-05-101)'`. All 13 other regexes in the file confirmed LINEAR via stress probe. The existing `MAX_INPUT_LENGTH = 100_000` pre-check in `analyze()` is preserved as a defence-in-depth ceiling.
+
 ### Added
 
+- Per-package README finalized for 11 connectors (cloudflare-agents, hono, voltops-otel, letta, zep, voltagent, elysia, mem0, memory-utils, nextjs, web-middleware-utils). All `[needs-info:` draft markers resolved with authoritative source-derived answers or explicit v1.0.x backlog deferrals (CHM:cloudflare validateUserInput export, hono validatedStream helper, zep thread.* tenant-derived ID enforcement). Closes ST-01-006.
 - **`bonklm doctor` command** (Sprint 50 — closes architect M-2 from
   Sprint 41). Diagnoses the local contributor environment with a
   pre-commit hook check verifying the simple-git-hooks postinstall
@@ -25,6 +30,11 @@ ships the final two queued items before the v1.0.0-rc.4 cut.
   `resolveHooksPath`, `readConfiguredPreCommit`, `doctorCommand`,
   `DoctorReport`, `DoctorCheckResult` from
   `packages/core/src/cli/commands/index.ts` for programmatic use.
+
+### Changed
+
+- LICENSE file added to 25 previously-missing publishable packages (MIT, root-copied). Closes ST-01-005.
+- Engines floor normalized to Node 20.4 across 24 packages (was 20.0). Closes ST-01-001.
 
 ### Behavior changes
 

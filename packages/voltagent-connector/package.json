@@ -29,5 +29,5 @@
   "homepage": "https://github.com/BlackUnicornSecurity/bonklm/tree/main/packages/voltagent-connector#readme",
   "bugs": "https://github.com/BlackUnicornSecurity/bonklm/issues",
   "license": "MIT",
-  "engines": { "node": ">=20.0.0" }
+  "engines": { "node": ">=20.4.0" }
 }

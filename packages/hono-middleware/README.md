@@ -83,7 +83,7 @@ Body parsing handles `application/json`, `application/x-www-form-urlencoded`, an
 ## Limitations
 
 - Phase-1 ships REQUEST-body validation only. Response/stream validation (`c.streamSSE` / `c.stream`) is the consumer's responsibility — wire `BufferedReleaseGate` from `@blackunicorn/bonklm/edge` into your stream writer.
-- A future `validatedStream` helper is on the roadmap. `[needs-info: roadmap link]`
+- A `validatedStream` helper is tracked as a v1.0.1 backlog item; no separate roadmap doc ships in v1.0.0. Wire incremental validation manually via `engine.validate(chunk, { surface: 'text_output' })` inside your stream consumer until the helper lands.
 - Engine errors surface as HTTP 500 `engine_error`; validation blocks surface as HTTP 400 `validation_failed`.
 
 ## Related

@@ -84,7 +84,7 @@ Not covered: `text_input` / `text_output` / `tool_call` / `retrieved_doc` / `aud
 ## Limitations
 
 - Methods outside the routed set (`addMessages`, `getUserContext`, `add`, `search`) pass through unwrapped within an allowlisted namespace.
-- `thread.*` scoping currently relies on caller-supplied `threadId`/`sessionId`; the adapter does NOT rewrite thread IDs. `graph.*` is where the tenant-scope rewrite happens. [needs-info: whether `thread.addMessages` should also enforce a tenant-derived `threadId` — current adapter routes content validation only, no `rewriteArgs` for the thread namespace].
+- `thread.*` scoping currently relies on caller-supplied `threadId`/`sessionId`; the adapter does NOT rewrite thread IDs. `graph.*` is where the tenant-scope rewrite happens. `thread.addMessages` is routed for content validation (`memory_write` surface) but the adapter intentionally does NOT enforce a tenant-derived `threadId` — applications must enforce that contract at their call sites. Tracked as a v1.0.1 design discussion: whether the adapter should add `rewriteArgs` for the `thread` namespace analogous to `graph.*` (defaults to opt-in to avoid breaking callers that derive threadId from external systems).
 - Tenant scoping only neutralizes the documented bypass fields (`graphIds`, `userId`, `userIds`, `sessionId`). New scoping fields added by Zep in future SDK versions need an explicit update.
 - Unknown TOP-level callable namespaces fail closed — a Zep SDK upgrade adding a new client namespace will throw until added to the allowlist or passthrough set.
 - No CHANGELOG file ships with this package — see git history.

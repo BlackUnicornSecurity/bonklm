@@ -22,7 +22,7 @@ The `@voltagent/core` peer is optional because the connector uses structural typ
 Exports map ships `import` + `default` conditions only — no edge-specific conditions are declared in `package.json`. The connector itself does not depend on Node-only APIs, but VoltAgent's own runtime support governs deployment targets.
 
 - Node `>=20.0.0` (declared `engines` field)
-- Other runtimes: `[needs-info: VoltAgent edge support status — package does not declare workerd/edge-light conditions]`
+- Other runtimes: Node-only in v1.0.0. The `exports` map declares only the standard `import` / `types` / `default` Node conditions — no `workerd`, `edge-light`, `deno`, or `bun`. Edge-runtime support depends on `@voltagent/core` upstream + a hosting decision; tracked as a v1.0.x backlog item.
 
 ## Quick start
 
