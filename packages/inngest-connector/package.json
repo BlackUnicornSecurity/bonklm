@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-inngest",
-  "version": "1.0.0-rc.3",
+  "version": "1.0.0-rc.4",
   "description": "Inngest middleware for BonkLM — replay-safe LLM security guardrails via cachedValidate",
   "type": "module",
   "main": "./dist/index.js",

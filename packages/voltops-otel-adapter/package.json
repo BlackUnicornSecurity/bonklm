@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-voltops-otel",
-  "version": "1.0.0-rc.3",
+  "version": "1.0.0-rc.4",
   "description": "BonkLM VoltOps OTel adapter — emits OTel spans with bonklm.scanner / severity / action / category attributes (Story 3.10)",
   "type": "module",
   "main": "./dist/index.js",
@@ -13,23 +13,39 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist", "src", "README.md", "LICENSE"],
-  "scripts": { "build": "tsc", "test": "vitest run" },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
   "peerDependencies": {
     "@blackunicorn/bonklm": "workspace:*",
     "@opentelemetry/api": "^1.9.0"
   },
   "peerDependenciesMeta": {
-    "@opentelemetry/api": { "optional": true }
+    "@opentelemetry/api": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@blackunicorn/bonklm": "workspace:*",
     "typescript": "^5.9.0",
     "vitest": "^4.0.0"
   },
-  "repository": { "type": "git", "url": "https://github.com/BlackUnicornSecurity/bonklm.git", "directory": "packages/voltops-otel-adapter" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/voltops-otel-adapter"
+  },
   "homepage": "https://github.com/BlackUnicornSecurity/bonklm/tree/main/packages/voltops-otel-adapter#readme",
   "bugs": "https://github.com/BlackUnicornSecurity/bonklm/issues",
   "license": "MIT",
-  "engines": { "node": ">=20.4.0" }
+  "engines": {
+    "node": ">=20.4.0"
+  }
 }

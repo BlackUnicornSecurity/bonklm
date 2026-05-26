@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-lance",
-  "version": "1.0.0-rc.3",
+  "version": "1.0.0-rc.4",
   "description": "LanceDB Table wrapper for BonkLM — RetrievedDocValidator on reads + MemoryWriteValidator on writes",
   "type": "module",
   "main": "./dist/index.js",

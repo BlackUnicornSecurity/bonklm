@@ -7,8 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Post-rc.3 hardening pass continued across Sprints 42–50. Sprint 50
-ships the final two queued items before the v1.0.0-rc.4 cut.
+(Sprint 51 Day 1 closure landed in 1.0.0-rc.4 below. Next entries land
+during Sprint 52 — install + publish dry-runs + runtime matrix.)
+
+## [1.0.0-rc.4] — 2026-05-26 (Sprint 51 Day 1 cut)
+
+Post-rc.3 hardening pass continued across Sprints 42–50, plus Sprint 51
+Day 1 (BR-QAF v1.0 release-QA cycle):
+- Wave 1: 4 security code-review fixes (B.1 DoS guard, B.8 boundary tests,
+  B.14 cwd validation, B.15+B.16 doctor checks + JSON sanitization)
+- Wave 2: B.3 native-code regression tests + B.5 RateLimiter doctor advisory
+  (architect-recommended option (b)) + 5 connector README rate-limiting
+  sections + core re-export
+- Coordinator: ST-01-009 pre-commit version-pin hook + ST-01-010 peer audit
+  + ST-01-011 files whitelist standardization (9 packages)
+- 16 stories retro-confirmed against pre-execution commit chain (engines,
+  exports, LICENSE, README, CHANGELOG dedupe, openclaw private, bin shebang,
+  HB-2/3/4/5 hard blocks, B.4/7/10/11/12 code-review fixes)
+
+Test baseline:
+- Entry rc.3 baseline (HEAD 83bf7ac): 5014 / 5030 pass, 16 pending, 0 fail
+- rc.4 baseline (this RC): captured at team/qa/1.0.0/evidence/baseline/test-rc4-baseline.json
 
 ### Added
 

@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-mem0",
-  "version": "1.0.0-rc.3",
+  "version": "1.0.0-rc.4",
   "description": "Mem0 memory-client connector for BonkLM — wraps Mem0's add/search/update/get/getAll/history/reset with sealed write + composed-context recall validation",
   "type": "module",
   "main": "./dist/index.js",
@@ -17,7 +17,11 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -25,7 +29,15 @@
     "test:coverage": "vitest --coverage",
     "clean": "rm -rf dist"
   },
-  "keywords": ["mem0", "memory", "llm", "guardrails", "security", "ai-safety", "bonklm"],
+  "keywords": [
+    "mem0",
+    "memory",
+    "llm",
+    "guardrails",
+    "security",
+    "ai-safety",
+    "bonklm"
+  ],
   "author": "Black Unicorn <security@blackunicorn.tech>",
   "license": "MIT",
   "dependencies": {

@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-nestjs",
-  "version": "1.0.0-rc.3",
+  "version": "1.0.0-rc.4",
   "description": "NestJS module for BonkLM - Request/response validation for NestJS applications",
   "type": "module",
   "main": "./dist/index.js",

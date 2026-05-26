@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-voltagent",
-  "version": "1.0.0-rc.3",
+  "version": "1.0.0-rc.4",
   "description": "BonkLM connector for VoltAgent — wrapVoltAgent(agent, engine) injects validators (Story 3.10)",
   "type": "module",
   "main": "./dist/index.js",
@@ -13,21 +13,39 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist", "src", "README.md", "LICENSE"],
-  "scripts": { "build": "tsc", "test": "vitest run" },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
   "peerDependencies": {
     "@blackunicorn/bonklm": "workspace:*",
     "@voltagent/core": "^2.7.0"
   },
-  "peerDependenciesMeta": { "@voltagent/core": { "optional": true } },
+  "peerDependenciesMeta": {
+    "@voltagent/core": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@blackunicorn/bonklm": "workspace:*",
     "typescript": "^5.9.0",
     "vitest": "^4.0.0"
   },
-  "repository": { "type": "git", "url": "https://github.com/BlackUnicornSecurity/bonklm.git", "directory": "packages/voltagent-connector" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/voltagent-connector"
+  },
   "homepage": "https://github.com/BlackUnicornSecurity/bonklm/tree/main/packages/voltagent-connector#readme",
   "bugs": "https://github.com/BlackUnicornSecurity/bonklm/issues",
   "license": "MIT",
-  "engines": { "node": ">=20.4.0" }
+  "engines": {
+    "node": ">=20.4.0"
+  }
 }

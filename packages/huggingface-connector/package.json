@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-huggingface",
-  "version": "1.0.0-rc.3",
+  "version": "1.0.0-rc.4",
   "description": "HuggingFace Inference API connector for BonkLM - Model input/output validation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

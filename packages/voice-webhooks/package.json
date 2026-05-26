@@ -1,6 +1,6 @@
 {
   "name": "@blackunicorn/bonklm-voice-webhooks",
-  "version": "1.0.0-rc.3",
+  "version": "1.0.0-rc.4",
   "description": "Vapi (HTTP) + Retell (WebSocket) webhook validators for BonkLM. HMAC-SHA256 auth, sync tool-calls / assistant-request, async transcript observe-only, Retell update_only + response_required.",
   "type": "module",
   "main": "./dist/index.js",
