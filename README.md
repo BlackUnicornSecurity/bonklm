@@ -240,7 +240,7 @@ npm install @blackunicorn/bonklm-logger       # Structured logging utilities
 - **[API Reference](./docs/api-reference.md)** - Full API documentation
 - **[OpenClaw Integration Guide](./docs/openclaw-integration.md)** - OpenClaw connector setup
 - **[User Documentation](./docs/user/README.md)** - Comprehensive user guide
-- **[Release Notes](./RELEASE-NOTES.md)** - What's new in v0.3.0
+- **[Release Notes](./RELEASE-NOTES.md)** - Latest release: v1.0.0-rc.3 (see [CHANGELOG.md](./CHANGELOG.md) for full history)
 
 ---
 
@@ -302,7 +302,7 @@ Contributions are welcome! Please read our contributing guidelines before submit
 
 ## 📰 Release Notes
 
-**[v0.3.0 Release Notes](./RELEASE-NOTES.md)** - Single-version monorepo policy, security fixes, build improvements.
+**[Release Notes](./RELEASE-NOTES.md)** - Current release: **v1.0.0-rc.3** (post-Sprint 31 cumulative audit closure; rc.4 cut imminent). See [CHANGELOG.md](./CHANGELOG.md) for the per-sprint detail across the v0.3.0 → v0.7.0 → v1.0.0-rc.x history.
 
 See [CHANGELOG.md](./CHANGELOG.md) for full version history.
 

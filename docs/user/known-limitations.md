@@ -1,7 +1,7 @@
-# BonkLM v0.4.0 — Known Limitations
+# BonkLM Known Limitations (v1.0.0-rc.3)
 
 BonkLM is deterministic pattern + structural defence. There are
-classes of attack the v0.4.0 engine does NOT catch, and surfaces
+classes of attack the engine does NOT catch, and surfaces
 where the platform forces us into a documented best-effort posture.
 This document enumerates those honestly so consumers can layer
 additional defences for the threats their application actually faces.

@@ -539,6 +539,27 @@ core, connectors, middlewares, the logger package, and adapter packages all ship
 same `pnpm exec changeset publish` invocation. The current release line is **`1.0.0-rc.3`**
 (rc.4 cut imminent).
 
+### Canonical project version — source of truth
+
+**The project version is sourced from `packages/core/package.json`.** When the release line
+moves, update in this order:
+
+1. `packages/core/package.json` (the actual publishable package — this is the truth).
+2. Root `package.json` (private, repo metadata; keep in sync to avoid drift signals).
+3. `CHANGELOG.md` (add the new `[x.y.z] — YYYY-MM-DD` section).
+4. `RELEASE-NOTES.md` (update the top-of-file "Latest release" line + link the CHANGELOG
+   anchor).
+5. `docs/user/package-matrix.md` (header + footer version stamps).
+6. `docs/architecture.md` (header `Project version:` line).
+7. `docs/user/public-api-surface.md`, `docs/user/known-limitations.md`,
+   `docs/user/threat-surfaces.md` (any "current release" labels — historical narrative
+   references to older releases stay as-is, they are intentionally version-stamped to
+   when the limitation / surface / API was current).
+
+Historical version references inside docs (`v0.4.0 introduced X`, `v0.5.0 deferred Y`)
+are not drift — they are correct project history. Do not rewrite them. Only update
+labels that claim to describe the **current** release.
+
 The exception is `@blackunicorn/bonklm-wizard`, which is listed under `ignore` in changeset
 config and is **not** published from this monorepo.
 

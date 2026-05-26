@@ -2,7 +2,11 @@
 
 > Last updated: 2026-05-25
 > Audience: senior engineers onboarding to `@blackunicorn/bonklm`.
-> Project version: `[needs-info: canonical project version unresolved — README+RELEASE-NOTES say 0.3.0, root package.json says 0.5.0, package-matrix says 0.7.0, core package version is 1.0.0-rc.3]`.
+> Project version: `1.0.0-rc.3` (rc.4 cut imminent). Source of truth:
+> `packages/core/package.json` + the `[1.0.0-rc.3]` CHANGELOG entry. Root
+> `package.json` (private; repo metadata only) is aligned to the same
+> version. Per [CONTRIBUTING.md](../CONTRIBUTING.md#versioning-changesets-and-releases),
+> all 21 packages in the changeset `linked` group release together.
 > Scope: this is a *what exists in the source* doc. Aspirational design lives in
 > `team/plans/`. Cross-references point at the load-bearing files.
 
@@ -252,11 +256,11 @@ write-path BLOCKs throw synchronously instead of firing the callback — see
 - **Single-version policy**: changesets `linked` group keeps every published
   `@blackunicorn/bonklm-*` package at the same version. The current
   `.changeset/config.json` linked array enumerates 21 packages; the
-  v0.7.0 matrix in `docs/user/package-matrix.md` lists 31 published
+  v1.0.0-rc.3 matrix in `docs/user/package-matrix.md` lists 31 published
   packages — `[needs-info: which packages joined the linked group between
-  the .changeset/config.json snapshot and the v0.7.0 publish, or whether
-  the linked array is intentionally a subset]`. `bonklm-wizard` is in
-  the `ignore` list.
+  the .changeset/config.json snapshot and the v1.0.0-rc.3 publish, or
+  whether the linked array is intentionally a subset]`. `bonklm-wizard`
+  is in the `ignore` list.
 - **Bundle targets** (per package-matrix.md):
   - NODE — Node 20.4+ only, uses `node:fs` / `node:vm` / native crypto.
   - EDGE — Workerd / Vercel Edge / Cloudflare + Node (with `nodejs_compat`).
@@ -270,7 +274,8 @@ write-path BLOCKs throw synchronously instead of firing the callback — see
   capture. `pnpm audit` runs informationally (non-blocking).
 - **Publish**: `pnpm exec changeset publish` (single command publishes
   everything in the linked group). Prerelease tags blocked from publishing
-  as stable (RELEASE-NOTES.md v0.3.0).
+  as stable (per RELEASE-NOTES.md archive of v0.3.0 and CONTRIBUTING.md
+  release process).
 
 ## 10. Design trade-offs (honest)
 
