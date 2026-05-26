@@ -6,6 +6,12 @@
  * `runDoctor` aggregation). Creates ephemeral fixture directories
  * under `os.tmpdir()` so each test exercises the real filesystem
  * code paths without touching the project's own `.git/`.
+ *
+ * Sprint 51 (B.14, B.15, B.16):
+ *  - `runDoctor` cwd validation tests (non-existent path, file-not-dir).
+ *  - `checkEnvFile` happy path + failure path.
+ *  - `checkPnpmAudit` happy path + failure path (uses injectable _spawnFn).
+ *  - `--json` round-trip sanitization test (ANSI escapes, embedded newlines).
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -14,12 +20,48 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  checkEnvFile,
+  checkPnpmAudit,
   checkPreCommitHook,
   doctorCommand,
   readConfiguredPreCommit,
   resolveHooksPath,
   runDoctor,
+  type SpawnResult,
 } from './doctor.js';
+
+// ---------------------------------------------------------------------------
+// Helpers for checkPnpmAudit injectable spawn stubs (avoids ESM module seal)
+// ---------------------------------------------------------------------------
+
+function makePassAuditSpawn(): (cmd: string, args: string[], opts: object) => SpawnResult {
+  return () => ({
+    stdout: JSON.stringify({
+      metadata: { vulnerabilities: { info: 0, low: 0, moderate: 0, high: 0, critical: 0 } },
+    }),
+  });
+}
+
+function makeFailAuditSpawn(
+  high: number,
+  critical: number,
+): (cmd: string, args: string[], opts: object) => SpawnResult {
+  return () => ({
+    stdout: JSON.stringify({
+      metadata: { vulnerabilities: { info: 0, low: 1, moderate: 2, high, critical } },
+    }),
+  });
+}
+
+function makeErrorAuditSpawn(
+  errMsg: string,
+): (cmd: string, args: string[], opts: object) => SpawnResult {
+  return () => ({ stdout: '', error: new Error(errMsg) });
+}
+
+function makeBadJsonAuditSpawn(): (cmd: string, args: string[], opts: object) => SpawnResult {
+  return () => ({ stdout: 'not valid json {{{' });
+}
 
 function makeFixture(): string {
   return mkdtempSync(join(tmpdir(), 'bonklm-doctor-'));
@@ -362,8 +404,12 @@ describe('runDoctor', () => {
       join(cwd, '.git', 'hooks', 'pre-commit'),
       '#!/usr/bin/env sh\npnpm typecheck\n'
     );
+    // Sprint 51: env file check also runs — provide .env.example so it passes.
+    writeFileSync(join(cwd, '.env.example'), '# example');
 
-    const report = runDoctor(cwd);
+    // Sprint 51: inject a zero-advisory audit stub so the pnpm audit check
+    // passes without spawning a real subprocess.
+    const report = runDoctor(cwd, makePassAuditSpawn());
     expect(report.overallStatus).toBe('pass');
     expect(report.checks.length).toBeGreaterThan(0);
   });
@@ -375,13 +421,13 @@ describe('runDoctor', () => {
     });
     writeGitDir(cwd);
 
-    const report = runDoctor(cwd);
+    const report = runDoctor(cwd, makePassAuditSpawn());
     expect(report.overallStatus).toBe('fail');
   });
 
   it('overallStatus is warn when no fails but at least one warn', () => {
-    // Not a git repo + no simple-git-hooks directive → WARN
-    const report = runDoctor(cwd);
+    // Not a git repo + no simple-git-hooks directive → WARN from pre-commit check.
+    const report = runDoctor(cwd, makePassAuditSpawn());
     expect(report.overallStatus).toBe('warn');
   });
 });
@@ -402,5 +448,214 @@ describe('doctorCommand', () => {
   it('exposes a --json option', () => {
     const jsonOption = doctorCommand.options.find((opt) => opt.long === '--json');
     expect(jsonOption).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sprint 51 — B.14: runDoctor cwd validation
+// ---------------------------------------------------------------------------
+
+describe('runDoctor — cwd validation (B.14)', () => {
+  let cwd: string;
+  beforeEach(() => {
+    cwd = mkdtempSync(join(tmpdir(), 'bonklm-doctor-'));
+  });
+  afterEach(() => {
+    rmSync(cwd, { recursive: true, force: true });
+  });
+
+  it('returns a fail report with cwd_invalid check when cwd does not exist', () => {
+    const nonExistent = '/this/path/absolutely/does/not/exist/bonklm-test-b14';
+    const report = runDoctor(nonExistent, makePassAuditSpawn());
+
+    expect(report.overallStatus).toBe('fail');
+    expect(report.checks).toHaveLength(1);
+    expect(report.checks[0].name).toBe('cwd_invalid');
+    expect(report.checks[0].status).toBe('fail');
+    expect(report.checks[0].message).toContain('path does not exist');
+  });
+
+  it('returns a fail report with cwd_invalid check when cwd is a regular file (not a directory)', () => {
+    const filePath = join(cwd, 'regular-file.txt');
+    writeFileSync(filePath, 'hello');
+
+    const report = runDoctor(filePath, makePassAuditSpawn());
+
+    expect(report.overallStatus).toBe('fail');
+    expect(report.checks).toHaveLength(1);
+    expect(report.checks[0].name).toBe('cwd_invalid');
+    expect(report.checks[0].status).toBe('fail');
+    expect(report.checks[0].message).toContain('path is not a directory');
+  });
+
+  it('sanitizes a hostile cwd path (ANSI + newline) in the cwd_invalid message', () => {
+    // A cwd containing ANSI sequences or newlines must not leak into the message
+    // — sanitizeLogString should hex-escape them.
+    const hostile = '/tmp/\x1b[31mRED\x1b[0m/nonexistent\nnewline';
+    const report = runDoctor(hostile, makePassAuditSpawn());
+
+    expect(report.overallStatus).toBe('fail');
+    expect(report.checks[0].name).toBe('cwd_invalid');
+    // Raw ESC or raw newline must NOT appear in the message
+    expect(report.checks[0].message).not.toMatch(/\x1b/);
+    expect(report.checks[0].message).not.toMatch(/\n/);
+  });
+
+  it('runs normally when cwd is a valid existing directory', () => {
+    // A valid cwd should NOT produce a cwd_invalid check
+    const report = runDoctor(cwd, makePassAuditSpawn());
+    const cwdInvalid = report.checks.find((c) => c.name === 'cwd_invalid');
+    expect(cwdInvalid).toBeUndefined();
+    // At minimum pre-commit, env, audit checks are present
+    expect(report.checks.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sprint 51 — B.15: checkEnvFile
+// ---------------------------------------------------------------------------
+
+describe('checkEnvFile (B.15)', () => {
+  let cwd: string;
+  beforeEach(() => {
+    cwd = mkdtempSync(join(tmpdir(), 'bonklm-doctor-'));
+  });
+  afterEach(() => {
+    rmSync(cwd, { recursive: true, force: true });
+  });
+
+  it('PASS when .env exists', () => {
+    writeFileSync(join(cwd, '.env'), 'FOO=bar');
+    const result = checkEnvFile(cwd);
+    expect(result.status).toBe('pass');
+    expect(result.message).toContain('.env');
+  });
+
+  it('PASS when .env.example exists', () => {
+    writeFileSync(join(cwd, '.env.example'), '# example');
+    const result = checkEnvFile(cwd);
+    expect(result.status).toBe('pass');
+    expect(result.message).toContain('.env.example');
+  });
+
+  it('PASS when both .env and .env.example exist', () => {
+    writeFileSync(join(cwd, '.env'), 'FOO=bar');
+    writeFileSync(join(cwd, '.env.example'), '# example');
+    const result = checkEnvFile(cwd);
+    expect(result.status).toBe('pass');
+    expect(result.message).toContain('.env');
+    expect(result.message).toContain('.env.example');
+  });
+
+  it('WARN when neither .env nor .env.example exists', () => {
+    const result = checkEnvFile(cwd);
+    expect(result.status).toBe('warn');
+    expect(result.message).toContain('Neither .env nor .env.example');
+    expect(result.remediation).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sprint 51 — B.15: checkPnpmAudit (uses injectable _spawnFn; no ESM spy)
+// ---------------------------------------------------------------------------
+
+describe('checkPnpmAudit (B.15)', () => {
+  let cwd: string;
+  beforeEach(() => {
+    cwd = mkdtempSync(join(tmpdir(), 'bonklm-doctor-'));
+  });
+  afterEach(() => {
+    rmSync(cwd, { recursive: true, force: true });
+  });
+
+  it('PASS when pnpm audit reports zero HIGH/CRITICAL advisories', () => {
+    const result = checkPnpmAudit(cwd, makePassAuditSpawn());
+    expect(result.status).toBe('pass');
+    expect(result.message).toContain('No HIGH or CRITICAL');
+  });
+
+  it('FAIL when pnpm audit reports HIGH + CRITICAL advisories', () => {
+    const result = checkPnpmAudit(cwd, makeFailAuditSpawn(3, 1));
+    expect(result.status).toBe('fail');
+    // 3 high + 1 critical = 4
+    expect(result.message).toContain('4');
+    expect(result.remediation).toBeTruthy();
+  });
+
+  it('FAIL when pnpm audit reports only HIGH advisories', () => {
+    const result = checkPnpmAudit(cwd, makeFailAuditSpawn(2, 0));
+    expect(result.status).toBe('fail');
+    expect(result.message).toContain('2');
+  });
+
+  it('WARN when pnpm is not on PATH (spawn returns error)', () => {
+    const result = checkPnpmAudit(cwd, makeErrorAuditSpawn('spawn pnpm ENOENT'));
+    expect(result.status).toBe('warn');
+    expect(result.message).toContain('could not run');
+    expect(result.remediation).toContain('pnpm');
+  });
+
+  it('WARN when pnpm audit output is not valid JSON', () => {
+    const result = checkPnpmAudit(cwd, makeBadJsonAuditSpawn());
+    expect(result.status).toBe('warn');
+    expect(result.message).toContain('could not be parsed');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sprint 51 — B.16: --json output round-trip sanitization
+// ---------------------------------------------------------------------------
+
+describe('runDoctor --json sanitization round-trip (B.16)', () => {
+  let cwd: string;
+  beforeEach(() => {
+    cwd = mkdtempSync(join(tmpdir(), 'bonklm-doctor-'));
+  });
+  afterEach(() => {
+    rmSync(cwd, { recursive: true, force: true });
+  });
+
+  it('JSON.parse round-trip succeeds when audit error message contains newlines + ANSI escapes', () => {
+    // Inject an audit spawn that returns an error with ANSI codes + embedded newline.
+    // These are attacker-controllable strings flowing into a DoctorCheckResult message.
+    const hostileSpawn = makeErrorAuditSpawn('\x1b[31mRED error\x1b[0m\nnewline injected');
+    const report = runDoctor(cwd, hostileSpawn);
+
+    // Serialize as the --json path (renderJson) does
+    const jsonString = JSON.stringify(report, null, 2);
+
+    // Must be valid JSON — JSON.parse must not throw
+    let parsed: unknown;
+    expect(() => {
+      parsed = JSON.parse(jsonString);
+    }).not.toThrow();
+
+    // Raw ESC must not appear in the JSON output after sanitizeLogString
+    expect(jsonString).not.toMatch(/\x1b/);
+
+    // The result must be truthy (non-null) — the round-trip preserved the object
+    expect(parsed).toBeTruthy();
+  });
+
+  it('JSON output is parseable when pre-commit hook path contains ANSI escapes', () => {
+    // A hostile .git/config with ANSI in hooksPath flows into the message via
+    // hookFileDisplay = sanitizeLogString(hookFile). Verify the JSON remains parseable.
+    writePackageJson(cwd, {
+      name: 'whatever',
+      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' },
+    });
+    // Write a .git dir with an ANSI-contaminated hooksPath
+    const gitDir = join(cwd, '.git');
+    mkdirSync(join(gitDir, 'hooks'), { recursive: true });
+    writeFileSync(
+      join(gitDir, 'config'),
+      '[core]\n\thooksPath = \x1b[31mred-path\x1b[0m\n'
+    );
+
+    const report = runDoctor(cwd, makePassAuditSpawn());
+    const jsonString = JSON.stringify(report, null, 2);
+
+    expect(() => JSON.parse(jsonString)).not.toThrow();
+    expect(jsonString).not.toMatch(/\x1b/);
   });
 });

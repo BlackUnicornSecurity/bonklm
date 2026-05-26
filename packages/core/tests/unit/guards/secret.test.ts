@@ -324,7 +324,60 @@ MHcCAQEEIFLu7LfVcWpL4M3baK4Yk4vLkhhGVxNL...
       const result = validateSecrets('anthropic_key = "sk-ant-api03-' + 'a'.repeat(93) + '"');
       expect(result.blocked).toBe(true);
     });
+  });
 
+  // ST-05-106 / B.8 — Anthropic key length boundary regression tests
+  // Pattern under test: /sk-ant-api03-[A-Za-z0-9\-_]{93}/g (exact-length quantifier)
+  // Rationale: every {N} quantifier needs boundary tests at N-1, N, N+1, and invalid-char-mid.
+  describe('Anthropic key length boundary (ST-05-106, B.8)', () => {
+    const ANT_KEY_PREFIX = 'sk-ant-api03-';
+
+    it('boundary: 92 chars — must NOT match (under-length)', () => {
+      // 92 valid chars after the prefix — one short of the required 93.
+      const guard = new SecretGuard({ checkExamples: false });
+      const detections = guard.detect(ANT_KEY_PREFIX + 'a'.repeat(92));
+      const anthropicDetections = detections.filter((d) => d.secretType === 'Anthropic API Key');
+      expect(anthropicDetections).toHaveLength(0);
+    });
+
+    it('boundary: 93 chars — must match exactly once (exact-length)', () => {
+      // 93 valid chars after the prefix — exactly satisfies {93}.
+      const guard = new SecretGuard({ checkExamples: false });
+      const detections = guard.detect(ANT_KEY_PREFIX + 'a'.repeat(93));
+      const anthropicDetections = detections.filter((d) => d.secretType === 'Anthropic API Key');
+      expect(anthropicDetections).toHaveLength(1);
+    });
+
+    it('boundary: 94 chars — regex still matches once; matched token length is exactly 93', () => {
+      // 94 valid chars after the prefix. The {93} quantifier is not anchored,
+      // so the engine matches the first 93 chars of the key portion — ONE match,
+      // but the matched token is ANT_KEY_PREFIX.length + 93 chars, not 94.
+      // Use String.prototype.match with the same literal as guards/secret.ts:73
+      // to inspect the raw matched token length.
+      const input = ANT_KEY_PREFIX + 'a'.repeat(94);
+      const ant94matches = input.match(/sk-ant-api03-[A-Za-z0-9\-_]{93}/g);
+      expect(ant94matches).not.toBeNull();
+      expect(ant94matches).toHaveLength(1);
+      expect(ant94matches![0].length).toBe(ANT_KEY_PREFIX.length + 93);
+      // Also verify SecretGuard fires once (detection semantics preserved).
+      const guard = new SecretGuard({ checkExamples: false });
+      const detections = guard.detect(input);
+      const anthropicDetections = detections.filter((d) => d.secretType === 'Anthropic API Key');
+      expect(anthropicDetections).toHaveLength(1);
+    });
+
+    it('boundary: invalid char mid-key — must NOT match (character class is restrictive)', () => {
+      // Build a 93-char payload where position 50 is '!' (outside [A-Za-z0-9\-_]).
+      // The character class rejects '!' so no 93-char run satisfies the pattern.
+      const invalidKey = 'a'.repeat(50) + '!' + 'a'.repeat(42); // 93 chars, '!' at index 50
+      const result = validateSecrets(ANT_KEY_PREFIX + invalidKey, undefined, { includeFindings: true });
+      const findings = result.findings ?? [];
+      const anthropicFindings = findings.filter((f) => f.description?.includes('Anthropic'));
+      expect(anthropicFindings).toHaveLength(0);
+    });
+  });
+
+  describe('Specific Provider Tests (continued)', () => {
     it('should detect Twilio keys', () => {
       // Pattern: /SK[a-f0-9]{32}/g - lowercase hex only, 32 chars after SK
       const result = validateSecrets('twilio_key = "SK' + 'a'.repeat(32) + '"');

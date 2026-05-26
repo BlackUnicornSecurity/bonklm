@@ -4,7 +4,8 @@
  * Detects and blocks hardcoded secrets, API keys, and credentials.
  *
  * Features:
- * - 30+ API key patterns for major providers
+ * - 38 patterns covering 37 unique credential types
+ *   (27 critical / 9 high / 2 medium)
  * - Shannon entropy validation for generic secrets
  * - Example/placeholder content detection
  */

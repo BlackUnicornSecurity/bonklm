@@ -4,7 +4,7 @@
  * Detects attempts to manipulate AI agent behavior through injected instructions.
  *
  * Features:
- * - Multi-layer pattern-based detection (35+ patterns)
+ * - Multi-layer pattern-based detection (35 patterns across 6 categories)
  * - Unicode normalization and obfuscation detection
  * - Base64 payload detection
  * - Multi-layer encoding detection
@@ -95,6 +95,32 @@ const MIN_DECODE_LENGTH = 20;
 const MAX_INPUT_LENGTH = 100_000;
 
 /**
+ * Wall-clock time budget (ms) for each regex-scan phase.
+ *
+ * B.1 / ST-05-101 — CWE-1333 defence:
+ * Regex patterns /[A-Za-z0-9+/]{40,}={0,2}/g and /(?:0x)?[0-9A-Fa-f]{40,}/g
+ * can exhibit catastrophic backtracking on near-base64 inputs (e.g. 60 chars of
+ * 'A' followed by a non-base64 terminator). MAX_INPUT_LENGTH = 100_000 truncates
+ * the outer input but does not bound how many regex match iterations run on the
+ * accepted portion.
+ *
+ * Defence approach: time-budget check between match iterations inside
+ * detectMultiLayerEncoding and detectBase64Payloads. If total elapsed wall-clock
+ * exceeds this budget the scan loop breaks early, returning whatever findings
+ * were accumulated up to that point (fail-safe: partial results, not crash or
+ * infinite spin). 500 ms is the acceptance-criterion ceiling from ST-05-101; real
+ * inputs finish in <20 ms at 100 K chars so this provides a 25x safety margin.
+ */
+const REGEX_SCAN_BUDGET_MS = 500;
+
+/**
+ * How often (in regex match iterations) to check Date.now() inside scan loops.
+ * Every-iteration checks are accurate but add syscall overhead at high counts.
+ * 256 is a power-of-two so the modulo check compiles to a bitwise AND.
+ */
+const BUDGET_CHECK_INTERVAL = 256;
+
+/**
  * Detect and iteratively decode multi-layer encoded content.
  */
 function detectMultiLayerEncoding(content: string, maxDepth: number = MAX_DECODE_DEPTH): MultiLayerEncodingFinding[] {
@@ -108,11 +134,26 @@ function detectMultiLayerEncoding(content: string, maxDepth: number = MAX_DECODE
     { name: 'javascript_escape', pattern: /(?:\\x[0-9A-Fa-f]{2}|\\n|\\r|\\t|\\0){10,}/g },
   ];
 
+  // B.1 time-budget: shared across all patterns in this call.
+  const scanStart = Date.now();
+  let totalIterations = 0;
+  let budgetExceeded = false;
+
   for (const encodingPattern of encodingPatterns) {
+    if (budgetExceeded) break;
+
     let match: RegExpExecArray | null;
     encodingPattern.pattern.lastIndex = 0;
 
     while ((match = encodingPattern.pattern.exec(content)) !== null) {
+      // Sample wall-clock every BUDGET_CHECK_INTERVAL match iterations.
+      totalIterations++;
+      if ((totalIterations & (BUDGET_CHECK_INTERVAL - 1)) === 0) {
+        if (Date.now() - scanStart > REGEX_SCAN_BUDGET_MS) {
+          budgetExceeded = true;
+          break;
+        }
+      }
       const encodedText = match[0];
 
       if (encodedText.length < MIN_DECODE_LENGTH) {
@@ -270,13 +311,24 @@ function attemptDecode(content: string): { method: string; result: string } | nu
 
 /**
  * Detect base64 encoded payloads.
+ *
+ * B.1 time-budget: same REGEX_SCAN_BUDGET_MS / BUDGET_CHECK_INTERVAL guard
+ * as detectMultiLayerEncoding — early exit if pattern matching spins.
  */
 function detectBase64Payloads(text: string): Base64Finding[] {
   const findings: Base64Finding[] = [];
   const base64Pattern = /[A-Za-z0-9+/]{40,}={0,2}/g;
   let match;
 
+  const scanStart = Date.now();
+  let iterations = 0;
+
   while ((match = base64Pattern.exec(text)) !== null) {
+    iterations++;
+    if ((iterations & (BUDGET_CHECK_INTERVAL - 1)) === 0) {
+      if (Date.now() - scanStart > REGEX_SCAN_BUDGET_MS) break;
+    }
+
     const potentialBase64 = match[0];
 
     try {

@@ -13,12 +13,19 @@
  * additional checks to {@link runDoctor} without changing the public
  * command surface.
  *
+ * Sprint 51 (B.14, B.15, B.16):
+ *  - `runDoctor` now validates that `cwd` is an existing directory before
+ *    running any checks (B.14).
+ *  - Added `checkEnvFile` and `checkPnpmAudit` checks (B.15).
+ *  - Documented and enforced `--json` sanitization contract (B.16).
+ *
  * @module commands/doctor
  */
 
 import { Command } from 'commander';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { parse as secureJsonParse } from 'secure-json-parse';
 
 import { sanitizeLogString } from '../../common/index.js';
@@ -302,13 +309,212 @@ export function checkPreCommitHook(cwd: string): DoctorCheckResult {
 }
 
 /**
+ * Check that a `.env` or `.env.example` file exists in the project root.
+ *
+ * Many BonkLM connectors and integrations require environment variables.
+ * Absence of both files is a `warn` (not a hard failure) because downstream
+ * consumers may inject env vars via their CI platform rather than file-based
+ * secrets, but the absence is worth surfacing so contributors don't wonder
+ * why their local run silently skips a connector.
+ *
+ * Status semantics:
+ *  - `pass` — at least one of `.env` or `.env.example` exists.
+ *  - `warn` — neither file exists; env vars may still be injected externally.
+ *
+ * @internal exported for tests
+ */
+export function checkEnvFile(cwd: string): DoctorCheckResult {
+  const envPath = join(cwd, '.env');
+  const examplePath = join(cwd, '.env.example');
+  const hasEnv = existsSync(envPath);
+  const hasExample = existsSync(examplePath);
+
+  if (hasEnv || hasExample) {
+    const found = [hasEnv ? '.env' : null, hasExample ? '.env.example' : null]
+      .filter(Boolean)
+      .join(' and ');
+    return {
+      name: 'env file',
+      status: 'pass',
+      message: `Found ${found} in project root.`,
+    };
+  }
+
+  return {
+    name: 'env file',
+    status: 'warn',
+    message:
+      'Neither .env nor .env.example found in project root. Environment variables may need to be injected via CI or shell.',
+    remediation:
+      'Copy .env.example to .env and populate values, or ensure your CI platform injects the required environment variables.',
+  };
+}
+
+/**
+ * The subset of `spawnSync`'s return value that `checkPnpmAudit` needs.
+ * Keeping a narrow interface lets tests pass a plain object without
+ * reconstructing the full `SpawnSyncReturns<string>` type.
+ *
+ * @internal
+ */
+export interface SpawnResult {
+  stdout: string;
+  error?: Error;
+}
+
+/**
+ * Run `pnpm audit --prod --audit-level=high --json` and surface the count
+ * of HIGH or CRITICAL findings.
+ *
+ * Uses `spawnSync` with a 30-second timeout so the check is bounded. Degrades
+ * gracefully to `warn` when `pnpm` is not on PATH or when the audit subprocess
+ * times out, so a missing pnpm install does not hard-fail the doctor run.
+ *
+ * Status semantics:
+ *  - `pass`  — zero HIGH/CRITICAL advisories in the prod dependency tree.
+ *  - `warn`  — pnpm not on PATH, audit timed out, or output unparseable.
+ *  - `fail`  — one or more HIGH/CRITICAL advisories found.
+ *
+ * @param cwd - Working directory for the audit subprocess.
+ * @param _spawnFn - Optional spawn implementation; defaults to `spawnSync`
+ *   from `node:child_process`. Accepts a plain `SpawnResult`-compatible value
+ *   so tests can inject a stub without fighting ESM module sealing.
+ *
+ * @internal exported for tests
+ */
+export function checkPnpmAudit(
+  cwd: string,
+  _spawnFn: (cmd: string, args: string[], opts: object) => SpawnResult = (cmd, args, opts) =>
+    spawnSync(cmd, args, opts as Parameters<typeof spawnSync>[2]) as SpawnResult,
+): DoctorCheckResult {
+  const result = _spawnFn('pnpm', ['audit', '--prod', '--audit-level=high', '--json'], {
+    cwd,
+    encoding: 'utf8',
+    timeout: 30_000,
+    env: process.env,
+  });
+
+  // spawnSync sets `error` when the binary cannot be found or the child was
+  // killed (e.g. timeout). Treat both as a `warn` — the check cannot run but
+  // that is not itself a security failure.
+  if (result.error) {
+    const errMsg = sanitizeLogString(result.error.message ?? 'unknown error');
+    return {
+      name: 'pnpm audit',
+      status: 'warn',
+      message: `pnpm audit could not run: ${errMsg}`,
+      remediation: 'Ensure pnpm is installed and on PATH, then re-run `bonklm doctor`.',
+    };
+  }
+
+  // pnpm audit exits 1 when advisories are found; that is expected. Parse the
+  // JSON output regardless of exit code.
+  const raw = result.stdout ?? '';
+  let parsed: unknown;
+  try {
+    parsed = secureJsonParse(raw, null, { protoAction: 'remove', constructorAction: 'remove' });
+  } catch {
+    return {
+      name: 'pnpm audit',
+      status: 'warn',
+      message: 'pnpm audit output could not be parsed as JSON.',
+      remediation: 'Run `pnpm audit --prod --audit-level=high` manually to inspect findings.',
+    };
+  }
+
+  // pnpm audit --json shape: { metadata: { vulnerabilities: { high: N, critical: N, ... } } }
+  if (
+    parsed !== null &&
+    typeof parsed === 'object' &&
+    'metadata' in (parsed as object)
+  ) {
+    const metadata = (parsed as Record<string, unknown>).metadata;
+    if (
+      metadata !== null &&
+      typeof metadata === 'object' &&
+      'vulnerabilities' in (metadata as object)
+    ) {
+      const vulns = (metadata as Record<string, unknown>).vulnerabilities as Record<string, number>;
+      const high = Number(vulns.high ?? 0);
+      const critical = Number(vulns.critical ?? 0);
+      const total = high + critical;
+      if (total === 0) {
+        return {
+          name: 'pnpm audit',
+          status: 'pass',
+          message: 'No HIGH or CRITICAL advisories found in prod dependency tree.',
+        };
+      }
+      return {
+        name: 'pnpm audit',
+        status: 'fail',
+        message: `pnpm audit found ${total} HIGH/CRITICAL advisory(ies) (high: ${high}, critical: ${critical}).`,
+        remediation:
+          'Run `pnpm audit --prod --audit-level=high` to review findings and update affected dependencies.',
+      };
+    }
+  }
+
+  // Unknown shape — degrade to warn rather than crash.
+  return {
+    name: 'pnpm audit',
+    status: 'warn',
+    message: 'pnpm audit output had an unexpected shape; could not determine advisory count.',
+    remediation: 'Run `pnpm audit --prod --audit-level=high` manually to inspect findings.',
+  };
+}
+
+/**
  * Compose a doctor report from all registered checks.
+ *
+ * B.14 (Sprint 51): validates that `cwd` exists and is a directory before
+ * running any check. An invalid `cwd` produces a report with a single
+ * `cwd_invalid` check entry at `status: 'fail'` rather than running checks
+ * that would silently produce misleading output.
+ *
+ * @param cwd - Working directory to inspect. Defaults to `process.cwd()`.
+ * @param _auditSpawnFn - Optional injectable spawn used by `checkPnpmAudit`.
+ *   Provided so callers (and tests) can control or elide the real pnpm
+ *   subprocess without fighting ESM module sealing. When omitted, the real
+ *   `spawnSync` is used.
  *
  * @internal Not part of the published `@blackunicorn/bonklm` surface
  * (see {@link DoctorCheckResult}).
  */
-export function runDoctor(cwd: string = process.cwd()): DoctorReport {
-  const checks: DoctorCheckResult[] = [checkPreCommitHook(cwd)];
+export function runDoctor(
+  cwd: string = process.cwd(),
+  _auditSpawnFn?: (cmd: string, args: string[], opts: object) => SpawnResult,
+): DoctorReport {
+  // B.14 — validate cwd existence and directory-ness at the boundary.
+  // Non-existent paths or regular files silently produced misleading reports
+  // before Sprint 51. Now we short-circuit with a clear failure entry.
+  let cwdStat: ReturnType<typeof statSync> | null = null;
+  try {
+    cwdStat = statSync(cwd);
+  } catch {
+    cwdStat = null;
+  }
+
+  if (cwdStat === null || !cwdStat.isDirectory()) {
+    const cwdDisplay = sanitizeLogString(cwd);
+    const reason = cwdStat === null
+      ? 'path does not exist'
+      : 'path is not a directory';
+    const invalidCheck: DoctorCheckResult = {
+      name: 'cwd_invalid',
+      status: 'fail',
+      message: `runDoctor cwd is invalid (${reason}): ${cwdDisplay}`,
+      remediation:
+        'Pass an existing directory path to runDoctor(), or call it without arguments to use process.cwd().',
+    };
+    return { checks: [invalidCheck], overallStatus: 'fail' };
+  }
+
+  const checks: DoctorCheckResult[] = [
+    checkPreCommitHook(cwd),
+    checkEnvFile(cwd),
+    checkPnpmAudit(cwd, _auditSpawnFn),
+  ];
 
   let overallStatus: 'pass' | 'warn' | 'fail' = 'pass';
   for (const check of checks) {
@@ -354,6 +560,47 @@ interface DoctorOptions {
 }
 
 /**
+ * Render the doctor report as a machine-parseable JSON string.
+ *
+ * ### Sanitization contract (B.16, Sprint 51 — ADR-0001 alignment)
+ *
+ * All attacker-controllable strings that flow into `DoctorCheckResult`
+ * fields (`.name`, `.message`, `.remediation`) originate from:
+ *  - File-system paths read via `resolveHooksPath` — passed through
+ *    `sanitizeLogString` at the variable-binding site before entering
+ *    any `DoctorCheckResult`.
+ *  - User-supplied `cwd` argument — sanitized in the `cwd_invalid` check
+ *    entry produced by `runDoctor`.
+ *  - `package.json` `simple-git-hooks.pre-commit` values — sanitized via
+ *    `configuredDisplay` before entering any message string.
+ *  - Error messages from `readFileSync` — sanitized via `sanitizeLogString`
+ *    at their respective catch sites.
+ *  - `pnpm audit` output — parsed as JSON by `secureJsonParse`; numeric
+ *    fields only are reflected into the message (no raw string pass-through).
+ *
+ * `sanitizeLogString` hex-escapes C0/C1 control characters, newlines, CR,
+ * U+2028, U+2029, and Unicode bidi-override/isolate code points
+ * (U+202A..U+202E, U+2066..U+2069). After sanitization:
+ *  - No string field in the JSON output contains raw newlines that would
+ *    break JSON parsing or split a log line in a SIEM ingestor.
+ *  - No string field contains raw ANSI escape sequences that could corrupt
+ *    a terminal or a structured-log viewer.
+ *  - Callers may safely pass the output to `JSON.parse` with strict mode.
+ *
+ * **Future contributors**: any new check function that reflects a
+ * user-controllable string into a `DoctorCheckResult` field MUST pass that
+ * string through `sanitizeLogString` before including it in `.message` or
+ * `.remediation`. The raw value (needed for filesystem operations) must be
+ * kept in a separate binding.
+ */
+function renderJson(report: DoctorReport): string {
+  // All strings in `report` are already sanitized at their origin sites.
+  // JSON.stringify is safe: the sanitized strings contain no raw control
+  // characters that could escape a JSON string literal.
+  return JSON.stringify(report, null, 2);
+}
+
+/**
  * Doctor command implementation.
  */
 export const doctorCommand = new Command('doctor')
@@ -365,7 +612,7 @@ export const doctorCommand = new Command('doctor')
     const report = runDoctor();
 
     if (options.json) {
-      console.log(JSON.stringify(report, null, 2));
+      console.log(renderJson(report));
     } else {
       console.log(renderHuman(report));
     }
