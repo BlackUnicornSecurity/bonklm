@@ -465,6 +465,161 @@ export function checkPnpmAudit(
 }
 
 /**
+ * Names of the BonkLM framework connectors that proxy ingress requests
+ * through the validator pipeline. If any of these is installed without an
+ * upstream rate limiter in front, the consumer's deployment is exposed to
+ * the §A.5 attack described in `team/qa/1.0.0/09-security-addendum.md`
+ * (10K req/s → validator pipeline).
+ *
+ * @internal
+ */
+const BONKLM_FRAMEWORK_CONNECTORS = [
+  '@blackunicorn/bonklm-express',
+  '@blackunicorn/bonklm-fastify',
+  '@blackunicorn/bonklm-hono',
+  '@blackunicorn/bonklm-elysia',
+  '@blackunicorn/bonklm-nestjs',
+  '@blackunicorn/bonklm-nextjs',
+] as const;
+
+/**
+ * Allow-list of known upstream rate-limiter packages. If any of these is
+ * present as a (dev)dependency alongside a BonkLM framework connector, the
+ * doctor treats the rate-limiting concern as addressed.
+ *
+ * The list is intentionally conservative: deliberate inclusion only,
+ * forward-compat with Cloudflare/Vercel KV-backed limiters (the architect
+ * recommended Y for forward-compat in the ST-05-104 advisory §Open
+ * questions #3).
+ *
+ * @internal
+ */
+const KNOWN_LIMITER_PACKAGES = [
+  'express-rate-limit',
+  '@fastify/rate-limit',
+  'hono-rate-limiter',
+  'elysia-rate-limit',
+  '@nestjs/throttler',
+  '@upstash/ratelimit',
+  'rate-limiter-flexible',
+] as const;
+
+/**
+ * Detect whether the consumer has a BonkLM framework connector installed
+ * without a known upstream rate limiter, and surface the gap as a `warn`.
+ *
+ * B.5 / ST-05-104 (Sprint 51): the in-process `RateLimiter` exported from
+ * `@blackunicorn/bonklm/security` is intentionally NOT wired as a default
+ * because it is fictional in realistic v1.0 deployment shapes (multi-pod
+ * Node behind LB, Cloudflare Workers, Vercel Edge). Instead, this doctor
+ * check nudges consumers toward a real, distributed limiter at install
+ * time. See `team/qa/1.0.0/evidence/gate-5/ST-05-104/ADVISORY.md` for the
+ * three-option analysis and `docs/user/security/rate-limiting.md` for the
+ * deployment-shape rationale.
+ *
+ * Status semantics:
+ *  - `pass` — no BonkLM framework connector is installed (limiter is moot);
+ *    OR a connector is installed AND a known limiter is present;
+ *    OR `package.json` declares `{ "bonklm": { "rateLimit": "documented" } }`
+ *    or `"external"` as an explicit acknowledgement.
+ *  - `warn` — a BonkLM framework connector is installed but no known
+ *    limiter package is present. The check is `warn`-only by design (per
+ *    architect advisory §Open questions #2) — `fail` would block legitimate
+ *    dev-environment installs.
+ *
+ * @internal exported for tests
+ */
+export function checkRateLimiterAdvisory(cwd: string): DoctorCheckResult {
+  const packageJsonPath = join(cwd, 'package.json');
+  if (!existsSync(packageJsonPath)) {
+    return {
+      name: 'rate-limiter advisory',
+      status: 'pass',
+      message: 'No package.json found at cwd; rate-limiter advisory skipped.',
+    };
+  }
+
+  let raw: string;
+  try {
+    raw = readFileSync(packageJsonPath, 'utf8');
+  } catch (err) {
+    const errMsg = sanitizeLogString((err as Error).message ?? 'unknown error');
+    return {
+      name: 'rate-limiter advisory',
+      status: 'warn',
+      message: `Could not read package.json: ${errMsg}`,
+      remediation: 'Verify package.json is readable and re-run `bonklm doctor`.',
+    };
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = secureJsonParse(raw, null, { protoAction: 'remove', constructorAction: 'remove' });
+  } catch {
+    return {
+      name: 'rate-limiter advisory',
+      status: 'warn',
+      message: 'package.json could not be parsed as JSON.',
+      remediation: 'Run `node --check package.json` (or equivalent) to inspect.',
+    };
+  }
+
+  if (parsed === null || typeof parsed !== 'object') {
+    return {
+      name: 'rate-limiter advisory',
+      status: 'warn',
+      message: 'package.json had an unexpected shape; rate-limiter advisory could not run.',
+    };
+  }
+
+  const pkg = parsed as Record<string, unknown>;
+  const deps = (pkg.dependencies ?? {}) as Record<string, unknown>;
+  const devDeps = (pkg.devDependencies ?? {}) as Record<string, unknown>;
+  const allDeps = { ...deps, ...devDeps };
+
+  const installedConnectors = BONKLM_FRAMEWORK_CONNECTORS.filter((name) => name in allDeps);
+  if (installedConnectors.length === 0) {
+    return {
+      name: 'rate-limiter advisory',
+      status: 'pass',
+      message: 'No BonkLM framework connector installed; rate-limiter advisory is moot.',
+    };
+  }
+
+  // Explicit consumer opt-out via package.json `bonklm.rateLimit` field.
+  const bonklmField = pkg.bonklm;
+  if (bonklmField !== null && typeof bonklmField === 'object') {
+    const rateLimit = (bonklmField as Record<string, unknown>).rateLimit;
+    if (rateLimit === 'documented' || rateLimit === 'external' || rateLimit === 'in-process') {
+      return {
+        name: 'rate-limiter advisory',
+        status: 'pass',
+        message: `Rate-limiting policy explicitly acknowledged in package.json ("bonklm.rateLimit": "${sanitizeLogString(String(rateLimit))}").`,
+      };
+    }
+  }
+
+  const installedLimiters = KNOWN_LIMITER_PACKAGES.filter((name) => name in allDeps);
+  if (installedLimiters.length > 0) {
+    return {
+      name: 'rate-limiter advisory',
+      status: 'pass',
+      message: `Upstream rate limiter detected: ${installedLimiters.map((n) => sanitizeLogString(n)).join(', ')}.`,
+    };
+  }
+
+  // Connector installed, no limiter, no opt-out → warn.
+  const connectorList = installedConnectors.map((n) => sanitizeLogString(n)).join(', ');
+  return {
+    name: 'rate-limiter advisory',
+    status: 'warn',
+    message: `BonkLM framework connector(s) installed without a known upstream rate limiter: ${connectorList}.`,
+    remediation:
+      'Install one of: express-rate-limit, @fastify/rate-limit, hono-rate-limiter, elysia-rate-limit, @nestjs/throttler, @upstash/ratelimit, rate-limiter-flexible. See docs/user/security/rate-limiting.md. To suppress, set `bonklm.rateLimit` to `"documented"`, `"external"`, or `"in-process"` in package.json.',
+  };
+}
+
+/**
  * Compose a doctor report from all registered checks.
  *
  * B.14 (Sprint 51): validates that `cwd` exists and is a directory before
@@ -514,6 +669,7 @@ export function runDoctor(
     checkPreCommitHook(cwd),
     checkEnvFile(cwd),
     checkPnpmAudit(cwd, _auditSpawnFn),
+    checkRateLimiterAdvisory(cwd),
   ];
 
   let overallStatus: 'pass' | 'warn' | 'fail' = 'pass';

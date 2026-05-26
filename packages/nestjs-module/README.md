@@ -283,6 +283,44 @@ npm run start:dev
 | `getEngine()` | Get underlying GuardrailEngine |
 | `getConfig()` | Get service configuration |
 
+## Security: rate limiting
+
+This module does **not** include rate limiting. Per the BonkLM rate-limiting
+policy, ingress rate limiting belongs at the edge / load-balancer layer or in
+a NestJS-native limiter ahead of the guardrails — see
+[`docs/user/security/rate-limiting.md`](../../docs/user/security/rate-limiting.md)
+for the multi-instance / deployment-shape rationale.
+
+Wire `@nestjs/throttler` (or a distributed alternative for production)
+**before** the guardrails interceptor:
+
+```typescript
+import { Module } from '@nestjs/common';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { BonkLMModule, GuardrailsInterceptor } from '@blackunicorn/bonklm-nestjs';
+import { PromptInjectionValidator } from '@blackunicorn/bonklm';
+
+@Module({
+  imports: [
+    ThrottlerModule.forRoot([{ ttl: 15 * 60 * 1000, limit: 100 }]),
+    BonkLMModule.forRoot({ validators: [new PromptInjectionValidator()] }),
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },           // limiter FIRST
+    { provide: APP_INTERCEPTOR, useClass: GuardrailsInterceptor },
+  ],
+})
+export class AppModule {}
+```
+
+To suppress the `bonklm doctor` rate-limiter advisory after acknowledging the
+policy, add to your project's `package.json`:
+
+```json
+{ "bonklm": { "rateLimit": "documented" } }
+```
+
 ## License
 
 MIT

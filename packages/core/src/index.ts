@@ -92,6 +92,19 @@ export {
   type TokenValidationResult,
   type TokenUsage,
   type OverrideTokenConfigString,
+  // B.5 / ST-05-104 (Sprint 51): RateLimiter is now also reachable from the
+  // root barrel. The library does NOT wire it as a default in any framework
+  // connector — see `docs/user/security/rate-limiting.md` for the
+  // deployment-shape rationale and `bonklm doctor`'s rate-limiter advisory
+  // check for the install-time nudge. The export here is an ergonomic
+  // opt-in path for consumers who want a per-instance safety belt on top
+  // of their distributed limiter.
+  RateLimiter,
+  createRateLimiter,
+  CommonRateLimiters,
+  DEFAULT_RATE_LIMIT,
+  type RateLimiterConfig,
+  type RateLimitResult,
 } from './security/index.js';
 
 // S012-000: Connector utilities

@@ -92,6 +92,52 @@ Body parsing handles `application/json`, `application/x-www-form-urlencoded`, an
 - [`@blackunicorn/bonklm-express`](../express-middleware/README.md), [`@blackunicorn/bonklm-fastify`](../fastify-plugin/README.md) — sibling Node-first middleware.
 - [`@blackunicorn/bonklm-elysia`](../elysia-plugin/README.md), [`@blackunicorn/bonklm-nextjs`](../nextjs-helpers/README.md), [`@blackunicorn/bonklm-cloudflare-agents`](../cloudflare-agents-connector/README.md) — sibling edge connectors.
 
+## Security: rate limiting
+
+This middleware does **not** include rate limiting. Per the BonkLM
+rate-limiting policy, ingress rate limiting belongs at the edge layer
+(Cloudflare Workers, Vercel, Bun edge, Deno Deploy) where it can shed load
+before reaching the validator pipeline. See
+[`docs/user/security/rate-limiting.md`](../../docs/user/security/rate-limiting.md)
+for the deployment-shape rationale.
+
+For edge deployments, prefer a distributed limiter like
+[`@upstash/ratelimit`](https://github.com/upstash/ratelimit-js) (Redis-backed,
+works in Workers / edge isolates) wired **before** the guardrails middleware:
+
+```typescript
+import { Hono } from 'hono';
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
+import { honoGuardrails } from '@blackunicorn/bonklm-hono';
+import { PromptInjectionValidator } from '@blackunicorn/bonklm';
+
+const ratelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(100, '15 m'),
+});
+
+const app = new Hono();
+
+app.use('*', async (c, next) => {
+  const ip = c.req.header('cf-connecting-ip') ?? 'anon';
+  const { success } = await ratelimit.limit(ip);
+  if (!success) return c.text('Too many requests', 429);
+  await next();
+});
+
+app.use('*', honoGuardrails({ validators: [new PromptInjectionValidator()] }));
+```
+
+For Node-runtime deployments behind Hono, `hono-rate-limiter` is the standard
+in-process choice (still subject to the multi-instance caveats in the policy
+doc). To suppress the `bonklm doctor` rate-limiter advisory after
+acknowledging the policy, add to your project's `package.json`:
+
+```json
+{ "bonklm": { "rateLimit": "documented" } }
+```
+
 ## License
 
 MIT (c) Black Unicorn

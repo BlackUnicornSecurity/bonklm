@@ -110,6 +110,43 @@ Hide sensitive information in production:
 }
 ```
 
+## Security: rate limiting
+
+This plugin does **not** include rate limiting. Per the BonkLM rate-limiting
+policy, ingress rate limiting belongs at the edge / load-balancer layer or in
+a Fastify-native limiter ahead of the guardrails — see
+[`docs/user/security/rate-limiting.md`](../../docs/user/security/rate-limiting.md)
+for the multi-instance / edge-runtime rationale.
+
+Wire `@fastify/rate-limit` (or a distributed alternative like
+`@upstash/ratelimit` or `rate-limiter-flexible` with a Redis store) **before**
+registering `bonklmPlugin`:
+
+```typescript
+import Fastify from 'fastify';
+import rateLimit from '@fastify/rate-limit';
+import bonklmPlugin from '@blackunicorn/bonklm-fastify';
+import { PromptInjectionValidator } from '@blackunicorn/bonklm';
+
+const server = Fastify();
+
+await server.register(rateLimit, {
+  max: 100,
+  timeWindow: '15 minutes',
+});
+
+await server.register(bonklmPlugin, {
+  validators: [new PromptInjectionValidator()],
+});
+```
+
+To suppress the `bonklm doctor` rate-limiter advisory after acknowledging the
+policy, add to your project's `package.json`:
+
+```json
+{ "bonklm": { "rateLimit": "documented" } }
+```
+
 ## License
 
 MIT

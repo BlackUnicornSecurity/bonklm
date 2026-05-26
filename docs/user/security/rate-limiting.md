@@ -23,6 +23,45 @@ Without an upstream limiter, an attacker can:
 Put the rate limiter ahead of `createGuardrailsMiddleware` so blocked
 requests never reach the validator pipeline.
 
+## Why we do not wire a default rate limiter
+
+BonkLM exports `RateLimiter` + `CommonRateLimiters` from
+`@blackunicorn/bonklm` (re-exported from `@blackunicorn/bonklm/security`)
+as an ergonomic opt-in primitive, but the framework connectors deliberately
+do NOT instantiate one by default. Three reasons:
+
+1. **In-process state is fictional in production.** The bundled
+   `RateLimiter` is an in-memory `Map<string, RateLimitEntry>` — it would
+   give a per-pod limit in a multi-instance deployment, which is strictly
+   worse than no limiter because it creates a false sense of protection.
+   Edge runtimes (Workerd, Vercel Edge, Deno Deploy) instantiate per
+   request — the state evaporates between calls, so even a "default-on"
+   limiter would functionally be disabled at the edge.
+2. **Ingress rate limiting belongs at the edge / load-balancer / API-gateway
+   layer.** Cloudflare, ALB, Vercel, fly.io, etc. shed load BEFORE it hits
+   Node — the only place this can scale to the multi-tenant reality. BonkLM
+   running its own limiter inside the request pipeline still pays the
+   TCP-accept + body-parse cost on every blocked request.
+3. **Distributed-state limiters** (Redis-backed `@upstash/ratelimit`,
+   `rate-limiter-flexible` with a Redis store, Cloudflare KV) are the right
+   shape for production. The doctor check (`bonklm doctor` Sprint 51 ST-05-104)
+   surfaces a WARN when a framework connector is installed without a known
+   limiter dependency — nudging consumers toward a real solution rather than
+   a per-pod in-memory limit.
+
+To suppress the doctor advisory after acknowledging the policy, declare in
+your `package.json`:
+
+```json
+{
+  "bonklm": { "rateLimit": "documented" }
+}
+```
+
+Accepted values: `"documented"` (you read this doc), `"external"` (your
+limiter runs at the edge/LB, not in your Node code), or `"in-process"` (you
+explicitly want the bundled `RateLimiter` despite the multi-instance caveats).
+
 ---
 
 ## Express — `express-rate-limit`

@@ -90,6 +90,36 @@ new Elysia()
 - [`@blackunicorn/bonklm-web-middleware-utils`](../web-middleware-utils/README.md) — shared `runRequestValidation` / `WebMiddlewareBlockedError` primitives.
 - [`@blackunicorn/bonklm-hono`](../hono-middleware/README.md), [`@blackunicorn/bonklm-nextjs`](../nextjs-helpers/README.md) — sibling edge connectors.
 
+## Security: rate limiting
+
+This plugin does **not** include rate limiting. Per the BonkLM rate-limiting
+policy, ingress rate limiting belongs at the edge / load-balancer layer (or
+inside a Bun runtime via `elysia-rate-limit`) ahead of the guardrails — see
+[`docs/user/security/rate-limiting.md`](../../docs/user/security/rate-limiting.md)
+for the multi-instance / edge-runtime rationale.
+
+Wire `elysia-rate-limit` (or a distributed alternative for production) **before**
+registering `bonklmGuardrails`:
+
+```typescript
+import { Elysia } from 'elysia';
+import { rateLimit } from 'elysia-rate-limit';
+import { bonklmGuardrails } from '@blackunicorn/bonklm-elysia';
+import { PromptInjectionValidator } from '@blackunicorn/bonklm';
+
+new Elysia()
+  .use(rateLimit({ max: 100, duration: 15 * 60 * 1000 })) // limiter FIRST
+  .use(bonklmGuardrails({ validators: [new PromptInjectionValidator()] }))
+  .listen(3000);
+```
+
+To suppress the `bonklm doctor` rate-limiter advisory after acknowledging the
+policy, add to your project's `package.json`:
+
+```json
+{ "bonklm": { "rateLimit": "documented" } }
+```
+
 ## License
 
 MIT (c) Black Unicorn

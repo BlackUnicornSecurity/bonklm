@@ -23,6 +23,7 @@ import {
   checkEnvFile,
   checkPnpmAudit,
   checkPreCommitHook,
+  checkRateLimiterAdvisory,
   doctorCommand,
   readConfiguredPreCommit,
   resolveHooksPath,
@@ -657,5 +658,139 @@ describe('runDoctor --json sanitization round-trip (B.16)', () => {
 
     expect(() => JSON.parse(jsonString)).not.toThrow();
     expect(jsonString).not.toMatch(/\x1b/);
+  });
+});
+
+describe('checkRateLimiterAdvisory (B.5, ST-05-104)', () => {
+  let cwd: string;
+  beforeEach(() => {
+    cwd = makeFixture();
+  });
+  afterEach(() => {
+    rmSync(cwd, { recursive: true, force: true });
+  });
+
+  it('PASS when no package.json is present (advisory cannot run)', () => {
+    const result = checkRateLimiterAdvisory(cwd);
+    expect(result.status).toBe('pass');
+    expect(result.message).toMatch(/No package.json/);
+  });
+
+  it('PASS when no BonkLM framework connector is installed', () => {
+    writePackageJson(cwd, {
+      name: 'consumer',
+      dependencies: { lodash: '^4.17.21' },
+    });
+    const result = checkRateLimiterAdvisory(cwd);
+    expect(result.status).toBe('pass');
+    expect(result.message).toMatch(/No BonkLM framework connector installed/);
+  });
+
+  it('PASS when a connector is installed alongside a known upstream limiter', () => {
+    writePackageJson(cwd, {
+      name: 'consumer',
+      dependencies: {
+        '@blackunicorn/bonklm-express': '^1.0.0',
+        'express-rate-limit': '^7.0.0',
+      },
+    });
+    const result = checkRateLimiterAdvisory(cwd);
+    expect(result.status).toBe('pass');
+    expect(result.message).toMatch(/Upstream rate limiter detected/);
+    expect(result.message).toMatch(/express-rate-limit/);
+  });
+
+  it('PASS when consumer explicitly opts out via bonklm.rateLimit = "documented"', () => {
+    writePackageJson(cwd, {
+      name: 'consumer',
+      dependencies: { '@blackunicorn/bonklm-fastify': '^1.0.0' },
+      bonklm: { rateLimit: 'documented' },
+    });
+    const result = checkRateLimiterAdvisory(cwd);
+    expect(result.status).toBe('pass');
+    expect(result.message).toMatch(/explicitly acknowledged/);
+    expect(result.message).toMatch(/documented/);
+  });
+
+  it('PASS when consumer opts out via bonklm.rateLimit = "external" (alternate spelling)', () => {
+    writePackageJson(cwd, {
+      name: 'consumer',
+      dependencies: { '@blackunicorn/bonklm-hono': '^1.0.0' },
+      bonklm: { rateLimit: 'external' },
+    });
+    const result = checkRateLimiterAdvisory(cwd);
+    expect(result.status).toBe('pass');
+  });
+
+  it('PASS when consumer opts out via bonklm.rateLimit = "in-process" (uses bundled RateLimiter)', () => {
+    writePackageJson(cwd, {
+      name: 'consumer',
+      dependencies: { '@blackunicorn/bonklm-elysia': '^1.0.0' },
+      bonklm: { rateLimit: 'in-process' },
+    });
+    const result = checkRateLimiterAdvisory(cwd);
+    expect(result.status).toBe('pass');
+  });
+
+  it('WARN when framework connector is installed with no known limiter and no opt-out', () => {
+    writePackageJson(cwd, {
+      name: 'consumer',
+      dependencies: { '@blackunicorn/bonklm-nextjs': '^1.0.0' },
+    });
+    const result = checkRateLimiterAdvisory(cwd);
+    expect(result.status).toBe('warn');
+    expect(result.message).toMatch(/without a known upstream rate limiter/);
+    expect(result.message).toMatch(/@blackunicorn\/bonklm-nextjs/);
+    expect(result.remediation).toMatch(/express-rate-limit/);
+    expect(result.remediation).toMatch(/bonklm\.rateLimit/);
+  });
+
+  it('WARN lists ALL installed connectors when multiple framework connectors are present without a limiter', () => {
+    writePackageJson(cwd, {
+      name: 'consumer',
+      dependencies: {
+        '@blackunicorn/bonklm-express': '^1.0.0',
+        '@blackunicorn/bonklm-fastify': '^1.0.0',
+      },
+    });
+    const result = checkRateLimiterAdvisory(cwd);
+    expect(result.status).toBe('warn');
+    expect(result.message).toMatch(/@blackunicorn\/bonklm-express/);
+    expect(result.message).toMatch(/@blackunicorn\/bonklm-fastify/);
+  });
+
+  it('Treats devDependencies the same as dependencies for limiter detection', () => {
+    writePackageJson(cwd, {
+      name: 'consumer',
+      dependencies: { '@blackunicorn/bonklm-nestjs': '^1.0.0' },
+      devDependencies: { '@nestjs/throttler': '^6.0.0' },
+    });
+    const result = checkRateLimiterAdvisory(cwd);
+    expect(result.status).toBe('pass');
+    expect(result.message).toMatch(/Upstream rate limiter detected/);
+  });
+
+  it('WARN when package.json is unparseable JSON', () => {
+    writeFileSync(join(cwd, 'package.json'), 'not { valid json');
+    const result = checkRateLimiterAdvisory(cwd);
+    expect(result.status).toBe('warn');
+    expect(result.message).toMatch(/could not be parsed/);
+  });
+
+  it('Sanitizes connector + limiter names in output (no raw control chars)', () => {
+    // Synthesize a hostile dependency name with embedded ANSI escape.
+    // Real package names cannot contain these, but defence-in-depth verifies
+    // sanitizeLogString runs over the values that flow into the message.
+    writePackageJson(cwd, {
+      name: 'consumer',
+      dependencies: {
+        '@blackunicorn/bonklm-express': '^1.0.0\x1b[31mred\x1b[0m',
+      },
+    });
+    const result = checkRateLimiterAdvisory(cwd);
+    // The KEY (@blackunicorn/bonklm-express) passes through sanitizeLogString;
+    // the value is not reflected. Assert no raw ESC in output.
+    const allOutput = `${result.message}${result.remediation ?? ''}`;
+    expect(allOutput).not.toMatch(/\x1b/);
   });
 });
