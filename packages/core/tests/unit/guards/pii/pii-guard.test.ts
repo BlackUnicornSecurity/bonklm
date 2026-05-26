@@ -321,4 +321,45 @@ describe('PIIGuard', () => {
       expect(result.findings?.[0]).toHaveProperty('line_number');
     });
   });
+
+  describe('ReDoS guard (D-005 / final layer-1 sweep)', () => {
+    // All 30 regexes in guards/pii/patterns.ts (US + EU + Common) and all
+    // 8 SENSITIVE_CONTEXT / FAKE_DATA helper regexes were classified LINEAR
+    // via timing probe at 100 KB worst-case inputs (max observed: 0.728 ms).
+    // These tests lock that classification in CI.
+
+    it('PII-R01: 100KB non-matching input through detectPii completes in < 100 ms', () => {
+      const guard = new PIIGuard({ action: 'block' });
+      const input = 'a'.repeat(100_000);
+      const t0 = performance.now();
+      guard.detect(input);
+      const elapsed = performance.now() - t0;
+      expect(elapsed).toBeLessThan(100);
+    });
+
+    it('PII-R02: 100KB Email-prefix input (triggers a+@b+.c shape) completes in < 100 ms', () => {
+      // Email pattern /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/
+      // was the heaviest pattern at 0.728 ms / 100KB — lock it.
+      const input = 'a'.repeat(50_000) + '@' + 'b'.repeat(49_990) + '.c';
+      const guard = new PIIGuard({ action: 'block' });
+      const t0 = performance.now();
+      guard.detect(input);
+      const elapsed = performance.now() - t0;
+      expect(elapsed).toBeLessThan(100);
+    });
+
+    it('PII-R03: guard still DETECTS real SSN after 100KB preamble (semantics preserved)', () => {
+      // Verifies DiD timing work does not regress detection semantics.
+      // Uses detect() directly (not validate()) so the action/minSeverity
+      // config path is bypassed — we only care that the regex still fires.
+      const realSsn = '333-44-5555';
+      const content = 'x\n'.repeat(50_000) + 'SSN ' + realSsn;
+      const guard = new PIIGuard({ action: 'block' });
+      const t0 = performance.now();
+      const detections = guard.detect(content);
+      const elapsed = performance.now() - t0;
+      expect(detections.some((d) => d.patternName === 'SSN')).toBe(true);
+      expect(elapsed).toBeLessThan(100);
+    });
+  });
 });

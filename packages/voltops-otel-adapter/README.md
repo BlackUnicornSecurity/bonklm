@@ -18,7 +18,7 @@ pnpm add @blackunicorn/bonklm-voltops-otel @blackunicorn/bonklm @opentelemetry/a
 |---|---|---|
 | `@blackunicorn/bonklm` | `workspace:*` | Required peer. |
 | Node.js | `>=20.0.0` | — |
-| `@opentelemetry/api` | no explicit pin (intentional — brought transitively by the consumer's tracer SDK such as `@opentelemetry/sdk-node`) | Any OTel `Tracer` matching the `BonklmTracer` structural shape works. Tested against `@opentelemetry/api@^1.9.0`. |
+| `@opentelemetry/api` | `^1.9.0` (optional peer) | Declared as an optional `peerDependency` — `bonklm-voltops-otel` itself only consumes the structural `BonklmTracer` shape, so it works with any OTel `Tracer` brought by the consumer's tracer SDK (e.g. `@opentelemetry/sdk-node`). Pin lets consumers who import `trace` directly resolve cleanly. Tested against `1.9.x`. |
 
 ## Quick Start
 

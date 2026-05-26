@@ -135,3 +135,19 @@ scripts/codemod-report.json
 .playwright-mcp/
 landing-*.png
 playground-*.png
+
+# ===================
+# demo/ runtime state — never commit; doc/script subset belongs in a
+# separate "feat(demo): elizaos-wallet-drain" commit per release-QA
+# coordinator Day 1 standup (2026-05-26). wallets/ contains keypair
+# JSONs that must never enter version control regardless of devnet/testnet
+# classification — per CLAUDE.md "Never commit secrets, PII, or .env files".
+# ===================
+demo/*/node_modules/
+demo/*/.eliza/
+demo/*/wallets/
+demo/*/recordings/
+demo/*/screenshots/
+demo/*/logs/
+demo/*/evidence-tmp/
+demo/*/bun.lock

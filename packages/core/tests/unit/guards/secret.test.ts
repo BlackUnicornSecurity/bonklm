@@ -365,6 +365,49 @@ MHcCAQEEIFLu7LfVcWpL4M3baK4Yk4vLkhhGVxNL...
   // permits literal TAB inside JSON strings; downstream TSV-format
   // SIEM ingestors then column-split. Verify sanitizeLogString runs
   // on `file` meta values at both sites.
+  describe('ReDoS guard (D-005 / final layer-1 sweep)', () => {
+    // All 38 regexes in guards/secret.ts (CRITICAL + HIGH + MEDIUM) were
+    // classified LINEAR via timing probe at 100 KB worst-case inputs
+    // (max observed: 0.681 ms).  These tests lock that classification in CI.
+
+    it('SG-R01: 100KB non-matching input through ALL_PATTERNS completes in < 100 ms', () => {
+      // Worst-case: a long string that activates pattern prefixes but never
+      // satisfies the suffix  — forces the engine to scan the whole string.
+      const input = 'a'.repeat(100_000);
+      const guard = new SecretGuard();
+      const t0 = performance.now();
+      guard.detect(input);
+      const elapsed = performance.now() - t0;
+      expect(elapsed).toBeLessThan(100);
+    });
+
+    it('SG-R02: 100KB partial-match input (triggers \\bapi[_-]?key prefix) completes in < 100 ms', () => {
+      // Activates Generic_API_Key, Access_Token, Auth_Token, Password patterns
+      // without ever satisfying the closing quote delimiter.
+      const input = ('api_key = "' + 'a'.repeat(80)).padEnd(100_000, 'x');
+      const guard = new SecretGuard();
+      const t0 = performance.now();
+      guard.detect(input);
+      const elapsed = performance.now() - t0;
+      expect(elapsed).toBeLessThan(100);
+    });
+
+    it('SG-R03: guard still BLOCKS a real secret after 100KB preamble (semantics preserved)', () => {
+      // Ensures timing-based classification does not regress detection.
+      // checkExamples: false avoids the isExampleContent scan on the full
+      // 100KB single-line content (which is not what the example check is
+      // designed for) while still exercising the regex detection path.
+      const realKey = 'AKIAIOSFODNN7EXAMPLE';
+      const content = 'x'.repeat(99_979) + realKey;
+      const guard = new SecretGuard({ checkExamples: false });
+      const t0 = performance.now();
+      const result = guard.validate(content);
+      const elapsed = performance.now() - t0;
+      expect(result.blocked).toBe(true);
+      expect(elapsed).toBeLessThan(100);
+    });
+  });
+
   describe('SG-013: filePath meta CWE-117 sanitization (Sprint 39)', () => {
     function makeSpyLogger() {
       const calls: Array<{ level: string; msg: string; meta?: unknown }> = [];

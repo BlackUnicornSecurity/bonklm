@@ -364,4 +364,43 @@ describe('PII Validators', () => {
       });
     });
   });
+
+  describe('ReDoS guard (D-005 / final layer-1 sweep — validators.ts)', () => {
+    // The validator functions in guards/pii/validators.ts use only
+    // character-class substitution (.replace(/\D/g, '')) and arithmetic
+    // loops — no regexes with variable-length branches.  The two regexes
+    // present (/^(\d{8})([A-Z])$/ and /^([XYZ])(\d{7})([A-Z])$/) are
+    // anchored fixed-length patterns and are trivially LINEAR.
+    // These tests lock that classification in CI at 100 KB input size.
+
+    it('PIIV-R01: validateLuhn on 100KB non-numeric string completes in < 100 ms', () => {
+      // Triggers the digits.length guard (< 13) immediately after .replace(/\D/g,'')
+      const input = 'a'.repeat(100_000);
+      const t0 = performance.now();
+      const result = validators.validateLuhn(input);
+      const elapsed = performance.now() - t0;
+      expect(result).toBe(false);
+      expect(elapsed).toBeLessThan(100);
+    });
+
+    it('PIIV-R02: validateIban on 100KB input completes in < 100 ms', () => {
+      // IBAN rejects length > 34 before doing any loop work.
+      const input = 'A'.repeat(100_000);
+      const t0 = performance.now();
+      const result = validators.validateIban(input);
+      const elapsed = performance.now() - t0;
+      expect(result).toBe(false);
+      expect(elapsed).toBeLessThan(100);
+    });
+
+    it('PIIV-R03: redactPIIValue on 100KB string completes in < 100 ms (generic path)', () => {
+      // redactGeneric uses only .slice and string concatenation — no regexes.
+      const input = 'x'.repeat(100_000);
+      const t0 = performance.now();
+      const result = validators.redactPIIValue(input);
+      const elapsed = performance.now() - t0;
+      expect(typeof result).toBe('string');
+      expect(elapsed).toBeLessThan(100);
+    });
+  });
 });

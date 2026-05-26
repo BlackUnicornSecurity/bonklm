@@ -21,9 +21,10 @@
  *      empty `Map` / `null` on BLOCK (closes adversarial #5: DO
  *      storage read-gap).
  *
- *   4. `onRequest` / `onMessage` — left to subclass override; the
- *      connector provides `validateUserInput(text)` helper for
- *      preflight checks.
+ *   4. `onRequest` / `onMessage` — left to subclass override. The
+ *      connector does NOT wrap these surfaces; for preflight
+ *      validation, call `engine.validate(text)` directly before
+ *      dispatching the message in your override.
  *
  * **Edge-only**: imports from `@blackunicorn/bonklm/edge` exclusively.
  * Workerd `nodejs_compat` flag required for cachedValidate's hash.

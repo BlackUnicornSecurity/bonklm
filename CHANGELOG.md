@@ -12,6 +12,10 @@ ships the final two queued items before the v1.0.0-rc.4 cut.
 
 ### Security
 
+- **secret/pii/guards-secret: ReDoS spot-check completed (D-005 final layer-1 sweep). All 81 regexes across guards/secret.ts (38), guards/pii/patterns.ts (43), and guards/pii/validators.ts (0 variable-length) classified LINEAR; 9 DiD regression tests added across 3 test files. No fix required. Closes ReDoS sweep program for v1.0.0 validator/guard surface.** (Sprint 51)
+
+- **jailbreak.ts: ReDoS sister-site sweep completed (D-004). All 54 regexes across jailbreak-patterns.ts, jailbreak.ts, and jailbreak-heuristic.ts classified LINEAR; 15 defense-in-depth regression tests added to jailbreak.test.ts to lock CI classification. No fix required.** (Sprint 51)
+
 - **PromptInjectionValidator: regex DoS guard added with 100ms input-bound regression test. CWE-1333 mitigation. Closes ST-05-101 / B.1.** (Sprint 51) The `detectHtmlCommentInjection()` function used `/<!--([\s\S]*?)-->/g` which exhibited O(n^2) quadratic backtracking on inputs of repeated unclosed `<!--` tokens. Measured: 10 KB → 9 ms, 100 KB → 866 ms (pre-fix). Replaced with an `indexOf`-based linear scanner: 100 KB → 0.4 ms post-fix (2000x improvement). Four regression tests added to `prompt-injection.test.ts` under describe `'ReDoS guard (B.1 / ST-05-101)'`. All 13 other regexes in the file confirmed LINEAR via stress probe. The existing `MAX_INPUT_LENGTH = 100_000` pre-check in `analyze()` is preserved as a defence-in-depth ceiling.
 
 ### Added

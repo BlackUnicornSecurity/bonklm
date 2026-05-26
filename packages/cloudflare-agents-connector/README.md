@@ -97,7 +97,7 @@ See [threat-surfaces.md](../../docs/user/threat-surfaces.md) for the full taxono
 ## Limitations
 
 - WebSocket-broadcast events (`broadcast: true` on `setState`) are flagged via `BonklmAgentHookContext.broadcast` for validators to risk-tune; the connector does NOT itself intercept WS message dispatch.
-- `onRequest` / `onMessage` are NOT wrapped — subclass overrides remain the consumer's responsibility. Only `withBonklmAgent` is exported from this package; for preflight validation on subclass overrides, instantiate the engine directly (`new GuardrailEngine({...})` from `@blackunicorn/bonklm`) and call `engine.validate(text, { surface: 'text_input' })` before delegating to the original handler. A package-level `validateUserInput` helper is a v1.0.1 backlog item.
+- `onRequest` / `onMessage` are NOT wrapped — subclass overrides remain the consumer's responsibility. Only `withBonklmAgent` is exported from this package; for preflight validation on subclass overrides, instantiate the engine directly (`new GuardrailEngine({...})` from `@blackunicorn/bonklm`) and call `engine.validate(text)` before delegating to the original handler. A package-level `validateUserInput` helper is a v1.0.1 backlog item.
 - Per-row text validation dispatches as `kind: 'text'`, NOT `kind: 'retrieved_docs'`, because the core RetrievedDocValidator's default `onPerDocFailure: 'drop'` returns `blocked: false` at the batch level. Pass text-shape validators directly.
 
 ## Related
