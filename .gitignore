@@ -151,3 +151,9 @@ demo/*/screenshots/
 demo/*/logs/
 demo/*/evidence-tmp/
 demo/*/bun.lock
+# Belt-and-suspenders: per-demo .env files. demo/elizaos-wallet-drain/.gitignore
+# already excludes .env.* but we mirror at root per agent-H-secret-scan
+# Sprint 51 D-008 P0 recommendation (real Anthropic key surfaced in
+# demo/.env.demo via gitleaks working-tree scan).
+demo/**/.env
+demo/**/.env.*

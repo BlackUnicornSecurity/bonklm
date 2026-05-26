@@ -5,6 +5,9 @@
   "deprecated": "This package has been merged into @blackunicorn/bonklm. Please install @blackunicorn/bonklm instead — the `bonklm` CLI is shipped from there now.",
   "description": "DEPRECATED: merged into @blackunicorn/bonklm. Install @blackunicorn/bonklm instead.",
   "type": "module",
+  "exports": {
+    ".": "./dist/index.js"
+  },
   "engines": {
     "node": ">=20.4.0"
   }

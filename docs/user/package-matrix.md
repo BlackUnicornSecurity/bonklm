@@ -1,6 +1,6 @@
 # BonkLM Package Compatibility Matrix
 
-v0.7.0 release surface. 31 publishable workspace packages + 19
+v1.0.0-rc.3 release surface. 31 publishable workspace packages + 19
 internal/infrastructure packages = 54 total.
 
 ## Bundle target legend
@@ -119,7 +119,7 @@ Sprint 24 Story 4.5 graduation gate passed at 100% recall / 0% FPR /
 
 | Package | Status | Migration |
 |---|---|---|
-| `@blackunicorn/bonklm-openclaw` | DEPRECATED (date gate 2026-07-01) | Story 2.14a: removal after gate passes if no consumers surface, else Epic 3 "harden" pass |
+| `@blackunicorn/bonklm-openclaw` | **REMOVED FROM PUBLISH SET v1.0.0** (per D-9, 2026-05-26 Sprint 51 ST-01-003; marked `private:true`). Original deprecation date gate 2026-07-01 retained for rc.x consumers via `docs/openclaw-integration.md` deprecation banner. | Migrate to native framework middleware (Express, Fastify, NestJS, Hono, Elysia, Next.js) — see [Connectors index](./connectors/framework-middleware.md). |
 
 ## Cross-package patterns
 
@@ -168,7 +168,8 @@ bypass across all wrap-pattern connectors.
 - Public API surface audit — mark internal vs public exports.
 - Deprecated paths removed: `messagesToTextLegacy`,
   `GuardrailsCallbackHandler`, sync `validateToken`, openclaw-adapter
-  (if removed in v0.7).
+  (REMOVED from v1.0.0 publish set per D-9 2026-05-26 — see Deprecated/legacy
+  table above for migration path).
 - API freeze — no removal until v2.0.
 - v1.0-RC tag cut.
 
@@ -180,4 +181,4 @@ peer deps are listed disjunctively (`^4.0.0 ‖ ^5.0.0`) where the BonkLM
 wrap surface is stable across vendor majors. Workerd `nodejs_compat`
 flag required for edge bundles.
 
-Last updated: Sprint 25 (v0.7.0 release).
+Last updated: Sprint 51 (v1.0.0-rc.3, rc.4 cut imminent).

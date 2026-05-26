@@ -10,14 +10,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Post-rc.3 hardening pass continued across Sprints 42–50. Sprint 50
 ships the final two queued items before the v1.0.0-rc.4 cut.
 
-### Security
-
-- **secret/pii/guards-secret: ReDoS spot-check completed (D-005 final layer-1 sweep). All 81 regexes across guards/secret.ts (38), guards/pii/patterns.ts (43), and guards/pii/validators.ts (0 variable-length) classified LINEAR; 9 DiD regression tests added across 3 test files. No fix required. Closes ReDoS sweep program for v1.0.0 validator/guard surface.** (Sprint 51)
-
-- **jailbreak.ts: ReDoS sister-site sweep completed (D-004). All 54 regexes across jailbreak-patterns.ts, jailbreak.ts, and jailbreak-heuristic.ts classified LINEAR; 15 defense-in-depth regression tests added to jailbreak.test.ts to lock CI classification. No fix required.** (Sprint 51)
-
-- **PromptInjectionValidator: regex DoS guard added with 100ms input-bound regression test. CWE-1333 mitigation. Closes ST-05-101 / B.1.** (Sprint 51) The `detectHtmlCommentInjection()` function used `/<!--([\s\S]*?)-->/g` which exhibited O(n^2) quadratic backtracking on inputs of repeated unclosed `<!--` tokens. Measured: 10 KB → 9 ms, 100 KB → 866 ms (pre-fix). Replaced with an `indexOf`-based linear scanner: 100 KB → 0.4 ms post-fix (2000x improvement). Four regression tests added to `prompt-injection.test.ts` under describe `'ReDoS guard (B.1 / ST-05-101)'`. All 13 other regexes in the file confirmed LINEAR via stress probe. The existing `MAX_INPUT_LENGTH = 100_000` pre-check in `analyze()` is preserved as a defence-in-depth ceiling.
-
 ### Added
 
 - Per-package README finalized for 11 connectors (cloudflare-agents, hono, voltops-otel, letta, zep, voltagent, elysia, mem0, memory-utils, nextjs, web-middleware-utils). All `[needs-info:` draft markers resolved with authoritative source-derived answers or explicit v1.0.x backlog deferrals (CHM:cloudflare validateUserInput export, hono validatedStream helper, zep thread.* tenant-derived ID enforcement). Closes ST-01-006.
@@ -37,8 +29,14 @@ ships the final two queued items before the v1.0.0-rc.4 cut.
 
 ### Changed
 
-- LICENSE file added to 25 previously-missing publishable packages (MIT, root-copied). Closes ST-01-005.
-- Engines floor normalized to Node 20.4 across 24 packages (was 20.0). Closes ST-01-001.
+- `exports` map added to 8 connectors (chroma, huggingface, llamaindex, pinecone, qdrant, vercel, weaviate, wizard); strict-TS consumer resolves under `bundler`/`node16`/`nodenext`. CJS dist confirmed at runtime — uses `require`+`default`+`types` conditions. Closes ST-01-002. (Sprint 51 Wave 2)
+- LICENSE file added to 25 previously-missing publishable packages (MIT, root-copied). Closes ST-01-005. (Sprint 51 Wave 1)
+- LICENSE refreshed on 2 stale per-package copies (anthropic-connector, vercel-connector) from `(c) 2025 Black Unicorn` to root `(c) 2026 Black Unicorn <security@blackunicorn.tech>`. All 52 publishable now byte-identical. Closes D-001. (Sprint 51 Wave 1.5)
+- Engines floor normalized to Node 20.4 across 24 packages (was 20.0). Closes ST-01-001. (Sprint 51 Wave 1)
+- `@opentelemetry/api ^1.9.0` declared as optional `peerDependency` of `@blackunicorn/bonklm-voltops-otel` (consumer brings via tracer SDK; pin reflects structural-typing compatibility). Closes D-002 surface alignment. (Sprint 51 Wave 1.5)
+- CHANGELOG duplicate `## [Unreleased]` heading at line 978 collapsed; 70 bullets relocated to `## [0.5.0]` section (correct destination — they were v0.5.0 in-flight, not v1.0.0). Single `## [Unreleased]` heading remains. Closes ST-01-008 + R-16. (Sprint 51 Wave 2)
+- `engines.node` floor on `@blackunicorn/bonklm-voltops-otel` corrected from `>=20.0.0` to `>=20.4.0` (auto-aligned via ST-01-001 sweep). Closes ST-01-001 expansion. (Sprint 51 Wave 1)
+- Cloudflare-agents `bonklm-agent.ts` JSDoc corrected to remove reference to non-existent `validateUserInput` helper; recommends `engine.validate(text)` directly. Source surface now aligned with README. Closes D-002 surface side. (Sprint 51 Wave 1.5)
 
 ### Behavior changes
 
@@ -61,6 +59,19 @@ ships the final two queued items before the v1.0.0-rc.4 cut.
   `stripLogControlChars` function itself remains `@public` +
   `@deprecated` for back-compat with any rc.1 → rc.3 importer;
   removal target unchanged at v2.0 per ADR-0001 Decision #4.
+
+### Removed
+
+- `openclaw-adapter` dropped from v1.0.0 publish set (per D-9; original deprecated removal date 2026-07-01 retained). Marked `"private": true` in `packages/openclaw-adapter/package.json`; `pnpm publish -r --dry-run` no longer lists `@blackunicorn/bonklm-openclaw`. `docs/openclaw-integration.md` deprecation banner retained for rc.x consumers. `docs/user/package-matrix.md` + `docs/user/public-api-surface.md` updated in-place to mark as REMOVED v1.0.0 (content preserved per CLAUDE.md). Migrate to native framework middleware (Express, Fastify, NestJS, Hono, Elysia, Next.js). Closes ST-01-003. (Sprint 51 Wave 2)
+
+### Security
+
+- **HB-1 secret-scan baseline established.** workspace + history scanned (scan results tracked internally per project security policy) and git history (details tracked internally per project security policy). `ripsecrets` unavailable in tooling (install pending — recommended addition to `framework/TOOLS.md`). Scaffolded reusable `team/qa/scripts/tarball-secret-scan.sh` for Sprint 52+ tarball-time integration with structured JSON output + `--help` + cleanup trap. `team/qa/1.0.0/evidence/gate-5/ST-05-001/policy.md` documents HB-1 invariant + escalation path. Closes ST-05-001 setup phase; tarball-time invariant remains gated to Gate 9 (Sprint 54). Defense-in-depth: root `.gitignore` reinforced with `demo/**/.env*` patterns. (Sprint 51 Wave 2)
+- **secret/pii/guards-secret: ReDoS spot-check completed (D-005 final layer-1 sweep). All 81 regexes across guards/secret.ts (38), guards/pii/patterns.ts (43), and guards/pii/validators.ts (0 variable-length) classified LINEAR; 9 DiD regression tests added across 3 test files. No fix required. Closes ReDoS sweep program for v1.0.0 validator/guard surface.** (Sprint 51 Wave 1.5)
+
+- **jailbreak.ts: ReDoS sister-site sweep completed (D-004). All 54 regexes across jailbreak-patterns.ts, jailbreak.ts, and jailbreak-heuristic.ts classified LINEAR; 15 defense-in-depth regression tests added to jailbreak.test.ts to lock CI classification. No fix required.** (Sprint 51)
+
+- **PromptInjectionValidator: regex DoS guard added with 100ms input-bound regression test. CWE-1333 mitigation. Closes ST-05-101 / B.1.** (Sprint 51) The `detectHtmlCommentInjection()` function used `/<!--([\s\S]*?)-->/g` which exhibited O(n^2) quadratic backtracking on inputs of repeated unclosed `<!--` tokens. Measured: 10 KB → 9 ms, 100 KB → 866 ms (pre-fix). Replaced with an `indexOf`-based linear scanner: 100 KB → 0.4 ms post-fix (2000x improvement). Four regression tests added to `prompt-injection.test.ts` under describe `'ReDoS guard (B.1 / ST-05-101)'`. All 13 other regexes in the file confirmed LINEAR via stress probe. The existing `MAX_INPUT_LENGTH = 100_000` pre-check in `analyze()` is preserved as a defence-in-depth ceiling.
 
 ## [1.0.0-rc.3] — 2026-05-24 (Sprints 29 + 30 + 31 + cumulative audit closure)
 
@@ -974,8 +985,6 @@ green across the entire Sprint 13–15 surface.
   `@blackunicorn/bonklm/core/connector-utils` (canonical edge-safe
   home). The browser-agents-core re-export remains for back-compat;
   consumer code referencing the symbol directly is unaffected.
-
-## [Unreleased]
 
 ### Added (Story 2.1b-connectors, en route to v0.5.0)
 

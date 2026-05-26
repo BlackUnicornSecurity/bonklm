@@ -4,6 +4,13 @@
   "description": "ChromaDB connector for BonkLM - Vector database security for RAG applications",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
   "author": "Black Unicorn",
   "license": "MIT",
   "publishConfig": {

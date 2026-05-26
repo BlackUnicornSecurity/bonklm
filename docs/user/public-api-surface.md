@@ -1,8 +1,9 @@
-# BonkLM Public API Surface (v0.7.0 → v1.0-RC freeze prep)
+# BonkLM Public API Surface (v1.0.0-rc.3 freeze)
 
-Sprint 25 audit prep for v1.0-RC API freeze (Sprints 26-28 / Story 4.7).
-This document enumerates what is **PUBLIC** (frozen for v2.0) vs
-**INTERNAL** (may change without notice in v1.x).
+Audit baseline for the v1.0-RC API freeze (Sprints 26-28 / Story 4.7,
+extended across Sprints 29–51 post-rc.3 hardening). This document
+enumerates what is **PUBLIC** (frozen for v2.0) vs **INTERNAL** (may
+change without notice in v1.x).
 
 ## Versioning policy
 
@@ -168,7 +169,7 @@ Per Story 4.7 (Sprints 26-28):
 | `messagesToTextLegacy` | Replaced by `messagesToText` (Story 1.5) | Sprint 26 |
 | `GuardrailsCallbackHandler` | Replaced by `wrapLangChain` (Story 1.5) | Sprint 26 |
 | sync `validateToken` | Replaced by async `validate` (Story 1.6) | Sprint 27 |
-| `openclaw-adapter` package | Story 2.14a date gate (2026-07-01) | Sprint 26 if no consumers |
+| `openclaw-adapter` package | **REMOVED FROM PUBLISH SET v1.0.0** (Sprint 51 ST-01-003 per D-9). Pre-existing deprecation banner retained at `docs/openclaw-integration.md` for rc.x consumers. | Migrate to native framework middleware (Express, Fastify, NestJS, Hono, Elysia, Next.js) before 2026-07-01 date gate. |
 
 ## API freeze plan
 
@@ -194,4 +195,4 @@ After v1.0.0, removing any `@public` symbol triggers a major version
 bump. Adding symbols is a minor bump. Bug fixes and internal-only
 changes are patches.
 
-Last updated: Sprint 25 (v0.7.0 + audit prep).
+Last updated: Sprint 51 (v1.0.0-rc.3 + rc.4 audit prep).
