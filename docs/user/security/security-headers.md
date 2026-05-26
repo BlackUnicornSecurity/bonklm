@@ -1,12 +1,27 @@
-# Security Headers Guide
+# Security Headers
 
-When deploying BonkLM in production, proper security headers are essential for defense in depth. This guide shows how to configure recommended headers.
+> **Last updated:** 2026-05-25 · **Package version:** `1.0.0-rc.3`
 
-## Essential Security Headers
+BonkLM does not set HTTP response headers — header policy belongs to
+your web framework. This guide shows the recommended `helmet`
+configuration for Express / Fastify in front of the guardrails
+middleware, plus how to use `XSSGuard` for content-level XSS detection
+when validating LLM input or output.
 
-### 1. Content Security Policy (CSP)
+Server-level headers (CSP, HSTS, X-Frame-Options, etc.) and content-
+level XSS detection are complementary: headers protect the browser
+context; `XSSGuard` protects the LLM context (e.g., refusing to send
+a payload with a script tag through a model that will echo it back).
 
-CSP helps prevent XSS attacks by controlling which resources can be loaded.
+---
+
+## Essential headers
+
+### Content Security Policy (CSP)
+
+Restricts which resources the browser may load. For pure API endpoints
+that never serve HTML, the script / style directives can be locked
+down to `'none'`.
 
 ```typescript
 import express from 'express';
@@ -14,149 +29,141 @@ import helmet from 'helmet';
 
 const app = express();
 
-// Configure CSP for LLM API endpoints
-app.use('/api/ai', helmet.contentSecurityPolicy({
-  directives: {
-    defaultSrc: ["'self'"],
-    scriptSrc: ["'self'"],
-    styleSrc: ["'self'", "'unsafe-inline'"],
-    imgSrc: ["'self'", 'data:', 'https:'],
-    connectSrc: ["'self'"],
-    frameSrc: ["'none'"],
-    objectSrc: ["'none'"],
-    baseUri: ["'self'"],
-    formAction: ["'self'"],
-    frameAncestors: ["'none'"],
-  },
-}));
+app.use(
+  '/api/ai',
+  helmet.contentSecurityPolicy({
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      frameAncestors: ["'none'"],
+    },
+  })
+);
 ```
 
-### 2. HTTP Strict Transport Security (HSTS)
+### HTTP Strict Transport Security (HSTS)
 
-Forces HTTPS connections and prevents man-in-the-middle attacks.
+Forces HTTPS for the configured `maxAge`. Set `preload: true` only
+after submitting your domain to the HSTS preload list.
 
 ```typescript
-import helmet from 'helmet';
-
-app.use(helmet.hsts({
-  maxAge: 31536000, // 1 year in seconds
-  includeSubDomains: true,
-  preload: true,
-}));
+app.use(
+  helmet.hsts({
+    maxAge: 31_536_000, // 1 year
+    includeSubDomains: true,
+    preload: true,
+  })
+);
 ```
 
-### 3. X-Frame-Options (CLICKJACKING protection)
+### X-Frame-Options (clickjacking)
 
 ```typescript
-app.use(helmet.frameguard({
-  action: 'deny', // SAMEORIGIN or DENY
-}));
+app.use(helmet.frameguard({ action: 'deny' })); // or 'sameorigin'
 ```
 
-### 4. X-Content-Type-Options
-
-Prevents MIME-sniffing.
+### X-Content-Type-Options
 
 ```typescript
 app.use(helmet.noSniff());
 ```
 
-### 5. X-XSS-Protection
+### X-XSS-Protection (legacy)
 
-Legacy XSS protection (modern browsers use CSP).
+Modern browsers ignore this and use CSP — keep it set for older
+clients and crawlers.
 
 ```typescript
-// Set via helmet defaults
 app.use(helmet.xssFilter());
 ```
 
-## Complete Security Middleware Setup
+---
+
+## Complete Express setup
 
 ```typescript
 import express from 'express';
 import helmet from 'helmet';
 import { createGuardrailsMiddleware } from '@blackunicorn/bonklm-express';
+import { PromptInjectionValidator } from '@blackunicorn/bonklm';
 
 const app = express();
 
-// 1. Apply security headers to all routes
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
+// 1. Browser-level headers on all routes.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+      },
     },
-  },
-  hsts: {
-    maxAge: 31536000,
-    includeSubDomains: true,
-    preload: true,
-  },
-  noSniff: true,
-  xssFilter: true,
-  frameguard: {
-    action: 'deny',
-  },
-}));
+    hsts: { maxAge: 31_536_000, includeSubDomains: true, preload: true },
+    noSniff: true,
+    xssFilter: true,
+    frameguard: { action: 'deny' },
+  })
+);
 
-// 2. Additional security headers
-app.use((req, res, next) => {
-  // Prevent caching of sensitive responses
+// 2. Extra cache + referrer + permissions headers for sensitive routes.
+app.use((_req, res, next) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-
-  // Content Type enforcement
   res.setHeader('X-Content-Type-Options', 'nosniff');
-
-  // Referrer Policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-
-  // Permissions Policy (formerly Feature Policy)
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-
   next();
 });
 
-// 3. Apply guardrails middleware
-app.use('/api/ai', createGuardrailsMiddleware({
-  validators: [/* your validators */],
-}));
+// 3. Guardrails middleware.
+app.use(
+  '/api/ai',
+  createGuardrailsMiddleware({
+    validators: [new PromptInjectionValidator()],
+    productionMode: process.env.NODE_ENV === 'production',
+  })
+);
 ```
 
-## CORS Configuration
+---
 
-Proper CORS settings prevent unauthorized cross-origin requests.
+## CORS
 
 ```typescript
 import cors from 'cors';
 
-const allowedOrigins = [
-  'https://yourdomain.com',
-  'https://app.yourdomain.com',
-];
+const allowedOrigins = ['https://yourdomain.com', 'https://app.yourdomain.com'];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'CORS policy: This origin is not allowed';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  maxAge: 600, // 10 minutes
-}));
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true); // server-side / curl
+      if (!allowedOrigins.includes(origin)) {
+        return callback(new Error('CORS policy: origin not allowed'), false);
+      }
+      callback(null, true);
+    },
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    maxAge: 600,
+  })
+);
 ```
 
-## Fastify Security Headers
+---
+
+## Fastify
 
 ```typescript
 import fastifyHelmet from '@fastify/helmet';
@@ -170,67 +177,108 @@ await fastify.register(fastifyHelmet, {
     },
   },
   hsts: {
-    maxAge: 31536000,
+    maxAge: 31_536_000,
     includeSubDomains: true,
     preload: true,
   },
 });
 ```
 
-## Headers for API Responses
+Register before `@blackunicorn/bonklm-fastify`.
 
-For JSON API endpoints, include these headers:
+---
+
+## API-response headers
+
+For JSON-only endpoints, lock down content-type sniffing and disable
+caching of sensitive payloads:
 
 ```typescript
-app.use('/api', (req, res, next) => {
-  // Prevent JSON hijacking
+app.use('/api', (_req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
-
-  // Indicate this is an API (no UI)
-  res.setHeader('X-Requested-With', 'XMLHttpRequest');
-
-  // No caching for security-sensitive responses
   res.setHeader('Cache-Control', 'no-store, no-cache');
-
   next();
 });
 ```
 
-## Security Headers Checklist
+`X-Requested-With: XMLHttpRequest` is a deprecated marker — modern
+clients use CORS preflight; you do not need to set it on responses.
 
-- [ ] Content-Security-Policy configured
-- [ ] Strict-Transport-Security (HSTS) enabled
-- [ ] X-Frame-Options set to DENY or SAMEORIGIN
-- [ ] X-Content-Type-Options: nosniff
-- [ ] X-XSS-Protection enabled (legacy support)
-- [ ] Referrer-Policy configured
-- [ ] Permissions-Policy set
-- [ ] Cache-Control properly set for sensitive endpoints
-- [ ] CORS properly configured
-- [ ] Expect-CT enabled (certificate transparency)
+---
 
-## Testing Security Headers
+## Content-level XSS — `XSSGuard`
 
-Use these tools to verify your security headers:
+Browser headers protect the rendering surface. If your LLM is going to
+echo user input back into a context that may render as HTML (chat
+transcript, support ticket, etc.), pair the headers with content-level
+detection:
 
-```bash
-# curl
-curl -I https://your-api.com/api/ai
+```typescript
+import { XSSGuard, GuardrailEngine, PromptInjectionValidator } from '@blackunicorn/bonklm';
 
-# Security Headers tool
-# Visit: https://securityheaders.com/
+const engine = new GuardrailEngine({
+  validators: [new PromptInjectionValidator()],
+  guards: [new XSSGuard()],
+});
 
-# OWASP ZAP or similar scanner
+const result = await engine.validate(userInput);
+if (!result.allowed) {
+  // findings include the matched XSS pattern + line
+}
 ```
 
-Expected response headers should include:
+`XSSGuard` (class) and `checkXSS` / `detectXSS` (function-form
+helpers) all ship from the root barrel. See
+[`packages/core/src/guards/xss-safety.ts`](../../../packages/core/src/guards/xss-safety.ts)
+for the configuration interface.
+
+---
+
+## Headers checklist
+
+- [ ] `Content-Security-Policy` configured (lock down `scriptSrc` for
+      API routes)
+- [ ] `Strict-Transport-Security` (HSTS) enabled with a 1-year
+      `max-age`
+- [ ] `X-Frame-Options: DENY` or `SAMEORIGIN`
+- [ ] `X-Content-Type-Options: nosniff`
+- [ ] `X-XSS-Protection: 1; mode=block` (legacy clients)
+- [ ] `Referrer-Policy: strict-origin-when-cross-origin`
+- [ ] `Permissions-Policy` set to deny unused powerful APIs
+- [ ] `Cache-Control: no-store, no-cache` on sensitive endpoints
+- [ ] CORS allowlist configured (no wildcard `*` in production)
+- [ ] `XSSGuard` wired into the engine when LLM output is rendered
+      as HTML downstream
+
+---
+
+## Verifying headers
+
+```bash
+# Quick check from CLI
+curl -sI https://your-api.com/api/ai | grep -iE '^(content-security|strict|x-|referrer|permissions|cache)'
+
+# Online scanner
+# https://securityheaders.com/
+```
+
+Expected response (representative):
 
 ```
 Content-Security-Policy: default-src 'self'
-Strict-Transport-Security: max-age=31536000; includeSubDomains
+Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
 X-Frame-Options: DENY
 X-Content-Type-Options: nosniff
 X-XSS-Protection: 1; mode=block
 Referrer-Policy: strict-origin-when-cross-origin
-Permissions-Policy: geolocation=(), microphone=()
+Permissions-Policy: geolocation=(), microphone=(), camera=()
 ```
+
+---
+
+## See also
+
+- [Rate limiting](./rate-limiting.md)
+- [Getting started — production hardening](../../getting-started.md#production-hardening-checklist)
+- [Known limitations](../known-limitations.md)
+- [Threat surfaces](../threat-surfaces.md)

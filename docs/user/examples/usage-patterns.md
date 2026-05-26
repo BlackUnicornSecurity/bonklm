@@ -1,114 +1,126 @@
-# Usage Examples and Patterns
+# Usage Patterns
 
-This guide provides practical examples for common BonkLM usage patterns.
+> **Last updated:** 2026-05-25 · **Package version:** `1.0.0-rc.3`
 
-## Table of Contents
+Practical examples for the most common BonkLM patterns. Every snippet
+is verified against current source — if you find one that no longer
+matches the API, file a docs issue with the package version that
+broke it.
 
-1. [Basic Validation](#basic-validation)
-2. [Express Middleware](#express-middleware)
-3. [Streaming LLM Responses](#streaming-llm-responses)
-4. [RAG Applications](#rag-applications)
-5. [Tool/Function Calling](#toolfunction-calling)
-6. [Multi-Validator Setup](#multi-validator-setup)
-7. [Custom Error Handling](#custom-error-handling)
-8. [Production Deployment](#production-deployment)
+## Table of contents
+
+1. [Basic validation](#basic-validation)
+2. [Express middleware](#express-middleware)
+3. [Streaming LLM responses](#streaming-llm-responses)
+4. [Structured-input surfaces (`validateInput`)](#structured-input-surfaces-validateinput)
+5. [RAG applications](#rag-applications)
+6. [Tool / function calling](#tool--function-calling)
+7. [Memory clients (mem0 / zep / letta / ElizaOS)](#memory-clients)
+8. [Multi-validator setup](#multi-validator-setup)
+9. [Custom error handling](#custom-error-handling)
+10. [Production deployment](#production-deployment)
 
 ---
 
-## Basic Validation
+## Basic validation
 
-### Single Validator
-
-```typescript
-import { PromptInjectionValidator } from '@blackunicorn/bonklm';
-
-const validator = new PromptInjectionValidator();
-const result = validator.validate(userInput);
-
-if (!result.allowed) {
-  console.log('Blocked:', result.reason);
-  return;
-}
-
-// Process safe input
-processInput(userInput);
-```
-
-### Quick Validation Function
+### Function form (one-shot)
 
 ```typescript
 import { validatePromptInjection } from '@blackunicorn/bonklm';
 
 const result = validatePromptInjection(userInput);
-
 if (!result.allowed) {
   return { error: 'Invalid input', reason: result.reason };
 }
+```
 
-return { success: true };
+### Class form (reuse config)
+
+```typescript
+import { PromptInjectionValidator } from '@blackunicorn/bonklm';
+
+const validator = new PromptInjectionValidator({
+  sensitivity: 'strict',
+  detectMultiLayerEncoding: true,
+});
+
+for (const input of inputs) {
+  const result = validator.validate(input);
+  if (!result.allowed) {
+    console.log('Blocked:', result.reason);
+  }
+}
 ```
 
 ---
 
-## Express Middleware
+## Express middleware
 
-### AI Endpoint Protection
+### AI endpoint protection
 
 ```typescript
 import express from 'express';
 import { createGuardrailsMiddleware } from '@blackunicorn/bonklm-express';
-import { PromptInjectionValidator, JailbreakValidator } from '@blackunicorn/bonklm';
+import {
+  PromptInjectionValidator,
+  JailbreakValidator,
+} from '@blackunicorn/bonklm';
 
 const app = express();
 app.use(express.json());
 
-// Protect AI endpoints
-app.use('/api/ai', createGuardrailsMiddleware({
-  validators: [
-    new PromptInjectionValidator({ sensitivity: 'strict' }),
-    new JailbreakValidator(),
-  ],
-  validateRequest: true,
-  validateResponse: false,
-  productionMode: process.env.NODE_ENV === 'production',
-  validationTimeout: 5000,
-  maxContentLength: 1024 * 1024,  // 1MB
-  onError: (result, req, res) => {
-    res.status(400).json({
-      error: 'Content blocked by safety guardrails',
-    });
-  },
-}));
+app.use(
+  '/api/ai',
+  createGuardrailsMiddleware({
+    validators: [
+      new PromptInjectionValidator({ sensitivity: 'strict' }),
+      new JailbreakValidator(),
+    ],
+    validateRequest: true,
+    validateResponse: false,
+    productionMode: process.env.NODE_ENV === 'production',
+    validationTimeout: 5000,
+    maxContentLength: 1024 * 1024,
+    onError: (_result, _req, res) => {
+      res.status(400).json({ error: 'Content blocked by safety guardrails' });
+    },
+  })
+);
 
 app.post('/api/ai/chat', async (req, res) => {
-  const { message } = req.body;
-  const response = await callLLM(message);
+  const response = await callLLM(req.body.message);
   res.json({ response });
 });
 
 app.listen(3000);
 ```
 
-### Path-Specific Protection
+### Path-specific protection
 
 ```typescript
-// Only protect specific paths
-app.use('/api/sensitive', createGuardrailsMiddleware({
-  validators: [new PromptInjectionValidator()],
-}));
+app.use(
+  '/api/sensitive',
+  createGuardrailsMiddleware({ validators: [new PromptInjectionValidator()] })
+);
 
-// Exclude health endpoints
-app.use('/api/ai', createGuardrailsMiddleware({
-  validators: [new PromptInjectionValidator()],
-  excludePaths: ['/api/ai/health', '/api/ai/status'],
-}));
+app.use(
+  '/api/ai',
+  createGuardrailsMiddleware({
+    validators: [new PromptInjectionValidator()],
+    excludePaths: ['/api/ai/health', '/api/ai/status'],
+  })
+);
 ```
 
 ---
 
-## Streaming LLM Responses
+## Streaming LLM responses
 
-### OpenAI Streaming
+### OpenAI streaming
+
+The OpenAI connector wraps the SDK and validates incremental chunks
+during the stream.
 
 ```typescript
 import OpenAI from 'openai';
@@ -120,73 +132,125 @@ const guardedOpenAI = createGuardedOpenAI(openai, {
   validators: [new PromptInjectionValidator()],
   validateStreaming: true,
   streamingMode: 'incremental',
-  onStreamBlocked: (accumulated) => {
-    console.log('Stream blocked after:', accumulated.length, 'chars');
+  validationTimeout: 30_000, // ms
+  maxStreamBufferSize: 1024 * 1024, // 1MB
+  productionMode: process.env.NODE_ENV === 'production',
+  onStreamBlocked: (info) => {
+    console.warn('Stream blocked:', info);
   },
 });
 
-async function chatWithStreaming(userInput: string) {
-  try {
-    const stream = await guardedOpenAI.chat.completions.create({
-      model: 'gpt-4',
-      messages: [{ role: 'user', content: userInput }],
-      stream: true,
-    });
+const stream = await guardedOpenAI.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: userInput }],
+  stream: true,
+});
 
-    for await (const chunk of stream) {
-      const content = chunk.choices[0]?.delta?.content || '';
-      process.stdout.write(content);
-    }
-  } catch (error) {
-    if (error instanceof StreamValidationError) {
-      console.error('Stream blocked:', error.message);
-    }
-  }
+for await (const chunk of stream as AsyncIterable<{
+  choices: { delta?: { content?: string } }[];
+}>) {
+  const content = chunk.choices[0]?.delta?.content ?? '';
+  process.stdout.write(content);
 }
 ```
 
-### Custom Streaming Validator
+> Streaming mode is `'incremental'` by default — every chunk is fed
+> through the validator chain. Switch to `'buffered'`
+> [needs-info: confirm the canonical mode names in
+> `packages/openai-connector/src/types.ts`] when partial outputs are
+> acceptable but you want to validate at the end.
+
+### Lower-level streaming primitive
+
+For non-OpenAI streams, use the `StreamValidator` class from the
+connector-utils surface:
 
 ```typescript
-import { StreamingValidator } from '@blackunicorn/bonklm/examples/streaming';
-import { PromptInjectionValidator, JailbreakValidator } from '@blackunicorn/bonklm';
+import {
+  StreamValidator,
+  createStreamValidatorState,
+  processStreamChunk,
+  PromptInjectionValidator,
+} from '@blackunicorn/bonklm';
 
-const validator = new StreamingValidator(
-  [
-    new PromptInjectionValidator(),
-    new JailbreakValidator(),
-  ],
-  [],
-  {
-    validateEveryNChunks: 5,
-    streamingMode: 'incremental',
+const validator = new StreamValidator({
+  validators: [new PromptInjectionValidator()],
+  validateEveryN: 5,
+  maxBufferSize: 1024 * 1024,
+});
+
+let state = createStreamValidatorState();
+for await (const chunk of stream) {
+  const outcome = await processStreamChunk(validator, state, chunk);
+  state = outcome.state;
+  if (outcome.blocked) {
+    console.warn('Stream blocked:', outcome.reason);
+    break;
   }
-);
-
-async function processStream(stream: AsyncIterable<string>) {
-  const chunks: string[] = [];
-
-  for await (const chunk of stream) {
-    const { shouldTerminate, result } = await validator.processChunk(chunk);
-
-    if (shouldTerminate) {
-      console.log('Stream terminated:', result?.reason);
-      break;
-    }
-
-    chunks.push(chunk);
-    process.stdout.write(chunk);
-  }
-
-  return chunks.join('');
+  process.stdout.write(chunk);
 }
 ```
+
+> The old `import { StreamingValidator } from '@blackunicorn/bonklm/examples/streaming'`
+> path no longer exists — the canonical primitive is `StreamValidator`
+> in `connector-utils`, re-exported from the root barrel.
 
 ---
 
-## RAG Applications
+## Structured-input surfaces (`validateInput`)
 
-### LlamaIndex Query Engine
+`engine.validate(content: string)` is the text-only entry point. For
+the other six surfaces in the `HookSurface` taxonomy, use
+`engine.validateInput({ kind, ... })`:
+
+```typescript
+import { GuardrailEngine, PromptInjectionValidator } from '@blackunicorn/bonklm';
+
+const engine = new GuardrailEngine({
+  validators: [new PromptInjectionValidator()],
+});
+
+// tool_call surface
+await engine.validateInput({
+  kind: 'tool_call',
+  toolName: 'web_search',
+  args: { query: userQuery, max_results: 5 },
+});
+
+// retrieved_docs surface (RAG)
+await engine.validateInput({
+  kind: 'retrieved_docs',
+  docs: [
+    { id: 'doc-1', content: ragSnippet, metadata: { source: 'kb' } },
+  ],
+});
+
+// memory_write surface
+await engine.validateInput({
+  kind: 'memory_write',
+  payload: {
+    content: memoryPayload,
+    userId: ctx.user.id,
+    sessionId: ctx.session.id,
+    metadata: { provenance: 'agent_internal' },
+  },
+});
+
+// composed_context surface — the final composed prompt
+await engine.validateInput({
+  kind: 'composed_context',
+  entries: [systemPrompt, ragContext, userInput],
+});
+```
+
+The intercept-callback dispatch path is identical to `validate(...)`,
+so telemetry coverage is uniform across surfaces.
+
+---
+
+## RAG applications
+
+### LlamaIndex query engine
 
 ```typescript
 import { createGuardedQueryEngine } from '@blackunicorn/bonklm-llamaindex';
@@ -197,17 +261,18 @@ const guardedEngine = createGuardedQueryEngine(queryEngine, {
   validateQueryInput: true,
   validateQueryOutput: true,
   onQueryBlocked: (result) => {
-    console.log('Query blocked:', result.reason);
+    console.warn('Query blocked:', result.reason);
   },
 });
 
-async function askQuestion(question: string) {
-  const response = await guardedEngine.query({ query: question });
-  return response;
-}
+const response = await guardedEngine.query({ query: question });
 ```
 
-### Vector Store with Pinecone
+[needs-info: confirm `createGuardedRetriever` option shape in
+`packages/llamaindex-connector/src/guarded-engine.ts` — exposing it
+here without verifying its signature could mislead callers.]
+
+### Pinecone vector store
 
 ```typescript
 import { Pinecone } from '@pinecone-database/pinecone';
@@ -223,64 +288,145 @@ const guardedIndex = createGuardedIndex(index, {
   validateFilters: true,
 });
 
-async function searchDocuments(queryVector: number[]) {
-  const results = await guardedIndex.query({
-    vector: queryVector,
-    topK: 10,
-    filter: { category: { $eq: 'article' } },
-  });
-  return results;
-}
+await guardedIndex.query({
+  vector: queryVector,
+  topK: 10,
+  filter: { category: { $eq: 'article' } },
+});
 ```
 
 ---
 
-## Tool/Function Calling
+## Tool / function calling
 
-### OpenAI Tool Calls
+Tool-call args are a structured surface. Two equivalent patterns:
+
+### Through `engine.validateInput`
 
 ```typescript
+import { GuardrailEngine, PromptInjectionValidator } from '@blackunicorn/bonklm';
+
+const engine = new GuardrailEngine({
+  validators: [new PromptInjectionValidator()],
+});
+
+const result = await engine.validateInput({
+  kind: 'tool_call',
+  toolName: 'search',
+  args: { query: userQuery },
+});
+
+if (result.blocked) {
+  // refuse before executing the tool
+}
+```
+
+### Through the OpenAI connector
+
+```typescript
+import OpenAI from 'openai';
 import { createGuardedOpenAI } from '@blackunicorn/bonklm-openai';
 import { PromptInjectionValidator } from '@blackunicorn/bonklm';
 
+const openai = new OpenAI();
 const guardedOpenAI = createGuardedOpenAI(openai, {
   validators: [new PromptInjectionValidator()],
-  allowedTools: ['search', 'calculator', 'weather'],
-  maxToolArgumentSize: 100 * 1024,  // 100KB
 });
 
-async function callTool(userInput: string) {
-  const response = await guardedOpenAI.chat.completions.create({
-    model: 'gpt-4',
-    messages: [{ role: 'user', content: userInput }],
-    tools: [
-      {
-        type: 'function',
-        function: {
-          name: 'search',
-          description: 'Search the web',
-          parameters: {
-            type: 'object',
-            properties: {
-              query: { type: 'string' },
-            },
-          },
+const response = await guardedOpenAI.chat.completions.create({
+  model: 'gpt-4',
+  messages: [{ role: 'user', content: userInput }],
+  tools: [
+    {
+      type: 'function',
+      function: {
+        name: 'search',
+        description: 'Search the web',
+        parameters: {
+          type: 'object',
+          properties: { query: { type: 'string' } },
         },
       },
-    ],
-  });
-
-  // Tool calls are validated before execution
-  const toolCalls = response.choices[0]?.message.tool_calls;
-  return toolCalls;
-}
+    },
+  ],
+});
 ```
+
+[needs-info: confirm `allowedTools` / `maxToolArgumentSize` are still
+options on `createGuardedOpenAI` in 1.0.0-rc.3 — the previous docs
+listed them but I did not verify the current signature against
+`packages/openai-connector/src/types.ts`.]
 
 ---
 
-## Multi-Validator Setup
+## Memory clients
 
-### Comprehensive Protection
+Two patterns ship today.
+
+### `wrapMemoryClient` — generic Proxy wrap (mem0 / zep / letta)
+
+For SDKs that expose a client object with mutation methods:
+
+```typescript
+import { GuardrailEngine, PromptInjectionValidator } from '@blackunicorn/bonklm';
+import { wrapMemoryClient } from '@blackunicorn/bonklm-memory-utils';
+// Per-vendor adapter (one of):
+// import { mem0Adapter } from '@blackunicorn/bonklm-mem0';
+// import { zepAdapter } from '@blackunicorn/bonklm-zep';
+// import { lettaAdapter } from '@blackunicorn/bonklm-letta';
+
+const engine = new GuardrailEngine({
+  validators: [new PromptInjectionValidator()],
+});
+
+const wrappedClient = wrapMemoryClient(client, {
+  adapter: mem0Adapter, // pick the adapter that matches the SDK
+  engine,
+  validators: [new PromptInjectionValidator()], // REQUIRED, non-empty
+  getTenantId: (ctx) => ctx.userId, // function, NOT a string
+});
+
+// Use the wrapped client exactly like the original — Proxy preserves
+// the prototype chain so `instanceof` keeps working.
+await wrappedClient.add({ content: memoryPayload, userId: 'user-123' });
+```
+
+Notes:
+- `validators` MUST be non-empty. An empty array would silently
+  fail-OPEN, so the factory throws `ConnectorValidationError` at
+  construction.
+- `getTenantId` MUST be a function `(ctx) => string`. A literal string
+  is rejected.
+- Most consumers use the per-vendor convenience wrapper
+  (`wrapMem0Client`, `wrapZepClient`, `wrapLettaClient`) instead of
+  calling `wrapMemoryClient` directly — see the connector READMEs.
+
+### `wrapMemory` — sealed ElizaOS runtime wrap
+
+ElizaOS exposes a runtime object with `createMemory` / `updateMemory`
+methods. The connector seals BOTH via `Object.defineProperty(...,
+{ configurable: false, writable: false })` in a single synchronous
+block so hostile plugins cannot unwrap or re-wrap.
+
+```typescript
+import { installSealedWrapMemory } from '@blackunicorn/bonklm-elizaos';
+
+installSealedWrapMemory(runtime, {
+  logger,
+  productionMode: process.env.NODE_ENV === 'production',
+});
+```
+
+Read the
+[ElizaOS connector README](../../../packages/elizaos-connector/README.md)
+before deploying — the seal has Class-4 risk acknowledgment requirements
+for routes that bypass the runtime wrap.
+
+---
+
+## Multi-validator setup
+
+### Comprehensive protection
 
 ```typescript
 import {
@@ -289,8 +435,10 @@ import {
   JailbreakValidator,
   ReformulationDetector,
   BoundaryDetector,
+  SecretGuard,
+  PIIGuard,
+  BashSafetyGuard,
 } from '@blackunicorn/bonklm';
-import { SecretGuard, PIIGuard, BashSafetyGuard } from '@blackunicorn/bonklm';
 
 const engine = new GuardrailEngine({
   validators: [
@@ -305,178 +453,221 @@ const engine = new GuardrailEngine({
       detectInstructionLeakage: true,
     }),
   ],
-  guards: [
-    new SecretGuard(),
-    new PIIGuard(),
-    new BashSafetyGuard(),
-  ],
-  shortCircuit: true,  // Stop on first detection
+  guards: [new SecretGuard(), new PIIGuard(), new BashSafetyGuard()],
+  shortCircuit: true,
 });
 
-async function validateContent(content: string) {
-  const result = await engine.validate(content);
-
-  if (!result.allowed) {
-    console.log('Blocked:', result.reason);
-    console.log('Risk Level:', result.risk_level);
-    console.log('Findings:', result.findings?.length);
-    return false;
-  }
-
-  return true;
+const result = await engine.validate(content);
+if (!result.allowed) {
+  console.log(`Blocked: ${result.reason} (${result.risk_level})`);
 }
 ```
 
-### Context-Aware Validation
+### Context for guards
 
 ```typescript
-import { SecretGuard, PIIGuard } from '@blackunicorn/bonklm';
-
-const engine = new GuardrailEngine({
-  validators: [new PromptInjectionValidator()],
-  guards: [
-    new SecretGuard(),
-    new PIIGuard(),
-  ],
-});
-
-// Provide context for better validation
-const result = await engine.validate(userInput, {
-  context: {
-    userId: 'user123',
-    endpoint: '/chat',
-    metadata: { conversationId: 'abc123' },
-  },
-});
-
-// Guards can use context to make decisions
+const result = await engine.validate(userInput, 'request:/chat');
+// `context` is the second arg to `engine.validate(content, context?)`.
+// Guards receive the same `context` string via their `validate(content,
+// context?)` signature — useful for surfaces like file-path-aware
+// SecretGuard ('config.js' etc.).
 ```
+
+> The previous `engine.validate(input, { context: {...} })` object-arg
+> form is not part of the current API. Use the string context above,
+> or attach structured context via intercept callbacks.
 
 ---
 
-## Custom Error Handling
+## Custom error handling
 
-### Express Error Handler
+### Express error handler
 
 ```typescript
-import { createGuardrailsMiddleware } from '@blackunicorn/bonklm-express';
-
-app.use('/api/ai', createGuardrailsMiddleware({
-  validators: [new PromptInjectionValidator()],
-  onError: (result, req, res) => {
-    const isDevelopment = process.env.NODE_ENV !== 'production';
-
-    res.status(400).json({
-      error: 'Content blocked by safety guardrails',
-      ...(isDevelopment && {
-        reason: result.reason,
-        risk_level: result.risk_level,
-        findings: result.findings?.map(f => ({
-          type: f.type,
-          severity: f.severity,
-        })),
-      }),
-    });
-  },
-}));
+app.use(
+  '/api/ai',
+  createGuardrailsMiddleware({
+    validators: [new PromptInjectionValidator()],
+    productionMode: process.env.NODE_ENV === 'production',
+    onError: (result, _req, res) => {
+      const isDev = process.env.NODE_ENV !== 'production';
+      res.status(400).json({
+        error: 'Content blocked by safety guardrails',
+        ...(isDev && {
+          reason: result.reason,
+          risk_level: result.risk_level,
+          findings: result.findings.map((f) => ({
+            type: f.category,
+            severity: f.severity,
+          })),
+        }),
+      });
+    },
+  })
+);
 ```
 
-### Async Error Handling
+### Async error narrowing
 
 ```typescript
+import {
+  StreamValidationError,
+  ConnectorValidationError,
+} from '@blackunicorn/bonklm';
+
 async function safeValidate(content: string) {
   try {
-    const result = await engine.validate(content);
-    return result;
-  } catch (error) {
-    if (error instanceof GuardrailValidationError) {
-      console.error('Validation error:', error.message);
-      return { allowed: false, reason: 'Validation failed' };
+    return await engine.validate(content);
+  } catch (err) {
+    if (err instanceof StreamValidationError) {
+      // buffer overflow / circuit-breaker trip
+      console.warn('Stream validation:', err.message);
+    } else if (err instanceof ConnectorValidationError) {
+      // configuration / runtime contract violation
+      console.error('Connector misconfigured:', err.message);
+    } else {
+      throw err;
     }
-    throw error;
+    return { allowed: false, reason: 'Validation failed' };
   }
 }
 ```
 
+> The legacy `GuardrailValidationError` name from older docs no longer
+> exists. Catch `StreamValidationError` or `ConnectorValidationError`
+> from the root barrel.
+
 ---
 
-## Production Deployment
+## Production deployment
 
-### Environment-Based Configuration
+### Environment-based configuration
 
 ```typescript
-const isProduction = process.env.NODE_ENV === 'production';
+import {
+  GuardrailEngine,
+  PromptInjectionValidator,
+  MonitoringLogger,
+  MonitoringLogLevel,
+  createLogger,
+} from '@blackunicorn/bonklm';
+
+const isProd = process.env.NODE_ENV === 'production';
+
+const logger = isProd
+  ? new MonitoringLogger({
+      level: MonitoringLogLevel.INFO,
+      json: true,
+      metrics: true,
+      audit: true,
+    })
+  : createLogger('console');
 
 const engine = new GuardrailEngine({
   validators: [
     new PromptInjectionValidator({
-      sensitivity: isProduction ? 'standard' : 'strict',
+      sensitivity: isProd ? 'standard' : 'strict',
     }),
   ],
-  productionMode: isProduction,
   validationTimeout: 5000,
-  logger: isProduction
-    ? createLogger('file', { filename: 'guardrails.log' })
-    : createLogger('console'),
+  patternTimeout: 100,
+  maxBufferSize: 1024 * 1024,
+  circuitBreakerThreshold: 3,
+  logger,
 });
 ```
 
-### Monitoring
+### Telemetry via `TelemetryService`
 
 ```typescript
-import { MonitoringLogger } from '@blackunicorn/bonklm';
+import {
+  TelemetryService,
+  TelemetryEventType,
+  ConsoleTelemetryCollector,
+  BufferedTelemetryCollector,
+  CallbackTelemetryCollector,
+} from '@blackunicorn/bonklm';
 
-const monitoring = new MonitoringLogger({
-  logLevel: 'info',
-  enableMetrics: true,
-  enableAuditTrail: true,
+const telemetry = new TelemetryService({
+  enabled: true,
+  sampleRate: 1.0,
+  collectors: [
+    new BufferedTelemetryCollector(new ConsoleTelemetryCollector(), 100, 30_000),
+    new CallbackTelemetryCollector((event) => {
+      // forward to your SIEM / OTLP pipeline
+      sendToSiem(event);
+    }),
+  ],
 });
 
-const engine = new GuardrailEngine({
-  validators: [new PromptInjectionValidator()],
-  logger: monitoring,
-});
+// Most users wire it via OTLP spans:
+import { bonklmTrace } from '@blackunicorn/bonklm';
 
-// Get metrics
-setInterval(() => {
-  const metrics = monitoring.getMetrics();
-  console.log('Validation stats:', metrics);
-}, 60000);
+await bonklmTrace({
+  surface: 'text_input',
+  action: 'validate',
+  // ...
+}, async (span) => {
+  const result = await engine.validate(input);
+  span.setAttribute('bonklm.risk_score', result.risk_score);
+  return result;
+});
 ```
 
-### Circuit Breaker Pattern
+The OTLP `bonklm.surface` / `bonklm.action` attribute vocabulary is
+locked by Story 3.11 — see
+[`docs/user/otel-vendor-recipes.md`](../otel-vendor-recipes.md).
+
+### Circuit breaker
+
+The circuit breaker is built into the engine — there is no separate
+`CircuitBreaker` instance to wire. Configure via the engine config:
 
 ```typescript
-import { CircuitBreaker } from '@blackunicorn/bonklm';
-
-const circuitBreaker = new CircuitBreaker({
-  failureThreshold: 5,
-  recoveryTimeout: 60000,
-  halfOpenMaxCalls: 3,
-});
-
 const engine = new GuardrailEngine({
   validators: [new PromptInjectionValidator()],
-  circuitBreaker,
+  circuitBreakerThreshold: 3,     // open after 3 buffer-overflow violations
+  circuitBreakerTimeout: 60_000,  // ms in OPEN state before HALF_OPEN attempt
 });
+
+console.log(engine.getCircuitBreakerState());
+// { state: 'CLOSED' | 'OPEN' | 'HALF_OPEN', violations: number, ... }
 ```
+
+Older docs showed `new CircuitBreaker(...)` + a `circuitBreaker` config
+field. That API no longer exists — use the threshold / timeout fields
+above.
+
+### Attack logging
+
+```typescript
+import { AttackLogger } from '@blackunicorn/bonklm-logger';
+
+const attackLogger = new AttackLogger({
+  max_logs: 1000,
+  ttl: 30 * 24 * 60 * 60 * 1000, // 30 days
+  sanitize_pii: true,
+});
+
+engine.onIntercept(attackLogger.getInterceptCallback());
+
+// later — dump a summary
+attackLogger.show('summary');
+// or export
+await attackLogger.exportJSONToFile('./logs/attacks.json');
+```
+
+See the [logger README](../../../packages/logger/README.md) for the
+full filter / display API.
 
 ---
 
-## Additional Examples
+## See also
 
-See the [examples/](../examples/) directory for complete, runnable examples:
-
-- [Express](../examples/express/) - Full Express application
-- [Fastify](../examples/fastify/) - Full Fastify application
-- [NestJS](../examples/nestjs/) - Full NestJS application
-- [Streaming](../examples/streaming/) - Streaming validation
-- [RAG](../examples/rag/) - RAG application with LlamaIndex
-
----
-
-## Next Steps
-
-- [Security Guide](./security-guide.md) - Security best practices
-- [API Reference](../api-reference.md) - Complete API documentation
-- [Connector Guides](../connectors/) - Framework-specific guides
+- [Getting Started](../../getting-started.md) — install + first call
+- [Security: rate limiting](../security/rate-limiting.md)
+- [Security: headers](../security/security-headers.md)
+- [Known limitations](../known-limitations.md)
+- [Threat surfaces](../threat-surfaces.md) — 7-surface canonical taxonomy
+- [Public API surface](../public-api-surface.md) — Sprint 26 API freeze
+- [Connector guides](../connectors/) — per-framework setup

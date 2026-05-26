@@ -1,5 +1,11 @@
 # OpenClaw Integration Guide
 
+> **DEPRECATED — removal gated for 2026-07-01.** The `@blackunicorn/bonklm-openclaw` package
+> is deprecated in v0.3.0 and scheduled for removal in a future release. See
+> [RELEASE-NOTES.md](../RELEASE-NOTES.md) for the deprecation rationale. Existing integrations
+> continue to work until the date gate; new projects should use the framework-native middleware
+> (Express, Fastify, NestJS, Hono, Elysia, Next.js) instead.
+
 This guide shows how to integrate `@blackunicorn/bonklm` with OpenClaw for comprehensive LLM security.
 
 ## Overview

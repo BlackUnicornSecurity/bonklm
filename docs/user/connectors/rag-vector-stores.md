@@ -1,17 +1,39 @@
 # RAG & Vector Store Connectors
 
-This guide covers integrating BonkLM with Retrieval-Augmented Generation (RAG) systems and vector databases.
+Last updated: 2026-05-25
+
+This guide covers BonkLM connectors for Retrieval-Augmented Generation
+(RAG) systems, vector databases, and retriever pipelines.
+
+For LLM provider connectors that may sit downstream of the retriever
+see [LLM Provider Connectors](./llm-providers.md); for memory-client
+connectors (Letta / Mem0 / Zep) see
+[AI SDK Connectors](./ai-sdks.md#letta-memory-client).
 
 ## Available Connectors
 
-| Connector | Package | Platform | Status |
-|-----------|---------|----------|--------|
-| LlamaIndex | `@blackunicorn/bonklm-llamaindex` | LlamaIndex | ✅ |
-| Pinecone | `@blackunicorn/bonklm-pinecone` | Pinecone | ✅ |
-| HuggingFace | `@blackunicorn/bonklm-huggingface` | HuggingFace | ✅ |
-| ChromaDB | `@blackunicorn/bonklm-chroma` | ChromaDB | ✅ |
-| Weaviate | `@blackunicorn/bonklm-weaviate` | Weaviate | ✅ |
-| Qdrant | `@blackunicorn/bonklm-qdrant` | Qdrant | ✅ |
+### RAG frameworks
+
+| Connector | Package | Peer | Status |
+|---|---|---|---|
+| LlamaIndex | `@blackunicorn/bonklm-llamaindex` | `llamaindex ^0.11.0 / ^0.12.0` | STABLE |
+| LangChain | `@blackunicorn/bonklm-langchain` | `@langchain/core ^0.3.0 / ^0.4.0 / ^1.0.0` | STABLE |
+
+### Vector databases
+
+| Connector | Package | Peer | Bundle | Status |
+|---|---|---|---|---|
+| Pinecone | `@blackunicorn/bonklm-pinecone` | `@pinecone-database/pinecone ^2.0.0` | Node | STABLE |
+| ChromaDB | `@blackunicorn/bonklm-chroma` | `chromadb ^1.0.0 / ^2.0.0 / ^3.0.0` | Node | STABLE |
+| Weaviate | `@blackunicorn/bonklm-weaviate` | `weaviate-client ^3.0.0` | Node | STABLE |
+| Qdrant | `@blackunicorn/bonklm-qdrant` | `@qdrant/js-client-rest ^1.0.0` | Node | STABLE |
+| LanceDB | `@blackunicorn/bonklm-lance` | `@lancedb/lancedb ^0.29.0` | Node | STABLE |
+| Turbopuffer | `@blackunicorn/bonklm-turbopuffer` | `@turbopuffer/turbopuffer ^2.1.0` | Edge | STABLE |
+
+All packages are published at `1.0.0-rc.3` against project version
+`0.5.0`. The LanceDB connector is Node-only (native bindings); the
+Turbopuffer connector is the edge-compatible alternative (Workerd /
+Deno / Bun / Vercel Edge).
 
 ---
 
@@ -20,10 +42,10 @@ This guide covers integrating BonkLM with Retrieval-Augmented Generation (RAG) s
 ### Installation
 
 ```bash
-npm install @blackunicorn/bonklm-llamaindex llamindex
+npm install @blackunicorn/bonklm-llamaindex @blackunicorn/bonklm llamaindex
 ```
 
-### Basic Usage (Query Engine)
+### Basic Usage — Query Engine
 
 ```typescript
 import { createGuardedQueryEngine } from '@blackunicorn/bonklm-llamaindex';
@@ -33,12 +55,10 @@ const guardedEngine = createGuardedQueryEngine(queryEngine, {
   validators: [new PromptInjectionValidator()],
 });
 
-const response = await guardedEngine.query({
-  query: userInput,
-});
+const response = await guardedEngine.query({ query: userInput });
 ```
 
-### Basic Usage (Retriever)
+### Basic Usage — Retriever
 
 ```typescript
 import { createGuardedRetriever } from '@blackunicorn/bonklm-llamaindex';
@@ -55,7 +75,7 @@ const nodes = await guardedRetriever.retrieve(userQuery);
 ### Configuration Options
 
 | Option | Type | Default | Description |
-|--------|------|---------|-------------|
+|---|---|---|---|
 | `validators` | `Validator[]` | `[]` | Validators to apply |
 | `guards` | `Guard[]` | `[]` | Guards to run |
 | `validateQueryInput` | `boolean` | `true` | Validate query input |
@@ -64,9 +84,119 @@ const nodes = await guardedRetriever.retrieve(userQuery);
 | `validateRetrievedDocuments` | `boolean` | `true` | Validate retrieved docs |
 | `productionMode` | `boolean` | `NODE_ENV === 'production'` | Generic errors in production |
 | `validationTimeout` | `number` | `30000` | Timeout in milliseconds |
-| `onQueryBlocked` | `Function` | - | Callback when query blocked |
-| `onRetrievalBlocked` | `Function` | - | Callback when retrieval blocked |
-| `onDocumentBlocked` | `Function` | - | Callback when document blocked |
+| `onQueryBlocked` | `Function` | — | Callback when query blocked |
+| `onRetrievalBlocked` | `Function` | — | Callback when retrieval blocked |
+| `onDocumentBlocked` | `Function` | — | Callback when document blocked |
+
+---
+
+## LangChain Connector
+
+Two patterns ship side-by-side:
+
+- **`langchain@1.x` middleware (recommended).** `createBonklmMiddleware`
+  returns a `BonklmLangchainMiddleware` for the v1 agent / runnable
+  pipeline.
+- **`@langchain/core@^0.3.x` callback handler (legacy).**
+  `GuardrailsCallbackHandler` is kept for dual-path runtime detection
+  and is marked `@deprecated`; it will be removed when the 0.3.x line
+  reaches EOL.
+
+For the v1 retriever surface — which the middleware pattern does NOT
+cover, since retriever invocation lives outside the agent / runnable
+middleware lifecycle — use `withRetrieverGuardrails`.
+
+A LangGraph node helper (`createBonklmLangGraphNode` /
+`bonklmLangGraphNode`) is also exported for graph-based pipelines.
+
+### Installation
+
+```bash
+npm install @blackunicorn/bonklm-langchain @blackunicorn/bonklm @langchain/core
+```
+
+For OpenAI-backed examples below, also install `@langchain/openai`.
+
+### Retriever Wrap (`withRetrieverGuardrails`)
+
+```typescript
+import { withRetrieverGuardrails } from '@blackunicorn/bonklm-langchain';
+import { PromptInjectionValidator } from '@blackunicorn/bonklm';
+
+const guardedRetriever = withRetrieverGuardrails(myRetriever, {
+  validators: [new PromptInjectionValidator()],
+  validationTimeout: 5000, // default 5000ms (SEC-008)
+});
+
+const docs = await guardedRetriever.invoke('search query');
+```
+
+Per-doc validation runs through `validateWithTimeoutSecure` so a slow
+validator cannot silently hang the retriever invoke call.
+
+### `createBonklmMiddleware` (v1 middleware)
+
+```typescript
+import { createBonklmMiddleware } from '@blackunicorn/bonklm-langchain';
+import { PromptInjectionValidator, GuardrailEngine } from '@blackunicorn/bonklm';
+
+const engine = new GuardrailEngine({
+  validators: [new PromptInjectionValidator()],
+});
+
+// Positional-engine form:
+const middleware = createBonklmMiddleware(engine, {
+  scope: 'input',  // 'input' | 'output' | 'tool-call' | 'tool-result'
+});
+```
+
+### `GuardrailsCallbackHandler` (legacy)
+
+> `GuardrailsCallbackHandler` is deprecated — prefer
+> `createBonklmMiddleware` for `@langchain/core@^1.0.0`. The handler
+> remains for `@langchain/core@^0.3.x` dual-path runtime detection.
+
+```typescript
+import { GuardrailsCallbackHandler } from '@blackunicorn/bonklm-langchain';
+import { PromptInjectionValidator } from '@blackunicorn/bonklm';
+import { ChatOpenAI } from '@langchain/openai';
+
+const handler = new GuardrailsCallbackHandler({
+  validators: [new PromptInjectionValidator()],
+  validateStreaming: true,
+});
+
+const llm = new ChatOpenAI({ model: 'gpt-4o', callbacks: [handler] });
+const response = await llm.invoke([{ role: 'user', content: userInput }]);
+```
+
+### Error Type Guards
+
+```typescript
+import {
+  isGuardrailsViolationError,
+  isStreamValidationError,
+  GuardrailsViolationError,
+} from '@blackunicorn/bonklm-langchain';
+
+try {
+  await chain.invoke({ topic: userInput });
+} catch (error) {
+  if (isGuardrailsViolationError(error)) {
+    console.error('Guardrails violation:', error.reason);
+    console.error('Findings:', error.findings);
+  } else if (isStreamValidationError(error)) {
+    console.error('Stream validation failed:', error.message);
+  }
+}
+```
+
+`ConnectorValidationError`, `ConnectorConfigurationError`, and
+`ConnectorTimeoutError` are also re-exported for consistency with the
+other BonkLM connectors.
+
+For LangChain v1 migration notes see
+[langchain-v1-migration.md](../langchain-v1-migration.md).
 
 ---
 
@@ -75,7 +205,7 @@ const nodes = await guardedRetriever.retrieve(userQuery);
 ### Installation
 
 ```bash
-npm install @blackunicorn/bonklm-pinecone @pinecone-database/pinecone
+npm install @blackunicorn/bonklm-pinecone @blackunicorn/bonklm @pinecone-database/pinecone
 ```
 
 ### Basic Usage
@@ -94,14 +224,12 @@ const guardedIndex = createGuardedIndex(index, {
   maxVectorDimension: 1536,
 });
 
-// Query with validation
 const results = await guardedIndex.query({
   vector: embedding,
   topK: 10,
   includeMetadata: true,
 });
 
-// Upsert with validation
 await guardedIndex.upsert([
   {
     id: 'doc1',
@@ -114,7 +242,7 @@ await guardedIndex.upsert([
 ### Configuration Options
 
 | Option | Type | Default | Description |
-|--------|------|---------|-------------|
+|---|---|---|---|
 | `validators` | `Validator[]` | `[]` | Validators to apply |
 | `guards` | `Guard[]` | `[]` | Guards to run |
 | `allowedNamespaces` | `string[]` | `[]` | Namespace allowlist |
@@ -124,77 +252,14 @@ await guardedIndex.upsert([
 | `maxMetadataSize` | `number` | `102400` | Max metadata size (100KB) |
 | `productionMode` | `boolean` | `NODE_ENV === 'production'` | Generic errors in production |
 | `validationTimeout` | `number` | `30000` | Timeout in milliseconds |
-| `onQueryBlocked` | `Function` | - | Callback when query blocked |
-| `onUpsertBlocked` | `Function` | - | Callback when upsert blocked |
+| `onQueryBlocked` | `Function` | — | Callback when query blocked |
+| `onUpsertBlocked` | `Function` | — | Callback when upsert blocked |
 
 ### Filter Sanitization
 
-The Pinecone connector automatically sanitizes filter expressions to prevent NoSQL injection:
-
-```typescript
-// Dangerous filters are sanitized
-const results = await guardedIndex.query({
-  vector: embedding,
-  filter: {
-    // This would be blocked/rejected:
-    "$ne": null,
-    "$regex": ".*",
-  },
-});
-```
-
----
-
-## HuggingFace Connector
-
-### Installation
-
-```bash
-npm install @blackunicorn/bonklm-huggingface @huggingface/inference
-```
-
-### Basic Usage
-
-```typescript
-import { HfInference } from '@huggingface/inference';
-import { createGuardedInference } from '@blackunicorn/bonklm-huggingface';
-import { PromptInjectionValidator } from '@blackunicorn/bonklm';
-
-const hf = new HfInference(process.env.HF_API_KEY);
-const guardedHF = createGuardedInference(hf, {
-  validators: [new PromptInjectionValidator()],
-  allowedModels: ['BAAI/bge-base-en-v1.5', 'BAAI/bge-large-en-v1.5'],
-});
-
-// Text generation with validation
-const result = await guardedHF.textGeneration({
-  model: 'meta-llama/Llama-2-7b',
-  inputs: userInput,
-});
-
-// Question answering
-const answer = await guardedHF.questionAnswer({
-  model: 'deepset/roberta-base-squad2',
-  inputs: {
-    question: userQuestion,
-    context: documentContext,
-  },
-});
-```
-
-### Configuration Options
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `validators` | `Validator[]` | `[]` | Validators to apply |
-| `guards` | `Guard[]` | `[]` | Guards to run |
-| `allowedModels` | `string[]` | `[]` | Model allowlist |
-| `validateInputs` | `boolean` | `true` | Validate all inputs |
-| `validateOutputs` | `boolean` | `true` | Validate all outputs |
-| `productionMode` | `boolean` | `NODE_ENV === 'production'` | Generic errors in production |
-| `validationTimeout` | `number` | `30000` | Timeout in milliseconds |
-| `onInputBlocked` | `Function` | - | Callback when input blocked |
-| `onModelNotAllowed` | `Function` | - | Callback when model not allowed |
+The Pinecone connector automatically sanitizes filter expressions to
+prevent NoSQL injection. Dangerous operators (`$ne: null`, `$regex:
+'.*'`) are rejected before they reach the index.
 
 ---
 
@@ -203,7 +268,7 @@ const answer = await guardedHF.questionAnswer({
 ### Installation
 
 ```bash
-npm install @blackunicorn/bonklm-chroma chromadb
+npm install @blackunicorn/bonklm-chroma @blackunicorn/bonklm chromadb
 ```
 
 ### Basic Usage
@@ -223,13 +288,11 @@ const guardedCollection = createGuardedCollection(collection, {
   validateMetadata: true,
 });
 
-// Query with validation
 const results = await guardedCollection.query({
   queryTexts: [userQuery],
   nResults: 10,
 });
 
-// Add documents with validation
 await guardedCollection.add({
   documents: ['document content here'],
   ids: ['doc1'],
@@ -240,7 +303,7 @@ await guardedCollection.add({
 ### Configuration Options
 
 | Option | Type | Default | Description |
-|--------|------|---------|-------------|
+|---|---|---|---|
 | `validators` | `Validator[]` | `[]` | Validators to apply |
 | `guards` | `Guard[]` | `[]` | Guards to run |
 | `validateQueries` | `boolean` | `true` | Validate queries |
@@ -250,8 +313,11 @@ await guardedCollection.add({
 | `maxDocumentLength` | `number` | `100000` | Max document length |
 | `productionMode` | `boolean` | `NODE_ENV === 'production'` | Generic errors in production |
 | `validationTimeout` | `number` | `30000` | Timeout in milliseconds |
-| `onQueryBlocked` | `Function` | - | Callback when query blocked |
-| `onDocumentBlocked` | `Function` | - | Callback when document blocked |
+| `onQueryBlocked` | `Function` | — | Callback when query blocked |
+| `onDocumentBlocked` | `Function` | — | Callback when document blocked |
+
+The Chroma peer accepts three majors (`^1.0.0 / ^2.0.0 / ^3.0.0`) — the
+wrap surface is stable across each listed major.
 
 ---
 
@@ -260,8 +326,11 @@ await guardedCollection.add({
 ### Installation
 
 ```bash
-npm install @blackunicorn/bonklm-weaviate weaviate-ts-client
+npm install @blackunicorn/bonklm-weaviate @blackunicorn/bonklm weaviate-client
 ```
+
+> Peer is the modern `weaviate-client ^3.0.0` (NOT the legacy
+> `weaviate-ts-client`).
 
 ### Basic Usage
 
@@ -275,20 +344,23 @@ const guardedClient = createGuardedClient(weaviateClient, {
   allowedFields: ['title', 'content', 'tags'],
 });
 
-// NearText search with validation
-const results = await guardedClient.collections.get('Document')
+// nearText
+const results = await guardedClient.collections
+  .get('Document')
   .nearText(['search query'])
   .withLimit(10)
   .do();
 
-// BM25 search with validation
-const results = await guardedClient.collections.get('Document')
+// BM25
+const bm25Results = await guardedClient.collections
+  .get('Document')
   .bm25(['search terms'])
   .withLimit(10)
   .do();
 
-// Hybrid search with validation
-const results = await guardedClient.collections.get('Document')
+// Hybrid
+const hybridResults = await guardedClient.collections
+  .get('Document')
   .hybrid('search query', 0.7)
   .withLimit(10)
   .do();
@@ -297,24 +369,24 @@ const results = await guardedClient.collections.get('Document')
 ### Configuration Options
 
 | Option | Type | Default | Description |
-|--------|------|---------|-------------|
+|---|---|---|---|
 | `validators` | `Validator[]` | `[]` | Validators to apply |
 | `guards` | `Guard[]` | `[]` | Guards to run |
-| `allowedClasses` | `string[]` | `[]` | Class name allowlist (supports wildcards) |
-| `allowedFields` | `string[]` | `[]` | Field allowlist (supports wildcards) |
+| `allowedClasses` | `string[]` | `[]` | Class name allowlist (wildcards supported) |
+| `allowedFields` | `string[]` | `[]` | Field allowlist (wildcards supported) |
 | `validateFilters` | `boolean` | `true` | Validate filter expressions |
 | `validateQueries` | `boolean` | `true` | Validate all queries |
 | `productionMode` | `boolean` | `NODE_ENV === 'production'` | Generic errors in production |
 | `validationTimeout` | `number` | `30000` | Timeout in milliseconds |
-| `onQueryBlocked` | `Function` | - | Callback when query blocked |
-| `onClassNotAllowed` | `Function` | - | Callback when class not allowed |
+| `onQueryBlocked` | `Function` | — | Callback when query blocked |
+| `onClassNotAllowed` | `Function` | — | Callback when class not allowed |
 
 ### Wildcard Patterns
 
 ```typescript
 const guardedClient = createGuardedClient(weaviateClient, {
-  allowedClasses: ['Document*', 'Article*'],  // Matches Document, Documents, Article, Articles, etc.
-  allowedFields: ['title', 'content*', 'meta*'],  // Matches content, contents, metadata, etc.
+  allowedClasses: ['Document*', 'Article*'],
+  allowedFields: ['title', 'content*', 'meta*'],
 });
 ```
 
@@ -325,7 +397,7 @@ const guardedClient = createGuardedClient(weaviateClient, {
 ### Installation
 
 ```bash
-npm install @blackunicorn/bonklm-qdrant @qdrant/js-client-rest
+npm install @blackunicorn/bonklm-qdrant @blackunicorn/bonklm @qdrant/js-client-rest
 ```
 
 ### Basic Usage
@@ -341,14 +413,12 @@ const guardedClient = createGuardedClient(qdrant, {
   allowedCollections: ['documents', 'articles'],
 });
 
-// Query with validation
 const results = await guardedClient.query('documents', {
   query: embedding,
   limit: 10,
   with_payload: true,
 });
 
-// Upsert with validation
 await guardedClient.upsert('documents', {
   points: [
     {
@@ -363,7 +433,7 @@ await guardedClient.upsert('documents', {
 ### Configuration Options
 
 | Option | Type | Default | Description |
-|--------|------|---------|-------------|
+|---|---|---|---|
 | `validators` | `Validator[]` | `[]` | Validators to apply |
 | `guards` | `Guard[]` | `[]` | Guards to run |
 | `allowedCollections` | `string[]` | `[]` | Collection allowlist |
@@ -373,42 +443,196 @@ await guardedClient.upsert('documents', {
 | `maxVectorDimension` | `number` | `100000` | Max vector dimension |
 | `productionMode` | `boolean` | `NODE_ENV === 'production'` | Generic errors in production |
 | `validationTimeout` | `number` | `30000` | Timeout in milliseconds |
-| `onQueryBlocked` | `Function` | - | Callback when query blocked |
-| `onUpsertBlocked` | `Function` | - | Callback when upsert blocked |
+| `onQueryBlocked` | `Function` | — | Callback when query blocked |
+| `onUpsertBlocked` | `Function` | — | Callback when upsert blocked |
 
 ### Filter Sanitization
 
-The Qdrant connector automatically sanitizes filter expressions to prevent injection:
+Dangerous filter operators (e.g. `{ key: '$where', match: { any: [] } }`)
+are rejected before they reach the index. The connector automatically
+sanitises filter expressions on both `query` and `search`.
+
+---
+
+## LanceDB Connector (Node-only)
+
+LanceDB ships native bindings; the connector inherits that constraint.
+For edge / Workerd / Vercel Edge consumers use
+[`@blackunicorn/bonklm-turbopuffer`](#turbopuffer-connector-edge-compatible)
+below.
+
+`createGuardedLanceTable(table, opts)` returns a Proxy-wrapped Table
+that applies `MemoryWriteValidator` on writes (`add` / `update` /
+`mergeInsert(...).execute`) and `RetrievedDocValidator` on retrieval
+(`.toArray()` of `search()` + `query()`). All other Table methods pass
+through.
+
+### Installation
+
+```bash
+npm install @blackunicorn/bonklm-lance @blackunicorn/bonklm @lancedb/lancedb
+```
+
+### Basic Usage
 
 ```typescript
-// Dangerous filters are blocked
-const results = await guardedClient.query('documents', {
-  query: embedding,
-  filter: {
-    must: [
-      // This would be blocked:
-      { key: '$where', match: { any: [] } },
-    ],
-  },
+import { connect } from '@lancedb/lancedb';
+import { createGuardedLanceTable } from '@blackunicorn/bonklm-lance';
+import {
+  PromptInjectionValidator,
+  SecretGuard,
+  PIIGuard,
+  createMemoryWriteValidator,
+  createRetrievedDocValidator,
+} from '@blackunicorn/bonklm';
+
+const db = await connect('./.lancedb');
+const rawTable = await db.openTable('docs');
+
+const guarded = createGuardedLanceTable(rawTable, {
+  memoryWriteValidator: createMemoryWriteValidator({
+    validators: [new SecretGuard(), new PIIGuard()],
+    onFailure: 'block-write',
+  }),
+  retrievedDocValidator: createRetrievedDocValidator({
+    validators: [new PromptInjectionValidator()],
+    onFailure: 'filter',
+  }),
+  // Validate ALL user-influenceable text columns:
+  contentField: ['text', 'summary'],
+});
+
+// Writes are validated per-row, per-column:
+await guarded.add([
+  { id: '1', text: 'safe content here', summary: 'short safe summary' },
+]);
+
+// Retrieval is validated; blocked rows are filtered out (or hard-blocked
+// depending on `onFailure`):
+const rows = await guarded.search('safe query').limit(10).toArray();
+```
+
+The 6 ACced methods (`add`, `update`, `mergeInsert(...).execute`,
+`search().toArray`, `query().toArray`, related builders) are intercepted
+via Proxy. Every other Table API call passes straight through.
+
+---
+
+## Turbopuffer Connector (edge-compatible)
+
+> **Supply-chain warning.** The OFFICIAL SDK is `@turbopuffer/turbopuffer`
+> (scoped, currently `^2.1.0`). A separate npm package named
+> `turbopuffer` (no scope, version `1.0.1`) is a placeholder NOT
+> published by Turbopuffer Inc. Do NOT install the unscoped package.
+
+`createGuardedNamespace(namespace, opts)` is the edge-compatible
+equivalent of `createGuardedLanceTable`. Turbopuffer is a pure HTTP API;
+the connector uses no Node-only globals and runs on Workerd, Deno, Bun,
+and Vercel Edge.
+
+### Installation
+
+```bash
+npm install @blackunicorn/bonklm-turbopuffer @blackunicorn/bonklm \
+  @turbopuffer/turbopuffer
+```
+
+### Basic Usage
+
+```typescript
+import { Turbopuffer } from '@turbopuffer/turbopuffer';
+import { createGuardedNamespace } from '@blackunicorn/bonklm-turbopuffer';
+import {
+  PromptInjectionValidator,
+  SecretGuard,
+  PIIGuard,
+  createMemoryWriteValidator,
+  createRetrievedDocValidator,
+} from '@blackunicorn/bonklm';
+
+const tpuf = new Turbopuffer({ apiKey: process.env.TPUF_API_KEY });
+const rawNamespace = tpuf.namespace('docs');
+
+const guarded = createGuardedNamespace(rawNamespace, {
+  memoryWriteValidator: createMemoryWriteValidator({
+    validators: [new SecretGuard(), new PIIGuard()],
+    onFailure: 'block-write',
+  }),
+  retrievedDocValidator: createRetrievedDocValidator({
+    validators: [new PromptInjectionValidator()],
+    onFailure: 'filter',
+  }),
+});
+
+// Writes (upsert_rows / patch_rows) are validated per-row.
+await guarded.write({
+  upsert_rows: [
+    { id: '1', vector: embedding, attributes: { text: 'safe content' } },
+  ],
+});
+
+// Query response rows are validated; blocked rows are filtered out.
+const response = await guarded.query({
+  vector: embedding,
+  top_k: 10,
 });
 ```
+
+The 3 ACced methods (`write` / `query` / `deleteAll`) are intercepted
+via Proxy. All other Namespace methods pass through.
 
 ---
 
 ## Common Security Features
 
-All RAG/Vector Store connectors include:
+All RAG / vector-store connectors include:
 
-- **Query Validation**: Prevent prompt injection in search queries
-- **Document Validation**: Validate retrieved documents before returning
-- **Filter Sanitization**: Prevent NoSQL injection in filter expressions
-- **Namespace/Collection Access Control**: Restrict which collections can be accessed
-- **Metadata Validation**: Validate metadata fields and values
-- **Vector Dimension Limits**: Prevent oversized vectors
-- **Distance Array Filtering**: Match filtered results with distance scores
+- **Query validation** — prevent prompt injection in search queries.
+- **Document validation** — validate retrieved documents BEFORE they
+  reach the LLM.
+- **Filter sanitization** — prevent NoSQL injection in filter
+  expressions (Pinecone, Qdrant, Chroma).
+- **Namespace / collection access control** — restrict which
+  collections / namespaces can be accessed at all.
+- **Metadata validation** — validate metadata fields and values.
+- **Vector dimension limits** — prevent oversized vectors.
+- **Distance-array filtering** — match filtered result rows with their
+  distance scores so callers don't silently re-use stale alignment.
+
+The `memory_write` + `composed_context` surfaces in
+`@blackunicorn/bonklm-lance` and `@blackunicorn/bonklm-turbopuffer` use
+the same `MemoryWriteValidator` + `RetrievedDocValidator` primitives as
+the memory-client connectors (Letta, Mem0, Zep — see
+[AI SDK Connectors](./ai-sdks.md#letta-memory-client)) so the
+threat model and `onFailure` knobs (`'block-write'` / `'filter'`) line
+up across vector stores AND memory backends.
+
+## Choosing a Vector-Store Connector
+
+| If you... | Use |
+|---|---|
+| Run a Node service against Pinecone | `bonklm-pinecone` |
+| Run a Node service against Chroma | `bonklm-chroma` |
+| Run a Node service against Weaviate | `bonklm-weaviate` |
+| Run a Node service against Qdrant | `bonklm-qdrant` |
+| Run a Node service against local LanceDB | `bonklm-lance` |
+| Need vector storage on Cloudflare Workers / Vercel Edge / Deno / Bun | `bonklm-turbopuffer` |
+| Build LlamaIndex retrievers / query engines | `bonklm-llamaindex` |
+| Build LangChain v1 retrievers (or v0.3 chains) | `bonklm-langchain` |
 
 ## Next Steps
 
-- [Framework Middleware](./framework-middleware.md) - Express, Fastify, NestJS
-- [AI SDK Connectors](./ai-sdks.md) - OpenAI, Anthropic, Vercel AI SDK
-- [LLM Provider Connectors](./llm-providers.md) - LangChain, Ollama
+- [Framework Middleware](./framework-middleware.md) — Express, Fastify,
+  NestJS, Hono, Elysia, Next.js, Restate, Temporal, Trigger.dev,
+  Inngest.
+- [AI SDK Connectors](./ai-sdks.md) — OpenAI, Anthropic, Vercel AI SDK,
+  Google GenAI, Mistral, MCP, Letta, Mem0, Zep, LiveKit, OpenAI Agents.
+- [LLM Provider Connectors](./llm-providers.md) — provider helpers,
+  voice webhooks, inference providers.
+- [Emerging Framework Connectors](./emerging-frameworks.md) — Mastra,
+  Genkit, CopilotKit, ElizaOS, Stagehand, Eko, VoltAgent, Cloudflare
+  Agents, browser-agents-core.
+- [LangChain v1 migration](../langchain-v1-migration.md) — middleware
+  pattern upgrade notes.
+- [Vercel AI SDK v6 migration](../vercel-v6-migration.md) — applies to
+  vector-store consumers using Vercel AI SDK for embeddings.
