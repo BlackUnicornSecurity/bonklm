@@ -716,7 +716,47 @@ describe('HookSandbox', () => {
       expect(result.error).toBe('SECURITY_VIOLATION');
     });
 
-    it('a safe user-defined function is NOT rejected', async () => {
+    it('passing a plain native function (Math.sin) is blocked', async () => {
+      // Math.sin is a native built-in; Function.prototype.toString.call(Math.sin)
+      // returns "function sin() { [native code] }" which triggers the
+      // native-code rejection gate — even though Math.sin is harmless.
+      // This validates that the gate is truly content-agnostic: ALL native
+      // functions are rejected because their internals cannot be inspected.
+      const result = await sandbox.executeHook(Math.sin as unknown as ((ctx: Record<string, unknown>) => unknown));
+      expect(result.success).toBe(false);
+      expect(result.blocked).toBe(true);
+      expect(result.error).toBe('SECURITY_VIOLATION');
+    });
+
+    it('passing a native function reference (setTimeout) is blocked', async () => {
+      // setTimeout is a native host timer; even as a function reference (not
+      // invoked as string code) it must be rejected because the sandbox cannot
+      // inspect its source and it represents a sandbox-escape vector.
+      // Function.prototype.toString.call(setTimeout) yields "[native code]".
+      const result = await sandbox.executeHook(setTimeout as unknown as ((ctx: Record<string, unknown>) => unknown));
+      expect(result.success).toBe(false);
+      expect(result.blocked).toBe(true);
+      expect(result.error).toBe('SECURITY_VIOLATION');
+    });
+
+    it('a Function-constructor-created handler is blocked via validateCode', async () => {
+      // new Function('return process') creates a user-space function whose
+      // serialized source is "function anonymous() {\nreturn process\n}".
+      // extractFunctionCode will NOT flag it as native (no "[native code]"),
+      // but validateCode MUST catch the \bprocess\b pattern in the serialised
+      // body — closing the "create-a-function-that-references-process" path.
+      // Security test: intentional use of Function constructor to verify sandbox blocks it.
+      const dynamicFn = Function('return process') as unknown as ((ctx: Record<string, unknown>) => unknown);
+      const result = await sandbox.executeHook(dynamicFn);
+      expect(result.success).toBe(false);
+      expect(result.blocked).toBe(true);
+      expect(result.error).toBe('SECURITY_VIOLATION');
+    });
+
+    it('a safe user-defined function is NOT rejected (baseline)', async () => {
+      // Regression guard: the native-code gate and validateCode must not block
+      // legitimate arrow-function handlers.  This is the canonical baseline
+      // that proves the defence does not regress innocent use.
       const safeFn = (ctx: Record<string, unknown>) => ({ input: ctx.value });
       const result = await sandbox.executeHook(safeFn, { value: 42 });
       expect(result.success).toBe(true);
