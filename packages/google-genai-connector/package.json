@@ -41,11 +41,11 @@
     "@blackunicorn/bonklm": "workspace:*"
   },
   "peerDependencies": {
-    "@google/genai": "^2.0.0"
+    "@google/genai": "^1.2.0 || ^2.0.0"
   },
   "peerDependenciesMeta": {
     "@google/genai": {
-      "optional": false
+      "optional": true
     }
   },
   "devDependencies": {
