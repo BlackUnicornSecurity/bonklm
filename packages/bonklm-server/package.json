@@ -17,7 +17,8 @@
     },
     "./hmac": {
       "import": "./dist/hmac/index.js",
-      "types": "./dist/hmac/index.d.ts"
+      "types": "./dist/hmac/index.d.ts",
+      "default": "./dist/hmac/index.js"
     }
   },
   "files": [

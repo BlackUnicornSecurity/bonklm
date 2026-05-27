@@ -17,27 +17,33 @@
     },
     "./validators": {
       "import": "./dist/validators/index.js",
-      "types": "./dist/validators/index.d.ts"
+      "types": "./dist/validators/index.d.ts",
+      "default": "./dist/validators/index.js"
     },
     "./guards": {
       "import": "./dist/guards/index.js",
-      "types": "./dist/guards/index.d.ts"
+      "types": "./dist/guards/index.d.ts",
+      "default": "./dist/guards/index.js"
     },
     "./hooks": {
       "import": "./dist/hooks/index.js",
-      "types": "./dist/hooks/index.d.ts"
+      "types": "./dist/hooks/index.d.ts",
+      "default": "./dist/hooks/index.js"
     },
     "./common": {
       "import": "./dist/common/index.js",
-      "types": "./dist/common/index.d.ts"
+      "types": "./dist/common/index.d.ts",
+      "default": "./dist/common/index.js"
     },
     "./core/connector-utils": {
       "import": "./dist/connector-utils/index.js",
-      "types": "./dist/connector-utils/index.d.ts"
+      "types": "./dist/connector-utils/index.d.ts",
+      "default": "./dist/connector-utils/index.js"
     },
     "./testing": {
       "import": "./dist/testing/index.js",
-      "types": "./dist/testing/index.d.ts"
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
     },
     "./edge": {
       "workerd": "./dist/edge/index.js",

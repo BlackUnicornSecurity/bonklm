@@ -14,11 +14,13 @@
     },
     "./vapi": {
       "import": "./dist/vapi/index.js",
-      "types": "./dist/vapi/index.d.ts"
+      "types": "./dist/vapi/index.d.ts",
+      "default": "./dist/vapi/index.js"
     },
     "./retell": {
       "import": "./dist/retell/index.js",
-      "types": "./dist/retell/index.d.ts"
+      "types": "./dist/retell/index.d.ts",
+      "default": "./dist/retell/index.js"
     }
   },
   "files": [

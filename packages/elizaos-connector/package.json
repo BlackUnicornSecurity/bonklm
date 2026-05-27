@@ -12,11 +12,13 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./doctor": {
       "types": "./dist/doctor.d.ts",
-      "import": "./dist/doctor.js"
+      "import": "./dist/doctor.js",
+      "default": "./dist/doctor.js"
     }
   },
   "files": [
