@@ -156,21 +156,24 @@ export function isUnsafeBinaryResult(result: unknown): boolean {
 /**
  * Sanitize a free-form `reason` string before it crosses any
  * security-relevant boundary (error message, log line, OTel span,
- * Inngest step history). Strips non-printable / control characters
- * and caps at 200 characters so attacker-controlled validator output
- * cannot pollute downstream observability surfaces.
+ * Inngest step history). Hex-escapes C0/DEL control characters
+ * (including TAB), strips non-printable above 0x7E, and caps at 200
+ * characters so attacker-controlled validator output cannot pollute
+ * downstream observability surfaces.
  *
  * Used by `BrowserAgentGuardrailBlockedError` (base class) + the
  * Inngest result aggregator (sec CS3 closure — Inngest's
  * `BonklmInngestValidateResult.reason` was previously unsanitized).
+ *
+ * D-015 (Sprint 52 Day 2 Gate 5.10 audit): this is a re-export of the
+ * canonical `sanitizeReasonText` from `@blackunicorn/bonklm/core/connector-utils`.
+ * The previous local implementation predated B.4 (Sprint 51) and silently
+ * dropped TAB (\x09) instead of hex-escaping it — reopening the TSV
+ * phantom-column injection vector that B.4 closed in the canonical impl.
+ * Re-exporting ensures ADR-0001 D#2 alignment with no duplication risk.
+ * The canonical impl already includes the 200-char cap.
  */
-export function sanitizeReasonText(reason: string | undefined): string | undefined {
-  if (typeof reason !== 'string') return undefined;
-  if (reason.length === 0) return undefined;
-  // eslint-disable-next-line no-control-regex
-  const stripped = reason.replace(/[^\x20-\x7E]/g, '').slice(0, 200);
-  return stripped.length > 0 ? stripped : undefined;
-}
+export { sanitizeReasonText } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * Emit a warning via the supplied logger, falling back to
