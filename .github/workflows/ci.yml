@@ -31,6 +31,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Build first: the type-checked ESLint rules (recommendedTypeChecked)
+      # resolve cross-package types via each workspace package's built
+      # dist/*.d.ts. Without a build, connector imports of sibling error
+      # classes are unresolved and produce false positives (e.g. the
+      # @typescript-eslint/only-throw-error rule on `throw new XGuardError()`).
+      - name: Build packages
+        run: pnpm run build
+
       - name: Run lint
         run: pnpm run lint
 
@@ -54,6 +62,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # Build first: tsc --noEmit resolves cross-package imports via each
+      # workspace package's built dist/*.d.ts. Without a build, connector
+      # packages that import workspace siblings fail type resolution.
+      - name: Build packages
+        run: pnpm run build
 
       - name: Run type check
         run: pnpm exec tsc --noEmit
