@@ -137,6 +137,11 @@ if [ "$FAST" -eq 0 ]; then
   # ---- Build -------------------------------------------------------------
   run_gate "build" pnpm build
 
+  # ---- Type-surface (tsd) ------------------------------------------------
+  # Runs after build: each per-package suite resolves the package-under-test's
+  # published `types` entry (dist/*.d.ts), so the workspace must be built first.
+  run_gate "test:types" pnpm test:types
+
   # ---- End-to-end + perf -------------------------------------------------
   run_gate "uat" pnpm uat
   run_gate "benchmark" pnpm benchmark
