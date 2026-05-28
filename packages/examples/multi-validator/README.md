@@ -1,6 +1,7 @@
 # Multi-Validator Example
 
-This example demonstrates how to use `GuardrailEngine` to combine multiple validators and guards for comprehensive LLM content validation.
+This example demonstrates how to use `GuardrailEngine` to combine multiple validators and guards for
+comprehensive LLM content validation.
 
 ## Overview
 
@@ -31,14 +32,9 @@ import { JailbreakValidator } from '@blackunicorn/bonklm';
 import { SecretGuard } from '@blackunicorn/bonklm';
 
 const engine = new GuardrailEngine({
-  validators: [
-    new PromptInjectionValidator(),
-    new JailbreakValidator(),
-  ],
-  guards: [
-    new SecretGuard(),
-  ],
-  shortCircuit: true,
+  validators: [new PromptInjectionValidator(), new JailbreakValidator()],
+  guards: [new SecretGuard()],
+  shortCircuit: true
 });
 
 const result = await engine.validate(userInput);
@@ -49,31 +45,31 @@ if (!result.allowed) {
 
 ## Engine Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `validators` | `Validator[]` | `[]` | Array of validators to run |
-| `guards` | `Guard[]` | `[]` | Array of guards to run |
-| `shortCircuit` | `boolean` | `true` | Stop on first failure |
-| `executionOrder` | `'sequential' \| 'parallel'` | `'sequential'` | How to run validators |
-| `action` | `'block' \| 'sanitize' \| 'log' \| 'allow'` | `'block'` | Action mode |
-| `overrideToken` | `string` | `undefined` | Token to bypass validation |
-| `includeIndividualResults` | `boolean` | `true` | Include individual validator results |
+| Option                     | Type                                        | Default        | Description                          |
+| -------------------------- | ------------------------------------------- | -------------- | ------------------------------------ |
+| `validators`               | `Validator[]`                               | `[]`           | Array of validators to run           |
+| `guards`                   | `Guard[]`                                   | `[]`           | Array of guards to run               |
+| `shortCircuit`             | `boolean`                                   | `true`         | Stop on first failure                |
+| `executionOrder`           | `'sequential' \| 'parallel'`                | `'sequential'` | How to run validators                |
+| `action`                   | `'block' \| 'sanitize' \| 'log' \| 'allow'` | `'block'`      | Action mode                          |
+| `overrideToken`            | `string`                                    | `undefined`    | Token to bypass validation           |
+| `includeIndividualResults` | `boolean`                                   | `true`         | Include individual validator results |
 
 ## Result Structure
 
 ```typescript
 interface EngineResult {
-  allowed: boolean;              // Overall allowed decision
-  blocked: boolean;              // Overall blocked decision
-  severity: Severity;            // Max severity across all results
-  risk_level: RiskLevel;         // Overall risk level
-  risk_score: number;            // Total risk score
-  findings: Finding[];           // All findings from all validators
-  results: ValidatorResult[];    // Individual validator results
-  validatorCount: number;        // Number of validators run
-  guardCount: number;            // Number of guards run
-  executionTime: number;         // Execution time in milliseconds
-  timestamp: number;             // Result timestamp
+  allowed: boolean; // Overall allowed decision
+  blocked: boolean; // Overall blocked decision
+  severity: Severity; // Max severity across all results
+  risk_level: RiskLevel; // Overall risk level
+  risk_score: number; // Total risk score
+  findings: Finding[]; // All findings from all validators
+  results: ValidatorResult[]; // Individual validator results
+  validatorCount: number; // Number of validators run
+  guardCount: number; // Number of guards run
+  executionTime: number; // Execution time in milliseconds
+  timestamp: number; // Result timestamp
 }
 ```
 
@@ -87,7 +83,7 @@ Validators run one after another. With `shortCircuit: true`, execution stops at 
 const engine = new GuardrailEngine({
   validators: [v1, v2, v3],
   executionOrder: 'sequential',
-  shortCircuit: true,  // Stops at v1 if it blocks
+  shortCircuit: true // Stops at v1 if it blocks
 });
 ```
 
@@ -98,7 +94,7 @@ Validators run simultaneously. All validators complete before aggregation.
 ```typescript
 const engine = new GuardrailEngine({
   validators: [v1, v2, v3],
-  executionOrder: 'parallel',
+  executionOrder: 'parallel'
 });
 ```
 
@@ -113,13 +109,11 @@ const strictEngine = new GuardrailEngine({
   validators: [
     new PromptInjectionValidator({ sensitivity: 'strict' }),
     new JailbreakValidator({ sensitivity: 'strict' }),
-    new ReformulationDetector({ sensitivity: 'strict' }),
+    new ReformulationDetector({ sensitivity: 'strict' })
   ],
-  guards: [
-    new SecretGuard({ action: 'block' }),
-  ],
+  guards: [new SecretGuard({ action: 'block' })],
   shortCircuit: true,
-  action: 'block',
+  action: 'block'
 });
 ```
 
@@ -131,10 +125,10 @@ Allow more content, log violations:
 const permissiveEngine = new GuardrailEngine({
   validators: [
     new PromptInjectionValidator({ sensitivity: 'permissive' }),
-    new JailbreakValidator({ sensitivity: 'permissive' }),
+    new JailbreakValidator({ sensitivity: 'permissive' })
   ],
   shortCircuit: false,
-  action: 'log',
+  action: 'log'
 });
 ```
 
@@ -177,7 +171,7 @@ Guuards can use additional context (like file paths) for more accurate detection
 
 ```typescript
 const engine = new GuardrailEngine({
-  guards: [new SecretGuard()],
+  guards: [new SecretGuard()]
 });
 
 // Validate code file - detects secrets
@@ -194,7 +188,7 @@ For testing or emergency bypass:
 ```typescript
 const engine = new GuardrailEngine({
   validators: [new PromptInjectionValidator()],
-  overrideToken: 'BYPASS-VALIDATION',
+  overrideToken: 'BYPASS-VALIDATION'
 });
 
 // Normal content blocked

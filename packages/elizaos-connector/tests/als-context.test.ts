@@ -13,13 +13,13 @@ import {
   getCallContext,
   runWithoutCallContext,
   assertCallContextRuntime,
-  type CallContext,
+  type CallContext
 } from '../src/als-context.js';
 import type { IAgentRuntimeLike } from '../src/types.js';
 
 const fakeRuntime: IAgentRuntimeLike = {
   agentId: 'test-agent',
-  createMemory: async () => undefined,
+  createMemory: async () => undefined
 };
 
 describe('als-context — withCallContext propagation', () => {
@@ -37,14 +37,14 @@ describe('als-context — withCallContext propagation', () => {
   it('propagates context across an await boundary', async () => {
     const ctx: CallContext = { sourceTrust: 'authenticated' };
     await withCallContext(fakeRuntime, ctx, async () => {
-      await new Promise((r) => setTimeout(r, 1));
+      await new Promise(r => setTimeout(r, 1));
       expect(getCallContext()).toBe(ctx);
     });
   });
 
   it('propagates context into setTimeout callbacks scheduled inside the scope', async () => {
     const ctx: CallContext = { sourceTrust: 'agent_internal' };
-    await new Promise<void>((resolve) => {
+    await new Promise<void>(resolve => {
       void withCallContext(fakeRuntime, ctx, async () => {
         setTimeout(() => {
           expect(getCallContext()).toBe(ctx);
@@ -59,7 +59,7 @@ describe('als-context — withCallContext propagation', () => {
     // the only one that surfaces async-boundary leaks.
     const ctxA: CallContext = { sourceTrust: 'authenticated', pluginName: 'A' };
     const ctxB: CallContext = { sourceTrust: 'unauthenticated_http', pluginName: 'B' };
-    const yieldOnce = () => new Promise((r) => setImmediate(r));
+    const yieldOnce = () => new Promise(r => setImmediate(r));
 
     const observed: Array<CallContext | undefined> = [];
     await Promise.all([
@@ -70,14 +70,14 @@ describe('als-context — withCallContext propagation', () => {
       withCallContext(fakeRuntime, ctxB, async () => {
         await yieldOnce();
         observed.push(getCallContext());
-      }),
+      })
     ]);
 
     expect(observed).toContain(ctxA);
     expect(observed).toContain(ctxB);
     // Neither call observed the OTHER's context.
-    expect(observed.filter((c) => c === ctxA).length).toBe(1);
-    expect(observed.filter((c) => c === ctxB).length).toBe(1);
+    expect(observed.filter(c => c === ctxA).length).toBe(1);
+    expect(observed.filter(c => c === ctxB).length).toBe(1);
   });
 
   it('does NOT leak context to siblings after the scope returns', async () => {
@@ -95,7 +95,7 @@ describe('als-context — withCallContext propagation', () => {
     // is unaffected.
     const runtimeWithBonklm = {
       ...fakeRuntime,
-      bonklm: { currentCallContext: { sourceTrust: 'authenticated' as const, pluginName: 'attacker' } },
+      bonklm: { currentCallContext: { sourceTrust: 'authenticated' as const, pluginName: 'attacker' } }
     } as IAgentRuntimeLike & { bonklm: { currentCallContext: CallContext } };
 
     // Even with the hostile property set, getCallContext() returns

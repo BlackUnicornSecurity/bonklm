@@ -28,12 +28,7 @@ import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-ut
 import type { DoctorFinding, DoctorReport, PluginLike } from './types.js';
 import { VERIFIED_PUBLISHER_ALLOWLIST } from './types.js';
 import { detectTypoSquat } from './typo-squat.js';
-import {
-  applyProbeOutcome,
-  type ProbeOptions,
-  type ProbeOutcome,
-  runStartupProbe,
-} from './probe.js';
+import { applyProbeOutcome, type ProbeOptions, type ProbeOutcome, runStartupProbe } from './probe.js';
 import { buildEolFindingV04 } from './shadow-log-integration.js';
 
 /**
@@ -74,7 +69,7 @@ export function auditCharacterFile(
       severity: 'HIGH',
       category: 'character_missing',
       description: 'No character object supplied — agent cannot identify itself.',
-      file: filePath,
+      file: filePath
     });
     return findings;
   }
@@ -87,7 +82,7 @@ export function auditCharacterFile(
           severity: 'CRITICAL',
           category: 'character_plaintext_secret',
           description: `Plaintext-looking secret in character field ${path}. Move to env var.`,
-          file: filePath,
+          file: filePath
         });
       }
     } else if (Array.isArray(node)) {
@@ -111,16 +106,15 @@ export function auditCharacterFile(
         category: 'character_weak_identity_anchor',
         description:
           'Character system prompt does not anchor a "you are a helpful assistant"-style identity. Role-hijacking injection is harder to detect.',
-        file: filePath,
+        file: filePath
       });
     }
   } else {
     findings.push({
       severity: 'MEDIUM',
       category: 'character_no_system_prompt',
-      description:
-        'Character has no system prompt — agent has no identity anchor against role-hijacking.',
-      file: filePath,
+      description: 'Character has no system prompt — agent has no identity anchor against role-hijacking.',
+      file: filePath
     });
   }
 
@@ -156,7 +150,7 @@ export function auditPlugins(plugins: ReadonlyArray<PluginLike>): DoctorFinding[
           `verified publisher "${typoCheck.nearestTypoSquat.target}". This is a likely typo-squat ` +
           `impersonation — Provider-source 'messages' writes from this plugin will be refused with ` +
           `CRITICAL diagnostic by the sealed wrapMemory closure.`,
-        pluginName: plugin.name,
+        pluginName: plugin.name
       });
       continue;
     }
@@ -165,7 +159,7 @@ export function auditPlugins(plugins: ReadonlyArray<PluginLike>): DoctorFinding[
       severity: 'MEDIUM',
       category: 'plugin_not_in_allowlist',
       description: `Plugin ${plugin.name} is not in the verified-publisher allowlist. Provider-source 'messages' writes from this plugin will be refused.`,
-      pluginName: plugin.name,
+      pluginName: plugin.name
     });
   }
   return findings;
@@ -177,11 +171,11 @@ export function auditPlugins(plugins: ReadonlyArray<PluginLike>): DoctorFinding[
  * the unsuppressable-CRITICAL contract).
  */
 export function buildReport(findings: DoctorFinding[]): DoctorReport {
-  const criticalCount = findings.filter((f) => f.severity === 'CRITICAL').length;
+  const criticalCount = findings.filter(f => f.severity === 'CRITICAL').length;
   return {
     findings,
     criticalCount,
-    exitCode: criticalCount > 0 ? 1 : 0,
+    exitCode: criticalCount > 0 ? 1 : 0
   };
 }
 
@@ -192,16 +186,11 @@ export function buildReport(findings: DoctorFinding[]): DoctorReport {
  *
  * Consumers pass this from their npm/pnpm-lock parse pipeline.
  */
-export function auditInstalledVersions(
-  installedVersions: Record<string, string> | undefined
-): DoctorFinding[] {
+export function auditInstalledVersions(installedVersions: Record<string, string> | undefined): DoctorFinding[] {
   const findings: DoctorFinding[] = [];
   if (installedVersions === undefined) return findings;
   const bonklmElizaosVersion = installedVersions[BONKLM_ELIZAOS_PACKAGE_NAME];
-  if (
-    typeof bonklmElizaosVersion === 'string' &&
-    V04_VERSION_PATTERN.test(bonklmElizaosVersion)
-  ) {
+  if (typeof bonklmElizaosVersion === 'string' && V04_VERSION_PATTERN.test(bonklmElizaosVersion)) {
     findings.push(buildEolFindingV04(bonklmElizaosVersion));
   }
   return findings;
@@ -247,10 +236,10 @@ export function probeOutcomeToFindings(outcome: ProbeOutcome): DoctorFinding[] {
           category: 'runtime_unauth_memories',
           description:
             'ElizaOS runtime exposes /api/agents/{agentId}/memories WITHOUT authentication. ' +
-            'Provider plugins can mutate user-authored memories via this route, defeating BonkLM\'s ' +
+            "Provider plugins can mutate user-authored memories via this route, defeating BonkLM's " +
             'sealed wrapMemory defence (Class-4 vulnerability). Secure the route or pass ' +
-            '`acknowledgeClass4Risk: true` to bonklmPlugin(...).',
-        },
+            '`acknowledgeClass4Risk: true` to bonklmPlugin(...).'
+        }
       ];
     case 'unauth_detected_acknowledged':
       return [
@@ -260,8 +249,8 @@ export function probeOutcomeToFindings(outcome: ProbeOutcome): DoctorFinding[] {
           description:
             'Unauthenticated /memories route detected; risk acknowledged via acknowledgeClass4Risk. ' +
             'Plugin continues but Construct C corroboration excludes unauth-source memories. ' +
-            'Resolve the upstream auth gap to restore full Construct B+C coverage.',
-        },
+            'Resolve the upstream auth gap to restore full Construct B+C coverage.'
+        }
       ];
     case 'unreachable':
       if (outcome.reason.startsWith('Probe completed')) {
@@ -269,24 +258,24 @@ export function probeOutcomeToFindings(outcome: ProbeOutcome): DoctorFinding[] {
           {
             severity: 'INFO',
             category: 'runtime_probe_safe',
-            description: outcome.reason,
-          },
+            description: outcome.reason
+          }
         ];
       }
       return [
         {
           severity: 'MEDIUM',
           category: 'runtime_probe_unreachable',
-          description: outcome.reason,
-        },
+          description: outcome.reason
+        }
       ];
     case 'skipped':
       return [
         {
           severity: 'INFO',
           category: 'runtime_probe_skipped',
-          description: outcome.reason,
-        },
+          description: outcome.reason
+        }
       ];
   }
 }
@@ -305,9 +294,7 @@ export function probeOutcomeToFindings(outcome: ProbeOutcome): DoctorFinding[] {
  * passing `logger` triggers the structured warn/error/info logs that
  * `bonklmPlugin.init` emits; omitting it produces findings only.
  */
-export async function runDoctorRuntime(
-  opts: ProbeOptions & { applyLogSideEffects?: boolean }
-): Promise<DoctorReport> {
+export async function runDoctorRuntime(opts: ProbeOptions & { applyLogSideEffects?: boolean }): Promise<DoctorReport> {
   const outcome = await runStartupProbe(opts);
   if (opts.applyLogSideEffects === true) {
     try {

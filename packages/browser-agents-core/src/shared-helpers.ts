@@ -85,11 +85,7 @@ export function assertNonCuaMode(
 ): string | undefined {
   const { allowCuaMode = false, configOverride } = options;
   const mode = detectVendorMode(client, configOverride);
-  if (
-    mode !== undefined &&
-    CUA_MODE_PATTERN.test(mode) &&
-    allowCuaMode !== true
-  ) {
+  if (mode !== undefined && CUA_MODE_PATTERN.test(mode) && allowCuaMode !== true) {
     throw new Error(
       `${callerName}: CUA / computer-use mode is refused by default. ` +
         'Screenshots are NOT inspected by BonkLM validators. Pass ' +
@@ -107,9 +103,10 @@ export function assertNonCuaMode(
  *
  * Hoisted from Stagehand + Eko (rev MED-4 closure).
  */
-export function normaliseActArg(
-  action: string | { action: string; [k: string]: unknown }
-): { actionString: string; args?: Record<string, unknown> } {
+export function normaliseActArg(action: string | { action: string; [k: string]: unknown }): {
+  actionString: string;
+  args?: Record<string, unknown>;
+} {
   if (typeof action === 'string') {
     return { actionString: action };
   }
@@ -129,25 +126,15 @@ export function normaliseActArg(
  */
 export function isUnsafeBinaryResult(result: unknown): boolean {
   if (result === null || result === undefined) return false;
-  if (
-    typeof result === 'string' ||
-    typeof result === 'number' ||
-    typeof result === 'boolean'
-  ) {
+  if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') {
     return false;
   }
-  if (
-    typeof globalThis.Buffer !== 'undefined' &&
-    globalThis.Buffer.isBuffer(result as { length: number })
-  ) {
+  if (typeof globalThis.Buffer !== 'undefined' && globalThis.Buffer.isBuffer(result as { length: number })) {
     return true;
   }
   if (result instanceof Uint8Array) return true;
   if (result instanceof ArrayBuffer) return true;
-  if (
-    typeof (result as { [Symbol.asyncIterator]?: unknown })[Symbol.asyncIterator] ===
-    'function'
-  ) {
+  if (typeof (result as { [Symbol.asyncIterator]?: unknown })[Symbol.asyncIterator] === 'function') {
     return true;
   }
   return false;
@@ -195,10 +182,8 @@ export function emitWarning(
     return;
   }
   if (meta === undefined) {
-     
     console.warn(message);
   } else {
-     
     console.warn(message, meta);
   }
 }

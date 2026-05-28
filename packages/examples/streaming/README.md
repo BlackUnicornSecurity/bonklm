@@ -1,6 +1,7 @@
 # Streaming Validation Example
 
-This example demonstrates how to validate streaming content, such as LLM responses or real-time user input.
+This example demonstrates how to validate streaming content, such as LLM responses or real-time user
+input.
 
 ## Overview
 
@@ -31,7 +32,7 @@ const validator = new StreamingValidator(
   [], // guards
   {
     maxBufferSize: 4096,
-    validateEveryNChunks: 5,
+    validateEveryNChunks: 5
   }
 );
 
@@ -48,12 +49,12 @@ for await (const chunk of stream) {
 
 ## Configuration Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `maxBufferSize` | `number` | `4096` | Max buffer size before forced validation |
-| `validateEveryNChunks` | `number` | `5` | Validate after N chunks |
-| `accumulateContent` | `boolean` | `true` | Accumulate chunks across validations |
-| `minChunkSize` | `number` | `10` | Minimum chunk size to process |
+| Option                 | Type      | Default | Description                              |
+| ---------------------- | --------- | ------- | ---------------------------------------- |
+| `maxBufferSize`        | `number`  | `4096`  | Max buffer size before forced validation |
+| `validateEveryNChunks` | `number`  | `5`     | Validate after N chunks                  |
+| `accumulateContent`    | `boolean` | `true`  | Accumulate chunks across validations     |
+| `minChunkSize`         | `number`  | `10`    | Minimum chunk size to process            |
 
 ## StreamingValidator API
 
@@ -97,9 +98,9 @@ const stats = validator.getStats();
 
 // Returns:
 {
-  chunkCount: number;       // Total chunks processed
-  validationCount: number;  // Total validations performed
-  bufferSize: number;       // Current buffer size
+  chunkCount: number; // Total chunks processed
+  validationCount: number; // Total validations performed
+  bufferSize: number; // Current buffer size
 }
 ```
 
@@ -110,17 +111,16 @@ const stats = validator.getStats();
 Content is accumulated across chunks and validated as a whole.
 
 ```typescript
-const validator = new StreamingValidator(
-  [new PromptInjectionValidator()],
-  [],
-  { accumulateContent: true }
-);
+const validator = new StreamingValidator([new PromptInjectionValidator()], [], {
+  accumulateContent: true
+});
 
 // Chunks: "Hello " + "world " + "testing"
 // Validated: "Hello world testing"
 ```
 
 **Use when:**
+
 - Full context matters for detection
 - Smaller chunks that form complete thoughts
 - You want to detect patterns across chunk boundaries
@@ -130,19 +130,16 @@ const validator = new StreamingValidator(
 Each chunk is validated independently.
 
 ```typescript
-const validator = new StreamingValidator(
-  [new PromptInjectionValidator()],
-  [],
-  {
-    accumulateContent: false,
-    validateEveryNChunks: 1,
-  }
-);
+const validator = new StreamingValidator([new PromptInjectionValidator()], [], {
+  accumulateContent: false,
+  validateEveryNChunks: 1
+});
 
 // Each chunk validated separately
 ```
 
 **Use when:**
+
 - Each chunk is independent
 - Faster detection required
 - Memory constraints exist
@@ -169,11 +166,9 @@ for await (const chunk of stream) {
 Validate LLM responses as they stream:
 
 ```typescript
-const validator = new StreamingValidator(
-  [new JailbreakValidator(), new SecretGuard()],
-  [],
-  { validateEveryNChunks: 4 }
-);
+const validator = new StreamingValidator([new JailbreakValidator(), new SecretGuard()], [], {
+  validateEveryNChunks: 4
+});
 
 // Process LLM stream
 for await (const chunk of llmStream) {
@@ -194,13 +189,11 @@ for await (const chunk of llmStream) {
 Moderate chat messages in real-time:
 
 ```typescript
-const validator = new StreamingValidator(
-  [new PromptInjectionValidator()],
-  [],
-  { maxBufferSize: 1000 }
-);
+const validator = new StreamingValidator([new PromptInjectionValidator()], [], {
+  maxBufferSize: 1000
+});
 
-socket.on('message', async (chunk) => {
+socket.on('message', async chunk => {
   const { shouldTerminate } = await validator.processEvent(chunk);
 
   if (shouldTerminate) {
@@ -237,10 +230,14 @@ More frequent validation = more overhead but faster detection:
 
 ```typescript
 // High frequency (slower, faster detection)
-{ validateEveryNChunks: 2 }
+{
+  validateEveryNChunks: 2;
+}
 
 // Low frequency (faster, slower detection)
-{ validateEveryNChunks: 10 }
+{
+  validateEveryNChunks: 10;
+}
 ```
 
 ### Buffer Size
@@ -249,10 +246,14 @@ Larger buffers = more context but higher memory usage:
 
 ```typescript
 // Small buffer (less memory, less context)
-{ maxBufferSize: 1000 }
+{
+  maxBufferSize: 1000;
+}
 
 // Large buffer (more memory, more context)
-{ maxBufferSize: 10000 }
+{
+  maxBufferSize: 10000;
+}
 ```
 
 ### Chunk Size
@@ -261,7 +262,9 @@ Filter tiny chunks (tokens, partial words) to reduce overhead:
 
 ```typescript
 // Skip chunks smaller than 10 characters
-{ minChunkSize: 10 }
+{
+  minChunkSize: 10;
+}
 ```
 
 ## Best Practices

@@ -14,8 +14,6 @@
  */
 export function validatePositiveNumber(value: number, optionName: string): void {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    throw new TypeError(
-      `${optionName} must be a positive number. Received: ${value}`,
-    );
+    throw new TypeError(`${optionName} must be a positive number. Received: ${value}`);
   }
 }

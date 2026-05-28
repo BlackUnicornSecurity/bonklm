@@ -20,7 +20,7 @@ import {
   formatTestDetail,
   getFailedTests,
   getSuccessfulTests,
-  type TestDisplay,
+  type TestDisplay
 } from './display.js';
 import type { TestResult } from '../connectors/base.js';
 
@@ -28,7 +28,7 @@ import type { TestResult } from '../connectors/base.js';
 const consoleMock = {
   log: vi.fn(),
   error: vi.fn(),
-  warn: vi.fn(),
+  warn: vi.fn()
 };
 
 describe('display', () => {
@@ -50,18 +50,18 @@ describe('display', () => {
         {
           connectorId: 'openai',
           connectorName: 'OpenAI',
-          result: { connection: true, validation: true, latency: 123 },
+          result: { connection: true, validation: true, latency: 123 }
         },
         {
           connectorId: 'anthropic',
           connectorName: 'Anthropic',
-          result: { connection: true, validation: false, error: 'Invalid key', latency: 456 },
+          result: { connection: true, validation: false, error: 'Invalid key', latency: 456 }
         },
         {
           connectorId: 'ollama',
           connectorName: 'Ollama',
-          result: { connection: false, validation: false, error: 'Service unavailable', latency: 50 },
-        },
+          result: { connection: false, validation: false, error: 'Service unavailable', latency: 50 }
+        }
       ];
     });
 
@@ -93,7 +93,7 @@ describe('display', () => {
       displayTestResults(mockTests, false);
 
       const calls = console.log.mock.calls;
-      const output = calls.map((c) => c[0]).join(' ');
+      const output = calls.map(c => c[0]).join(' ');
 
       expect(output).toContain('OpenAI');
       expect(output).toContain('Anthropic');
@@ -102,13 +102,13 @@ describe('display', () => {
 
     it('should fall back to connectorId when name is not available', () => {
       const testsWithoutNames: TestDisplay[] = [
-        { connectorId: 'openai', result: { connection: true, validation: true, latency: 100 } },
+        { connectorId: 'openai', result: { connection: true, validation: true, latency: 100 } }
       ];
 
       displayTestResults(testsWithoutNames, false);
 
       const calls = console.log.mock.calls;
-      const output = calls.map((c) => c[0]).join(' ');
+      const output = calls.map(c => c[0]).join(' ');
 
       expect(output).toContain('openai');
     });
@@ -117,7 +117,7 @@ describe('display', () => {
       displayTestResults(mockTests, false);
 
       const calls = console.log.mock.calls;
-      const output = calls.map((c) => c[0]).join(' ');
+      const output = calls.map(c => c[0]).join(' ');
 
       expect(output).toContain('123ms');
       expect(output).toContain('456ms');
@@ -128,7 +128,7 @@ describe('display', () => {
       displayTestResults(mockTests, false);
 
       const calls = console.log.mock.calls;
-      const output = calls.map((c) => c[0]).join(' ');
+      const output = calls.map(c => c[0]).join(' ');
 
       expect(output).toContain('Invalid key');
       expect(output).toContain('Service unavailable');
@@ -142,7 +142,7 @@ describe('display', () => {
       displaySingleTestResult('openai', 'OpenAI', result);
 
       const calls = console.log.mock.calls;
-      const output = calls.map((c) => c[0]).join(' ');
+      const output = calls.map(c => c[0]).join(' ');
 
       expect(output).toContain('✓');
       expect(output).toContain('OpenAI');
@@ -154,7 +154,7 @@ describe('display', () => {
       displaySingleTestResult('openai', 'OpenAI', result, false);
 
       const calls = console.log.mock.calls;
-      const output = calls.map((c) => c[0]).join(' ');
+      const output = calls.map(c => c[0]).join(' ');
 
       expect(output).toContain('✗');
       expect(output).toContain('Failed');
@@ -165,13 +165,13 @@ describe('display', () => {
         connection: true,
         validation: false,
         error: 'Auth failed',
-        latency: 100,
+        latency: 100
       };
 
       displaySingleTestResult('openai', 'OpenAI', result, false);
 
       const calls = console.log.mock.calls;
-      const output = calls.map((c) => c[0]).join(' ');
+      const output = calls.map(c => c[0]).join(' ');
 
       expect(output).toContain('Connection: ✓');
       expect(output).toContain('Validation: ✗');
@@ -185,7 +185,7 @@ describe('display', () => {
 
       // Should not contain ANSI color codes
       const calls = console.log.mock.calls;
-      const output = calls.map((c) => c[0]).join(' ');
+      const output = calls.map(c => c[0]).join(' ');
       expect(output).not.toContain('\x1b[');
     });
   });
@@ -196,7 +196,7 @@ describe('display', () => {
         { connectorId: 'test1', result: { connection: true, validation: true, latency: 100 } },
         { connectorId: 'test2', result: { connection: true, validation: true, latency: 200 } },
         { connectorId: 'test3', result: { connection: true, validation: false, latency: 150 } },
-        { connectorId: 'test4', result: { connection: false, validation: false, error: 'Failed' } },
+        { connectorId: 'test4', result: { connection: false, validation: false, error: 'Failed' } }
       ];
 
       const summary = formatTestSummary(tests);
@@ -224,7 +224,7 @@ describe('display', () => {
       const tests: TestDisplay[] = [
         { connectorId: 'test1', result: { connection: true, validation: true } },
         { connectorId: 'test2', result: { connection: true, validation: true } },
-        { connectorId: 'test3', result: { connection: true, validation: true } },
+        { connectorId: 'test3', result: { connection: true, validation: true } }
       ];
 
       const summary = formatTestSummary(tests);
@@ -235,7 +235,7 @@ describe('display', () => {
     it('should handle tests without latency', () => {
       const tests: TestDisplay[] = [
         { connectorId: 'test1', result: { connection: true, validation: true } },
-        { connectorId: 'test2', result: { connection: true, validation: true, latency: 100 } },
+        { connectorId: 'test2', result: { connection: true, validation: true, latency: 100 } }
       ];
 
       const summary = formatTestSummary(tests);
@@ -253,14 +253,14 @@ describe('display', () => {
         connectionFailures: 0,
         validationFailures: 1,
         averageLatency: 150,
-        successRate: 80,
+        successRate: 80
       };
 
       displayTestSummary(summary);
 
       expect(console.log).toHaveBeenCalled();
       const calls = console.log.mock.calls;
-      const output = calls.map((c) => c[0]).join(' ');
+      const output = calls.map(c => c[0]).join(' ');
 
       expect(output).toContain('Test Summary');
       expect(output).toContain('4 successful');
@@ -275,13 +275,13 @@ describe('display', () => {
         connectionFailures: 1,
         validationFailures: 1,
         averageLatency: 100,
-        successRate: 33,
+        successRate: 33
       };
 
       displayTestSummary(summary);
 
       const calls = console.log.mock.calls;
-      const output = calls.map((c) => c[0]).join(' ');
+      const output = calls.map(c => c[0]).join(' ');
 
       expect(output).toContain('Connection failures: 1');
       expect(output).toContain('Validation failures: 1');
@@ -291,7 +291,7 @@ describe('display', () => {
   describe('exportTestResultsJson', () => {
     it('should export test results as pretty JSON by default', () => {
       const tests: TestDisplay[] = [
-        { connectorId: 'openai', connectorName: 'OpenAI', result: { connection: true, validation: true } },
+        { connectorId: 'openai', connectorName: 'OpenAI', result: { connection: true, validation: true } }
       ];
 
       exportTestResultsJson(tests);
@@ -308,9 +308,7 @@ describe('display', () => {
     });
 
     it('should export test results as compact JSON when pretty is false', () => {
-      const tests: TestDisplay[] = [
-        { connectorId: 'openai', result: { connection: true, validation: true } },
-      ];
+      const tests: TestDisplay[] = [{ connectorId: 'openai', result: { connection: true, validation: true } }];
 
       exportTestResultsJson(tests, false);
 
@@ -330,9 +328,9 @@ describe('display', () => {
             connection: true,
             validation: false,
             error: 'Auth failed',
-            latency: 250,
-          },
-        },
+            latency: 250
+          }
+        }
       ];
 
       exportTestResultsJson(tests);
@@ -347,7 +345,7 @@ describe('display', () => {
         connection: true,
         validation: false,
         error: 'Auth failed',
-        latency: 250,
+        latency: 250
       });
     });
   });
@@ -361,7 +359,7 @@ describe('display', () => {
         connectionFailures: 0,
         validationFailures: 1,
         averageLatency: 150,
-        successRate: 80,
+        successRate: 80
       };
 
       exportTestSummaryJson(summary);
@@ -408,7 +406,7 @@ describe('display', () => {
     it('should format successful test result', () => {
       const test: TestDisplay = {
         connectorId: 'openai',
-        result: { connection: true, validation: true, latency: 100 },
+        result: { connection: true, validation: true, latency: 100 }
       };
 
       const detail = formatTestDetail(test);
@@ -422,7 +420,7 @@ describe('display', () => {
     it('should format failed test result', () => {
       const test: TestDisplay = {
         connectorId: 'anthropic',
-        result: { connection: false, validation: false, error: 'Auth failed' },
+        result: { connection: false, validation: false, error: 'Auth failed' }
       };
 
       const detail = formatTestDetail(test);
@@ -435,7 +433,7 @@ describe('display', () => {
     it('should format validation failure', () => {
       const test: TestDisplay = {
         connectorId: 'test',
-        result: { connection: true, validation: false, error: 'Invalid key', latency: 50 },
+        result: { connection: true, validation: false, error: 'Invalid key', latency: 50 }
       };
 
       const detail = formatTestDetail(test);
@@ -453,19 +451,19 @@ describe('display', () => {
       const tests: TestDisplay[] = [
         { connectorId: 'test1', result: { connection: true, validation: true } },
         { connectorId: 'test2', result: { connection: true, validation: false } },
-        { connectorId: 'test3', result: { connection: false, validation: false } },
+        { connectorId: 'test3', result: { connection: false, validation: false } }
       ];
 
       const failed = getFailedTests(tests);
 
       expect(failed).toHaveLength(2);
-      expect(failed.map((t) => t.connectorId)).toEqual(['test2', 'test3']);
+      expect(failed.map(t => t.connectorId)).toEqual(['test2', 'test3']);
     });
 
     it('should return empty array when all tests pass', () => {
       const tests: TestDisplay[] = [
         { connectorId: 'test1', result: { connection: true, validation: true } },
-        { connectorId: 'test2', result: { connection: true, validation: true } },
+        { connectorId: 'test2', result: { connection: true, validation: true } }
       ];
 
       const failed = getFailedTests(tests);
@@ -479,7 +477,7 @@ describe('display', () => {
       const tests: TestDisplay[] = [
         { connectorId: 'test1', result: { connection: true, validation: true } },
         { connectorId: 'test2', result: { connection: true, validation: false } },
-        { connectorId: 'test3', result: { connection: false, validation: false } },
+        { connectorId: 'test3', result: { connection: false, validation: false } }
       ];
 
       const successful = getSuccessfulTests(tests);
@@ -491,7 +489,7 @@ describe('display', () => {
     it('should return empty array when all tests fail', () => {
       const tests: TestDisplay[] = [
         { connectorId: 'test1', result: { connection: true, validation: false } },
-        { connectorId: 'test2', result: { connection: false, validation: false } },
+        { connectorId: 'test2', result: { connection: false, validation: false } }
       ];
 
       const successful = getSuccessfulTests(tests);

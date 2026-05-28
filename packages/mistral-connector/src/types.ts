@@ -150,10 +150,5 @@ export interface WrappedMistralClient extends MistralLike {
  */
 export type MistralEngineLike = Pick<
   GuardrailEngine,
-  | 'validate'
-  | 'validateInput'
-  | 'getInstanceId'
-  | 'notifyCachedResult'
-  | 'getValidators'
-  | 'addValidator'
+  'validate' | 'validateInput' | 'getInstanceId' | 'notifyCachedResult' | 'getValidators' | 'addValidator'
 >;

@@ -50,7 +50,7 @@ export function maskKey(value: string): string {
   let paddingLength: number;
   do {
     randomByte = randomBytes(1)[0];
-    paddingLength = randomByte % range + MIN_PADDING;
+    paddingLength = (randomByte % range) + MIN_PADDING;
   } while (randomByte >= 256 - (256 % range)); // Reject bytes that would cause bias
   const padding = '*'.repeat(paddingLength);
 
@@ -65,11 +65,7 @@ export function maskKey(value: string): string {
  * @param suffixChars - Number of characters to show at the end
  * @returns The masked string
  */
-export function maskKeyWithCustomLength(
-  value: string,
-  visibleChars: number,
-  suffixChars: number
-): string {
+export function maskKeyWithCustomLength(value: string, visibleChars: number, suffixChars: number): string {
   // Validate input parameters
   if (!Number.isInteger(visibleChars) || visibleChars < 0) {
     throw new TypeError('visibleChars must be a non-negative integer');
@@ -91,7 +87,7 @@ export function maskKeyWithCustomLength(
   let paddingLength: number;
   do {
     randomByte = randomBytes(1)[0];
-    paddingLength = randomByte % range + MIN_PADDING;
+    paddingLength = (randomByte % range) + MIN_PADDING;
   } while (randomByte >= 256 - (256 % range));
   const padding = '*'.repeat(paddingLength);
 

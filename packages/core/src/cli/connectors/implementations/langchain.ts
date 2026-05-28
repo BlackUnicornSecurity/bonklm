@@ -13,18 +13,19 @@ export const langchainConnector: ConnectorDefinition = {
   name: 'LangChain',
   category: 'framework',
   detection: {
-    packageJson: ['langchain', '@langchain/core'],
+    packageJson: ['langchain', '@langchain/core']
   },
 
   test: async (_config, _signal) => {
     // Framework connectors don't need external testing
     return {
       connection: true,
-      validation: true,
+      validation: true
     };
   },
 
-  generateSnippet: () => `
+  generateSnippet: () =>
+    `
 import { GuardrailEngine } from '@blackunicorn/bonklm';
 import { BaseCallbackHandler } from '@langchain/core/callbacks/base';
 
@@ -56,6 +57,6 @@ const llm = new ChatOpenAI({
   `.trim(),
 
   configSchema: z.object({
-    blockOnFlag: z.boolean().optional(),
-  }),
+    blockOnFlag: z.boolean().optional()
+  })
 };

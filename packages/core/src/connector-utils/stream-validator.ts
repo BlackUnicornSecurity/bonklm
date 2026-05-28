@@ -105,7 +105,7 @@ export function createStreamValidatorState(): StreamValidatorState {
     accumulated: '',
     chunkCount: 0,
     blocked: false,
-    byteSize: 0,
+    byteSize: 0
   };
 }
 
@@ -145,7 +145,7 @@ export function validateBufferBeforeAccumulation(
     options.logger?.warn('[Stream Validator] Buffer overflow prevented', {
       currentSize: state.byteSize,
       chunkSize: chunkByteSize,
-      maxSize: maxBufferSize,
+      maxSize: maxBufferSize
     });
 
     options.onBlocked?.(state.accumulated, reason);
@@ -171,10 +171,7 @@ export function validateBufferBeforeAccumulation(
  * }
  * ```
  */
-export function updateStreamValidatorState(
-  state: StreamValidatorState,
-  chunk: string
-): number {
+export function updateStreamValidatorState(state: StreamValidatorState, chunk: string): number {
   state.accumulated += chunk;
   state.byteSize += getByteSize(chunk);
   return ++state.chunkCount;
@@ -204,10 +201,7 @@ export function shouldValidateStream(
   // Guard against `interval = 0` (would make `x % 0` produce NaN) AND
   // `Infinity` (would make `x % Infinity === x`, so the modulo never hits 0
   // and validation silently never runs).
-  const safeInterval =
-    Number.isFinite(interval) && interval >= 1
-      ? Math.floor(interval)
-      : DEFAULT_VALIDATION_INTERVAL;
+  const safeInterval = Number.isFinite(interval) && interval >= 1 ? Math.floor(interval) : DEFAULT_VALIDATION_INTERVAL;
   return !state.blocked && state.chunkCount > 0 && state.chunkCount % safeInterval === 0;
 }
 
@@ -239,10 +233,7 @@ export function hasUnvalidatedTail(
   interval: number = DEFAULT_VALIDATION_INTERVAL
 ): boolean {
   // Same Infinity/0 guard as shouldValidateStream.
-  const safeInterval =
-    Number.isFinite(interval) && interval >= 1
-      ? Math.floor(interval)
-      : DEFAULT_VALIDATION_INTERVAL;
+  const safeInterval = Number.isFinite(interval) && interval >= 1 ? Math.floor(interval) : DEFAULT_VALIDATION_INTERVAL;
   return !state.blocked && state.chunkCount > 0 && state.chunkCount % safeInterval !== 0;
 }
 
@@ -261,10 +252,7 @@ export function hasUnvalidatedTail(
  * }
  * ```
  */
-export function markStreamBlocked(
-  state: StreamValidatorState,
-  _reason: string
-): void {
+export function markStreamBlocked(state: StreamValidatorState, _reason: string): void {
   // Reason is accepted for API consistency and potential future logging
   state.blocked = true;
   state.accumulated = '';
@@ -304,9 +292,9 @@ function getByteSize(str: string): number {
   let size = str.length;
   for (let i = 0; i < str.length; i++) {
     const code = str.charCodeAt(i);
-    if (code > 0x7F && code <= 0x7FF) {
+    if (code > 0x7f && code <= 0x7ff) {
       size++;
-    } else if (code > 0x7FF && code <= 0xFFFF) {
+    } else if (code > 0x7ff && code <= 0xffff) {
       size += 2;
     } else if (code >= 0x10000) {
       // Surrogate pair handling
@@ -357,9 +345,7 @@ export function processStreamChunk(
  * `allowed` boolean and an optional `reason`.
  */
 export interface StreamValidatorEngine {
-  validate(
-    content: string
-  ): Promise<{ allowed: boolean; reason?: string }> | { allowed: boolean; reason?: string };
+  validate(content: string): Promise<{ allowed: boolean; reason?: string }> | { allowed: boolean; reason?: string };
 }
 
 export interface StreamValidatorResult {
@@ -455,7 +441,7 @@ export class StreamValidator {
     if (typeof Symbol.asyncDispose !== 'symbol') {
       throw new Error(
         'StreamValidator requires Node >= 20.4 (Symbol.asyncDispose). ' +
-        'Upgrade Node or use the lower-level processStreamChunk / hasUnvalidatedTail helpers.'
+          'Upgrade Node or use the lower-level processStreamChunk / hasUnvalidatedTail helpers.'
       );
     }
     this.engine = engine;
@@ -472,19 +458,15 @@ export class StreamValidator {
     //      (full-response mode — the only 100% leak-prevention).
     //   3. Otherwise 256 chars or first sentence boundary.
     this.minBufferBeforeRelease =
-      options.minBufferBeforeRelease ??
-      (options.chainHasSecretOrPii ? Infinity : DEFAULT_MIN_BUFFER_BEFORE_RELEASE);
+      options.minBufferBeforeRelease ?? (options.chainHasSecretOrPii ? Infinity : DEFAULT_MIN_BUFFER_BEFORE_RELEASE);
     this.releaseGate = new BufferedReleaseGate({
       minCharsBeforeRelease: this.minBufferBeforeRelease,
       detectSentenceBoundary: options.detectSentenceBoundary,
-      minSentenceLength: options.minSentenceLength,
+      minSentenceLength: options.minSentenceLength
     });
   }
 
-  static create(
-    engine: StreamValidatorEngine,
-    options: StreamValidationOptions = {}
-  ): StreamValidator {
+  static create(engine: StreamValidatorEngine, options: StreamValidationOptions = {}): StreamValidator {
     return new StreamValidator(engine, options);
   }
 
@@ -643,7 +625,7 @@ export class StreamValidator {
       }
       return {
         released: this.releaseGate.takePending(),
-        allowed: true,
+        allowed: true
       };
     } catch (err) {
       // Audit-loop reviewer HIGH-1: convert engine throws to the
@@ -669,7 +651,7 @@ export class StreamValidator {
       return {
         released: '',
         allowed: !this.state.blocked,
-        reason: this.state.blocked ? 'stream_already_blocked' : undefined,
+        reason: this.state.blocked ? 'stream_already_blocked' : undefined
       };
     }
     this.finalisedForClient = true;

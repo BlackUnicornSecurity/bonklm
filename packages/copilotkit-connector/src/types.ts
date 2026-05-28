@@ -201,11 +201,7 @@ export interface GuardedCopilotKitOptions {
    * @param result - The validation result.
    * @param context - The CopilotKit context.
    */
-  onActionCallBlocked?: (
-    action: CopilotKitAction,
-    result: GuardrailResult,
-    context?: CopilotKitContext,
-  ) => void;
+  onActionCallBlocked?: (action: CopilotKitAction, result: GuardrailResult, context?: CopilotKitContext) => void;
 
   /**
    * Allowed action names (whitelist).

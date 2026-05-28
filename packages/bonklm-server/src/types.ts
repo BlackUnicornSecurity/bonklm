@@ -4,11 +4,7 @@
  *
  * @package @blackunicorn/bonklm-server
  */
-import type {
-  GuardrailEngine,
-  Logger,
-  Validator,
-} from '@blackunicorn/bonklm';
+import type { GuardrailEngine, Logger, Validator } from '@blackunicorn/bonklm';
 
 /**
  * Configuration for `createBonklmGuardrailServer`.

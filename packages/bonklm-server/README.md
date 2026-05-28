@@ -1,11 +1,9 @@
 # @blackunicorn/bonklm-server
 
-Fastify-based HTTP server exposing BonkLM guardrails over
-HMAC-authenticated endpoints. Designed for **LiteLLM custom-guardrail
-plugins, Portkey webhook guardrails, and generic OpenAI-compatible
-upstreams**. Drop into your LLM proxy stack; consumers send their
-request payload + an HMAC-signed header pair; the server returns a
-guardrail verdict.
+Fastify-based HTTP server exposing BonkLM guardrails over HMAC-authenticated endpoints. Designed for
+**LiteLLM custom-guardrail plugins, Portkey webhook guardrails, and generic OpenAI-compatible
+upstreams**. Drop into your LLM proxy stack; consumers send their request payload + an HMAC-signed
+header pair; the server returns a guardrail verdict.
 
 **Effort**: L (1 week of dev). **Story 2.13** (Sprint 15).
 
@@ -27,16 +25,13 @@ docker run -p 4123:4123 \
 
 ```ts
 import { createBonklmGuardrailServer } from '@blackunicorn/bonklm-server';
-import {
-  PromptInjectionValidator,
-  SecretGuard,
-} from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, SecretGuard } from '@blackunicorn/bonklm';
 
 const server = await createBonklmGuardrailServer({
   validators: [new PromptInjectionValidator(), new SecretGuard()],
   port: 4123,
   hmacSecret: process.env.BONKLM_HMAC_SECRET!, // 32+ chars
-  productionMode: true, // strip validator reasons from public responses
+  productionMode: true // strip validator reasons from public responses
 });
 
 await server.listen();
@@ -44,16 +39,15 @@ await server.listen();
 
 ## ⚠️ SECURITY: HMAC secret + production mode are MANDATORY
 
-- `hmacSecret` MUST be at least 32 characters of entropy. The server
-  refuses to start with a shorter value. Generate via
-  `openssl rand -base64 32`.
-- `productionMode: true` strips validator reasons + findings from
-  HTTP responses (they still reach `engine.onIntercept(...)` for your
-  audit telemetry). **Always set this true in production.**
+- `hmacSecret` MUST be at least 32 characters of entropy. The server refuses to start with a shorter
+  value. Generate via `openssl rand -base64 32`.
+- `productionMode: true` strips validator reasons + findings from HTTP responses (they still reach
+  `engine.onIntercept(...)` for your audit telemetry). **Always set this true in production.**
 
 ## Routes
 
 All three guardrail routes share:
+
 - Method: `POST`
 - HMAC auth via `X-Bonklm-Signature` (sha256=<hex>) + `X-Bonklm-Timestamp`
 - 5-minute replay window (configurable via `replayWindowMs`)
@@ -61,23 +55,19 @@ All three guardrail routes share:
 
 ### `POST /litellm`
 
-Maps the LiteLLM custom-guardrail Python plugin payload to the
-shared guard input. Inspects `data.messages` and
-`request_data.messages` (the two common envelopes LiteLLM uses
-across versions).
+Maps the LiteLLM custom-guardrail Python plugin payload to the shared guard input. Inspects
+`data.messages` and `request_data.messages` (the two common envelopes LiteLLM uses across versions).
 
 ### `POST /portkey`
 
-Maps the Portkey webhook guardrail payload. Inspects `request.json`
-and the flat top-level envelope.
+Maps the Portkey webhook guardrail payload. Inspects `request.json` and the flat top-level envelope.
 
 ### `POST /openai-compatible`
 
-Maps a standard OpenAI chat-completion request body. Handles both
-`messages: [...]` (chat) and `prompt: string` (legacy completions).
-Multimodal `{type: 'text', text}` + `{type: 'image_url'}` content
-arrays are partially supported — text parts validated, image parts
-skipped (see known-limitations §19).
+Maps a standard OpenAI chat-completion request body. Handles both `messages: [...]` (chat) and
+`prompt: string` (legacy completions). Multimodal `{type: 'text', text}` + `{type: 'image_url'}`
+content arrays are partially supported — text parts validated, image parts skipped (see
+known-limitations §19).
 
 ### `GET /healthz`
 
@@ -91,12 +81,12 @@ X-Bonklm-Signature: sha256=<64-hex-chars>
 ```
 
 Where the signature is:
+
 ```
 HMAC_SHA256(secret, `${timestamp}.${rawRequestBody}`)
 ```
 
-Use the exported `signHmac(rawBody, timestamp, secret)` helper to
-generate signatures from clients:
+Use the exported `signHmac(rawBody, timestamp, secret)` helper to generate signatures from clients:
 
 ```ts
 import { signHmac } from '@blackunicorn/bonklm-server';
@@ -124,12 +114,12 @@ In your LiteLLM `proxy_config.yaml`:
 
 ```yaml
 guardrails:
-  - guardrail_name: "bonklm"
+  - guardrail_name: 'bonklm'
     litellm_params:
       guardrail: custom_guardrail.bonklmGuardrail
-      mode: "pre_call"
-      api_base: "http://bonklm-server:4123"
-      api_key: "os.environ/BONKLM_HMAC_SECRET"
+      mode: 'pre_call'
+      api_base: 'http://bonklm-server:4123'
+      api_key: 'os.environ/BONKLM_HMAC_SECRET'
 ```
 
 Your `custom_guardrail.py`:
@@ -177,6 +167,7 @@ class bonklmGuardrail:
 ### Portkey webhook guardrail (UI)
 
 In the Portkey UI, add a Guardrail:
+
 - Type: **Custom Webhook**
 - URL: `http://bonklm-server:4123/portkey`
 - Method: `POST`
@@ -204,8 +195,8 @@ curl -X POST http://localhost:4123/litellm \
 
 ## Performance target
 
-Story 2.13 AC: **P99 < 1.5s on the `packages/core/benchmarks/`
-corpus on a 4-vCPU container.** Validate yourself by running:
+Story 2.13 AC: **P99 < 1.5s on the `packages/core/benchmarks/` corpus on a 4-vCPU container.**
+Validate yourself by running:
 
 ```bash
 cd packages/core
@@ -214,9 +205,8 @@ pnpm run benchmark
 # corpus through the /openai-compatible endpoint, tracking p99.
 ```
 
-The default validator stack (PromptInjection + Multilingual) is
-designed to fit this budget on commodity 4-vCPU containers; adding
-heavy validators (e.g. external-API-backed) will push you past.
+The default validator stack (PromptInjection + Multilingual) is designed to fit this budget on
+commodity 4-vCPU containers; adding heavy validators (e.g. external-API-backed) will push you past.
 
 ## Docker
 
@@ -229,18 +219,17 @@ docker run -p 4123:4123 \
   blackunicorn/bonklm-server:0.4.0
 ```
 
-Image runs as a non-root `bonklm` user, exposes `4123/tcp`, and
-includes a `/healthz` HEALTHCHECK.
+Image runs as a non-root `bonklm` user, exposes `4123/tcp`, and includes a `/healthz` HEALTHCHECK.
 
 ## Configuration
 
-| Env var | Default | Description |
-|---|---|---|
-| `BONKLM_PORT` | `4123` | Listen port |
-| `BONKLM_HOST` | `0.0.0.0` | Bind host |
-| `BONKLM_HMAC_SECRET` | (required) | 32+ char shared secret |
-| `BONKLM_REPLAY_WINDOW_MS` | `300000` | Replay window (5 min) |
-| `BONKLM_PRODUCTION_MODE` | `false` | Strip reasons from responses |
+| Env var                   | Default    | Description                  |
+| ------------------------- | ---------- | ---------------------------- |
+| `BONKLM_PORT`             | `4123`     | Listen port                  |
+| `BONKLM_HOST`             | `0.0.0.0`  | Bind host                    |
+| `BONKLM_HMAC_SECRET`      | (required) | 32+ char shared secret       |
+| `BONKLM_REPLAY_WINDOW_MS` | `300000`   | Replay window (5 min)        |
+| `BONKLM_PRODUCTION_MODE`  | `false`    | Strip reasons from responses |
 
 ## License
 

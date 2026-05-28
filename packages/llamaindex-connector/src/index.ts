@@ -9,8 +9,4 @@
 
 export { createGuardedQueryEngine, createGuardedRetriever } from './guarded-engine.js';
 
-export type {
-  GuardedLlamaIndexOptions,
-  GuardedQueryResult,
-  DocumentValidationResult,
-} from './types.js';
+export type { GuardedLlamaIndexOptions, GuardedQueryResult, DocumentValidationResult } from './types.js';

@@ -31,28 +31,20 @@ export interface StagehandLike {
    * Extract structured data from the page. Maps to `retrieved_doc`
    * surface POST-call.
    */
-  extract<T = unknown>(
-    options:
-      | string
-      | { instruction: string; schema?: unknown; [k: string]: unknown }
-  ): Promise<T>;
+  extract<T = unknown>(options: string | { instruction: string; schema?: unknown; [k: string]: unknown }): Promise<T>;
 
   /**
    * Observe the page state. Maps to `text_input` surface (the
    * observation prompt is user-style input).
    */
-  observe(
-    options: string | { instruction: string; [k: string]: unknown }
-  ): Promise<unknown>;
+  observe(options: string | { instruction: string; [k: string]: unknown }): Promise<unknown>;
 
   /**
    * Multi-step agent execution. Maps to `composed_context` surface
    * on the task description.
    */
   agent?: {
-    execute(
-      task: string | { task: string; [k: string]: unknown }
-    ): Promise<unknown>;
+    execute(task: string | { task: string; [k: string]: unknown }): Promise<unknown>;
   };
 }
 

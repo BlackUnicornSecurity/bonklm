@@ -26,19 +26,11 @@ import {
   normalizeText,
   PromptInjectionValidator,
   type ShadowLogEntry,
-  type Validator,
+  type Validator
 } from '@blackunicorn/bonklm';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
-import type {
-  ActionLike,
-  BonklmPluginOptions,
-  IAgentRuntimeLike,
-  MemoryLike,
-} from './types.js';
-import {
-  shadowLogIntegrityFailureMessage,
-  verifyAndReadAuthenticatedMessages,
-} from './shadow-log-integration.js';
+import type { ActionLike, BonklmPluginOptions, IAgentRuntimeLike, MemoryLike } from './types.js';
+import { shadowLogIntegrityFailureMessage, verifyAndReadAuthenticatedMessages } from './shadow-log-integration.js';
 
 /**
  * Build the ToolCallArgsValidator chain used by Construct C. The
@@ -68,7 +60,7 @@ function extractRecipient(args: unknown): string | null {
   for (const [fieldName, candidate] of [
     ['recipient', obj.recipient],
     ['to', obj.to],
-    ['address', obj.address],
+    ['address', obj.address]
   ] as Array<[string, unknown]>) {
     if (candidate === undefined || candidate === null) continue;
     if (typeof candidate !== 'string') {
@@ -129,7 +121,7 @@ export function evaluateRecipientGate(
   // arg-passable), AND a source value of 'authenticated'. Both
   // conditions must hold.
   const userAuthored = memories.filter(
-    (m) =>
+    m =>
       m.source === 'authenticated' &&
       m.metadata !== undefined &&
       (m.metadata as { bonklmTrust?: unknown }).bonklmTrust === true
@@ -164,7 +156,7 @@ export function evaluateRecipientGate(
   if (prefMentionCount > 0 && nonPrefMentionCount === 0) {
     return {
       block: true,
-      reason: 'Recipient mentioned ONLY in preference-setting messages',
+      reason: 'Recipient mentioned ONLY in preference-setting messages'
     };
   }
   // If no user-authored message mentions the recipient at all, also
@@ -206,21 +198,18 @@ export function wrapSigningAction(
       // serialises action invocations under `message.content.args`
       // (or `message.content.params`). Duck-typed read.
       const content = message.content ?? {};
-      const args =
-        (content as { args?: unknown }).args ?? (content as { params?: unknown }).params;
+      const args = (content as { args?: unknown }).args ?? (content as { params?: unknown }).params;
 
       // Run BonkLM's ToolCallArgsValidator on the args tree first.
       const argsResult = await toolCallValidator.validate({
         kind: 'tool_call',
         toolName: action.name,
-        args,
+        args
       });
       if (argsResult.blocked) {
         options.onActionBlocked?.(action.name, argsResult.reason ?? 'tool_args_blocked');
         throw new ConnectorValidationError(
-          productionMode
-            ? `Action blocked: ${action.name}`
-            : `Action ${action.name} blocked: ${argsResult.reason}`,
+          productionMode ? `Action blocked: ${action.name}` : `Action ${action.name} blocked: ${argsResult.reason}`,
           'validation_failed'
         );
       }
@@ -232,7 +221,7 @@ export function wrapSigningAction(
           runtime: r,
           message,
           roomId: message.roomId,
-          options,
+          options
         });
         // `null` signals shadow-log integrity failure — refuse the
         // action (fail-CLOSED) with a generic public error.
@@ -249,9 +238,7 @@ export function wrapSigningAction(
         if (gate.block) {
           options.onActionBlocked?.(action.name, gate.reason ?? 'recipient_gate_blocked');
           throw new ConnectorValidationError(
-            productionMode
-              ? `Action blocked: ${action.name}`
-              : `Action ${action.name} blocked: ${gate.reason}`,
+            productionMode ? `Action blocked: ${action.name}` : `Action ${action.name} blocked: ${gate.reason}`,
             'validation_failed'
           );
         }
@@ -264,7 +251,7 @@ export function wrapSigningAction(
         return originalHandler.call(r, r, message, state, opts, callback);
       }
       return undefined;
-    },
+    }
   };
 }
 
@@ -300,15 +287,14 @@ async function readMemoriesForGate(args: {
     // deployments supply their own resolver.
     const resolver =
       options.getAuthenticatedRoomIds ??
-      ((_runtime, msg: MemoryLike) =>
-        new Set<string>(msg.roomId !== undefined ? [msg.roomId] : []));
+      ((_runtime, msg: MemoryLike) => new Set<string>(msg.roomId !== undefined ? [msg.roomId] : []));
     const authenticatedRoomIds = await resolver(runtime, message);
 
     const result = await verifyAndReadAuthenticatedMessages({
       shadowLog: options.shadowLog,
       roomId,
       authenticatedRoomIds,
-      logger: options.logger,
+      logger: options.logger
     });
     if (result.ok === false) {
       return null; // chain-integrity failure → fail-CLOSED
@@ -321,7 +307,7 @@ async function readMemoriesForGate(args: {
     return (
       (await runtime.getMemories({
         roomId,
-        tableName: 'messages',
+        tableName: 'messages'
       })) ?? []
     );
   }
@@ -355,6 +341,6 @@ function shadowEntryToMemoryLike(entry: ShadowLogEntry): MemoryLike {
     content: { text: entry.text },
     tableName: 'messages',
     source: entry.sourceTrust, // preserve actual trust tag
-    metadata: { bonklmTrust: true },
+    metadata: { bonklmTrust: true }
   };
 }

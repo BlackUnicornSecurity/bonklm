@@ -162,8 +162,7 @@ export interface WrapMemoryClientOptions {
  * Per-vendor wrappers expose the simpler `WrapMemoryClientOptions`
  * shape; the adapter is injected internally.
  */
-export interface WrapMemoryClientFullOptions<TClient extends object>
-  extends WrapMemoryClientOptions {
+export interface WrapMemoryClientFullOptions<TClient extends object> extends WrapMemoryClientOptions {
   /** The vendor adapter. */
   adapter: MemoryAdapter;
   /** The underlying engine. */

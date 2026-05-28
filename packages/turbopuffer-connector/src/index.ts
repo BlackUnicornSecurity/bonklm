@@ -34,5 +34,5 @@ export type {
   GuardedNamespaceOptions,
   GuardedNamespaceQueryResponse,
   GuardedNamespaceWriteParams,
-  GuardedTurbopufferRow,
+  GuardedTurbopufferRow
 } from './types.js';

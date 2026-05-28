@@ -177,7 +177,7 @@ export const DEFAULT_CONFIG: Required<
   action: 'block',
   enabled: true,
   logLevel: LogLevel.INFO,
-  includeFindings: true,
+  includeFindings: true
 };
 
 /**
@@ -188,7 +188,7 @@ export function mergeConfig<T extends ValidatorConfig>(
 ): T & Required<Pick<ValidatorConfig, 'sensitivity' | 'action' | 'enabled' | 'logLevel' | 'includeFindings'>> {
   return {
     ...DEFAULT_CONFIG,
-    ...userConfig,
+    ...userConfig
   } as T & Required<Pick<ValidatorConfig, 'sensitivity' | 'action' | 'enabled' | 'logLevel' | 'includeFindings'>>;
 }
 

@@ -17,10 +17,7 @@
  */
 import { AsyncLocalStorage as NodeAsyncLocalStorage } from 'node:async_hooks';
 import { describe, expect, it } from 'vitest';
-import {
-  assertAsyncLocalStorageHealthy,
-  AsyncLocalStorageCanaryError,
-} from '../../src/edge/als-canary.js';
+import { assertAsyncLocalStorageHealthy, AsyncLocalStorageCanaryError } from '../../src/edge/als-canary.js';
 
 // Cast the imported Node class to the canary's expected ctor shape.
 // (Test-side cast; production callers either pass the same import OR
@@ -51,9 +48,7 @@ describe('assertAsyncLocalStorageHealthy', () => {
       const original = (globalThis as { AsyncLocalStorage?: unknown }).AsyncLocalStorage;
       try {
         delete (globalThis as { AsyncLocalStorage?: unknown }).AsyncLocalStorage;
-        expect(() => assertAsyncLocalStorageHealthy()).toThrowError(
-          AsyncLocalStorageCanaryError
-        );
+        expect(() => assertAsyncLocalStorageHealthy()).toThrowError(AsyncLocalStorageCanaryError);
       } finally {
         (globalThis as { AsyncLocalStorage?: unknown }).AsyncLocalStorage = original;
       }
@@ -90,9 +85,7 @@ describe('assertAsyncLocalStorageHealthy', () => {
             return { token: 'attacker-controlled', sourceTrust: 'canary-sentinel' };
           }
         };
-        expect(() => assertAsyncLocalStorageHealthy()).toThrowError(
-          AsyncLocalStorageCanaryError
-        );
+        expect(() => assertAsyncLocalStorageHealthy()).toThrowError(AsyncLocalStorageCanaryError);
       } finally {
         (globalThis as { AsyncLocalStorage?: unknown }).AsyncLocalStorage = original;
       }
@@ -110,9 +103,7 @@ describe('assertAsyncLocalStorageHealthy', () => {
             return undefined;
           }
         };
-        expect(() => assertAsyncLocalStorageHealthy()).toThrowError(
-          AsyncLocalStorageCanaryError
-        );
+        expect(() => assertAsyncLocalStorageHealthy()).toThrowError(AsyncLocalStorageCanaryError);
       } finally {
         (globalThis as { AsyncLocalStorage?: unknown }).AsyncLocalStorage = original;
       }
@@ -135,9 +126,7 @@ describe('assertAsyncLocalStorageHealthy', () => {
             return this.store;
           }
         };
-        expect(() => assertAsyncLocalStorageHealthy()).toThrowError(
-          AsyncLocalStorageCanaryError
-        );
+        expect(() => assertAsyncLocalStorageHealthy()).toThrowError(AsyncLocalStorageCanaryError);
       } finally {
         (globalThis as { AsyncLocalStorage?: unknown }).AsyncLocalStorage = original;
       }

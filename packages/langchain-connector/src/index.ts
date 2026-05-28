@@ -31,7 +31,11 @@
  * is kept for dual-path runtime detection on `@langchain/core@^0.3.x`
  * peers and will be removed when the 0.3.x line reaches EOL.
  */
-export { GuardrailsCallbackHandler, isGuardrailsViolationError, isStreamValidationError } from './guardrails-handler.js';
+export {
+  GuardrailsCallbackHandler,
+  isGuardrailsViolationError,
+  isStreamValidationError
+} from './guardrails-handler.js';
 
 // Story 1.5 — langchain@1.x middleware + retriever wrap + LangGraph node.
 export {
@@ -47,14 +51,11 @@ export {
   type BonklmToolCall,
   type BonklmRetrieverLike,
   type WithRetrieverGuardrailsOptions,
-  type BonklmLangGraphState,
+  type BonklmLangGraphState
 } from './middleware/index.js';
 
 // Types
-export type {
-  GuardrailsCallbackHandlerOptions,
-  StreamValidationContext,
-} from './types.js';
+export type { GuardrailsCallbackHandlerOptions, StreamValidationContext } from './types.js';
 
 // Error classes
 // S012-011: Export custom LangChain error class
@@ -65,12 +66,8 @@ export { GuardrailsViolationError } from './types.js';
 export {
   ConnectorValidationError,
   ConnectorConfigurationError,
-  ConnectorTimeoutError,
+  ConnectorTimeoutError
 } from '@blackunicorn/bonklm/core/connector-utils';
 
 // Constants
-export {
-  DEFAULT_VALIDATION_INTERVAL,
-  DEFAULT_MAX_BUFFER_SIZE,
-  DEFAULT_VALIDATION_TIMEOUT,
-} from './types.js';
+export { DEFAULT_VALIDATION_INTERVAL, DEFAULT_MAX_BUFFER_SIZE, DEFAULT_VALIDATION_TIMEOUT } from './types.js';

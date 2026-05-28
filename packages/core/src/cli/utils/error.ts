@@ -88,26 +88,19 @@ export function sanitizeError(error: Error, depth: number = 0): Error {
   sanitizedMessage = sanitizedMessage.replace(/Bearer\s+[a-zA-Z0-9\-._~+/]+=*/gi, 'Bearer ***REDACTED***');
 
   // api_key patterns - extract and check the value
-  sanitizedMessage = sanitizedMessage.replace(
-    /api[_-]?key["\s:=]+([^\s"'`<>]+)/gi,
-    (match, value) => {
-      return isHighEntropy(value)
-        ? match.replace(value, '***REDACTED***')
-        : match;
-    }
-  );
+  sanitizedMessage = sanitizedMessage.replace(/api[_-]?key["\s:=]+([^\s"'`<>]+)/gi, (match, value) => {
+    return isHighEntropy(value) ? match.replace(value, '***REDACTED***') : match;
+  });
 
   // Base64 and high-entropy strings
   // Pattern 1: Base64 with proper padding (== or =)
-  sanitizedMessage = sanitizedMessage.replace(
-    /([A-Za-z0-9+/]{32,}={0,2})/g,
-    (match) => isHighEntropy(match) ? '***REDACTED***' : match
+  sanitizedMessage = sanitizedMessage.replace(/([A-Za-z0-9+/]{32,}={0,2})/g, match =>
+    isHighEntropy(match) ? '***REDACTED***' : match
   );
 
   // Pattern 2: Quoted high-entropy strings (more specific to avoid false positives)
-  sanitizedMessage = sanitizedMessage.replace(
-    /["']([a-zA-Z0-9_\-\.+/=]{32,})["']/g,
-    (match, captured) => isHighEntropy(captured) ? '***REDACTED***' : match
+  sanitizedMessage = sanitizedMessage.replace(/["']([a-zA-Z0-9_\-\.+/=]{32,})["']/g, (match, captured) =>
+    isHighEntropy(captured) ? '***REDACTED***' : match
   );
 
   // Pattern 3: Known JWT format (header.payload.signature)
@@ -122,15 +115,11 @@ export function sanitizeError(error: Error, depth: number = 0): Error {
     sanitizedStack = sanitizedStack.replace(/Bearer\s+[a-zA-Z0-9\-._~+/]+=*/gi, 'Bearer ***REDACTED***');
 
     // JWT tokens in stack traces
-    sanitizedStack = sanitizedStack.replace(
-      /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
-      '***JWT_REDACTED***'
-    );
+    sanitizedStack = sanitizedStack.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '***JWT_REDACTED***');
 
     // Base64 patterns
-    sanitizedStack = sanitizedStack.replace(
-      /([A-Za-z0-9+/]{32,}={0,2})/g,
-      (match) => isHighEntropy(match) ? '***REDACTED***' : match
+    sanitizedStack = sanitizedStack.replace(/([A-Za-z0-9+/]{32,}={0,2})/g, match =>
+      isHighEntropy(match) ? '***REDACTED***' : match
     );
   }
 
@@ -150,7 +139,7 @@ export function sanitizeError(error: Error, depth: number = 0): Error {
 export const ExitCode = {
   SUCCESS: 0,
   ERROR: 1,
-  PARTIAL: 2,
+  PARTIAL: 2
 } as const;
 
 /**

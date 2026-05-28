@@ -67,7 +67,7 @@ export {
   ConfigValidationError,
   Validators,
   type ConfigValidationResult,
-  type ValidationRule,
+  type ValidationRule
 } from './validation/index.js';
 
 // Enhanced logging
@@ -77,7 +77,7 @@ export {
   MonitoringLogLevel,
   type LogEntry,
   type MetricsData,
-  type MonitoringLoggerOptions,
+  type MonitoringLoggerOptions
 } from './logging/index.js';
 
 // S011-006: Security utilities
@@ -104,7 +104,7 @@ export {
   CommonRateLimiters,
   DEFAULT_RATE_LIMIT,
   type RateLimiterConfig,
-  type RateLimitResult,
+  type RateLimitResult
 } from './security/index.js';
 
 // S012-000: Connector utilities
@@ -140,7 +140,7 @@ export {
   type StreamValidatorResult,
   type StreamValidatorState,
   type StandardLoggerOptions,
-  type ValidateWithTimeoutOptions,
+  type ValidateWithTimeoutOptions
 } from './connector-utils/index.js';
 
 // Story 2.1b-edge-core (iter-1 architect BLOCK-2): re-export the ALS
@@ -149,10 +149,7 @@ export {
 // reaching into the `/edge` subpath. Edge consumers continue to import
 // from `@blackunicorn/bonklm/edge` for the portable surface; both
 // paths resolve to the SAME implementation.
-export {
-  assertAsyncLocalStorageHealthy,
-  AsyncLocalStorageCanaryError,
-} from './edge/als-canary.js';
+export { assertAsyncLocalStorageHealthy, AsyncLocalStorageCanaryError } from './edge/als-canary.js';
 
 // Story 1.3b — shadow log primitive. Edge-portable (uses Web Crypto
 // for sha256). Default in-memory adapter ships in core; production
@@ -162,7 +159,7 @@ export {
   createShadowLog,
   createInMemoryShadowLogStorage,
   computeContentHash,
-  computeChainLinkHash,
+  computeChainLinkHash
 } from './shadow-log/index.js';
 export type {
   CreateShadowLogOptions,
@@ -173,5 +170,5 @@ export type {
   ShadowLogEntry,
   ShadowLogSourceTrust,
   ShadowLogStorageAdapter,
-  VerifyChainResult,
+  VerifyChainResult
 } from './shadow-log/index.js';

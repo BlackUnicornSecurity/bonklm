@@ -12,17 +12,9 @@
  * @package @blackunicorn/bonklm-vercel
  */
 
-import {
-  createLogger,
-  type GuardrailEngine,
-  type Logger,
-  type Validator,
-} from '@blackunicorn/bonklm';
+import { createLogger, type GuardrailEngine, type Logger, type Validator } from '@blackunicorn/bonklm';
 import { createRetrievedDocValidator } from '@blackunicorn/bonklm';
-import {
-  ConnectorValidationError,
-  logValidationFailure,
-} from '@blackunicorn/bonklm/core/connector-utils';
+import { ConnectorValidationError, logValidationFailure } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * Duck-typed shape of `ToolLoopAgent` (or compatible) v5/v6 SDK
@@ -73,7 +65,7 @@ export function wrapAgent(
   const original = agent;
 
   const guardedGenerate: ToolLoopAgentLike['generate'] = original.generate
-    ? async (params) => {
+    ? async params => {
         const inputText = typeof params.prompt === 'string' ? params.prompt : '';
         if (inputText.length > 0) {
           const r = await validate(inputText, 'wrap_agent_input');
@@ -103,7 +95,7 @@ export function wrapAgent(
 
   return {
     ...original,
-    ...(guardedGenerate ? { generate: guardedGenerate } : {}),
+    ...(guardedGenerate ? { generate: guardedGenerate } : {})
   };
 }
 
@@ -163,7 +155,7 @@ export function wrapMCPClient(
   const docValidator = createRetrievedDocValidator({
     validators,
     onPerDocFailure: 'drop',
-    logger,
+    logger
   });
 
   const original = client;
@@ -171,7 +163,7 @@ export function wrapMCPClient(
   return {
     ...original,
     readResource: original.readResource
-      ? async (params) => {
+      ? async params => {
           const result = await original.readResource!(params);
           const contents = result.contents ?? [];
           if (contents.length === 0) return result;
@@ -179,23 +171,19 @@ export function wrapMCPClient(
             contents.map((c, i) => ({
               id: c.uri ?? `mcp[${i}]`,
               content: typeof c.text === 'string' ? c.text : '',
-              metadata: c,
+              metadata: c
             }))
           );
           if (batch.result.blocked) {
             throw new ConnectorValidationError(
-              productionMode
-                ? 'MCP resource blocked'
-                : `MCP resource blocked: ${batch.result.reason}`,
+              productionMode ? 'MCP resource blocked' : `MCP resource blocked: ${batch.result.reason}`,
               'validation_failed'
             );
           }
-          const survivorIds = new Set(batch.docs.map((d) => d.id));
-          const surviving = contents.filter((c, i) =>
-            survivorIds.has(c.uri ?? `mcp[${i}]`)
-          );
+          const survivorIds = new Set(batch.docs.map(d => d.id));
+          const surviving = contents.filter((c, i) => survivorIds.has(c.uri ?? `mcp[${i}]`));
           return { ...result, contents: surviving };
         }
-      : undefined,
+      : undefined
   };
 }

@@ -38,7 +38,7 @@ import {
   type AdapterRoute,
   assertTenantIdSafe,
   type GetTenantId,
-  type MemoryAdapter,
+  type MemoryAdapter
 } from '@blackunicorn/bonklm-memory-utils';
 
 /**
@@ -78,8 +78,7 @@ function extractMessagesContent(args: ReadonlyArray<unknown>): string {
 function extractInsertContent(args: ReadonlyArray<unknown>): string {
   const params = args[0];
   if (!params || typeof params !== 'object') return '';
-  const text = (params as { text?: unknown; content?: unknown }).text ??
-    (params as { content?: unknown }).content;
+  const text = (params as { text?: unknown; content?: unknown }).text ?? (params as { content?: unknown }).content;
   return typeof text === 'string' ? text : '';
 }
 
@@ -95,9 +94,7 @@ function extractRecallEntries(result: unknown): string[] {
   if (Array.isArray(obj.messages)) {
     for (const m of obj.messages) {
       if (m !== null && typeof m === 'object') {
-        const c =
-          (m as { text?: unknown }).text ??
-          (m as { content?: unknown }).content;
+        const c = (m as { text?: unknown }).text ?? (m as { content?: unknown }).content;
         if (typeof c === 'string') entries.push(c);
       }
     }
@@ -110,7 +107,7 @@ function extractRecallEntries(result: unknown): string[] {
       }
     }
   }
-  return entries.filter((s) => s.length > 0);
+  return entries.filter(s => s.length > 0);
 }
 
 /**
@@ -128,7 +125,7 @@ function rewriteAgentIdArgs(
   assertTenantIdSafe(tenantId, 'letta');
   const newParams: Record<string, unknown> = {
     ...(params as Record<string, unknown>),
-    agentId: tenantId,
+    agentId: tenantId
   };
   for (const field of LETTA_BYPASS_FIELDS) {
     delete newParams[field];
@@ -154,27 +151,27 @@ export function buildLettaAdapter(getTenantId: GetTenantId): MemoryAdapter {
           return {
             surface: 'memory_write',
             writeContent: extractMessagesContent(args),
-            rewriteArgs: rewriteAgentIdArgs(args, ctx, getTenantId),
+            rewriteArgs: rewriteAgentIdArgs(args, ctx, getTenantId)
           };
         case 'insert':
           // archival_memory.insert — memory_write with tenant rewrite.
           return {
             surface: 'memory_write',
             writeContent: extractInsertContent(args),
-            rewriteArgs: rewriteAgentIdArgs(args, ctx, getTenantId),
+            rewriteArgs: rewriteAgentIdArgs(args, ctx, getTenantId)
           };
         case 'list':
           // messages.list / archival_memory.list — recall, POST-validated.
           return {
             surface: null,
-            rewriteArgs: rewriteAgentIdArgs(args, ctx, getTenantId),
+            rewriteArgs: rewriteAgentIdArgs(args, ctx, getTenantId)
           };
         case 'update':
           // agent.update — config write, no content to scan; rewrite
           // tenant scope and pass through.
           return {
             surface: null,
-            rewriteArgs: rewriteAgentIdArgs(args, ctx, getTenantId),
+            rewriteArgs: rewriteAgentIdArgs(args, ctx, getTenantId)
           };
         default:
           return { surface: null };
@@ -187,6 +184,6 @@ export function buildLettaAdapter(getTenantId: GetTenantId): MemoryAdapter {
       const entries = extractRecallEntries(result);
       if (entries.length === 0) return;
       await helpers.runComposedContextValidator(entries);
-    },
+    }
   };
 }

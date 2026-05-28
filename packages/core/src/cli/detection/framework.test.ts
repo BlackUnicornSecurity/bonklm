@@ -11,12 +11,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { mkdir, rm, writeFile, mkdtemp, realpath } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import {
-  detectFrameworks,
-  isFrameworkDetected,
-  getFrameworkVersion,
-  type FrameworkId,
-} from './framework.js';
+import { detectFrameworks, isFrameworkDetected, getFrameworkVersion, type FrameworkId } from './framework.js';
 import { WizardError } from '../utils/error.js';
 
 describe('Framework Detection', () => {
@@ -44,7 +39,7 @@ describe('Framework Detection', () => {
     it('should detect Express.js from dependencies', async () => {
       const pkgJson = {
         name: 'test-app',
-        dependencies: { express: '^4.18.2' },
+        dependencies: { express: '^4.18.2' }
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
 
@@ -58,7 +53,7 @@ describe('Framework Detection', () => {
     it('should detect Fastify from dependencies', async () => {
       const pkgJson = {
         name: 'test-app',
-        dependencies: { fastify: '^4.0.0' },
+        dependencies: { fastify: '^4.0.0' }
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
 
@@ -72,7 +67,7 @@ describe('Framework Detection', () => {
     it('should detect NestJS from dependencies', async () => {
       const pkgJson = {
         name: 'test-app',
-        dependencies: { '@nestjs/core': '^10.0.0' },
+        dependencies: { '@nestjs/core': '^10.0.0' }
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
 
@@ -86,7 +81,7 @@ describe('Framework Detection', () => {
     it('should detect LangChain from dependencies', async () => {
       const pkgJson = {
         name: 'test-app',
-        dependencies: { langchain: '^0.1.0' },
+        dependencies: { langchain: '^0.1.0' }
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
 
@@ -100,7 +95,7 @@ describe('Framework Detection', () => {
     it('should detect LangChain from @langchain/core', async () => {
       const pkgJson = {
         name: 'test-app',
-        dependencies: { '@langchain/core': '^0.1.0' },
+        dependencies: { '@langchain/core': '^0.1.0' }
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
 
@@ -115,18 +110,18 @@ describe('Framework Detection', () => {
         name: 'test-app',
         dependencies: {
           express: '^4.18.2',
-          langchain: '^0.1.0',
+          langchain: '^0.1.0'
         },
         devDependencies: {
-          fastify: '^4.0.0',
-        },
+          fastify: '^4.0.0'
+        }
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
 
       const frameworks = await detectFrameworks({ workingDir: tempDir });
 
       expect(frameworks).toHaveLength(3);
-      const frameworkNames = frameworks.map((f) => f.name);
+      const frameworkNames = frameworks.map(f => f.name);
       expect(frameworkNames).toContain('express');
       expect(frameworkNames).toContain('langchain');
       expect(frameworkNames).toContain('fastify');
@@ -135,7 +130,7 @@ describe('Framework Detection', () => {
     it('should return empty array when no frameworks are detected', async () => {
       const pkgJson = {
         name: 'test-app',
-        dependencies: { lodash: '^4.17.21' },
+        dependencies: { lodash: '^4.17.21' }
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
 
@@ -153,7 +148,7 @@ describe('Framework Detection', () => {
     it('should return empty array when dependencies are missing', async () => {
       const pkgJson = {
         name: 'test-app',
-        version: '1.0.0',
+        version: '1.0.0'
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
 
@@ -171,7 +166,7 @@ describe('Framework Detection', () => {
 
       const pkgJson = {
         name: 'nested-app',
-        dependencies: { express: '^4.18.2' },
+        dependencies: { express: '^4.18.2' }
       };
       await writeFile(join(nestedDir, 'package.json'), JSON.stringify(pkgJson));
 
@@ -186,7 +181,7 @@ describe('Framework Detection', () => {
       // This test verifies the path validation logic with realpath
       const pkgJson = {
         name: 'test-app',
-        dependencies: { express: '^4.18.2' },
+        dependencies: { express: '^4.18.2' }
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
 
@@ -203,7 +198,7 @@ describe('Framework Detection', () => {
       // This test verifies the path validation logic
       const pkgJson = {
         name: 'test-app',
-        dependencies: { express: '^4.18.2' },
+        dependencies: { express: '^4.18.2' }
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
 
@@ -237,13 +232,10 @@ describe('Framework Detection', () => {
       const maliciousJson = {
         name: 'malicious',
         dependencies: { express: '^4.18.2' },
-        constructor: { prototype: { polluted: true } },
+        constructor: { prototype: { polluted: true } }
       };
 
-      await writeFile(
-        join(tempDir, 'package.json'),
-        JSON.stringify(maliciousJson)
-      );
+      await writeFile(join(tempDir, 'package.json'), JSON.stringify(maliciousJson));
 
       // secure-json-parse removes constructor keys
       const frameworks = await detectFrameworks({ workingDir: tempDir });
@@ -288,7 +280,7 @@ describe('Framework Detection', () => {
       // Create a package.json that exceeds 1MB
       const largeObject = {
         name: 'large-app',
-        dependencies: { express: '^4.18.2' },
+        dependencies: { express: '^4.18.2' }
       };
 
       // Add a huge field to exceed the size limit
@@ -298,14 +290,9 @@ describe('Framework Detection', () => {
         largeObject.dependencies[`dep-${i}`] = 'x'.repeat(100);
       }
 
-      await writeFile(
-        join(tempDir, 'package.json'),
-        JSON.stringify(largeObject)
-      );
+      await writeFile(join(tempDir, 'package.json'), JSON.stringify(largeObject));
 
-      await expect(detectFrameworks({ workingDir: tempDir })).rejects.toThrow(
-        WizardError
-      );
+      await expect(detectFrameworks({ workingDir: tempDir })).rejects.toThrow(WizardError);
 
       try {
         const frameworks = await detectFrameworks({ workingDir: tempDir });
@@ -323,7 +310,7 @@ describe('Framework Detection', () => {
       // Create a package.json that's close to but under the limit
       const reasonableObject = {
         name: 'reasonable-app',
-        dependencies: {} as Record<string, string>,
+        dependencies: {} as Record<string, string>
       };
 
       // Add a reasonable number of dependencies
@@ -331,10 +318,7 @@ describe('Framework Detection', () => {
         reasonableObject.dependencies[`dep-${i}`] = `^${i}.0.0`;
       }
 
-      await writeFile(
-        join(tempDir, 'package.json'),
-        JSON.stringify(reasonableObject)
-      );
+      await writeFile(join(tempDir, 'package.json'), JSON.stringify(reasonableObject));
 
       const frameworks = await detectFrameworks({ workingDir: tempDir });
 
@@ -347,7 +331,7 @@ describe('Framework Detection', () => {
       // Create a package.json with many dependencies
       const pkgJson = {
         name: 'many-deps',
-        dependencies: {} as Record<string, string>,
+        dependencies: {} as Record<string, string>
       };
 
       // Add many dependencies (more than patterns exist)
@@ -385,7 +369,7 @@ describe('Framework Detection', () => {
       const pkgJson = {
         name: 'test-app',
         dependencies: null,
-        devDependencies: null,
+        devDependencies: null
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
 
@@ -424,14 +408,14 @@ describe('Framework Detection', () => {
     beforeEach(async () => {
       const pkgJson = {
         name: 'test-app',
-        dependencies: { express: '^4.18.2', langchain: '^0.1.0' },
+        dependencies: { express: '^4.18.2', langchain: '^0.1.0' }
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
     });
 
     it('isFrameworkDetected should return true for detected framework', async () => {
       const result = await isFrameworkDetected('express', {
-        workingDir: tempDir,
+        workingDir: tempDir
       });
 
       expect(result).toBe(true);
@@ -439,7 +423,7 @@ describe('Framework Detection', () => {
 
     it('isFrameworkDetected should return false for undetected framework', async () => {
       const result = await isFrameworkDetected('fastify', {
-        workingDir: tempDir,
+        workingDir: tempDir
       });
 
       expect(result).toBe(false);
@@ -447,7 +431,7 @@ describe('Framework Detection', () => {
 
     it('getFrameworkVersion should return version for detected framework', async () => {
       const version = await getFrameworkVersion('express', {
-        workingDir: tempDir,
+        workingDir: tempDir
       });
 
       expect(version).toBe('^4.18.2');
@@ -455,7 +439,7 @@ describe('Framework Detection', () => {
 
     it('getFrameworkVersion should return undefined for undetected framework', async () => {
       const version = await getFrameworkVersion('fastify', {
-        workingDir: tempDir,
+        workingDir: tempDir
       });
 
       expect(version).toBeUndefined();
@@ -469,7 +453,7 @@ describe('Framework Detection', () => {
 
       const pkgJson = {
         name: 'custom-app',
-        dependencies: { express: '^4.18.2' },
+        dependencies: { express: '^4.18.2' }
       };
       await writeFile(join(customDir, 'package.json'), JSON.stringify(pkgJson));
 
@@ -482,7 +466,7 @@ describe('Framework Detection', () => {
     it('should use custom package.json path', async () => {
       const pkgJson = {
         name: 'custom-path',
-        dependencies: { '@nestjs/core': '^10.0.0' },
+        dependencies: { '@nestjs/core': '^10.0.0' }
       };
 
       const customPath = join(tempDir, 'custom-package.json');
@@ -494,7 +478,7 @@ describe('Framework Detection', () => {
 
       const frameworks = await detectFrameworks({
         workingDir: tempDir,
-        packageJsonPath: 'custom-package.json',
+        packageJsonPath: 'custom-package.json'
       });
 
       expect(frameworks).toHaveLength(1);
@@ -506,7 +490,7 @@ describe('Framework Detection', () => {
     it('should detect framework from devDependencies', async () => {
       const pkgJson = {
         name: 'test-app',
-        devDependencies: { fastify: '^4.0.0' },
+        devDependencies: { fastify: '^4.0.0' }
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
 
@@ -520,7 +504,7 @@ describe('Framework Detection', () => {
       const pkgJson = {
         name: 'test-app',
         dependencies: { express: '^4.18.2' },
-        devDependencies: { express: '^5.0.0' },
+        devDependencies: { express: '^5.0.0' }
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
 
@@ -532,12 +516,7 @@ describe('Framework Detection', () => {
     });
 
     it('should detect all supported framework types', async () => {
-      const supportedFrameworks: FrameworkId[] = [
-        'express',
-        'fastify',
-        'nestjs',
-        'langchain',
-      ];
+      const supportedFrameworks: FrameworkId[] = ['express', 'fastify', 'nestjs', 'langchain'];
 
       for (const framework of supportedFrameworks) {
         // Create a new temp dir for each framework
@@ -548,20 +527,15 @@ describe('Framework Detection', () => {
             express: { dependencies: ['express'] },
             fastify: { dependencies: ['fastify'] },
             nestjs: { dependencies: ['@nestjs/core'] },
-            langchain: { dependencies: ['langchain'] },
+            langchain: { dependencies: ['langchain'] }
           }[framework];
 
           const pkgJson = {
             name: `test-${framework}`,
-            dependencies: Object.fromEntries(
-              pattern.dependencies.map((dep) => [dep, '^1.0.0'])
-            ),
+            dependencies: Object.fromEntries(pattern.dependencies.map(dep => [dep, '^1.0.0']))
           };
 
-          await writeFile(
-            join(testDir, 'package.json'),
-            JSON.stringify(pkgJson)
-          );
+          await writeFile(join(testDir, 'package.json'), JSON.stringify(pkgJson));
 
           const frameworks = await detectFrameworks({ workingDir: testDir });
 
@@ -580,8 +554,8 @@ describe('Framework Detection', () => {
         name: 'test-app',
         dependencies: {
           express: '>=4.18.0 <5.0.0',
-          langchain: 'github:langchain-ai/langchainjs',
-        },
+          langchain: 'github:langchain-ai/langchainjs'
+        }
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
 
@@ -595,27 +569,29 @@ describe('Framework Detection', () => {
       const pkgJson = {
         name: 'test-app',
         dependencies: {
-          express: '^4.18.2',
+          express: '^4.18.2'
         },
         devDependencies: {
-          express: '^4.18.2',
-        },
+          express: '^4.18.2'
+        }
       };
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
 
       const frameworks = await detectFrameworks({ workingDir: tempDir });
 
       // Should only detect express once
-      const expressCount = frameworks.filter((f) => f.name === 'express').length;
+      const expressCount = frameworks.filter(f => f.name === 'express').length;
       expect(expressCount).toBe(1);
     });
 
     it('should handle package.json with BOM', async () => {
       // UTF-8 BOM + JSON
-      const content = '\uFEFF' + JSON.stringify({
-        name: 'test-app',
-        dependencies: { express: '^4.18.2' },
-      });
+      const content =
+        '\uFEFF' +
+        JSON.stringify({
+          name: 'test-app',
+          dependencies: { express: '^4.18.2' }
+        });
 
       await writeFile(join(tempDir, 'package.json'), content);
 
@@ -653,17 +629,17 @@ describe('Framework Detection', () => {
         main: 'src/index.js',
         scripts: {
           start: 'node src/index.js',
-          dev: 'nodemon src/index.js',
+          dev: 'nodemon src/index.js'
         },
         dependencies: {
           express: '^4.18.2',
           cors: '^2.8.5',
           helmet: '^7.0.0',
-          morgan: '^1.10.0',
+          morgan: '^1.10.0'
         },
         devDependencies: {
-          nodemon: '^3.0.1',
-        },
+          nodemon: '^3.0.1'
+        }
       };
 
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
@@ -684,11 +660,11 @@ describe('Framework Detection', () => {
           '@nestjs/core': '^10.0.0',
           '@nestjs/platform-express': '^10.0.0',
           'reflect-metadata': '^0.1.13',
-          rxjs: '^7.8.1',
+          rxjs: '^7.8.1'
         },
         devDependencies: {
-          '@nestjs/cli': '^10.0.0',
-        },
+          '@nestjs/cli': '^10.0.0'
+        }
       };
 
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
@@ -707,8 +683,8 @@ describe('Framework Detection', () => {
         dependencies: {
           '@langchain/openai': '^0.0.1',
           langchain: '^0.1.0',
-          '@langchain/core': '^0.1.0',
-        },
+          '@langchain/core': '^0.1.0'
+        }
       };
 
       await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));

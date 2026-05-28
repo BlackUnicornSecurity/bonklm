@@ -36,7 +36,7 @@
 import {
   assertGetTenantIdValid,
   wrapMemoryClient,
-  type WrapMemoryClientOptions,
+  type WrapMemoryClientOptions
 } from '@blackunicorn/bonklm-memory-utils';
 import type { GuardrailEngine } from '@blackunicorn/bonklm';
 import { buildMem0Adapter } from './mem0-adapter.js';
@@ -70,6 +70,6 @@ export function wrapMem0Client<TClient extends object>(
   return wrapMemoryClient<TClient>(client, {
     ...options,
     adapter,
-    engine,
+    engine
   });
 }

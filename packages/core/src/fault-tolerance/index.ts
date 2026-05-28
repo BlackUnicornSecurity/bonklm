@@ -13,7 +13,7 @@ export {
   CircuitState,
   type CircuitBreakerConfig,
   type CircuitBreakerStats,
-  type CircuitBreakerListeners,
+  type CircuitBreakerListeners
 } from './CircuitBreaker.js';
 
 export {
@@ -21,5 +21,5 @@ export {
   createRetryPolicy,
   type RetryConfig,
   type RetryResult,
-  type RetryAttemptOptions,
+  type RetryAttemptOptions
 } from './RetryPolicy.js';

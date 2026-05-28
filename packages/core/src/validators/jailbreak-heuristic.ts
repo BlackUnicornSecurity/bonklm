@@ -47,7 +47,7 @@ const HEURISTIC_PATTERNS: Array<[string, string]> = [
   ['(?:act|behave)\\s+as\\s+if\\s+(?:you\\s+)?(?:are|were)', 'i'],
   ['forget (?:everything|what)\\s+(?:you|about)', 'i'],
   // Additional word split pattern
-  ['\\s+', ''],
+  ['\\s+', '']
 ];
 
 /**
@@ -70,7 +70,7 @@ export function detectHeuristicPatterns(text: string, cache?: RegexCache): Heuri
 
   // 1. Multiple authority claims
   const authorityWords = ['admin', 'developer', 'creator', 'anthropic', 'openai', 'engineer', 'owner'];
-  const authorityCount = authorityWords.filter((w) => text.toLowerCase().includes(w)).length;
+  const authorityCount = authorityWords.filter(w => text.toLowerCase().includes(w)).length;
   if (authorityCount >= 2) {
     findings.push({
       category: 'heuristic',
@@ -78,7 +78,7 @@ export function detectHeuristicPatterns(text: string, cache?: RegexCache): Heuri
       severity: Severity.WARNING,
       weight: authorityCount,
       description: 'Multiple authority claims detected',
-      details: `Found ${authorityCount} authority-related terms`,
+      details: `Found ${authorityCount} authority-related terms`
     });
   }
 
@@ -100,7 +100,7 @@ export function detectHeuristicPatterns(text: string, cache?: RegexCache): Heuri
       severity: Severity.INFO,
       weight: 2,
       description: 'Heavy instruction formatting detected',
-      details: `Found ${totalInstructions} instruction-like items`,
+      details: `Found ${totalInstructions} instruction-like items`
     });
   }
 
@@ -116,14 +116,14 @@ export function detectHeuristicPatterns(text: string, cache?: RegexCache): Heuri
       severity: Severity.WARNING,
       weight: imperativeCount + 2,
       description: 'Multiple imperative directives detected',
-      details: `Found ${imperativeCount} imperative statements`,
+      details: `Found ${imperativeCount} imperative statements`
     });
   }
 
   // 4. Persona definition attempts
   const personaPatterns = patterns.slice(8, 14);
 
-  const personaMatches = personaPatterns.filter((p) => p.test(text)).length;
+  const personaMatches = personaPatterns.filter(p => p.test(text)).length;
   if (personaMatches >= 1) {
     findings.push({
       category: 'heuristic',
@@ -131,13 +131,13 @@ export function detectHeuristicPatterns(text: string, cache?: RegexCache): Heuri
       severity: Severity.WARNING,
       weight: personaMatches * 2,
       description: 'Persona definition attempt detected',
-      details: `Found ${personaMatches} persona-defining patterns`,
+      details: `Found ${personaMatches} persona-defining patterns`
     });
   }
 
   // 5. Excessive capitalization
   const words = text.split(patterns[patterns.length - 1]); // Last pattern is \s+
-  const allCapsWords = words.filter((w) => w.length > 2 && w === w.toUpperCase() && /[A-Z]/.test(w));
+  const allCapsWords = words.filter(w => w.length > 2 && w === w.toUpperCase() && /[A-Z]/.test(w));
   const capsRatio = allCapsWords.length / words.length;
 
   if (capsRatio > 0.15 && allCapsWords.length > 5) {
@@ -147,7 +147,7 @@ export function detectHeuristicPatterns(text: string, cache?: RegexCache): Heuri
       severity: Severity.INFO,
       weight: 2,
       description: 'Excessive capitalization detected',
-      details: `${Math.round(capsRatio * 100)}% of words are ALL CAPS`,
+      details: `${Math.round(capsRatio * 100)}% of words are ALL CAPS`
     });
   }
 
@@ -155,7 +155,7 @@ export function detectHeuristicPatterns(text: string, cache?: RegexCache): Heuri
   const contradictions = [
     [/ignore.*previous/i, /follow.*new/i],
     [/forget.*rules/i, /(?:new|different)\s+rules/i],
-    [/discard.*instructions/i, /(?:these|new)\s+instructions/i],
+    [/discard.*instructions/i, /(?:these|new)\s+instructions/i]
   ];
 
   for (const [pattern1, pattern2] of contradictions) {
@@ -165,7 +165,7 @@ export function detectHeuristicPatterns(text: string, cache?: RegexCache): Heuri
         heuristic_name: 'contradictory_instructions',
         severity: Severity.WARNING,
         weight: 4,
-        description: 'Contradictory instructions detected',
+        description: 'Contradictory instructions detected'
       });
       break;
     }
@@ -175,17 +175,17 @@ export function detectHeuristicPatterns(text: string, cache?: RegexCache): Heuri
   const extractionPatterns = [
     /(?:show|display|print|reveal)\s+(?:your\s+)?(?:system\s+)?(?:prompt|instructions)/i,
     /(?:what\s+are|repeat|recite)\s+(?:your\s+)?(?:initial|original|system)\s+(?:instructions|prompt)/i,
-    /ignore\s+(?:the\s+)?above\s+and\s+(?:instead|show|tell)/i,
+    /ignore\s+(?:the\s+)?above\s+and\s+(?:instead|show|tell)/i
   ];
 
-  const extractionAttempt = extractionPatterns.some((p) => p.test(text));
+  const extractionAttempt = extractionPatterns.some(p => p.test(text));
   if (extractionAttempt) {
     findings.push({
       category: 'heuristic',
       heuristic_name: 'prompt_extraction',
       severity: Severity.CRITICAL,
       weight: 6,
-      description: 'System prompt extraction attempt detected',
+      description: 'System prompt extraction attempt detected'
     });
   }
 

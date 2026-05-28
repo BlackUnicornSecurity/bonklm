@@ -13,10 +13,7 @@
  *
  * Structural typing — peer-optional SDK install.
  */
-import {
-  assertNotWrapped,
-  markWrapped,
-} from '@blackunicorn/bonklm/core/connector-utils';
+import { assertNotWrapped, markWrapped } from '@blackunicorn/bonklm/core/connector-utils';
 import { validateExtractedText } from './validate-extracted-text.js';
 import type { DocumentIngestWrapOptions } from './types.js';
 
@@ -25,9 +22,7 @@ import type { DocumentIngestWrapOptions } from './types.js';
  * `@llamaindex/llama-cloud` `LlamaParseReader`.
  */
 export interface LlamaParseReaderLike {
-  loadData(
-    fileOrFiles: string | string[]
-  ): Promise<LlamaParseDocument[]>;
+  loadData(fileOrFiles: string | string[]): Promise<LlamaParseDocument[]>;
 }
 
 export interface LlamaParseDocument {
@@ -48,10 +43,7 @@ const BONKLM_WIRED = Symbol.for('bonklm.llamaparse.wired');
  * Sprint 21 audit-pattern application (Sprint 20 BLOCK closure):
  * Symbol-keyed sentinel + clone (not mutate) + reject double-wrap.
  */
-export function wrapLlamaParse<R extends LlamaParseReaderLike>(
-  reader: R,
-  options: DocumentIngestWrapOptions
-): R {
+export function wrapLlamaParse<R extends LlamaParseReaderLike>(reader: R, options: DocumentIngestWrapOptions): R {
   if (!reader || typeof reader !== 'object') {
     throw new TypeError('wrapLlamaParse: reader is required.');
   }
@@ -70,11 +62,11 @@ export function wrapLlamaParse<R extends LlamaParseReaderLike>(
         await validateExtractedText(text, {
           ...options,
           phase: 'llamaparse',
-          documentId: doc.id_,
+          documentId: doc.id_
         });
       }
       return docs;
-    },
+    }
   } as unknown as R;
 
   markWrapped(wrapped, BONKLM_WIRED);

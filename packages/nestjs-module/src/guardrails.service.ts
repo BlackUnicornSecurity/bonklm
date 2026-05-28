@@ -23,16 +23,10 @@ import {
   Severity,
   updateSessionState,
   validateWithTimeoutSecure,
-  Validators,
+  Validators
 } from '@blackunicorn/bonklm';
-import type {
-  GuardrailsModuleOptions,
-} from './types.js';
-import {
-  DEFAULT_MAX_CONTENT_LENGTH,
-  DEFAULT_VALIDATION_TIMEOUT,
-  GUARDRAILS_OPTIONS,
-} from './constants.js';
+import type { GuardrailsModuleOptions } from './types.js';
+import { DEFAULT_MAX_CONTENT_LENGTH, DEFAULT_VALIDATION_TIMEOUT, GUARDRAILS_OPTIONS } from './constants.js';
 
 /**
  * S013-003: Configuration validation schema for NestJS module.
@@ -59,7 +53,7 @@ const NESTJS_CONFIG_SCHEMA = new Schema({
   attackLogger: Validators.optional(Validators.attackLoggerInstance),
   // S013-005: Session tracking options
   enableSessionTracking: Validators.optional(Validators.boolean),
-  sessionIdExtractor: Validators.optional(Validators.function),
+  sessionIdExtractor: Validators.optional(Validators.function)
 });
 
 /**
@@ -105,9 +99,7 @@ export class GuardrailsService {
   private readonly bodyExtractor?: (request: any) => string;
   private readonly responseExtractor?: (response: any) => string;
 
-  constructor(
-    @Optional() @Inject(GUARDRAILS_OPTIONS) options?: GuardrailsModuleOptions,
-  ) {
+  constructor(@Optional() @Inject(GUARDRAILS_OPTIONS) options?: GuardrailsModuleOptions) {
     // S013-003: Validate configuration at initialization
     if (options) {
       validateNestJsConfig(options);
@@ -124,7 +116,7 @@ export class GuardrailsService {
       responseExtractor,
       attackLogger, // S013-004: Optional AttackLogger instance
       enableSessionTracking = false, // S013-005: Session tracking disabled by default
-      sessionIdExtractor, // S013-005: Optional custom session ID extractor
+      sessionIdExtractor // S013-005: Optional custom session ID extractor
     } = options || {};
 
     this.productionMode = productionMode;
@@ -139,12 +131,12 @@ export class GuardrailsService {
     this.engine = new GuardrailEngine({
       validators,
       guards,
-      logger: this.logger,
+      logger: this.logger
     });
 
     // S013-004: Register AttackLogger intercept callback if provided
     if (attackLogger) {
-      this.engine.onIntercept((attackLogger).getInterceptCallback());
+      this.engine.onIntercept(attackLogger.getInterceptCallback());
     }
 
     // S013-005: Set up session tracking
@@ -158,7 +150,7 @@ export class GuardrailsService {
       validationTimeout,
       maxContentLength,
       hasAttackLogger: !!attackLogger,
-      sessionTrackingEnabled: enableSessionTracking,
+      sessionTrackingEnabled: enableSessionTracking
     });
   }
 
@@ -194,15 +186,12 @@ export class GuardrailsService {
    * @param context - Optional context string (DEV-001: Use string context)
    * @returns Validation results
    */
-  private async validateWithTimeout(
-    content: string,
-    context: string
-  ): Promise<GuardrailResult[]> {
+  private async validateWithTimeout(content: string, context: string): Promise<GuardrailResult[]> {
     // SEC-010: Check content length before validation
     if (content.length > this.maxContentLength) {
       this.logger.warn('[Guardrails] Content too large', {
         length: content.length,
-        max: this.maxContentLength,
+        max: this.maxContentLength
       });
       return [
         {
@@ -216,11 +205,11 @@ export class GuardrailsService {
             {
               category: 'size_limit',
               severity: Severity.WARNING,
-              description: `Content exceeds maximum size of ${this.maxContentLength} bytes`,
-            },
+              description: `Content exceeds maximum size of ${this.maxContentLength} bytes`
+            }
           ],
-          timestamp: Date.now(),
-        },
+          timestamp: Date.now()
+        }
       ];
     }
 
@@ -240,10 +229,10 @@ export class GuardrailsService {
         {
           category: 'timeout',
           severity: Severity.CRITICAL,
-          description: `Validation exceeded ${this.validationTimeout}ms timeout`,
-        },
+          description: `Validation exceeded ${this.validationTimeout}ms timeout`
+        }
       ],
-      timestamp: Date.now(),
+      timestamp: Date.now()
     });
     try {
       // DEV-001: Use correct API signature (string context, not object)
@@ -251,12 +240,13 @@ export class GuardrailsService {
         operation: () => this.engine.validate(content, context),
         timeoutMs: this.validationTimeout,
         timeoutSentinel: buildTimeoutSentinel,
-        logger: this.logger,
+        logger: this.logger
       });
 
       // Return individual results if available, otherwise wrap the engine result
-      return 'results' in result && (result as { results?: unknown[] }).results !== undefined &&
-        ((result as { results: unknown[] }).results.length) > 0
+      return 'results' in result &&
+        (result as { results?: unknown[] }).results !== undefined &&
+        (result as { results: unknown[] }).results.length > 0
         ? (result as { results: GuardrailResult[] }).results
         : [result];
     } catch (error) {
@@ -282,11 +272,11 @@ export class GuardrailsService {
               // input. Description flows into the finding array,
               // surfaces to any consumer logging the result. Sanitize
               // via the canonical primitive per ADR-0001.
-              description: `Validation failed: ${sanitizeLogString(String(error))}`,
-            },
+              description: `Validation failed: ${sanitizeLogString(String(error))}`
+            }
           ],
-          timestamp: Date.now(),
-        },
+          timestamp: Date.now()
+        }
       ];
     }
   }
@@ -298,7 +288,7 @@ export class GuardrailsService {
    * @returns true if content is allowed, false otherwise
    */
   isAllowed(results: GuardrailResult[]): boolean {
-    return !results.some((r) => !r.allowed);
+    return !results.some(r => !r.allowed);
   }
 
   /**
@@ -308,7 +298,7 @@ export class GuardrailsService {
    * @returns The first blocked result, or undefined if none
    */
   getBlockedResult(results: GuardrailResult[]): GuardrailResult | undefined {
-    return results.find((r) => !r.allowed);
+    return results.find(r => !r.allowed);
   }
 
   /**
@@ -365,7 +355,7 @@ export class GuardrailsService {
     return {
       productionMode: this.productionMode,
       validationTimeout: this.validationTimeout,
-      maxContentLength: this.maxContentLength,
+      maxContentLength: this.maxContentLength
     };
   }
 
@@ -443,9 +433,11 @@ export class GuardrailsService {
       for (const finding of result.findings || []) {
         findings.push({
           category: finding.category,
-          weight: finding.weight ?? (finding.severity === Severity.CRITICAL ? 5 : finding.severity === Severity.BLOCKED ? 3 : 1),
+          weight:
+            finding.weight ??
+            (finding.severity === Severity.CRITICAL ? 5 : finding.severity === Severity.BLOCKED ? 3 : 1),
           pattern_name: finding.pattern_name,
-          timestamp: result.timestamp,
+          timestamp: result.timestamp
         });
       }
     }

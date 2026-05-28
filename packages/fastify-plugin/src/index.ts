@@ -7,9 +7,4 @@
 
 export { default } from './plugin.js';
 export { guardrailsPlugin } from './plugin.js';
-export type {
-  GuardrailsPluginOptions,
-  GuardrailsRequest,
-  ErrorHandler,
-  ResponseExtractor,
-} from './types.js';
+export type { GuardrailsPluginOptions, GuardrailsRequest, ErrorHandler, ResponseExtractor } from './types.js';

@@ -8,13 +8,13 @@ export enum Severity {
   INFO = 'info',
   WARNING = 'warning',
   BLOCKED = 'blocked',
-  CRITICAL = 'critical',
+  CRITICAL = 'critical'
 }
 
 export enum RiskLevel {
   LOW = 'LOW',
   MEDIUM = 'MEDIUM',
-  HIGH = 'HIGH',
+  HIGH = 'HIGH'
 }
 
 export interface Finding {
@@ -114,20 +114,20 @@ export function createResult(
     risk_level: riskLevel,
     risk_score: riskScore,
     findings,
-    timestamp: Date.now(),
+    timestamp: Date.now()
   };
 }
 
 export function mergeResults(...results: GuardrailResult[]): GuardrailResult {
-  const allFindings = results.flatMap((r) => r.findings);
+  const allFindings = results.flatMap(r => r.findings);
   const totalRiskScore = results.reduce((sum, r) => sum + r.risk_score, 0);
-  const anyBlocked = results.some((r) => r.blocked);
+  const anyBlocked = results.some(r => r.blocked);
   const maxSeverity = results.reduce((max, r) => {
     const severityOrder: Record<Severity, number> = {
       [Severity.INFO]: 0,
       [Severity.WARNING]: 1,
       [Severity.BLOCKED]: 2,
-      [Severity.CRITICAL]: 3,
+      [Severity.CRITICAL]: 3
     };
     return severityOrder[r.severity] > severityOrder[max] ? r.severity : max;
   }, Severity.INFO);
@@ -151,12 +151,12 @@ export function mergeResults(...results: GuardrailResult[]): GuardrailResult {
   return {
     allowed: !anyBlocked,
     blocked: anyBlocked,
-    reason: anyBlocked ? results.find((r) => r.blocked)?.reason : undefined,
+    reason: anyBlocked ? results.find(r => r.blocked)?.reason : undefined,
     severity: maxSeverity,
     risk_level: riskLevel,
     risk_score: totalRiskScore,
     findings: allFindings,
     ...(mergedMetadata !== undefined ? { metadata: mergedMetadata } : {}),
-    timestamp: Date.now(),
+    timestamp: Date.now()
   };
 }

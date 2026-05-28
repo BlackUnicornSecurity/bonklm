@@ -23,7 +23,7 @@ import { InMemoryLRUCache } from '@blackunicorn/bonklm';
 import {
   bonklmInngestMiddleware,
   createBonklmInngestContextSurface,
-  type StepRunner,
+  type StepRunner
 } from '../src/bonklm-middleware.js';
 
 const okResult = (note: string): GuardrailResult => ({
@@ -34,7 +34,7 @@ const okResult = (note: string): GuardrailResult => ({
   risk_level: RiskLevel.LOW,
   risk_score: 0,
   findings: [],
-  timestamp: Date.now(),
+  timestamp: Date.now()
 });
 
 const blockResult = (note: string): GuardrailResult => ({
@@ -45,7 +45,7 @@ const blockResult = (note: string): GuardrailResult => ({
   risk_level: RiskLevel.HIGH,
   risk_score: 0.95,
   findings: [],
-  timestamp: Date.now(),
+  timestamp: Date.now()
 });
 
 /**
@@ -76,7 +76,7 @@ function makeReplayingStepRunner(): StepRunner & {
     callCounts,
     reset() {
       memory.clear();
-    },
+    }
   };
 }
 
@@ -84,9 +84,7 @@ describe('Story 2.8 — Inngest middleware', () => {
   describe('AC #3: helpers wrap each call in step.run("bonklm-validate-*")', () => {
     it('validateInput uses step.run("bonklm-validate-input")', async () => {
       const step = makeReplayingStepRunner();
-      const validators: Validator[] = [
-        { name: 'V', validate: () => okResult('cold') },
-      ];
+      const validators: Validator[] = [{ name: 'V', validate: () => okResult('cold') }];
       const surface = createBonklmInngestContextSurface(step, { validators });
       await surface.validateInput('hello');
       expect(step.callCounts.get('bonklm-validate-input')).toBe(1);
@@ -94,9 +92,7 @@ describe('Story 2.8 — Inngest middleware', () => {
 
     it('validateOutput uses step.run("bonklm-validate-output")', async () => {
       const step = makeReplayingStepRunner();
-      const validators: Validator[] = [
-        { name: 'V', validate: () => okResult('cold') },
-      ];
+      const validators: Validator[] = [{ name: 'V', validate: () => okResult('cold') }];
       const surface = createBonklmInngestContextSurface(step, { validators });
       await surface.validateOutput('output text');
       expect(step.callCounts.get('bonklm-validate-output')).toBe(1);
@@ -104,9 +100,7 @@ describe('Story 2.8 — Inngest middleware', () => {
 
     it('validateToolArgs uses step.run("bonklm-validate-tool-args")', async () => {
       const step = makeReplayingStepRunner();
-      const validators: Validator[] = [
-        { name: 'V', validate: () => okResult('cold') },
-      ];
+      const validators: Validator[] = [{ name: 'V', validate: () => okResult('cold') }];
       const surface = createBonklmInngestContextSurface(step, { validators });
       await surface.validateToolArgs('send_email', { to: 'a@b.com' });
       expect(step.callCounts.get('bonklm-validate-tool-args')).toBe(1);
@@ -114,12 +108,10 @@ describe('Story 2.8 — Inngest middleware', () => {
 
     it('respects custom stepNamePrefix', async () => {
       const step = makeReplayingStepRunner();
-      const validators: Validator[] = [
-        { name: 'V', validate: () => okResult('cold') },
-      ];
+      const validators: Validator[] = [{ name: 'V', validate: () => okResult('cold') }];
       const surface = createBonklmInngestContextSurface(step, {
         validators,
-        stepNamePrefix: 'guardrails',
+        stepNamePrefix: 'guardrails'
       });
       await surface.validateInput('x');
       expect(step.callCounts.get('guardrails-input')).toBe(1);
@@ -189,7 +181,7 @@ describe('Story 2.8 — Inngest middleware', () => {
       const s1 = createBonklmInngestContextSurface(step1, {
         validators,
         engine: sharedEngine,
-        cache,
+        cache
       });
       await s1.validateInput('hot input');
 
@@ -197,7 +189,7 @@ describe('Story 2.8 — Inngest middleware', () => {
       const s2 = createBonklmInngestContextSurface(step2, {
         validators,
         engine: sharedEngine,
-        cache,
+        cache
       });
       const r2 = await s2.validateInput('hot input');
 
@@ -214,7 +206,7 @@ describe('Story 2.8 — Inngest middleware', () => {
       const validators: Validator[] = [
         { name: 'V1', validate: () => okResult('first ok') },
         { name: 'V2', validate: () => blockResult('second blocked') },
-        { name: 'V3', validate: () => okResult('third ok') },
+        { name: 'V3', validate: () => okResult('third ok') }
       ];
       const surface = createBonklmInngestContextSurface(step, { validators });
       const r = await surface.validateInput('x');
@@ -228,7 +220,7 @@ describe('Story 2.8 — Inngest middleware', () => {
       const step = makeReplayingStepRunner();
       const validators: Validator[] = [
         { name: 'V1', validate: () => okResult('ok') },
-        { name: 'V2', validate: () => okResult('ok') },
+        { name: 'V2', validate: () => okResult('ok') }
       ];
       const surface = createBonklmInngestContextSurface(step, { validators });
       const r = await surface.validateInput('x');
@@ -242,7 +234,7 @@ describe('Story 2.8 — Inngest middleware', () => {
     it('throws when validators array is empty', () => {
       expect(() =>
         createBonklmInngestContextSurface(makeReplayingStepRunner(), {
-          validators: [],
+          validators: []
         })
       ).toThrow(/non-empty array/);
     });
@@ -251,7 +243,7 @@ describe('Story 2.8 — Inngest middleware', () => {
       expect(() =>
         createBonklmInngestContextSurface(makeReplayingStepRunner(), {
           // @ts-expect-error — invalid input under test.
-          validators: undefined,
+          validators: undefined
         })
       ).toThrow(/non-empty array/);
     });
@@ -261,7 +253,7 @@ describe('Story 2.8 — Inngest middleware', () => {
       const anon: Validator = { validate: () => okResult('cold') };
       const surface = createBonklmInngestContextSurface(step, {
         validators: [anon],
-        cache: new InMemoryLRUCache(),
+        cache: new InMemoryLRUCache()
       });
       await expect(surface.validateInput('x')).rejects.toThrow(/no `name` property/);
     });
@@ -277,7 +269,7 @@ describe('Story 2.8 — Inngest middleware', () => {
       expect(validate).toHaveBeenCalledWith({
         kind: 'tool_call',
         toolName: 'send_email',
-        args: { to: 'a@b.com', body: 'hi' },
+        args: { to: 'a@b.com', body: 'hi' }
       });
     });
   });
@@ -319,9 +311,11 @@ describe('Story 2.8 — Inngest middleware', () => {
         ).ctx.bonklm;
 
         await (r1 as { validateInput: (s: string) => Promise<unknown> }).validateInput('hot');
-        const second = (await (r2 as {
-          validateInput: (s: string) => Promise<{ blocked: boolean; results: Array<{ fromCache: boolean }> }>;
-        }).validateInput('hot'));
+        const second = await (
+          r2 as {
+            validateInput: (s: string) => Promise<{ blocked: boolean; results: Array<{ fromCache: boolean }> }>;
+          }
+        ).validateInput('hot');
 
         expect(validate).toHaveBeenCalledTimes(1);
         expect(second.blocked).toBe(true);
@@ -333,7 +327,7 @@ describe('Story 2.8 — Inngest middleware', () => {
       it('returns BLOCK for empty toolName', async () => {
         const step = makeReplayingStepRunner();
         const surface = createBonklmInngestContextSurface(step, {
-          validators: [{ name: 'V', validate: () => okResult('cold') }],
+          validators: [{ name: 'V', validate: () => okResult('cold') }]
         });
         const r = await surface.validateToolArgs('', { x: 1 });
         expect(r.blocked).toBe(true);
@@ -343,7 +337,7 @@ describe('Story 2.8 — Inngest middleware', () => {
       it('returns BLOCK for whitespace-only toolName', async () => {
         const step = makeReplayingStepRunner();
         const surface = createBonklmInngestContextSurface(step, {
-          validators: [{ name: 'V', validate: () => okResult('cold') }],
+          validators: [{ name: 'V', validate: () => okResult('cold') }]
         });
         const r = await surface.validateToolArgs('   ', { x: 1 });
         expect(r.blocked).toBe(true);
@@ -352,7 +346,7 @@ describe('Story 2.8 — Inngest middleware', () => {
       it('returns BLOCK for non-string toolName', async () => {
         const step = makeReplayingStepRunner();
         const surface = createBonklmInngestContextSurface(step, {
-          validators: [{ name: 'V', validate: () => okResult('cold') }],
+          validators: [{ name: 'V', validate: () => okResult('cold') }]
         });
         // @ts-expect-error — invalid input under test.
         const r = await surface.validateToolArgs(42, { x: 1 });
@@ -364,7 +358,7 @@ describe('Story 2.8 — Inngest middleware', () => {
       it('validateToolArgs with Map in args returns BLOCK (not throw)', async () => {
         const step = makeReplayingStepRunner();
         const surface = createBonklmInngestContextSurface(step, {
-          validators: [{ name: 'V', validate: () => okResult('cold') }],
+          validators: [{ name: 'V', validate: () => okResult('cold') }]
         });
         const r = await surface.validateToolArgs('send', { m: new Map() });
         expect(r.blocked).toBe(true);
@@ -374,7 +368,7 @@ describe('Story 2.8 — Inngest middleware', () => {
       it('validateInput with non-plain-prototype object BLOCKs', async () => {
         const step = makeReplayingStepRunner();
         const surface = createBonklmInngestContextSurface(step, {
-          validators: [{ name: 'V', validate: () => okResult('cold') }],
+          validators: [{ name: 'V', validate: () => okResult('cold') }]
         });
         class Custom {
           x = 1;
@@ -383,7 +377,7 @@ describe('Story 2.8 — Inngest middleware', () => {
         const r = await surface.validateInput({
           kind: 'tool_call',
           toolName: 'x',
-          args: new Custom(),
+          args: new Custom()
         });
         expect(r.blocked).toBe(true);
       });
@@ -394,7 +388,7 @@ describe('Story 2.8 — Inngest middleware', () => {
         expect(() =>
           bonklmInngestMiddleware({
             validators: [{ name: 'V', validate: () => okResult('cold') }],
-            stepNamePrefix: '',
+            stepNamePrefix: ''
           })
         ).toThrow(/non-empty/);
       });
@@ -403,7 +397,7 @@ describe('Story 2.8 — Inngest middleware', () => {
         expect(() =>
           bonklmInngestMiddleware({
             validators: [{ name: 'V', validate: () => okResult('cold') }],
-            stepNamePrefix: '   ',
+            stepNamePrefix: '   '
           })
         ).toThrow(/non-empty/);
       });
@@ -412,7 +406,7 @@ describe('Story 2.8 — Inngest middleware', () => {
         expect(() =>
           bonklmInngestMiddleware({
             validators: [{ name: 'V', validate: () => okResult('cold') }],
-            stepNamePrefix: 'bad prefix with spaces',
+            stepNamePrefix: 'bad prefix with spaces'
           })
         ).toThrow(/match/);
       });
@@ -421,7 +415,7 @@ describe('Story 2.8 — Inngest middleware', () => {
         expect(() =>
           bonklmInngestMiddleware({
             validators: [{ name: 'V', validate: () => okResult('cold') }],
-            stepNamePrefix: 'my-prefix-input',
+            stepNamePrefix: 'my-prefix-input'
           })
         ).toThrow(/-input/);
       });
@@ -430,19 +424,17 @@ describe('Story 2.8 — Inngest middleware', () => {
     describe('B5-arch: ctx.step missing → descriptive throw', () => {
       it('throws when ctx.step is undefined', () => {
         const MiddlewareClass = bonklmInngestMiddleware({
-          validators: [{ name: 'V', validate: () => okResult('cold') }],
+          validators: [{ name: 'V', validate: () => okResult('cold') }]
         });
         const inst = Object.create(MiddlewareClass.prototype) as {
           transformFunctionInput: (a: unknown) => unknown;
         };
-        expect(() =>
-          inst.transformFunctionInput({ ctx: {}, fn: {}, steps: {} })
-        ).toThrow(/ctx\.step is unavailable/);
+        expect(() => inst.transformFunctionInput({ ctx: {}, fn: {}, steps: {} })).toThrow(/ctx\.step is unavailable/);
       });
 
       it('throws when ctx.step.run is not a function', () => {
         const MiddlewareClass = bonklmInngestMiddleware({
-          validators: [{ name: 'V', validate: () => okResult('cold') }],
+          validators: [{ name: 'V', validate: () => okResult('cold') }]
         });
         const inst = Object.create(MiddlewareClass.prototype) as {
           transformFunctionInput: (a: unknown) => unknown;
@@ -451,7 +443,7 @@ describe('Story 2.8 — Inngest middleware', () => {
           inst.transformFunctionInput({
             ctx: { step: { run: 'not-a-function' } },
             fn: {},
-            steps: {},
+            steps: {}
           })
         ).toThrow(/ctx\.step is unavailable/);
       });
@@ -475,11 +467,11 @@ describe('Story 2.8 — Inngest middleware', () => {
       const surface = createBonklmInngestContextSurface(step, { validators });
       await surface.validateInput({
         kind: 'retrieved_docs',
-        docs: [{ content: 'doc one' }],
+        docs: [{ content: 'doc one' }]
       });
       expect(validate).toHaveBeenCalledWith({
         kind: 'retrieved_docs',
-        docs: [{ content: 'doc one' }],
+        docs: [{ content: 'doc one' }]
       });
     });
   });

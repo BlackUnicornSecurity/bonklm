@@ -229,14 +229,22 @@ export class SecureCredential {
    */
   useSync<T>(fn: (credential: string) => T): T {
     if (this.disposed) {
-      throw new WizardError('CREDENTIAL_DISPOSED',
+      throw new WizardError(
+        'CREDENTIAL_DISPOSED',
         'Cannot use a credential that has already been disposed',
-        'Create a new SecureCredential instance', undefined, 1);
+        'Create a new SecureCredential instance',
+        undefined,
+        1
+      );
     }
     if (this.inUse) {
-      throw new WizardError('CREDENTIAL_IN_USE',
+      throw new WizardError(
+        'CREDENTIAL_IN_USE',
         'Cannot re-enter useSync() while already in progress',
-        'Complete the current useSync() call before starting another', undefined, 1);
+        'Complete the current useSync() call before starting another',
+        undefined,
+        1
+      );
     }
     this.inUse = true;
     try {
@@ -248,7 +256,9 @@ export class SecureCredential {
   }
 
   /** Returns whether this credential has been disposed */
-  get isDisposed(): boolean { return this.disposed; }
+  get isDisposed(): boolean {
+    return this.disposed;
+  }
 
   /** Custom inspect to prevent credential leakage in console.log */
   [INSPECT_CUSTOM](): string {
@@ -261,7 +271,9 @@ export class SecureCredential {
   }
 
   /** Custom valueOf to prevent accidental credential exposure */
-  valueOf(): undefined { return undefined; }
+  valueOf(): undefined {
+    return undefined;
+  }
 }
 
 /** Callback type for async use() method */
@@ -274,5 +286,5 @@ export type CredentialCallbackSync<T> = (credential: string) => T;
 export const SecureCredentialError = {
   TOO_LARGE: 'CREDENTIAL_TOO_LARGE',
   DISPOSED: 'CREDENTIAL_DISPOSED',
-  IN_USE: 'CREDENTIAL_IN_USE',
+  IN_USE: 'CREDENTIAL_IN_USE'
 } as const;

@@ -12,10 +12,7 @@
  * files are a portability hazard; injection closes it.
  */
 import { describe, expect, it } from 'vitest';
-import {
-  isProductionEnvironment,
-  isTestEnvironment,
-} from '../../src/guards/production.js';
+import { isProductionEnvironment, isTestEnvironment } from '../../src/guards/production.js';
 
 describe('production.ts envBindings injection', () => {
   describe('isProductionEnvironment(envBindings?)', () => {
@@ -95,15 +92,9 @@ describe('production.ts envBindings injection', () => {
     it('drops non-string values (objects/numbers/booleans) silently', () => {
       // TypeScript would reject these at compile time but runtime
       // attackers can still produce them via untyped paths.
-      expect(
-        isProductionEnvironment({ NODE_ENV: 12345 as unknown as string })
-      ).toBe(false);
-      expect(
-        isProductionEnvironment({ NODE_ENV: {} as unknown as string })
-      ).toBe(false);
-      expect(
-        isProductionEnvironment({ NODE_ENV: true as unknown as string })
-      ).toBe(false);
+      expect(isProductionEnvironment({ NODE_ENV: 12345 as unknown as string })).toBe(false);
+      expect(isProductionEnvironment({ NODE_ENV: {} as unknown as string })).toBe(false);
+      expect(isProductionEnvironment({ NODE_ENV: true as unknown as string })).toBe(false);
     });
 
     it('drops empty-string values (sentinel)', () => {

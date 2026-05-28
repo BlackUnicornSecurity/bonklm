@@ -63,10 +63,7 @@ export class BonklmAgent<UserData = unknown> extends Agent<UserData> {
    * (`AudioStreamValidator.validateFinal` → `PromptInjectionValidator`
    * + `CodeInjectionValidator` by default). BLOCK throws.
    */
-  override async onUserTurnCompleted(
-    _chatCtx: ChatContext,
-    newMessage: ChatMessage
-  ): Promise<void> {
+  override async onUserTurnCompleted(_chatCtx: ChatContext, newMessage: ChatMessage): Promise<void> {
     const text = extractMessageText(newMessage);
     const start = performance.now();
     const result = await this.bonklm.audioStreamValidator.validateFinal(text);
@@ -114,7 +111,12 @@ export class BonklmAgent<UserData = unknown> extends Agent<UserData> {
   // Helpers
   // -------------------------------------------------------------------------
 
-  private safeOnBlock(event: { phase: LiveKitGuardrailPhase; reason: string; category?: string; severity?: string }): void {
+  private safeOnBlock(event: {
+    phase: LiveKitGuardrailPhase;
+    reason: string;
+    category?: string;
+    severity?: string;
+  }): void {
     try {
       this.bonklm.onBlock?.(event);
     } catch (err) {
@@ -128,11 +130,7 @@ export class BonklmAgent<UserData = unknown> extends Agent<UserData> {
     }
   }
 
-  private reportLatencyIfExceeded(
-    phase: LiveKitGuardrailPhase,
-    latencyMs: number,
-    budgetMs: number
-  ): void {
+  private reportLatencyIfExceeded(phase: LiveKitGuardrailPhase, latencyMs: number, budgetMs: number): void {
     if (latencyMs > budgetMs && this.bonklm.onLatencyExceeded) {
       try {
         this.bonklm.onLatencyExceeded({ phase, latencyMs, budgetMs });
@@ -175,7 +173,7 @@ function stringToStream(text: string): ReadableStream<string> {
     start(controller) {
       controller.enqueue(text);
       controller.close();
-    },
+    }
   });
 }
 
@@ -186,7 +184,7 @@ function extractMessageText(message: ChatMessage | undefined | null): string {
   if (typeof content === 'string') return content;
   if (Array.isArray(content)) {
     return content
-      .map((part) => {
+      .map(part => {
         if (typeof part === 'string') return part;
         if (part && typeof part === 'object' && 'text' in part && typeof part.text === 'string') {
           return part.text;
@@ -197,4 +195,3 @@ function extractMessageText(message: ChatMessage | undefined | null): string {
   }
   return '';
 }
-

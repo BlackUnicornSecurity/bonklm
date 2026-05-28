@@ -44,7 +44,7 @@ import {
   type AdapterRoute,
   assertTenantIdSafe,
   type GetTenantId,
-  type MemoryAdapter,
+  type MemoryAdapter
 } from '@blackunicorn/bonklm-memory-utils';
 
 /**
@@ -57,7 +57,7 @@ const ZEP_METHODS = new Set([
   'getUserContext',
   // graph.*
   'add',
-  'search',
+  'search'
 ]);
 
 /**
@@ -162,7 +162,7 @@ function extractRecallEntries(result: unknown): string[] {
       }
     }
   }
-  return entries.filter((s) => s.length > 0);
+  return entries.filter(s => s.length > 0);
 }
 
 // Tenant-ID format validation moved to memory-utils as a shared
@@ -210,7 +210,7 @@ function rewriteGraphIdArgs(
   // Spread to a NEW object so we don't mutate the caller's params.
   const newParams: Record<string, unknown> = {
     ...(params as Record<string, unknown>),
-    graphId: tenantId,
+    graphId: tenantId
   };
   for (const field of ZEP_BYPASS_FIELDS) {
     delete newParams[field];
@@ -234,14 +234,14 @@ export function buildZepAdapter(getTenantId: GetTenantId): MemoryAdapter {
         case 'addMessages':
           return {
             surface: 'memory_write',
-            writeContent: extractAddMessagesContent(args),
+            writeContent: extractAddMessagesContent(args)
           };
         case 'add':
           // graph.add — write content + enforce graphId scope.
           return {
             surface: 'memory_write',
             writeContent: extractGraphAddContent(args),
-            rewriteArgs: rewriteGraphIdArgs(args, ctx, getTenantId),
+            rewriteArgs: rewriteGraphIdArgs(args, ctx, getTenantId)
           };
         case 'getUserContext':
           // thread.getUserContext — recall, validated POST-call.
@@ -252,7 +252,7 @@ export function buildZepAdapter(getTenantId: GetTenantId): MemoryAdapter {
           // recall against another tenant's graph.
           return {
             surface: null,
-            rewriteArgs: rewriteGraphIdArgs(args, ctx, getTenantId),
+            rewriteArgs: rewriteGraphIdArgs(args, ctx, getTenantId)
           };
         default:
           return { surface: null };
@@ -265,6 +265,6 @@ export function buildZepAdapter(getTenantId: GetTenantId): MemoryAdapter {
       const entries = extractRecallEntries(result);
       if (entries.length === 0) return;
       await helpers.runComposedContextValidator(entries);
-    },
+    }
   };
 }

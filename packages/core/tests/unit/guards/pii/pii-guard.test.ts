@@ -5,11 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  PIIGuard,
-  checkPII,
-  type PiiDetection,
-} from '../../../../src/guards/pii/index.js';
+import { PIIGuard, checkPII, type PiiDetection } from '../../../../src/guards/pii/index.js';
 
 describe('PIIGuard', () => {
   describe('US PII Patterns', () => {
@@ -213,7 +209,7 @@ describe('PIIGuard', () => {
         { text: 'AB 12 34 56 C', name: 'UK_NINO' },
         { text: '11111111111 for tax data', name: 'German_Tax_ID' },
         { text: '12345678Z', name: 'Spanish_DNI' },
-        { text: 'Personnummer: 811228-0006', name: 'Swedish_Personnummer' },
+        { text: 'Personnummer: 811228-0006', name: 'Swedish_Personnummer' }
       ];
 
       let detectedCount = 0;
@@ -358,7 +354,7 @@ describe('PIIGuard', () => {
       const t0 = performance.now();
       const detections = guard.detect(content);
       const elapsed = performance.now() - t0;
-      expect(detections.some((d) => d.patternName === 'SSN')).toBe(true);
+      expect(detections.some(d => d.patternName === 'SSN')).toBe(true);
       expect(elapsed).toBeLessThan(100);
     });
   });

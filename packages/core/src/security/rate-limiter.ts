@@ -61,7 +61,7 @@ interface RateLimitEntry {
 export const DEFAULT_RATE_LIMIT: RateLimiterConfig = {
   maxRequests: 100,
   windowMs: 60000, // 1 minute
-  enabled: true,
+  enabled: true
 };
 
 /** Cleanup interval for removing old rate limit entries */
@@ -84,7 +84,7 @@ export class RateLimiter {
     this.config = {
       ...DEFAULT_RATE_LIMIT,
       ...config,
-      enabled: config.enabled ?? true,
+      enabled: config.enabled ?? true
     };
   }
 
@@ -102,7 +102,7 @@ export class RateLimiter {
         allowed: true,
         count: 0,
         remaining: this.config.maxRequests,
-        resetTime: timestamp + this.config.windowMs,
+        resetTime: timestamp + this.config.windowMs
       };
     }
 
@@ -118,7 +118,7 @@ export class RateLimiter {
     if (!entry) {
       entry = {
         timestamps: [],
-        windowStart: timestamp,
+        windowStart: timestamp
       };
       this.entries.set(key, entry);
     }
@@ -132,7 +132,7 @@ export class RateLimiter {
     } else if (windowElapsed > 0) {
       // Remove timestamps outside the sliding window
       const windowStart = timestamp - this.config.windowMs;
-      entry.timestamps = entry.timestamps.filter((ts) => ts >= windowStart);
+      entry.timestamps = entry.timestamps.filter(ts => ts >= windowStart);
     }
 
     // Check if limit is exceeded
@@ -152,7 +152,7 @@ export class RateLimiter {
       count: entry.timestamps.length,
       remaining: Math.max(0, this.config.maxRequests - entry.timestamps.length),
       resetTime: windowEnd,
-      retryAfter: allowed ? undefined : Math.max(0, windowEnd - timestamp),
+      retryAfter: allowed ? undefined : Math.max(0, windowEnd - timestamp)
     };
   }
 
@@ -188,7 +188,7 @@ export class RateLimiter {
     // Filter to current window
     const now = Date.now();
     const windowStart = now - this.config.windowMs;
-    const validTimestamps = entry.timestamps.filter((ts) => ts >= windowStart);
+    const validTimestamps = entry.timestamps.filter(ts => ts >= windowStart);
     return validTimestamps.length;
   }
 
@@ -207,7 +207,7 @@ export class RateLimiter {
 
     for (const [key, entry] of this.entries.entries()) {
       // Remove old timestamps
-      entry.timestamps = entry.timestamps.filter((ts) => ts >= oldestAllowed);
+      entry.timestamps = entry.timestamps.filter(ts => ts >= oldestAllowed);
 
       // Remove entry if no valid timestamps remain
       if (entry.timestamps.length === 0) {
@@ -248,5 +248,5 @@ export const CommonRateLimiters = {
   perSecond: () => new RateLimiter({ maxRequests: 5, windowMs: 1000, enabled: true }),
 
   /** Disabled (always allows) */
-  disabled: () => new RateLimiter({ maxRequests: 0, windowMs: 60000, enabled: false }),
+  disabled: () => new RateLimiter({ maxRequests: 0, windowMs: 60000, enabled: false })
 };

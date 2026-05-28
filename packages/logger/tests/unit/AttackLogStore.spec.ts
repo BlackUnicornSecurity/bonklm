@@ -12,7 +12,7 @@ describe('AttackLogStore', () => {
   beforeEach(() => {
     store = new AttackLogStore({
       max_logs: 10,
-      ttl: 60000, // 1 minute for tests
+      ttl: 60000 // 1 minute for tests
     });
   });
 
@@ -30,7 +30,7 @@ describe('AttackLogStore', () => {
     risk_level: 'HIGH',
     risk_score: 50,
     findings: [],
-    ...overrides,
+    ...overrides
   });
 
   describe('set and get', () => {
@@ -187,7 +187,7 @@ describe('AttackLogStore', () => {
     it('should return entries older than 75% of TTL', async () => {
       const now = Date.now();
       const oldEntry = createMockEntry({
-        timestamp: now - 50000, // 50 seconds ago (more than 75% of 60s TTL)
+        timestamp: now - 50000 // 50 seconds ago (more than 75% of 60s TTL)
       });
 
       await store.set('old-key', oldEntry);
@@ -200,7 +200,7 @@ describe('AttackLogStore', () => {
     it('should not return recent entries', async () => {
       const now = Date.now();
       const newEntry = createMockEntry({
-        timestamp: now - 10000, // 10 seconds ago (less than 75% of 60s TTL)
+        timestamp: now - 10000 // 10 seconds ago (less than 75% of 60s TTL)
       });
 
       await store.set('new-key', newEntry);

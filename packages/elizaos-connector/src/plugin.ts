@@ -28,22 +28,13 @@
  */
 import { createLogger } from '@blackunicorn/bonklm';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
-import type {
-  BonklmPluginOptions,
-  IAgentRuntimeLike,
-  MemoryLike,
-  PluginLike,
-  PluginLoadContext,
-} from './types.js';
+import type { BonklmPluginOptions, IAgentRuntimeLike, MemoryLike, PluginLike, PluginLoadContext } from './types.js';
 import { BONKLM_PLUGIN_PRIORITY } from './types.js';
 import { assertCallContextRuntime } from './als-context.js';
 import { installSealedWrapMemory } from './wrap-memory.js';
 import { applyProbeOutcome, runStartupProbe } from './probe.js';
 import { wrapSigningAction } from './tool-call-args-gate.js';
-import {
-  type ElizaMessageReceivedEvent,
-  mapMessageReceivedToShadowLog,
-} from './shadow-log-adapter.js';
+import { type ElizaMessageReceivedEvent, mapMessageReceivedToShadowLog } from './shadow-log-adapter.js';
 import { warnAcknowledgeClass4RiskDeprecated } from './shadow-log-integration.js';
 
 /**
@@ -99,7 +90,7 @@ export function bonklmPlugin(options: BonklmPluginOptions = {}): PluginLike {
           port: frozenOptions.runtimePort,
           acknowledgeClass4Risk: frozenOptions.acknowledgeClass4Risk === true,
           envBindings: frozenOptions.envBindings,
-          logger,
+          logger
         });
         // ConnectorValidationError from applyProbeOutcome (branch 1)
         // propagates up through `init()` per probe-await semantics.
@@ -136,9 +127,7 @@ export function bonklmPlugin(options: BonklmPluginOptions = {}): PluginLike {
           // so unclassified inbound messages do NOT enter the
           // corroboration set. Consumers supply a real classifier
           // to mark verified-session messages as 'authenticated'.
-          const classifySourceTrust =
-            frozenOptions.classifySourceTrust ??
-            (() => 'unauthenticated_http' as const);
+          const classifySourceTrust = frozenOptions.classifySourceTrust ?? (() => 'unauthenticated_http' as const);
           runtime.on('MESSAGE_RECEIVED', async (...handlerArgs: unknown[]) => {
             try {
               const event = handlerArgs[0] as Partial<ElizaMessageReceivedEvent> & {
@@ -151,19 +140,18 @@ export function bonklmPlugin(options: BonklmPluginOptions = {}): PluginLike {
                 typeof event.roomId !== 'string' ||
                 typeof event.entityId !== 'string'
               ) {
-                logger.warn('[BonkLM] MESSAGE_RECEIVED event missing required fields; skipping shadow log append', { event });
+                logger.warn('[BonkLM] MESSAGE_RECEIVED event missing required fields; skipping shadow log append', {
+                  event
+                });
                 return;
               }
               const sourceTrust = await classifySourceTrust(runtime, event as MemoryLike);
-              const input = mapMessageReceivedToShadowLog(
-                event as ElizaMessageReceivedEvent,
-                sourceTrust
-              );
+              const input = mapMessageReceivedToShadowLog(event as ElizaMessageReceivedEvent, sourceTrust);
               await shadowLog.append(input);
             } catch (err) {
               const e = err as Error;
               logger.error('[BonkLM] CRITICAL — shadow log append failed in MESSAGE_RECEIVED handler', {
-                error: e.message,
+                error: e.message
               });
             }
           });
@@ -181,10 +169,7 @@ export function bonklmPlugin(options: BonklmPluginOptions = {}): PluginLike {
         logger.warn(
           '[BonkLM] acknowledgeClass4Risk=true accepted (backward compat). Consider wiring a shadow log via `options.shadowLog` to close the Class-4 gap structurally; the flag is scheduled for removal in v0.6.'
         );
-      } else if (
-        frozenOptions.shadowLog === undefined &&
-        frozenOptions.runtimePort !== undefined
-      ) {
+      } else if (frozenOptions.shadowLog === undefined && frozenOptions.runtimePort !== undefined) {
         // Iter-1 security A&D-Q7: operator configured `runtimePort`
         // (which means they intend to probe the runtime HTTP API for
         // Class-4 exposure) but DID NOT wire `options.shadowLog`. The
@@ -214,8 +199,8 @@ export function bonklmPlugin(options: BonklmPluginOptions = {}): PluginLike {
         priority: BONKLM_PLUGIN_PRIORITY,
         probeRan: frozenOptions.runtimePort !== undefined,
         acknowledgedClass4Risk: frozenOptions.acknowledgeClass4Risk === true,
-        shadowLogWired: frozenOptions.shadowLog !== undefined,
+        shadowLogWired: frozenOptions.shadowLog !== undefined
       });
-    },
+    }
   };
 }

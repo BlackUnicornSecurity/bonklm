@@ -9,8 +9,4 @@
 
 export { createGuardedInference } from './guarded-inference.js';
 
-export type {
-  GuardedHuggingFaceOptions,
-  TextGenerationOptions,
-  GuardedInferenceResult,
-} from './types.js';
+export type { GuardedHuggingFaceOptions, TextGenerationOptions, GuardedInferenceResult } from './types.js';

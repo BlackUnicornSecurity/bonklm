@@ -45,18 +45,14 @@ import { USE_GUARDRAILS_KEY } from './constants.js';
  * @param options - Optional configuration for this endpoint
  * @returns Decorator function
  */
-export const UseGuardrails = (
-  options: UseGuardrailsDecoratorOptions = {},
-): MethodDecorator & ClassDecorator => {
+export const UseGuardrails = (options: UseGuardrailsDecoratorOptions = {}): MethodDecorator & ClassDecorator => {
   return SetMetadata(USE_GUARDRAILS_KEY, options);
 };
 
 /**
  * Type guard to check if a value is a UseGuardrailsDecoratorOptions.
  */
-export function isUseGuardrailsOptions(
-  value: unknown,
-): value is UseGuardrailsDecoratorOptions {
+export function isUseGuardrailsOptions(value: unknown): value is UseGuardrailsDecoratorOptions {
   return (
     typeof value === 'object' &&
     value !== null &&

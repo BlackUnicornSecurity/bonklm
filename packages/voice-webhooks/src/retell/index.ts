@@ -23,11 +23,7 @@
  * messages on the same connection are trusted (per Retell convention).
  */
 import { verifyRetellHmac } from '../hmac.js';
-import type {
-  RetellHandlerConfig,
-  VoiceWebhookBlockEvent,
-  VoiceWebhookHmacFailureEvent,
-} from '../types.js';
+import type { RetellHandlerConfig, VoiceWebhookBlockEvent, VoiceWebhookHmacFailureEvent } from '../types.js';
 
 type RetellMessageType = 'update_only' | 'response_required' | string;
 
@@ -44,9 +40,7 @@ export interface RetellHandshakeRequest {
   signature: string | undefined;
 }
 
-export type RetellOutboundChunk =
-  | { type: 'text'; content: string; end?: boolean }
-  | { type: 'block'; reason: string };
+export type RetellOutboundChunk = { type: 'text'; content: string; end?: boolean } | { type: 'block'; reason: string };
 
 /**
  * Returns an object with two methods:
@@ -71,7 +65,7 @@ export function createRetellWsHandler(config: RetellHandlerConfig): {
     const result = verifyRetellHmac({
       rawBody: req.rawBody,
       signature: req.signature,
-      secret: config.hmacSecret,
+      secret: config.hmacSecret
     });
     if (!result.valid) {
       emitHmacFailure(config, { vendor: 'retell', reason: result.reason });
@@ -97,7 +91,7 @@ export function createRetellWsHandler(config: RetellHandlerConfig): {
               phase: 'retell_update_only',
               reason: 'update_only_blocked_observe_only',
               category: result.findings[0]?.category,
-              severity: String(result.severity),
+              severity: String(result.severity)
             });
             // Yield a block notice — Retell ignores it but operator
             // logs / spies see the signal.
@@ -122,7 +116,7 @@ export function createRetellWsHandler(config: RetellHandlerConfig): {
               phase: 'retell_response_required',
               reason: 'response_required_blocked',
               category: result.findings[0]?.category,
-              severity: String(result.severity),
+              severity: String(result.severity)
             });
             yield { type: 'block', reason: 'response_required_blocked' };
             yield { type: 'text', content: '', end: true };
@@ -190,10 +184,7 @@ function safeOnBlock(config: RetellHandlerConfig, ev: VoiceWebhookBlockEvent): v
   }
 }
 
-function emitHmacFailure(
-  config: RetellHandlerConfig,
-  ev: VoiceWebhookHmacFailureEvent
-): void {
+function emitHmacFailure(config: RetellHandlerConfig, ev: VoiceWebhookHmacFailureEvent): void {
   try {
     config.onHmacFailure?.(ev);
   } catch (err) {

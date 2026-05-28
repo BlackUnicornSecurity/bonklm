@@ -5,12 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  XSSGuard,
-  detectXSS,
-  checkXSS,
-  getXSSReport,
-} from '../../../src/guards/xss-safety.js';
+import { XSSGuard, detectXSS, checkXSS, getXSSReport } from '../../../src/guards/xss-safety.js';
 
 describe('XSSGuard', () => {
   describe('XSS-001: Script Tag Injection', () => {
@@ -170,7 +165,7 @@ describe('XSSGuard', () => {
         '<p>Hello world</p>',
         '<div class="container">Content</div>',
         '<a href="https://example.com">Link</a>',
-        '<strong>Bold text</strong>',
+        '<strong>Bold text</strong>'
       ];
 
       for (const html of safeHtml) {

@@ -14,7 +14,7 @@ import {
   runGuardrailTestWithConnector,
   formatGuardrailResult,
   isGuardrailTestSuccessful,
-  type GuardrailTestResult,
+  type GuardrailTestResult
 } from './guardrail-test.js';
 
 // Mock the core package imports with proper class for vitest 4
@@ -22,7 +22,7 @@ class MockGuardrailEngine {
   validate() {
     return Promise.resolve({
       flagged: true,
-      severity: 'critical',
+      severity: 'critical'
     });
   }
 }
@@ -32,11 +32,11 @@ vi.mock('@blackunicorn/bonklm', () => ({
     constructor() {
       return new MockGuardrailEngine();
     }
-  },
+  }
 }));
 
 vi.mock('@blackunicorn/bonklm/validators', () => ({
-  PromptInjectionValidator: class {},
+  PromptInjectionValidator: class {}
 }));
 
 describe('guardrail-test', () => {
@@ -64,7 +64,7 @@ describe('guardrail-test', () => {
     it('should execute guardrail test with connector config', async () => {
       const connectorConfig = {
         type: 'openai',
-        apiKey: 'sk-test',
+        apiKey: 'sk-test'
       };
 
       const result = await runGuardrailTestWithConnector(connectorConfig);
@@ -80,7 +80,7 @@ describe('guardrail-test', () => {
     it('should format skipped test result', () => {
       const result: GuardrailTestResult = {
         executed: false,
-        detected: false,
+        detected: false
       };
 
       const formatted = formatGuardrailResult(result);
@@ -93,7 +93,7 @@ describe('guardrail-test', () => {
       const result: GuardrailTestResult = {
         executed: true,
         detected: true,
-        latency: 42,
+        latency: 42
       };
 
       const formatted = formatGuardrailResult(result);
@@ -106,7 +106,7 @@ describe('guardrail-test', () => {
       const result: GuardrailTestResult = {
         executed: true,
         detected: false,
-        latency: 42,
+        latency: 42
       };
 
       const formatted = formatGuardrailResult(result);
@@ -118,7 +118,7 @@ describe('guardrail-test', () => {
       const result: GuardrailTestResult = {
         executed: true,
         detected: false,
-        error: 'Test error',
+        error: 'Test error'
       };
 
       const formatted = formatGuardrailResult(result);
@@ -131,7 +131,7 @@ describe('guardrail-test', () => {
       const result: GuardrailTestResult = {
         executed: true,
         detected: true,
-        latency: 123,
+        latency: 123
       };
 
       const formatted = formatGuardrailResult(result);
@@ -144,7 +144,7 @@ describe('guardrail-test', () => {
     it('should return false for non-executed tests', () => {
       const result: GuardrailTestResult = {
         executed: false,
-        detected: false,
+        detected: false
       };
 
       expect(isGuardrailTestSuccessful(result)).toBe(false);
@@ -153,7 +153,7 @@ describe('guardrail-test', () => {
     it('should return true for successfully detected threats', () => {
       const result: GuardrailTestResult = {
         executed: true,
-        detected: true,
+        detected: true
       };
 
       expect(isGuardrailTestSuccessful(result)).toBe(true);
@@ -162,7 +162,7 @@ describe('guardrail-test', () => {
     it('should return false for failed detection', () => {
       const result: GuardrailTestResult = {
         executed: true,
-        detected: false,
+        detected: false
       };
 
       expect(isGuardrailTestSuccessful(result)).toBe(false);
@@ -172,7 +172,7 @@ describe('guardrail-test', () => {
       const result: GuardrailTestResult = {
         executed: true,
         detected: false,
-        error: 'Validation failed',
+        error: 'Validation failed'
       };
 
       expect(isGuardrailTestSuccessful(result)).toBe(false);

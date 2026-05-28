@@ -41,7 +41,7 @@ export interface DetectedCredential {
 const CREDENTIAL_PATTERNS = {
   openai: 'OPENAI_API_KEY',
   anthropic: 'ANTHROPIC_API_KEY',
-  ollama: 'OLLAMA_HOST',
+  ollama: 'OLLAMA_HOST'
 } as const;
 
 /**
@@ -162,7 +162,7 @@ export function detectCredentials(): DetectedCredential[] {
         name,
         key: envVar,
         maskedValue: 'not set',
-        present: false,
+        present: false
       });
       checked++;
       continue;
@@ -180,7 +180,7 @@ export function detectCredentials(): DetectedCredential[] {
         name,
         key: envVar,
         maskedValue: masked,
-        present: true,
+        present: true
       });
     } catch {
       // If SecureCredential throws (e.g., value too large), treat as not set
@@ -188,7 +188,7 @@ export function detectCredentials(): DetectedCredential[] {
         name,
         key: envVar,
         maskedValue: 'not set',
-        present: false,
+        present: false
       });
     } finally {
       // SECURITY: Always zero memory after use
@@ -270,7 +270,7 @@ export function getCredentialMasked(name: CredentialName): string {
  * @returns Array of credentials that are present
  */
 export function getPresentCredentials(): DetectedCredential[] {
-  return detectCredentials().filter((cred) => cred.present);
+  return detectCredentials().filter(cred => cred.present);
 }
 
 /**

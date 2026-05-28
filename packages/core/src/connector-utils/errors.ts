@@ -24,11 +24,7 @@ export class ConnectorValidationError extends Error {
   /** HTTP status code (if applicable) */
   public readonly statusCode?: number;
 
-  constructor(
-    message: string,
-    category: string = 'validation',
-    statusCode?: number
-  ) {
+  constructor(message: string, category: string = 'validation', statusCode?: number) {
     super(message);
     this.name = 'ConnectorValidationError';
     this.category = category;
@@ -60,11 +56,7 @@ export class StreamValidationError extends Error {
   /** Whether the content was blocked (default: true) */
   public readonly blocked: boolean;
 
-  constructor(
-    message: string,
-    reason: string = 'buffer_exceeded',
-    blocked: boolean = true
-  ) {
+  constructor(message: string, reason: string = 'buffer_exceeded', blocked: boolean = true) {
     super(message);
     this.name = 'StreamValidationError';
     this.reason = reason;

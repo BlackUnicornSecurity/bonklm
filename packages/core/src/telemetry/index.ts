@@ -15,7 +15,7 @@ export {
   type TelemetryCollector,
   type TelemetryEvent,
   type TelemetryMetrics,
-  type TelemetryServiceOptions,
+  type TelemetryServiceOptions
 } from './TelemetryService.js';
 
 export { TelemetryEventType } from './TelemetryService.js';
@@ -33,7 +33,7 @@ export {
   type BonklmDurableExecBlockEvent,
   type BonklmDocumentBlockEvent,
   type BonklmCfAgentBlockEvent,
-  type BonklmWebMiddlewareBlockEvent,
+  type BonklmWebMiddlewareBlockEvent
 } from './block-event.js';
 
 // Sprint 23 Story 3.11 — OTLP span export for validator decisions
@@ -45,5 +45,5 @@ export {
   type BonklmTraceOptions,
   type BonklmTracer,
   type BonklmSpan,
-  type BonklmSpanOptions,
+  type BonklmSpanOptions
 } from './otlp-export.js';

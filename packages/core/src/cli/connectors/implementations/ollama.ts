@@ -14,7 +14,7 @@ export const ollamaConnector: ConnectorDefinition = {
   name: 'Ollama',
   category: 'llm',
   detection: {
-    ports: [11434],
+    ports: [11434]
   },
 
   test: async (config, signal) => {
@@ -28,20 +28,20 @@ export const ollamaConnector: ConnectorDefinition = {
     try {
       const response = await fetch(`${baseUrl}/api/tags`, {
         method: 'GET',
-        signal: effectiveSignal,
+        signal: effectiveSignal
       });
 
       return {
         connection: response.ok,
         validation: response.ok,
-        error: response.ok ? undefined : `HTTP ${response.status}`,
+        error: response.ok ? undefined : `HTTP ${response.status}`
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return {
         connection: false,
         validation: false,
-        error: message,
+        error: message
       };
     } finally {
       // Always clear timeout to prevent resource leaks
@@ -49,7 +49,8 @@ export const ollamaConnector: ConnectorDefinition = {
     }
   },
 
-  generateSnippet: (config) => `
+  generateSnippet: config =>
+    `
 import { ollamaConnector } from '@blackunicorn/bonklm/ollama-connector';
 
 const connector = ollamaConnector({
@@ -58,6 +59,6 @@ const connector = ollamaConnector({
   `.trim(),
 
   configSchema: z.object({
-    baseUrl: z.string().url().optional(),
-  }),
+    baseUrl: z.string().url().optional()
+  })
 };

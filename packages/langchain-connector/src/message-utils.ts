@@ -31,7 +31,6 @@ export interface LLMResultLike {
  * @throws {TypeError} If value is not a positive finite number.
  */
 
-
 /**
  * Extracts text content from message-like objects.
  *
@@ -46,7 +45,7 @@ export interface LLMResultLike {
  */
 export function messagesToText(messages: BaseMessageLike[]): string {
   return messages
-    .map((m) => {
+    .map(m => {
       const content = m.content;
 
       // Handle string content (most common case)
@@ -57,10 +56,10 @@ export function messagesToText(messages: BaseMessageLike[]): string {
       // Handle array content (SEC-006: structured data)
       if (Array.isArray(content)) {
         return content
-          .filter((c) => {
+          .filter(c => {
             return typeof c === 'object' && c !== null && 'type' in c && c.type === 'text';
           })
-          .map((c) => {
+          .map(c => {
             if (typeof c === 'object' && c !== null && 'type' in c && c.type === 'text' && 'text' in c) {
               return String((c as { text: string }).text || '');
             }
@@ -72,7 +71,7 @@ export function messagesToText(messages: BaseMessageLike[]): string {
       // Handle other types (convert to string)
       return String(content ?? '');
     })
-    .filter((c) => c.length > 0)
+    .filter(c => c.length > 0)
     .join('\n');
 }
 

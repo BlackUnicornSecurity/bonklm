@@ -48,32 +48,20 @@ export class NumberRangeRule implements ValidationRule {
 
   validate(value: unknown, path?: string): ConfigValidationError | undefined {
     if (typeof value !== 'number' || !Number.isFinite(value)) {
-      return new ConfigValidationError(
-        `Value must be a number`,
-        path,
-        value
-      );
+      return new ConfigValidationError(`Value must be a number`, path, value);
     }
 
     if (this.min !== undefined) {
       const valid = this.inclusive ? value >= this.min : value > this.min;
       if (!valid) {
-        return new ConfigValidationError(
-          `Value must be ${this.inclusive ? '>=' : '>'} ${this.min}`,
-          path,
-          value
-        );
+        return new ConfigValidationError(`Value must be ${this.inclusive ? '>=' : '>'} ${this.min}`, path, value);
       }
     }
 
     if (this.max !== undefined) {
       const valid = this.inclusive ? value <= this.max : value < this.max;
       if (!valid) {
-        return new ConfigValidationError(
-          `Value must be ${this.inclusive ? '<=' : '<'} ${this.max}`,
-          path,
-          value
-        );
+        return new ConfigValidationError(`Value must be ${this.inclusive ? '<=' : '<'} ${this.max}`, path, value);
       }
     }
 
@@ -91,11 +79,7 @@ export class TypeRule implements ValidationRule {
     const actualType = Array.isArray(value) ? 'array' : typeof value;
 
     if (actualType !== this.expectedType) {
-      return new ConfigValidationError(
-        `Value must be of type ${this.expectedType}`,
-        path,
-        value
-      );
+      return new ConfigValidationError(`Value must be of type ${this.expectedType}`, path, value);
     }
 
     return undefined;
@@ -110,11 +94,7 @@ export class EnumRule implements ValidationRule {
 
   validate(value: unknown, path?: string): ConfigValidationError | undefined {
     if (!this.allowedValues.includes(value)) {
-      return new ConfigValidationError(
-        `Value must be one of: ${this.allowedValues.join(', ')}`,
-        path,
-        value
-      );
+      return new ConfigValidationError(`Value must be one of: ${this.allowedValues.join(', ')}`, path, value);
     }
 
     return undefined;
@@ -127,11 +107,7 @@ export class EnumRule implements ValidationRule {
 export class FunctionRule implements ValidationRule {
   validate(value: unknown, path?: string): ConfigValidationError | undefined {
     if (typeof value !== 'function') {
-      return new ConfigValidationError(
-        `Value must be a function`,
-        path,
-        value
-      );
+      return new ConfigValidationError(`Value must be a function`, path, value);
     }
 
     return undefined;
@@ -269,36 +245,21 @@ export class ArrayRule implements ValidationRule {
 
   validate(value: unknown, path?: string): ConfigValidationError | undefined {
     if (!Array.isArray(value)) {
-      return new ConfigValidationError(
-        `Value must be an array`,
-        path,
-        value
-      );
+      return new ConfigValidationError(`Value must be an array`, path, value);
     }
 
     if (this.minLength !== undefined && value.length < this.minLength) {
-      return new ConfigValidationError(
-        `Array must have at least ${this.minLength} items`,
-        path,
-        value
-      );
+      return new ConfigValidationError(`Array must have at least ${this.minLength} items`, path, value);
     }
 
     if (this.maxLength !== undefined && value.length > this.maxLength) {
-      return new ConfigValidationError(
-        `Array must have at most ${this.maxLength} items`,
-        path,
-        value
-      );
+      return new ConfigValidationError(`Array must have at most ${this.maxLength} items`, path, value);
     }
 
     // Validate array items
     if (this.itemRule) {
       for (let i = 0; i < value.length; i++) {
-        const error = this.itemRule.validate(
-          value[i],
-          path ? `${path}[${i}]` : `[${i}]`
-        );
+        const error = this.itemRule.validate(value[i], path ? `${path}[${i}]` : `[${i}]`);
         if (error) {
           return error;
         }
@@ -320,20 +281,13 @@ export class ObjectRule implements ValidationRule {
 
   validate(value: unknown, path?: string): ConfigValidationError | undefined {
     if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-      return new ConfigValidationError(
-        `Value must be an object`,
-        path,
-        value
-      );
+      return new ConfigValidationError(`Value must be an object`, path, value);
     }
 
     // Validate known properties
     if (this.properties) {
       for (const [key, rule] of Object.entries(this.properties)) {
-        const error = rule.validate(
-          (value as Record<string, unknown>)[key],
-          path ? `${path}.${key}` : key
-        );
+        const error = rule.validate((value as Record<string, unknown>)[key], path ? `${path}.${key}` : key);
         if (error) {
           return error;
         }
@@ -342,15 +296,9 @@ export class ObjectRule implements ValidationRule {
 
     // Check for unknown properties
     if (!this.allowUnknown && this.properties) {
-      const unknownKeys = Object.keys(value).filter(
-        (key) => !(key in (this.properties || {}))
-      );
+      const unknownKeys = Object.keys(value).filter(key => !(key in (this.properties || {})));
       if (unknownKeys.length > 0) {
-        return new ConfigValidationError(
-          `Unknown properties: ${unknownKeys.join(', ')}`,
-          path,
-          value
-        );
+        return new ConfigValidationError(`Unknown properties: ${unknownKeys.join(', ')}`, path, value);
       }
     }
 
@@ -393,9 +341,7 @@ export class OptionalRule implements ValidationRule {
  * Custom rule
  */
 export class CustomRule implements ValidationRule {
-  constructor(
-    private readonly validator: (value: unknown, path?: string) => ConfigValidationError | undefined
-  ) {}
+  constructor(private readonly validator: (value: unknown, path?: string) => ConfigValidationError | undefined) {}
 
   validate(value: unknown, path?: string): ConfigValidationError | undefined {
     return this.validator(value, path);
@@ -423,7 +369,7 @@ export class Schema {
 
     return {
       valid: errors.length === 0,
-      errors,
+      errors
     };
   }
 
@@ -435,12 +381,11 @@ export class Schema {
 
     if (!result.valid) {
       const messages = result.errors.map(
-        (e) => `${e.field ? `${e.field  }: ` : ''}${e.message}${e.value !== undefined ? ` (received: ${JSON.stringify(e.value)})` : ''}`
+        e =>
+          `${e.field ? `${e.field}: ` : ''}${e.message}${e.value !== undefined ? ` (received: ${JSON.stringify(e.value)})` : ''}`
       );
 
-      throw new ConfigValidationError(
-        `Configuration validation failed:\n  - ${messages.join('\n  - ')}`
-      );
+      throw new ConfigValidationError(`Configuration validation failed:\n  - ${messages.join('\n  - ')}`);
     }
   }
 }
@@ -459,8 +404,7 @@ export const Validators = {
    * accepted `-1024` and disabled the size limit. Now `min` is
    * always honoured; pass `min = 0` for "≥ 0" semantics explicitly.
    */
-  positiveNumber: (min: number = 0) =>
-    new NumberRangeRule(min, undefined),
+  positiveNumber: (min: number = 0) => new NumberRangeRule(min, undefined),
 
   /** Percentage (0-100) */
   percentage: new NumberRangeRule(0, 100),
@@ -529,6 +473,5 @@ export const Validators = {
   optional: (rule: ValidationRule) => new OptionalRule(rule),
 
   /** Custom */
-  custom: (validator: (value: unknown, path?: string) => ConfigValidationError | undefined) =>
-    new CustomRule(validator),
+  custom: (validator: (value: unknown, path?: string) => ConfigValidationError | undefined) => new CustomRule(validator)
 };

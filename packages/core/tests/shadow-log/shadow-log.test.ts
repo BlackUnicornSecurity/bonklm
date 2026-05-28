@@ -8,7 +8,7 @@ import {
   computeContentHash,
   computeChainLinkHash,
   type ShadowLogEntry,
-  type ShadowLogStorageAdapter,
+  type ShadowLogStorageAdapter
 } from '../../src/shadow-log/index.js';
 import { ConnectorValidationError } from '../../src/connector-utils/errors.js';
 
@@ -24,7 +24,7 @@ describe('shadow-log — append + readByRoom', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'hello',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     expect(entry.prevEntryHash).toBeNull();
     expect(entry.contentHash).toMatch(/^[0-9a-f]{64}$/);
@@ -40,14 +40,14 @@ describe('shadow-log — append + readByRoom', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'first',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     const b = await log.append({
       messageId: 'b',
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'second',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     const expectedLink = await computeChainLinkHash(a.contentHash, a.prevEntryHash);
     expect(b.prevEntryHash).toBe(expectedLink);
@@ -60,14 +60,14 @@ describe('shadow-log — append + readByRoom', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'room-1',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     const aRoom2 = await log.append({
       messageId: 'm2',
       roomId: 'r-2',
       entityId: 'e-1',
       text: 'room-2',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     // Both are genesis for their respective rooms.
     expect(aRoom1.prevEntryHash).toBeNull();
@@ -86,14 +86,14 @@ describe('shadow-log — append + readByRoom', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'auth',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     await log.append({
       messageId: 'b',
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'http',
-      sourceTrust: 'unauthenticated_http',
+      sourceTrust: 'unauthenticated_http'
     });
     const authOnly = await log.readByRoom('r-1', { sourceTrust: 'authenticated' });
     expect(authOnly.length).toBe(1);
@@ -108,7 +108,7 @@ describe('shadow-log — append + readByRoom', () => {
         roomId: 'r-1',
         entityId: 'e-1',
         text: `msg ${i}`,
-        sourceTrust: 'authenticated',
+        sourceTrust: 'authenticated'
       });
     }
     expect((await log.readByRoom('r-1', { limit: 2 })).length).toBe(2);
@@ -123,14 +123,14 @@ describe('shadow-log — verifyChain', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'first',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     await log.append({
       messageId: 'b',
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'second',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     expect(await log.verifyChain('r-1')).toEqual({ ok: true });
   });
@@ -159,16 +159,14 @@ describe('shadow-log — verifyChain', () => {
       },
       async getLatestHashForRoom(roomId) {
         const bucket = stored.get(roomId);
-        return bucket && bucket.length > 0
-          ? bucket[bucket.length - 1].contentHash
-          : null;
+        return bucket && bucket.length > 0 ? bucket[bucket.length - 1].contentHash : null;
       },
       async countByRoom(roomId) {
         return stored.get(roomId)?.length ?? 0;
       },
       async totalCount() {
         return total;
-      },
+      }
     };
     const log = createShadowLog(adapter);
     await log.append({
@@ -176,14 +174,14 @@ describe('shadow-log — verifyChain', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'first',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     await log.append({
       messageId: 'b',
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'second',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
 
     // Tamper the second entry's text in-place WITHOUT recomputing
@@ -213,10 +211,8 @@ describe('shadow-log — verifyChain', () => {
       },
       async getLatestHashForRoom(roomId) {
         const bucket = stored.get(roomId);
-        return bucket && bucket.length > 0
-          ? bucket[bucket.length - 1].contentHash
-          : null;
-      },
+        return bucket && bucket.length > 0 ? bucket[bucket.length - 1].contentHash : null;
+      }
     };
     const log = createShadowLog(adapter);
     await log.append({
@@ -224,7 +220,7 @@ describe('shadow-log — verifyChain', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'first',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     // Tamper genesis prevEntryHash.
     const bucket = stored.get('r-1')!;
@@ -244,15 +240,15 @@ describe('shadow-log — concurrent append (BLOCK #6 — per-room mutex)', () =>
         roomId: 'r-1',
         entityId: 'e-1',
         text: 'first',
-        sourceTrust: 'authenticated',
+        sourceTrust: 'authenticated'
       }),
       log.append({
         messageId: 'b',
         roomId: 'r-1',
         entityId: 'e-1',
         text: 'second',
-        sourceTrust: 'authenticated',
-      }),
+        sourceTrust: 'authenticated'
+      })
     ]);
     expect(await log.verifyChain('r-1')).toEqual({ ok: true });
   });
@@ -265,7 +261,7 @@ describe('shadow-log — concurrent append (BLOCK #6 — per-room mutex)', () =>
         roomId: 'stress',
         entityId: 'e-1',
         text: `message ${i}`,
-        sourceTrust: 'authenticated',
+        sourceTrust: 'authenticated'
       })
     );
     await Promise.all(promises);
@@ -285,15 +281,15 @@ describe('shadow-log — concurrent append (BLOCK #6 — per-room mutex)', () =>
         roomId: 'r-1',
         entityId: 'e-1',
         text: '1',
-        sourceTrust: 'authenticated',
+        sourceTrust: 'authenticated'
       }),
       log.append({
         messageId: 'b',
         roomId: 'r-2',
         entityId: 'e-1',
         text: '2',
-        sourceTrust: 'authenticated',
-      }),
+        sourceTrust: 'authenticated'
+      })
     ]);
     expect(await log.verifyChain('r-1')).toEqual({ ok: true });
     expect(await log.verifyChain('r-2')).toEqual({ ok: true });
@@ -312,7 +308,7 @@ describe('shadow-log — adapter-boundary contentHash re-validation (A&D #10)', 
       },
       async getLatestHashForRoom() {
         return 'attacker-controlled-hash-that-does-not-match';
-      },
+      }
     };
     const log = createShadowLog(adapter);
     try {
@@ -321,7 +317,7 @@ describe('shadow-log — adapter-boundary contentHash re-validation (A&D #10)', 
         roomId: 'r-1',
         entityId: 'e-1',
         text: 'first',
-        sourceTrust: 'authenticated',
+        sourceTrust: 'authenticated'
       });
       expect.unreachable('should have thrown');
     } catch (e) {
@@ -355,14 +351,14 @@ describe('shadow-log — bounded storage policy', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: '1',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     await log.append({
       messageId: 'b',
       roomId: 'r-1',
       entityId: 'e-1',
       text: '2',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     // Third append exceeds cap.
     await expect(
@@ -371,7 +367,7 @@ describe('shadow-log — bounded storage policy', () => {
         roomId: 'r-1',
         entityId: 'e-1',
         text: '3',
-        sourceTrust: 'authenticated',
+        sourceTrust: 'authenticated'
       })
     ).rejects.toThrow(ConnectorValidationError);
   });
@@ -383,7 +379,7 @@ describe('shadow-log — bounded storage policy', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: '1',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     try {
       await log.append({
@@ -391,7 +387,7 @@ describe('shadow-log — bounded storage policy', () => {
         roomId: 'r-1',
         entityId: 'e-1',
         text: '2',
-        sourceTrust: 'authenticated',
+        sourceTrust: 'authenticated'
       });
       expect.unreachable();
     } catch (e) {
@@ -407,35 +403,35 @@ describe('shadow-log — bounded storage policy', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'first',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     await log.append({
       messageId: 'b',
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'second',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     await log.append({
       messageId: 'c',
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'third',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     const entries = await log.readByRoom('r-1', { limit: 10 });
     // The first ('first') was evicted; 'second' + 'third' survive.
     expect(entries.length).toBe(2);
-    expect(entries.find((e) => e.text === 'first')).toBeUndefined();
+    expect(entries.find(e => e.text === 'first')).toBeUndefined();
   });
 
   it('rejects invalid configuration at creation', () => {
-    expect(() =>
-      createShadowLog(createInMemoryShadowLogStorage(), { maxEntriesPerRoom: 0 })
-    ).toThrow(ConnectorValidationError);
-    expect(() =>
-      createShadowLog(createInMemoryShadowLogStorage(), { maxTotalEntries: 0 })
-    ).toThrow(ConnectorValidationError);
+    expect(() => createShadowLog(createInMemoryShadowLogStorage(), { maxEntriesPerRoom: 0 })).toThrow(
+      ConnectorValidationError
+    );
+    expect(() => createShadowLog(createInMemoryShadowLogStorage(), { maxTotalEntries: 0 })).toThrow(
+      ConnectorValidationError
+    );
   });
 });
 
@@ -453,7 +449,7 @@ describe('shadow-log — generic adapter contract (non-ElizaOS)', () => {
       },
       async getLatestHashForRoom() {
         return lastHash;
-      },
+      }
     };
     const log = createShadowLog(adapter);
     await log.append({
@@ -461,7 +457,7 @@ describe('shadow-log — generic adapter contract (non-ElizaOS)', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'custom',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     expect(calls).toEqual(['append:custom']);
   });
@@ -491,11 +487,7 @@ describe('shadow-log — canonical hash functions (exposed for adapters)', () =>
     // Length-prefix means "x|authenticated|e-1" cannot collide with
     // a hostile text that ENDS in "|authenticated|e-1" tail.
     const honest = await computeContentHash('hello', 'authenticated', 'e-1');
-    const hostile = await computeContentHash(
-      'hello|authenticated|e-1',
-      'something-else',
-      'e-2'
-    );
+    const hostile = await computeContentHash('hello|authenticated|e-1', 'something-else', 'e-2');
     expect(honest).not.toBe(hostile);
   });
 
@@ -518,7 +510,7 @@ describe('shadow-log — cross-room authorization documentation (negative test)'
       roomId: 'victim-room',
       entityId: 'victim-entity',
       text: 'private content',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
 
     // An attacker who calls readByRoom('victim-room') from any

@@ -12,10 +12,7 @@
  * `text` field. We validate the joined text across ALL elements
  * (the LLM consumer typically concatenates them anyway).
  */
-import {
-  assertNotWrapped,
-  markWrapped,
-} from '@blackunicorn/bonklm/core/connector-utils';
+import { assertNotWrapped, markWrapped } from '@blackunicorn/bonklm/core/connector-utils';
 import { validateExtractedText } from './validate-extracted-text.js';
 import type { DocumentIngestWrapOptions } from './types.js';
 
@@ -25,10 +22,7 @@ import type { DocumentIngestWrapOptions } from './types.js';
  */
 export interface UnstructuredClientLike {
   general: {
-    partition(
-      request: unknown,
-      requestOptions?: unknown
-    ): Promise<UnstructuredPartitionResponse>;
+    partition(request: unknown, requestOptions?: unknown): Promise<UnstructuredPartitionResponse>;
   };
 }
 
@@ -50,10 +44,7 @@ const BONKLM_WIRED = Symbol.for('bonklm.unstructured.wired');
  * Wrap an unstructured-client SDK instance. Returns a NEW object;
  * underlying SDK is not mutated. Reject re-wrap.
  */
-export function wrapUnstructured<C extends UnstructuredClientLike>(
-  client: C,
-  options: DocumentIngestWrapOptions
-): C {
+export function wrapUnstructured<C extends UnstructuredClientLike>(client: C, options: DocumentIngestWrapOptions): C {
   if (!client || typeof client !== 'object' || !client.general) {
     throw new TypeError('wrapUnstructured: client with `.general.partition` is required.');
   }
@@ -68,25 +59,22 @@ export function wrapUnstructured<C extends UnstructuredClientLike>(
     ...client,
     general: {
       ...client.general,
-      async partition(
-        request: unknown,
-        requestOptions?: unknown
-      ): Promise<UnstructuredPartitionResponse> {
+      async partition(request: unknown, requestOptions?: unknown): Promise<UnstructuredPartitionResponse> {
         const response = await originalPartition(request, requestOptions);
         const elements = response?.elements;
         if (!Array.isArray(elements) || elements.length === 0) return response;
         const joined = elements
-          .map((el) => (typeof el?.text === 'string' ? el.text : ''))
-          .filter((t) => t.length > 0)
+          .map(el => (typeof el?.text === 'string' ? el.text : ''))
+          .filter(t => t.length > 0)
           .join('\n\n');
         if (joined.length === 0) return response;
         await validateExtractedText(joined, {
           ...options,
-          phase: 'unstructured',
+          phase: 'unstructured'
         });
         return response;
-      },
-    },
+      }
+    }
   } as unknown as C;
 
   markWrapped(wrapped, BONKLM_WIRED);

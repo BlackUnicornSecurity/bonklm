@@ -98,11 +98,7 @@ export interface SandboxWrapStreamOptions extends SandboxValidatorOptions {
 let _warnedWrappers: WeakSet<object> = new WeakSet();
 let _warnCounters: WeakMap<object, number> = new WeakMap();
 
-function emitFailOpenWarn(
-  wrapperKey: object,
-  reason: string,
-  options: SandboxValidatorOptions
-): void {
+function emitFailOpenWarn(wrapperKey: object, reason: string, options: SandboxValidatorOptions): void {
   const nodeEnv = options.nodeEnv ?? process.env.NODE_ENV ?? '';
   if (nodeEnv !== 'production') return;
 
@@ -118,7 +114,8 @@ function emitFailOpenWarn(
     reason,
     onSandboxError: 'allow',
     occurrenceCountSoFar: prevCount + 1,
-    advice: 'Set NODE_ENV !== production OR onSandboxError: "block" to silence; this is a one-time warning per wrapperKey.',
+    advice:
+      'Set NODE_ENV !== production OR onSandboxError: "block" to silence; this is a one-time warning per wrapperKey.'
   });
 }
 
@@ -170,7 +167,7 @@ export async function validateCode(
       blocked: result.blocked,
       reason: result.blocked ? result.findings[0]?.description : undefined,
       severity: String(result.severity),
-      category: result.findings[0]?.category,
+      category: result.findings[0]?.category
     };
   });
 }
@@ -220,7 +217,7 @@ export async function validatePath(
       blocked: result.blocked,
       reason: result.blocked ? result.findings[0]?.description : undefined,
       severity: String(result.severity),
-      category: result.findings[0]?.category,
+      category: result.findings[0]?.category
     };
   });
 }
@@ -289,7 +286,7 @@ export async function* wrapStream<T>(
           options.onBlock?.({
             reason: result.reason ?? 'unknown',
             category: result.category,
-            chunk,
+            chunk
           });
         } catch (err) {
           // Sprint 19 audit security C-2 closure: route to onError if
@@ -348,7 +345,7 @@ async function runWithFailCloseDefault(
         allowed: true,
         blocked: false,
         reason: 'sandbox_validator_error_allowed',
-        validatorError: true,
+        validatorError: true
       };
     }
     // Default fail-CLOSED.
@@ -358,7 +355,7 @@ async function runWithFailCloseDefault(
       reason: 'sandbox_validator_error',
       severity: 'critical',
       category: 'sandbox_validator_error',
-      validatorError: true,
+      validatorError: true
     };
   } finally {
     if (timer !== undefined) clearTimeout(timer);

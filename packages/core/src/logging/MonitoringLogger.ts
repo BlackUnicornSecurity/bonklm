@@ -17,7 +17,7 @@ export enum MonitoringLogLevel {
   INFO = 1,
   WARN = 2,
   ERROR = 3,
-  SILENT = 4,
+  SILENT = 4
 }
 
 /**
@@ -81,7 +81,7 @@ const DEFAULT_OPTIONS: Required<Omit<MonitoringLoggerOptions, 'logger'>> = {
   metrics: false,
   audit: false,
   prefix: '',
-  sampleRate: 1.0,
+  sampleRate: 1.0
 };
 
 /**
@@ -96,7 +96,7 @@ export class MonitoringLogger implements Logger {
     counters: {},
     gauges: {},
     histograms: {},
-    timestamps: {},
+    timestamps: {}
   };
   private readonly auditLog: LogEntry[] = [];
   private readonly maxAuditEntries = 1000;
@@ -194,10 +194,8 @@ export class MonitoringLogger implements Logger {
     return {
       counters: { ...this.metrics.counters },
       gauges: { ...this.metrics.gauges },
-      histograms: Object.fromEntries(
-        Object.entries(this.metrics.histograms).map(([k, v]) => [k, [...v]])
-      ),
-      timestamps: { ...this.metrics.timestamps },
+      histograms: Object.fromEntries(Object.entries(this.metrics.histograms).map(([k, v]) => [k, [...v]])),
+      timestamps: { ...this.metrics.timestamps }
     };
   }
 
@@ -247,10 +245,12 @@ export class MonitoringLogger implements Logger {
           sanitized[key] = redactPIIInStringSync(value);
         } else if (Array.isArray(value)) {
           // Redact each string element in the array
-          sanitized[key] = value.map((item) =>
-            typeof item === 'string' ? redactPIIInStringSync(item) :
-            typeof item === 'object' && item !== null ? this.sanitizeContext(item as Record<string, unknown>) :
-            item
+          sanitized[key] = value.map(item =>
+            typeof item === 'string'
+              ? redactPIIInStringSync(item)
+              : typeof item === 'object' && item !== null
+                ? this.sanitizeContext(item as Record<string, unknown>)
+                : item
           );
         } else if (typeof value === 'object' && value !== null) {
           // Apply PII redaction to object values
@@ -262,10 +262,12 @@ export class MonitoringLogger implements Logger {
           sanitized[key] = redactPIIInStringSync(value);
         } else if (Array.isArray(value)) {
           // Redact each string element in the array
-          sanitized[key] = value.map((item) =>
-            typeof item === 'string' ? redactPIIInStringSync(item) :
-            typeof item === 'object' && item !== null ? this.sanitizeContext(item as Record<string, unknown>) :
-            item
+          sanitized[key] = value.map(item =>
+            typeof item === 'string'
+              ? redactPIIInStringSync(item)
+              : typeof item === 'object' && item !== null
+                ? this.sanitizeContext(item as Record<string, unknown>)
+                : item
           );
         } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
           // Recursively sanitize nested objects
@@ -292,41 +294,23 @@ export class MonitoringLogger implements Logger {
 
     // Remove file paths and line numbers from stack frames
     // Pattern: at FunctionName (/path/to/file.ts:123:45)
-    sanitized = sanitized.replace(
-      /\([^\s)]*\/[^\s)]*:\d+:\d+\)/g,
-      '([REDACTED_FILE:LINE])'
-    );
+    sanitized = sanitized.replace(/\([^\s)]*\/[^\s)]*:\d+:\d+\)/g, '([REDACTED_FILE:LINE])');
 
     // Pattern: at FunctionName /path/to/file.ts:123:45
-    sanitized = sanitized.replace(
-      /at\s+[^\s]+\s+[^\s]+\/[^\s]+:\d+:\d+/g,
-      'at [FUNCTION] [REDACTED_FILE:LINE]'
-    );
+    sanitized = sanitized.replace(/at\s+[^\s]+\s+[^\s]+\/[^\s]+:\d+:\d+/g, 'at [FUNCTION] [REDACTED_FILE:LINE]');
 
     // Pattern: at filename.js:line:column (simple format without path)
     // Handle TypeScript and Node.js extensions: .js, .ts, .tsx, .mjs, .cjs
-    sanitized = sanitized.replace(
-      /at\s+[^\s]+\.(js|ts|tsx|mjs|cjs):\d+:\d+/g,
-      'at [FILE]:[LINE]'
-    );
+    sanitized = sanitized.replace(/at\s+[^\s]+\.(js|ts|tsx|mjs|cjs):\d+:\d+/g, 'at [FILE]:[LINE]');
 
     // Pattern: filename.js:line:column (standalone format)
-    sanitized = sanitized.replace(
-      /[^\s]+\.(js|ts|tsx|mjs|cjs):\d+:\d+/g,
-      '[FILE]:[LINE]'
-    );
+    sanitized = sanitized.replace(/[^\s]+\.(js|ts|tsx|mjs|cjs):\d+:\d+/g, '[FILE]:[LINE]');
 
     // Handle async stack frames
-    sanitized = sanitized.replace(
-      /at\s+async\s+[^\s]+\s*\([^\)]*\)/g,
-      'at async [FUNCTION] ([REDACTED_FILE:LINE])'
-    );
+    sanitized = sanitized.replace(/at\s+async\s+[^\s]+\s*\([^\)]*\)/g, 'at async [FUNCTION] ([REDACTED_FILE:LINE])');
 
     // Remove absolute paths from node internal modules
-    sanitized = sanitized.replace(
-      /node:[^\s]+/g,
-      'node:internal'
-    );
+    sanitized = sanitized.replace(/node:[^\s]+/g, 'node:internal');
 
     // Remove potential credentials in error messages
     sanitized = redactPIIInStringSync(sanitized);
@@ -350,7 +334,7 @@ export class MonitoringLogger implements Logger {
       level,
       timestamp: Date.now(),
       message: this.options.prefix ? `${this.options.prefix} ${message}` : message,
-      context: sanitizedContext,
+      context: sanitizedContext
     };
 
     // Add error details if present
@@ -360,7 +344,7 @@ export class MonitoringLogger implements Logger {
         name: error.name,
         message: redactPIIInStringSync(error.message),
         stack: this.sanitizeStackTrace(error.stack),
-        code: (error as any).code,
+        code: (error as any).code
       };
       // Remove error from context to avoid duplication
       const { error: _, ...rest } = sanitizedContext || {};
@@ -397,7 +381,7 @@ export class MonitoringLogger implements Logger {
   child(_metadata: Record<string, unknown>): MonitoringLogger {
     const child = new MonitoringLogger({
       ...this.options,
-      logger: this.baseLogger,
+      logger: this.baseLogger
     });
     child.metrics.counters = { ...this.metrics.counters };
     child.metrics.gauges = { ...this.metrics.gauges };

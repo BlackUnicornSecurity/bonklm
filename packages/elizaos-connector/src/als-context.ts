@@ -26,10 +26,7 @@
  * @package @blackunicorn/bonklm-elizaos
  */
 import { AsyncLocalStorage } from 'node:async_hooks';
-import {
-  assertAsyncLocalStorageHealthy,
-  type GuardrailEngine,
-} from '@blackunicorn/bonklm';
+import { assertAsyncLocalStorageHealthy, type GuardrailEngine } from '@blackunicorn/bonklm';
 import type { IAgentRuntimeLike, SourceTrust } from './types.js';
 
 /**
@@ -99,11 +96,7 @@ export async function withCallContext<T>(
  *
  * @internal exposed for tests.
  */
-export function withCallContextSync<T>(
-  _runtime: IAgentRuntimeLike,
-  context: CallContext,
-  fn: () => T
-): T {
+export function withCallContextSync<T>(_runtime: IAgentRuntimeLike, context: CallContext, fn: () => T): T {
   return als.run(context, fn);
 }
 

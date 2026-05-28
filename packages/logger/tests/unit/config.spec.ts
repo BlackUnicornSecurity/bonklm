@@ -23,7 +23,7 @@ describe('validateConfig', () => {
       ttl: 3600000,
       enabled: false,
       origin_type: 'custom',
-      custom_origin: 'my-app',
+      custom_origin: 'my-app'
     });
     expect(config.max_logs).toBe(500);
     expect(config.ttl).toBe(3600000);
@@ -49,9 +49,7 @@ describe('validateConfig', () => {
   });
 
   it('should reject invalid origin_type', () => {
-    expect(() => validateConfig({ origin_type: 'invalid' as any })).toThrow(
-      'Invalid origin_type'
-    );
+    expect(() => validateConfig({ origin_type: 'invalid' as any })).toThrow('Invalid origin_type');
   });
 
   it('should use default custom_origin when origin_type is custom but no origin provided', () => {
@@ -81,9 +79,7 @@ describe('validateConfig', () => {
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const config = validateConfig({ sanitize_pii: false });
     expect(config.sanitize_pii).toBe(false);
-    expect(console.warn).toHaveBeenCalledWith(
-      expect.stringContaining('sanitize_pii is set to false')
-    );
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('sanitize_pii is set to false'));
     spy.mockRestore();
   });
 });

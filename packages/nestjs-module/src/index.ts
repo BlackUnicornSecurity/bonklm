@@ -45,16 +45,11 @@ export type {
   GuardrailsModuleAsyncOptions,
   UseGuardrailsDecoratorOptions,
   GuardrailsRequest,
-  GuardrailsExecutionContext,
+  GuardrailsExecutionContext
 } from './types.js';
 
 // Re-export core types for convenience
-export type {
-  Validator,
-  Guard,
-  GuardrailResult,
-  Logger,
-} from '@blackunicorn/bonklm';
+export type { Validator, Guard, GuardrailResult, Logger } from '@blackunicorn/bonklm';
 
 // Re-export constants
 export {
@@ -62,5 +57,5 @@ export {
   DEFAULT_VALIDATION_TIMEOUT,
   DEFAULT_MAX_CONTENT_LENGTH,
   GUARDRAILS_OPTIONS,
-  GUARDRAILS_SERVICE,
+  GUARDRAILS_SERVICE
 } from './constants.js';

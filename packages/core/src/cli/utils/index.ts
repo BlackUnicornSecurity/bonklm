@@ -18,21 +18,10 @@ export {
   supportsColorLevel,
   getCursorControls,
   colorize,
-  colors,
+  colors
 } from './terminal.js';
-export type {
-  TerminalCapabilities,
-  DetailedTerminalCapabilities,
-  ColorLevel,
-} from './terminal.js';
+export type { TerminalCapabilities, DetailedTerminalCapabilities, ColorLevel } from './terminal.js';
 
 // Exit handling utilities
-export {
-  exit,
-  exitWithError,
-  exitSuccess,
-  registerShutdownHandlers,
-  withErrorHandling,
-  isExiting,
-} from './exit.js';
+export { exit, exitWithError, exitSuccess, registerShutdownHandlers, withErrorHandling, isExiting } from './exit.js';
 export type { ExitOptions } from './exit.js';

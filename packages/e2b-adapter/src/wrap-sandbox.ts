@@ -43,10 +43,7 @@ export class E2BGuardrailBlockedError extends Error {
  * is NOT mutated; we return a new wrapper with the same method
  * surface plus inline validators.
  */
-export function wrapSandbox<S extends E2BSandboxLike>(
-  sandbox: S,
-  options: E2BWrapOptions = {}
-): S {
+export function wrapSandbox<S extends E2BSandboxLike>(sandbox: S, options: E2BWrapOptions = {}): S {
   if (!sandbox || typeof sandbox !== 'object') {
     throw new TypeError('wrapSandbox: sandbox is required.');
   }
@@ -62,16 +59,12 @@ export function wrapSandbox<S extends E2BSandboxLike>(
     timeoutMs: options.timeoutMs,
     nodeEnv: options.nodeEnv,
     warn: options.warn,
-    wrapperKey,
+    wrapperKey
   };
 
   const wrapped: E2BSandboxLike = {
     commands: {
-      run: async (
-        commandOrBinary: string,
-        argsOrOpts?: string[] | unknown,
-        opts?: unknown
-      ) => {
+      run: async (commandOrBinary: string, argsOrOpts?: string[] | unknown, opts?: unknown) => {
         // Sprint 19 audit security C-1 closure: detect E2B's
         // `commands.run(binary, args[], opts)` overload + validate the
         // combined command string. Single-string overload validates as-is.
@@ -101,7 +94,7 @@ export function wrapSandbox<S extends E2BSandboxLike>(
           );
         }
         return sandbox.commands.run(commandOrBinary, actualOpts);
-      },
+      }
     },
     files: {
       write: async (path: string, content: string | Uint8Array, opts?: unknown) => {
@@ -165,13 +158,13 @@ export function wrapSandbox<S extends E2BSandboxLike>(
           );
         }
         return sandbox.files.list?.(path, opts);
-      },
-    },
+      }
+    }
   };
 
   // runCode is optional in the E2B SDK; only proxy if present.
   if (typeof sandbox.runCode === 'function') {
-    (wrapped).runCode = async (code: string, opts?: unknown) => {
+    wrapped.runCode = async (code: string, opts?: unknown) => {
       const result = await validateCode(code, validatorOpts);
       if (result.blocked) {
         fireBlock(options, 'runCode', result, code);
@@ -200,7 +193,7 @@ function fireBlock(
       surface,
       reason: result.reason ?? 'unknown',
       category: result.category,
-      payload: typeof payload === 'string' ? payload : '[binary]',
+      payload: typeof payload === 'string' ? payload : '[binary]'
     });
   } catch (err) {
     // Sprint 19 audit security C-2 closure: route telemetry failures

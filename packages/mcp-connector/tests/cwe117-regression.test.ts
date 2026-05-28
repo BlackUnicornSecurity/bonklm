@@ -72,20 +72,18 @@ describe('mcp-connector — Sprint 42 CWE-117 integration tests', () => {
       debug: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
-      error: vi.fn(),
+      error: vi.fn()
     };
   }
 
   function makeMockClient(callToolImpl?: () => unknown) {
     const defaultResult = {
-      content: [{ type: 'text', text: 'Tool result success' }],
+      content: [{ type: 'text', text: 'Tool result success' }]
     };
     return {
-      callTool: vi.fn().mockImplementation(
-        callToolImpl ?? (async () => defaultResult)
-      ),
+      callTool: vi.fn().mockImplementation(callToolImpl ?? (async () => defaultResult)),
       listTools: vi.fn().mockResolvedValue({ tools: [] }),
-      close: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined)
       // @ts-expect-error — minimal mock surface; createGuardedMCP only
       // consumes callTool/listTools/close at runtime.
     } as Parameters<typeof createGuardedMCP>[0];
@@ -110,19 +108,17 @@ describe('mcp-connector — Sprint 42 CWE-117 integration tests', () => {
         risk_score: 100,
         reason: 'Pattern matched: ignore_previous\nINJECTED:CRITICAL fake_alert',
         findings: [],
-        timestamp: Date.now(),
-      }),
+        timestamp: Date.now()
+      })
     };
 
     const guarded = createGuardedMCP(mockClient, {
       validators: [hostileReasonValidator as never],
       logger,
-      productionMode: false,
+      productionMode: false
     });
 
-    await expect(
-      guarded.callTool({ name: 'calculator', arguments: { x: 1 } })
-    ).rejects.toThrow();
+    await expect(guarded.callTool({ name: 'calculator', arguments: { x: 1 } })).rejects.toThrow();
 
     // Two warn calls fire on a blocked input: engine's short-circuit
     // warn (Sprint 42 wrap via `sanitizeLogString`) AND mcp's
@@ -132,11 +128,9 @@ describe('mcp-connector — Sprint 42 CWE-117 integration tests', () => {
     // specific call rather than the broad `includes(...)` match.
     expect(logger.warn).toHaveBeenCalled();
     const engineShortCircuitCall = logger.warn.mock.calls.find(
-      (call) => call[0] === 'Validation blocked (short-circuit)'
+      call => call[0] === 'Validation blocked (short-circuit)'
     );
-    const mcpFailureCall = logger.warn.mock.calls.find(
-      (call) => call[0] === 'Validation blocked'
-    );
+    const mcpFailureCall = logger.warn.mock.calls.find(call => call[0] === 'Validation blocked');
     expect(engineShortCircuitCall).toBeDefined();
     expect(mcpFailureCall).toBeDefined();
     // Engine path: hex-escape via sanitizeLogString — literal `\\n`.
@@ -177,9 +171,9 @@ describe('mcp-connector — Sprint 42 CWE-117 integration tests', () => {
           risk_score: 100,
           reason: isInputContext ? undefined : 'output blocked',
           findings: [],
-          timestamp: Date.now(),
+          timestamp: Date.now()
         };
-      }),
+      })
     };
 
     const guarded = createGuardedMCP(mockClient, {
@@ -187,12 +181,12 @@ describe('mcp-connector — Sprint 42 CWE-117 integration tests', () => {
       logger,
       validateToolResults: true,
       productionMode: false,
-      onToolResultBlocked,
+      onToolResultBlocked
     });
 
     const result = await guarded.callTool({
       name: 'calculator',
-      arguments: { x: 1 },
+      arguments: { x: 1 }
     });
 
     // The catch block returned a filtered ToolCallResult (fail-closed).
@@ -201,9 +195,7 @@ describe('mcp-connector — Sprint 42 CWE-117 integration tests', () => {
 
     // The error-log site must have fired with sanitized fields.
     const errorCall = logger.error.mock.calls.find(
-      (call) =>
-        typeof call[0] === 'string' &&
-        call[0].includes('Tool result validation error')
+      call => typeof call[0] === 'string' && call[0].includes('Tool result validation error')
     );
     expect(errorCall).toBeDefined();
     const errorMeta = errorCall![1] as {
@@ -216,9 +208,7 @@ describe('mcp-connector — Sprint 42 CWE-117 integration tests', () => {
     // error.message MUST NOT contain raw \n — serializeError pipes
     // through sanitizeLogString, replacing with the literal `\\n`
     // marker.
-    expect(errorMeta.error?.message).toBe(
-      'user-callback boom\\nINJECTED:CRITICAL fake_log'
-    );
+    expect(errorMeta.error?.message).toBe('user-callback boom\\nINJECTED:CRITICAL fake_log');
 
     // The filtered ToolCallResult text (returned to the caller) must
     // also be sanitized — Sprint 40 wrapped this site already.
@@ -253,25 +243,23 @@ describe('mcp-connector — Sprint 42 CWE-117 integration tests', () => {
           severity: 'critical' as const,
           risk_level: 'high' as const,
           risk_score: 100,
-          reason: isInputContext
-            ? undefined
-            : 'output_blocked\nINJECTED:CRITICAL fake_severity',
+          reason: isInputContext ? undefined : 'output_blocked\nINJECTED:CRITICAL fake_severity',
           findings: [],
-          timestamp: Date.now(),
+          timestamp: Date.now()
         };
-      }),
+      })
     };
 
     const guarded = createGuardedMCP(mockClient, {
       validators: [hostileOutputValidator as never],
       logger,
       validateToolResults: true,
-      productionMode: false,
+      productionMode: false
     });
 
     const result = await guarded.callTool({
       name: 'calculator',
-      arguments: { x: 1 },
+      arguments: { x: 1 }
     });
 
     expect(result.filtered).toBe(true);
@@ -303,14 +291,14 @@ describe('mcp-connector — Sprint 42 CWE-117 integration tests', () => {
         risk_score: 100,
         reason: 'matched FAKE_INJECTED',
         findings: [],
-        timestamp: Date.now(),
-      }),
+        timestamp: Date.now()
+      })
     };
 
     const guarded = createGuardedMCP(mockClient, {
       validators: [u2028Validator as never],
       logger,
-      productionMode: false,
+      productionMode: false
     });
 
     let thrown: unknown = null;
@@ -344,13 +332,13 @@ describe('mcp-connector — Sprint 42 CWE-117 integration tests', () => {
       name: 'ThrowingValidator',
       validate: vi.fn(() => {
         throw new Error('upstream rpc failed\nINJECTED:CRITICAL fake');
-      }),
+      })
     };
 
     const guarded = createGuardedMCP(mockClient, {
       validators: [throwingValidator as never],
       logger,
-      productionMode: false,
+      productionMode: false
     });
 
     // The thrown validator -> engine creates a CRITICAL synthetic
@@ -366,7 +354,7 @@ describe('mcp-connector — Sprint 42 CWE-117 integration tests', () => {
     // Inspect the engine's validator-error log to confirm the
     // description's `String(error)` interpolation was sanitized.
     const errorCall = logger.error.mock.calls.find(
-      (call) => typeof call[0] === 'string' && call[0].startsWith('Error in validator')
+      call => typeof call[0] === 'string' && call[0].startsWith('Error in validator')
     );
     expect(errorCall).toBeDefined();
     // The error meta uses serializeError — already sanitized at the
@@ -376,9 +364,7 @@ describe('mcp-connector — Sprint 42 CWE-117 integration tests', () => {
     // EngineResult, not the log meta. Confirm the engine's
     // serializeError wrap is still intact for the log path.
     const errorMeta = errorCall![1] as { error?: { message?: string } };
-    expect(errorMeta.error?.message).toBe(
-      'upstream rpc failed\\nINJECTED:CRITICAL fake'
-    );
+    expect(errorMeta.error?.message).toBe('upstream rpc failed\\nINJECTED:CRITICAL fake');
   });
 
   it('sanitizes blocked.reason in the input-blocked Error message thrown to the caller (Sprint 42 surfaced site)', async () => {
@@ -404,14 +390,14 @@ describe('mcp-connector — Sprint 42 CWE-117 integration tests', () => {
         risk_score: 100,
         reason: 'input_blocked\nINJECTED:CRITICAL fake_severity',
         findings: [],
-        timestamp: Date.now(),
-      }),
+        timestamp: Date.now()
+      })
     };
 
     const guarded = createGuardedMCP(mockClient, {
       validators: [hostileInputValidator as never],
       logger,
-      productionMode: false,
+      productionMode: false
     });
 
     let thrown: unknown = null;

@@ -21,7 +21,7 @@ import {
   InMemoryLRUCache,
   type Validator,
   type ValidatorCache,
-  type ValidatorInput,
+  type ValidatorInput
 } from '@blackunicorn/bonklm';
 import { adaptValidatorToUniversalInput } from '@blackunicorn/bonklm/core/connector-utils';
 
@@ -52,7 +52,7 @@ let _experimentalWarned = false;
 function emitExperimentalWarnOnce(): void {
   if (_experimentalWarned) return;
   _experimentalWarned = true;
-   
+
   console.warn(
     '[bonklm-temporal] EXPERIMENTAL: Story 4.4 Sprint 20 scaffold. ' +
       'Full SDK integration + worker integration tests land Sprint 21.'
@@ -87,9 +87,7 @@ export function createValidateInputActivity(
   config: ValidatorActivityConfig
 ): (args: ValidateInputActivityArgs) => Promise<ValidateInputActivityResult> {
   if (!config || !Array.isArray(config.validators) || config.validators.length === 0) {
-    throw new TypeError(
-      'createValidateInputActivity: config.validators (non-empty Validator[]) is required.'
-    );
+    throw new TypeError('createValidateInputActivity: config.validators (non-empty Validator[]) is required.');
   }
   emitExperimentalWarnOnce();
   // Sprint 20 audit closure (security B-3): per-factory cache rather
@@ -98,18 +96,14 @@ export function createValidateInputActivity(
   const cache = config.cache ?? new InMemoryLRUCache({ maxEntries: 1000 });
   // Sprint 20 audit closure (convergent BLOCK — all 3 lanes): shared
   // helper + capability-detect (no try-catch-TypeError mask).
-  const adapted = config.validators.map((v) =>
-    adaptValidatorToUniversalInput(v, 'createValidateInputActivity')
-  );
+  const adapted = config.validators.map(v => adaptValidatorToUniversalInput(v, 'createValidateInputActivity'));
 
-  return async function validateInputActivity(
-    args: ValidateInputActivityArgs
-  ): Promise<ValidateInputActivityResult> {
+  return async function validateInputActivity(args: ValidateInputActivityArgs): Promise<ValidateInputActivityResult> {
     const input: ValidatorInput = { kind: 'text', content: args.content };
     const results = await cachedValidate(adapted, input, {
       cache,
       keyFn: createUnsaltedKeyFn(),
-      cacheNamespace: args.cacheNamespace,
+      cacheNamespace: args.cacheNamespace
     });
 
     for (const r of results) {
@@ -120,7 +114,7 @@ export function createValidateInputActivity(
           reason: finding?.description ?? 'unknown',
           validatorName: r.validatorName,
           category: finding?.category,
-          severity: String(r.severity),
+          severity: String(r.severity)
         };
       }
     }

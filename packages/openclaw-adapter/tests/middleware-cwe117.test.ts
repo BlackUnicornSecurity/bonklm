@@ -21,7 +21,7 @@ function makeSpyLogger() {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
-    error: vi.fn(),
+    error: vi.fn()
   };
 }
 
@@ -33,7 +33,7 @@ describe('OpenClawGuardrailsMiddleware — Sprint 40 CWE-117 sanitization', () =
       messageId: 'msg\nINJECTED:fake_severity',
       sessionId: 'sess\tinjected\ttabs',
       channel: 'chan\x00null',
-      content: 'hello world',
+      content: 'hello world'
     });
 
     expect(logger.info).toHaveBeenCalled();
@@ -49,7 +49,7 @@ describe('OpenClawGuardrailsMiddleware — Sprint 40 CWE-117 sanitization', () =
     await mw.validateTool({
       toolName: 'tool\nNEWLINE',
       sessionId: 'sess\rCR',
-      toolInput: { content: 'safe' },
+      toolInput: { content: 'safe' }
     });
 
     expect(logger.info).toHaveBeenCalled();

@@ -10,7 +10,7 @@ import {
   MonitoringLogLevel,
   createMonitoringLogger,
   type MonitoringLoggerOptions,
-  type LogEntry,
+  type LogEntry
 } from '../../../src/logging/MonitoringLogger.js';
 
 describe('MonitoringLogger', () => {
@@ -40,7 +40,7 @@ describe('MonitoringLogger', () => {
         json: true,
         metrics: true,
         audit: true,
-        prefix: '[TEST]',
+        prefix: '[TEST]'
       };
       const logger = new MonitoringLogger(options);
       expect(logger).toBeDefined();
@@ -98,7 +98,7 @@ describe('MonitoringLogger', () => {
     it('should add prefix to messages', () => {
       const logger = new MonitoringLogger({
         level: MonitoringLogLevel.INFO,
-        prefix: '[PREFIX]',
+        prefix: '[PREFIX]'
       });
       logger.info('test message');
       expect(mockConsole.debug).toHaveBeenCalledWith(expect.stringContaining('[PREFIX]'));
@@ -107,7 +107,7 @@ describe('MonitoringLogger', () => {
     it('should format JSON logs', () => {
       const logger = new MonitoringLogger({
         level: MonitoringLogLevel.INFO,
-        json: true,
+        json: true
       });
       logger.info('test message', { count: 42 });
       const callArgs = mockConsole.debug.mock.calls[0];
@@ -119,7 +119,7 @@ describe('MonitoringLogger', () => {
     it('should format text logs', () => {
       const logger = new MonitoringLogger({
         level: MonitoringLogLevel.INFO,
-        json: false,
+        json: false
       });
       logger.info('test message');
       expect(mockConsole.debug).toHaveBeenCalledWith(expect.stringContaining('[INFO]'));
@@ -129,7 +129,7 @@ describe('MonitoringLogger', () => {
     it('should include context in text logs', () => {
       const logger = new MonitoringLogger({
         level: MonitoringLogLevel.INFO,
-        json: false,
+        json: false
       });
       logger.info('test message', { count: 42 });
       expect(mockConsole.debug).toHaveBeenCalledWith(expect.stringContaining('{"count":42}'));
@@ -140,7 +140,7 @@ describe('MonitoringLogger', () => {
     it('should extract error details with sanitization (S011-003)', () => {
       const logger = new MonitoringLogger({
         level: MonitoringLogLevel.INFO,
-        json: true,
+        json: true
       });
       const error = new Error('Test error');
       error.stack = 'Error: Test error\n    at test.js:1:1';
@@ -160,7 +160,7 @@ describe('MonitoringLogger', () => {
     it('should extract error code', () => {
       const logger = new MonitoringLogger({
         level: MonitoringLogLevel.INFO,
-        json: true,
+        json: true
       });
       const error = new Error('Test error') as any;
       error.code = 'ENOENT';
@@ -174,7 +174,7 @@ describe('MonitoringLogger', () => {
     it('should remove error from context when extracted', () => {
       const logger = new MonitoringLogger({
         level: MonitoringLogLevel.INFO,
-        json: true,
+        json: true
       });
       const error = new Error('Test error');
       logger.info('message', { error, other: 'value' });
@@ -190,7 +190,7 @@ describe('MonitoringLogger', () => {
     it('should extract metadata from context', () => {
       const logger = new MonitoringLogger({
         level: MonitoringLogLevel.INFO,
-        json: true,
+        json: true
       });
       const metadata = { runId: '123', operation: 'test' };
       logger.info('message', { metadata });
@@ -381,7 +381,7 @@ describe('MonitoringLogger', () => {
     it('should apply sampling to debug logs', () => {
       const logger = new MonitoringLogger({
         level: MonitoringLogLevel.DEBUG,
-        sampleRate: 0.0,
+        sampleRate: 0.0
       });
       logger.debug('debug message');
       expect(mockConsole.debug).not.toHaveBeenCalled();
@@ -390,7 +390,7 @@ describe('MonitoringLogger', () => {
     it('should log all when sample rate is 1.0', () => {
       const logger = new MonitoringLogger({
         level: MonitoringLogLevel.DEBUG,
-        sampleRate: 1.0,
+        sampleRate: 1.0
       });
       logger.debug('debug message');
       expect(mockConsole.debug).toHaveBeenCalled();
@@ -399,7 +399,7 @@ describe('MonitoringLogger', () => {
     it('should not sample non-debug logs', () => {
       const logger = new MonitoringLogger({
         level: MonitoringLogLevel.INFO,
-        sampleRate: 0.0,
+        sampleRate: 0.0
       });
       logger.info('info message');
       expect(mockConsole.debug).toHaveBeenCalled();

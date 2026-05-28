@@ -23,11 +23,7 @@
  * at the LLM proxy layer.
  */
 export { createVapiHandler } from './vapi/index.js';
-export {
-  createRetellWsHandler,
-  type RetellHandshakeRequest,
-  type RetellOutboundChunk,
-} from './retell/index.js';
+export { createRetellWsHandler, type RetellHandshakeRequest, type RetellOutboundChunk } from './retell/index.js';
 export {
   verifyVapiHmac,
   verifyRetellHmac,
@@ -36,7 +32,7 @@ export {
   type VapiHmacOptions,
   type RetellHmacOptions,
   type HmacVerifyResult,
-  type HmacFailureReason,
+  type HmacFailureReason
 } from './hmac.js';
 export type {
   VapiHandlerConfig,
@@ -45,5 +41,5 @@ export type {
   VoiceWebhookHmacFailureEvent,
   VoiceWebhookPhase,
   WebhookRequest,
-  WebhookResponse,
+  WebhookResponse
 } from './types.js';

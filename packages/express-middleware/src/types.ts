@@ -176,11 +176,7 @@ export interface GuardrailsRequest extends Omit<Request, 'path'> {
 /**
  * Error handler function type.
  */
-export type ErrorHandler = (
-  result: GuardrailResult,
-  req: Request,
-  res: Response
-) => void;
+export type ErrorHandler = (result: GuardrailResult, req: Request, res: Response) => void;
 
 /**
  * Body extractor function type (DEV-006).

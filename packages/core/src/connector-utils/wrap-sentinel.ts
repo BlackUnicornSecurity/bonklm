@@ -38,7 +38,7 @@ const SENTINEL_DESCRIPTOR: PropertyDescriptor = {
   value: true,
   enumerable: false,
   writable: false,
-  configurable: false,
+  configurable: false
 };
 
 /**
@@ -52,11 +52,7 @@ const SENTINEL_DESCRIPTOR: PropertyDescriptor = {
  * their own wrappers may rely on this. Symbol-based marker placement
  * is part of the freeze (consumers may inspect `target[sentinel]`).
  */
-export function assertNotWrapped(
-  target: unknown,
-  sentinel: symbol,
-  label: string
-): void {
+export function assertNotWrapped(target: unknown, sentinel: symbol, label: string): void {
   if (
     target !== null &&
     (typeof target === 'object' || typeof target === 'function') &&
@@ -83,9 +79,7 @@ export function assertNotWrapped(
  */
 export function markWrapped(target: unknown, sentinel: symbol): void {
   if (target === null || (typeof target !== 'object' && typeof target !== 'function')) {
-    throw new TypeError(
-      `markWrapped: target must be an object or function (got ${typeof target}).`
-    );
+    throw new TypeError(`markWrapped: target must be an object or function (got ${typeof target}).`);
   }
   Object.defineProperty(target, sentinel, SENTINEL_DESCRIPTOR);
 }
@@ -96,11 +90,7 @@ export function markWrapped(target: unknown, sentinel: symbol): void {
  *
  * @public Sprint 26/28 v1.0-RC1 API freeze.
  */
-export function ensureWrappedOnce<T>(
-  target: T,
-  sentinel: symbol,
-  label: string
-): T {
+export function ensureWrappedOnce<T>(target: T, sentinel: symbol, label: string): T {
   assertNotWrapped(target, sentinel, label);
   markWrapped(target as unknown as object, sentinel);
   return target;
@@ -119,19 +109,13 @@ export function ensureWrappedOnce<T>(
  * @internal — may change without notice in any minor/patch (v1.0-RC1
  * API freeze policy). The leading `_` prefix marks INTERNAL surface.
  */
-export function _testOnlyClearSentinel(
-  target: unknown,
-  sentinel: symbol
-): void {
-  if (
-    target !== null &&
-    (typeof target === 'object' || typeof target === 'function')
-  ) {
+export function _testOnlyClearSentinel(target: unknown, sentinel: symbol): void {
+  if (target !== null && (typeof target === 'object' || typeof target === 'function')) {
     Object.defineProperty(target, sentinel, {
       value: false,
       enumerable: false,
       writable: true,
-      configurable: true,
+      configurable: true
     });
   }
 }

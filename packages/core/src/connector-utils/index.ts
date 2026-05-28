@@ -25,7 +25,7 @@ export {
   ConnectorValidationError,
   StreamValidationError,
   ConnectorConfigurationError,
-  ConnectorTimeoutError,
+  ConnectorTimeoutError
 } from './errors.js';
 
 // Content extraction
@@ -33,7 +33,7 @@ export {
   extractContentFromResponse,
   extractContentFirstSuccess,
   extractContentJoined,
-  type ContentExtractorOptions,
+  type ContentExtractorOptions
 } from './content-extractor.js';
 
 // Stream validation
@@ -54,21 +54,18 @@ export {
   type StreamValidatorEngine,
   type StreamValidatorResult,
   type StreamValidatorReleaseResult,
-  type StreamValidatorState,
+  type StreamValidatorState
 } from './stream-validator.js';
 
 // Story 1.1b — release-gate primitive (also reused by Story 3.1 audio).
-export {
-  BufferedReleaseGate,
-  type BufferedReleaseGateConfig,
-} from './buffered-release-gate.js';
+export { BufferedReleaseGate, type BufferedReleaseGateConfig } from './buffered-release-gate.js';
 
 // Cumulative-audit extraction — shared retrieved-doc batch helper
 // (consolidates the 1D vector-DB retrofit pattern from 4 connectors).
 export {
   applyRetrievedDocValidatorToMatches,
   BATCH_POS_PREFIX,
-  type ApplyRetrievedDocValidatorOptions,
+  type ApplyRetrievedDocValidatorOptions
 } from './retrieved-doc-batch.js';
 
 // Sprint 20 audit closure — shared validator-adapter for connectors
@@ -77,19 +74,14 @@ export {
 export {
   adaptValidatorToUniversalInput,
   extractStringContent,
-  type ValidatorInputCapability,
+  type ValidatorInputCapability
 } from './adapt-validator.js';
 
 // Sprint 22 audit closure (architect C2 + code-reviewer C-4) — shared
 // wrap-sentinel for double-wrap defence across connectors. Replaces
 // the 5x verbatim Symbol-watermark copy across livekit-connector +
 // document-ingest + cloudflare-agents-connector + inference-providers.
-export {
-  assertNotWrapped,
-  markWrapped,
-  ensureWrappedOnce,
-  _testOnlyClearSentinel,
-} from './wrap-sentinel.js';
+export { assertNotWrapped, markWrapped, ensureWrappedOnce, _testOnlyClearSentinel } from './wrap-sentinel.js';
 
 // Logger utilities
 export {
@@ -100,7 +92,7 @@ export {
   stripLogControlChars,
   logValidationFailure,
   logTimeout,
-  type StandardLoggerOptions,
+  type StandardLoggerOptions
 } from './logger.js';
 
 // Validation helpers
@@ -116,7 +108,4 @@ export { sanitizeReasonText } from './sanitize.js';
 // AbortController-without-signal pattern duplicated across 20+ connectors
 // (Sprint 29 architect-CRITICAL audit). All connector timeout impls MUST
 // route through this helper; do not roll your own.
-export {
-  validateWithTimeoutSecure,
-  type ValidateWithTimeoutOptions,
-} from './timeout-wrapper.js';
+export { validateWithTimeoutSecure, type ValidateWithTimeoutOptions } from './timeout-wrapper.js';

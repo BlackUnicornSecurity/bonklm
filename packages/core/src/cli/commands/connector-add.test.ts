@@ -28,7 +28,7 @@ describe('connector add command', () => {
 
   it('should have --force option', () => {
     const options = connectorAddCommand.options;
-    const forceOption = options.find((opt) => opt.long === '--force');
+    const forceOption = options.find(opt => opt.long === '--force');
     expect(forceOption).toBeDefined();
   });
 

@@ -21,7 +21,7 @@ describe('connector remove command', () => {
 
   it('should have --yes option', () => {
     const options = connectorRemoveCommand.options;
-    const yesOption = options.find((opt) => opt.long === '--yes');
+    const yesOption = options.find(opt => opt.long === '--yes');
     expect(yesOption).toBeDefined();
   });
 

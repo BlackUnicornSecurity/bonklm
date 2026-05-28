@@ -15,7 +15,7 @@ export {
   isTestSuccessful,
   isConnectionFailure,
   isValidationFailure,
-  formatTestResult,
+  formatTestResult
 } from './validator.js';
 
 // Guardrail validation tests
@@ -25,7 +25,7 @@ export {
   isCorePackageAvailable,
   formatGuardrailResult,
   isGuardrailTestSuccessful,
-  type GuardrailTestResult,
+  type GuardrailTestResult
 } from './guardrail-test.js';
 
 // Test result display
@@ -41,5 +41,5 @@ export {
   getFailedTests,
   getSuccessfulTests,
   type TestDisplay,
-  type TestSummary,
+  type TestSummary
 } from './display.js';

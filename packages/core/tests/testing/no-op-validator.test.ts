@@ -47,7 +47,7 @@ describe('noOpValidator() — PR 1', () => {
         findings: [],
         severity: Severity.INFO,
         risk_level: RiskLevel.LOW,
-        risk_score: 0,
+        risk_score: 0
       });
     });
 
@@ -71,9 +71,7 @@ describe('noOpValidator() — PR 1', () => {
 
   describe('engine composition', () => {
     it('lets GuardrailEngine construct without throw', () => {
-      expect(
-        () => new GuardrailEngine({ validators: [noOpValidator()] })
-      ).not.toThrow();
+      expect(() => new GuardrailEngine({ validators: [noOpValidator()] })).not.toThrow();
     });
 
     it('engine.validate() returns allowed when only noOp is wired', async () => {
@@ -88,7 +86,7 @@ describe('noOpValidator() — PR 1', () => {
       const engine = new GuardrailEngine({ validators: [noOpValidator()] });
       await expect(engine.validate('hello')).resolves.toMatchObject({
         allowed: true,
-        blocked: false,
+        blocked: false
       });
     });
   });
@@ -105,15 +103,15 @@ describe('noOpValidator() — PR 1', () => {
             category: 'test_block',
             description: 'simulated block',
             severity: Severity.CRITICAL,
-            weight: 10,
-          },
-        ]),
+            weight: 10
+          }
+        ])
     };
 
     it('noOp first, blocker second: engine returns blocked', async () => {
       const engine = new GuardrailEngine({
         validators: [noOpValidator(), blockingValidator],
-        shortCircuit: false,
+        shortCircuit: false
       });
       const result = await engine.validate('any content');
       expect(result.allowed).toBe(false);
@@ -127,21 +125,18 @@ describe('noOpValidator() — PR 1', () => {
         expect.arrayContaining([
           expect.objectContaining({
             category: 'test_block',
-            severity: Severity.CRITICAL,
-          }),
+            severity: Severity.CRITICAL
+          })
         ])
       );
       // Per-validator results array must contain both entries (no
       // filtering of the noOp pass, no filtering of the blocker).
-      expect(result.results.map((r) => r.validatorName)).toEqual([
-        'NoOpValidator',
-        'BlockingTestValidator',
-      ]);
+      expect(result.results.map(r => r.validatorName)).toEqual(['NoOpValidator', 'BlockingTestValidator']);
     });
 
     it('blocker first, noOp second: engine returns blocked (short-circuit)', async () => {
       const engine = new GuardrailEngine({
-        validators: [blockingValidator, noOpValidator()],
+        validators: [blockingValidator, noOpValidator()]
       });
       const result = await engine.validate('any content');
       expect(result.allowed).toBe(false);
@@ -151,7 +146,7 @@ describe('noOpValidator() — PR 1', () => {
     it('blocker first, noOp second, parallel execution: still blocked', async () => {
       const engine = new GuardrailEngine({
         validators: [blockingValidator, noOpValidator()],
-        executionOrder: 'parallel',
+        executionOrder: 'parallel'
       });
       const result = await engine.validate('any content');
       expect(result.allowed).toBe(false);

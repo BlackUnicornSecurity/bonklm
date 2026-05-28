@@ -13,13 +13,9 @@ export type {
   GuardedOpenAIOptions,
   GuardedChatCompletionOptions,
   GuardedChatCompletion,
-  MessageContent,
+  MessageContent
 } from './types.js';
 
 export { StreamValidationError } from './types.js';
 
-export {
-  VALIDATION_INTERVAL,
-  DEFAULT_MAX_BUFFER_SIZE,
-  DEFAULT_VALIDATION_TIMEOUT,
-} from './types.js';
+export { VALIDATION_INTERVAL, DEFAULT_MAX_BUFFER_SIZE, DEFAULT_VALIDATION_TIMEOUT } from './types.js';

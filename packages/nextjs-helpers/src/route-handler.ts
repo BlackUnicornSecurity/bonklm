@@ -24,7 +24,7 @@ import type { GuardrailEngine } from '@blackunicorn/bonklm';
 import {
   runRequestValidation,
   WebMiddlewareBlockedError,
-  type WebMiddlewareBlockEvent,
+  type WebMiddlewareBlockEvent
 } from '@blackunicorn/bonklm-web-middleware-utils';
 
 export interface BonklmRouteHandlerOptions {
@@ -77,7 +77,7 @@ export function bonklmRouteHandler(
           {
             engine: options.engine,
             onBlock: options.onBlock,
-            onError: options.onError,
+            onError: options.onError
           },
           body
         );
@@ -89,18 +89,18 @@ export function bonklmRouteHandler(
               phase: 'request',
               reason: err.message,
               category: err.category,
-              severity: err.severity,
+              severity: err.severity
             });
           }
           return new Response(
             JSON.stringify({
               error: 'request_blocked',
               reason: err.message,
-              category: err.category,
+              category: err.category
             }),
             {
               status: 403,
-              headers: { 'content-type': 'application/json' },
+              headers: { 'content-type': 'application/json' }
             }
           );
         }

@@ -21,8 +21,5 @@
  *   - `StagehandGuardrailBlockedError` — thrown when a call is
  *     BLOCKED by the validator pipeline.
  */
-export {
-  wrapStagehand,
-  StagehandGuardrailBlockedError,
-} from './wrap-stagehand.js';
+export { wrapStagehand, StagehandGuardrailBlockedError } from './wrap-stagehand.js';
 export type { StagehandLike, WrapStagehandOptions } from './types.js';

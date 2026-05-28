@@ -38,14 +38,14 @@ import {
   Severity,
   updateSessionState,
   validateWithTimeoutSecure,
-  Validators,
+  Validators
 } from '@blackunicorn/bonklm';
 import type {
   ErrorHandler,
   GuardrailsPluginOptions,
   GuardrailsRequest,
   PathMatcher,
-  ResponseExtractor,
+  ResponseExtractor
 } from './types.js';
 
 // DEV-002: Use proper logger instead of raw console
@@ -70,7 +70,7 @@ const PRODUCTION_ERROR_HANDLER: ErrorHandler = async (
 ): Promise<void> => {
   await reply.status(400).send({
     error: 'Request blocked',
-    request_id: req.id,
+    request_id: req.id
   });
 };
 
@@ -89,7 +89,7 @@ const DEVELOPMENT_ERROR_HANDLER: ErrorHandler = async (
     error: 'Request blocked by guardrails',
     reason: sanitizeMeta(result.reason),
     severity: result.severity,
-    risk_level: result.risk_level,
+    risk_level: result.risk_level
   });
 };
 
@@ -121,7 +121,7 @@ const FASTIFY_CONFIG_SCHEMA = new Schema({
   attackLogger: Validators.optional(Validators.attackLoggerInstance),
   // S013-005: Session tracking options
   enableSessionTracking: Validators.optional(Validators.boolean),
-  sessionIdExtractor: Validators.optional(Validators.function),
+  sessionIdExtractor: Validators.optional(Validators.function)
 });
 
 /**
@@ -184,10 +184,7 @@ function compilePathMatcher(pattern: string): PathMatcher {
  * });
  * ```
  */
-const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
-  fastify,
-  options
-) => {
+const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (fastify, options) => {
   // S013-003: Validate configuration at initialization
   validateFastifyConfig(options);
 
@@ -206,18 +203,18 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
     responseExtractor = DEFAULT_RESPONSE_EXTRACTOR,
     attackLogger, // S013-004: Optional AttackLogger instance
     enableSessionTracking = false, // S013-005: Session tracking disabled by default
-    sessionIdExtractor, // S013-005: Optional custom session ID extractor
+    sessionIdExtractor // S013-005: Optional custom session ID extractor
   } = options;
 
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   // S013-004: Register AttackLogger intercept callback if provided
   if (attackLogger) {
-    engine.onIntercept((attackLogger).getInterceptCallback());
+    engine.onIntercept(attackLogger.getInterceptCallback());
   }
 
   // S013-005: Default session ID extractor
@@ -227,7 +224,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
     if ((req as any).sessionID) return (req as any).sessionID;
     if ((req as any).sessionId) return (req as any).sessionId;
     // Fall back to IP-based session
-    return `ip-${(req.ip || 'unknown')}`;
+    return `ip-${req.ip || 'unknown'}`;
   };
 
   const getSessionId = sessionIdExtractor || defaultSessionIdExtractor;
@@ -242,13 +239,13 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
     const normalizedPath = normalize(path).replace(/\\/g, '/');
 
     // Check exclusions first
-    if (excludeMatchers.some((matcher) => matcher(normalizedPath))) {
+    if (excludeMatchers.some(matcher => matcher(normalizedPath))) {
       return false;
     }
 
     // Check inclusions
     if (pathMatchers.length === 0) return true;
-    return pathMatchers.some((matcher) => matcher(normalizedPath));
+    return pathMatchers.some(matcher => matcher(normalizedPath));
   };
 
   // SEC-008: Create timeout wrapper for validation.
@@ -258,10 +255,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
   // Promise.race + post-timeout-rejection absorption internally — same
   // contract Sprint 29 introduced inline here, now de-duplicated across
   // all connectors.
-  const validateWithTimeout = async (
-    content: string,
-    context?: string
-  ): Promise<GuardrailResult> => {
+  const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult> => {
     // DEV-001/003: correct API signature + AWAIT validation.
     // Helper generic R is GuardrailResult — engine.validate may return
     // an EngineResult union member, but the fastify hook only ever
@@ -281,22 +275,24 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
         risk_score: 100,
         findings: [],
         timestamp: Date.now(),
-        reason: 'Validation timeout',
+        reason: 'Validation timeout'
       }),
-      logger,
+      logger
     });
     return result;
   };
 
   // Select error handler based on production mode (SEC-007)
-  const errorHandler =
-    onError ?? (productionMode ? PRODUCTION_ERROR_HANDLER : DEVELOPMENT_ERROR_HANDLER);
+  const errorHandler = onError ?? (productionMode ? PRODUCTION_ERROR_HANDLER : DEVELOPMENT_ERROR_HANDLER);
 
   // S013-007: Add security headers hook
   fastify.addHook('onRequest', async (_request, reply) => {
     // Only set headers if not already set
     if (!reply.getHeader('Content-Security-Policy')) {
-      reply.header('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'");
+      reply.header(
+        'Content-Security-Policy',
+        "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+      );
     }
     if (!reply.getHeader('X-Frame-Options')) {
       reply.header('X-Frame-Options', 'DENY');
@@ -362,7 +358,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
         if (contentByteLength > maxContentLength) {
           logger.warn('[Guardrails] Content too large', {
             byteLength: contentByteLength,
-            max: maxContentLength,
+            max: maxContentLength
           });
           const errorResult: GuardrailResult = {
             allowed: false,
@@ -372,7 +368,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
             risk_score: 50,
             findings: [],
             timestamp: Date.now(),
-            reason: 'Content too large',
+            reason: 'Content too large'
           };
           await errorHandler(errorResult, request, reply);
           // Return to stop processing (error handler sent response)
@@ -402,7 +398,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
             const safeEscalationReason = sanitizeMeta(escalationCheck.reason);
             logger.warn('[Guardrails] Session escalated, blocking request', {
               sessionId: sanitizeMeta(sessionId),
-              reason: safeEscalationReason,
+              reason: safeEscalationReason
             });
             const errorResult: GuardrailResult = {
               allowed: false,
@@ -412,7 +408,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
               risk_score: escalationCheck.riskScore,
               findings: [],
               timestamp: Date.now(),
-              reason: `Session escalated: ${safeEscalationReason}`,
+              reason: `Session escalated: ${safeEscalationReason}`
             };
             await errorHandler(errorResult, request, reply);
             return;
@@ -434,9 +430,11 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
           for (const finding of result.findings || []) {
             findings.push({
               category: finding.category,
-              weight: finding.weight ?? (finding.severity === Severity.CRITICAL ? 5 : finding.severity === Severity.BLOCKED ? 3 : 1),
+              weight:
+                finding.weight ??
+                (finding.severity === Severity.CRITICAL ? 5 : finding.severity === Severity.BLOCKED ? 3 : 1),
               pattern_name: finding.pattern_name,
-              timestamp: result.timestamp,
+              timestamp: result.timestamp
             });
           }
           if (findings.length > 0) {
@@ -457,7 +455,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
               const safeSessionReason = sanitizeMeta(sessionResult.reason);
               logger.warn('[Guardrails] Session escalated after validation', {
                 sessionId: sanitizeMeta(sessionId),
-                reason: safeSessionReason,
+                reason: safeSessionReason
               });
               const escalatedResult: GuardrailResult = {
                 allowed: false,
@@ -467,7 +465,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
                 risk_score: sessionResult.riskScore,
                 findings: result.findings || [],
                 timestamp: Date.now(),
-                reason: `Session escalation: ${safeSessionReason}`,
+                reason: `Session escalation: ${safeSessionReason}`
               };
               await errorHandler(escalatedResult, request, reply);
               return;
@@ -482,12 +480,12 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
           // `reason` is validator output.
           logger.warn('[Guardrails] Request blocked', {
             reason: sanitizeMeta(reason),
-            path: sanitizeMeta(path),
+            path: sanitizeMeta(path)
           });
           // Provide a result with reason for the error handler
           const resultWithReason: GuardrailResult = {
             ...result,
-            reason,
+            reason
           };
           await errorHandler(resultWithReason, request, reply);
           // Return to stop processing (error handler sent response)
@@ -504,7 +502,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
         // (handles non-Error throws + non-enumerable Error fields +
         // sanitizes the message via sanitizeLogString internally).
         logger.error('[Guardrails] Validation error', {
-          error: serializeError(error),
+          error: serializeError(error)
         });
         // Fail-closed: block on error
         const errorResult: GuardrailResult = {
@@ -515,7 +513,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
           risk_score: 100,
           findings: [],
           timestamp: Date.now(),
-          reason: 'Validation error',
+          reason: 'Validation error'
         };
         await errorHandler(errorResult, request, reply);
         // Return to stop processing (error handler sent response)
@@ -564,7 +562,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
           const safeReason = sanitizeMeta(reason);
           logger.warn('[Guardrails] Response blocked', {
             reason: safeReason,
-            path: sanitizeMeta(path),
+            path: sanitizeMeta(path)
           });
 
           // Store result for potential logging
@@ -580,14 +578,14 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
 
           return JSON.stringify({
             error: 'Response filtered by guardrails',
-            reason: safeReason,
+            reason: safeReason
           });
         }
       } catch (error) {
         // Sprint 43 CWE-117 sweep: switch to canonical serializeError
         // (sister to request-leg validation-error log).
         logger.error('[Guardrails] Response validation error', {
-          error: serializeError(error),
+          error: serializeError(error)
         });
         // Fail-closed: replace response with error
         return JSON.stringify({ error: 'Validation error' });
@@ -605,14 +603,9 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (
 // Wrap with fastify-plugin for proper encapsulation
 // Support both fastify v4.x and v5.x
 export default fp(guardrailsPlugin, {
-  name: '@blackunicorn/bonklm-fastify',
+  name: '@blackunicorn/bonklm-fastify'
 });
 
 // Export the unwrapped plugin and types for testing
 export { guardrailsPlugin };
-export type {
-  GuardrailsPluginOptions,
-  GuardrailsRequest,
-  ErrorHandler,
-  ResponseExtractor,
-};
+export type { GuardrailsPluginOptions, GuardrailsRequest, ErrorHandler, ResponseExtractor };

@@ -49,7 +49,7 @@ if (!hmacSecretFromEnv) {
   if (process.env.NODE_ENV === 'production') {
     throw new Error(
       'LLM_GUARDRAILS_AUDIT_KEY environment variable is required in production. ' +
-      'Generate a secure key with: openssl rand -base64 32'
+        'Generate a secure key with: openssl rand -base64 32'
     );
   }
   // For development, generate a random key at startup
@@ -158,9 +158,7 @@ function parseAuditLine(line: string): AuditEntry {
  */
 function generateSignature(event: AuditEvent): string {
   const eventJson = JSON.stringify(event);
-  return createHmac(HMAC_ALGORITHM, HMAC_SECRET)
-    .update(eventJson)
-    .digest('hex');
+  return createHmac(HMAC_ALGORITHM, HMAC_SECRET).update(eventJson).digest('hex');
 }
 
 /**
@@ -181,7 +179,7 @@ function verifySignature(entry: AuditEntry): boolean {
  * @returns JSON string followed by newline
  */
 function formatAuditEntry(entry: AuditEntry): string {
-  return `${JSON.stringify(entry)  }\n`;
+  return `${JSON.stringify(entry)}\n`;
 }
 
 /**
@@ -250,7 +248,7 @@ export class AuditLogger {
     // Add timestamp if not present
     const eventWithTimestamp: AuditEvent = {
       ...event,
-      timestamp: event.timestamp || new Date().toISOString(),
+      timestamp: event.timestamp || new Date().toISOString()
     };
 
     // Generate HMAC signature (HP-5 fix)
@@ -258,7 +256,7 @@ export class AuditLogger {
 
     const entry: AuditEntry = {
       event: eventWithTimestamp,
-      signature,
+      signature
     };
 
     // SECURITY HP-5: Use file locking for concurrent write safety
@@ -374,7 +372,7 @@ export class AuditLogger {
       /mysql:\/\/[^\s"']+:[^\s"']+@/, // MySQL connection strings
 
       // Generic high-entropy patterns (base64-like strings > 32 chars)
-      /[A-Za-z0-9+/]{32,}={0,2}/,
+      /[A-Za-z0-9+/]{32,}={0,2}/
     ];
 
     for (const pattern of credentialPatterns) {
@@ -418,7 +416,7 @@ export class AuditLogger {
     try {
       await mkdir(this.auditDir, {
         recursive: true,
-        mode: SECURE_DIR_MODE,
+        mode: SECURE_DIR_MODE
       });
     } catch (error) {
       throw new WizardError(
@@ -468,7 +466,7 @@ export function createAuditEvent(
   const event: AuditEvent = {
     timestamp: new Date().toISOString(),
     action,
-    success,
+    success
   };
 
   if (connectorId) {

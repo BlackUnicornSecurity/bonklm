@@ -1,6 +1,7 @@
 # @blackunicorn/bonklm-llamaindex
 
-LlamaIndex.TS connector for BonkLM - Provides security validation for RAG (Retrieval-Augmented Generation) queries and document retrieval.
+LlamaIndex.TS connector for BonkLM - Provides security validation for RAG (Retrieval-Augmented
+Generation) queries and document retrieval.
 
 ## Installation
 
@@ -21,7 +22,7 @@ import { createGuardedQueryEngine } from '@blackunicorn/bonklm-llamaindex';
 import { PromptInjectionValidator, PIIGuard } from '@blackunicorn/bonklm';
 
 // Create your index
-const document = new Document({ text: "Your document content" });
+const document = new Document({ text: 'Your document content' });
 const index = await VectorStoreIndex.fromDocuments([document]);
 const queryEngine = index.asQueryEngine();
 
@@ -59,19 +60,19 @@ const nodes = await guardedRetriever.retrieve('AI safety research');
 
 ### GuardedLlamaIndexOptions
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `validators` | `Validator[]` | `[]` | Validators for queries and responses |
-| `guards` | `Guard[]` | `[]` | Guards for content filtering |
-| `logger` | `Logger` | `console` | Logger instance |
-| `validateRetrievedDocs` | `boolean` | `true` | Validate retrieved documents |
-| `onBlockedDocument` | `'filter' \| 'abort'` | `'filter'` | Action when document is blocked |
-| `productionMode` | `boolean` | `NODE_ENV === 'production'` | Generic errors in production |
-| `validationTimeout` | `number` | `30000` | Validation timeout in ms |
-| `maxRetrievedDocs` | `number` | `10` | Max documents to retrieve |
-| `onQueryBlocked` | `(result) => void` | - | Callback when query is blocked |
-| `onDocumentBlocked` | `(doc, result) => void` | - | Callback when document is blocked |
-| `onResponseBlocked` | `(result) => void` | - | Callback when response is blocked |
+| Option                  | Type                    | Default                     | Description                          |
+| ----------------------- | ----------------------- | --------------------------- | ------------------------------------ |
+| `validators`            | `Validator[]`           | `[]`                        | Validators for queries and responses |
+| `guards`                | `Guard[]`               | `[]`                        | Guards for content filtering         |
+| `logger`                | `Logger`                | `console`                   | Logger instance                      |
+| `validateRetrievedDocs` | `boolean`               | `true`                      | Validate retrieved documents         |
+| `onBlockedDocument`     | `'filter' \| 'abort'`   | `'filter'`                  | Action when document is blocked      |
+| `productionMode`        | `boolean`               | `NODE_ENV === 'production'` | Generic errors in production         |
+| `validationTimeout`     | `number`                | `30000`                     | Validation timeout in ms             |
+| `maxRetrievedDocs`      | `number`                | `10`                        | Max documents to retrieve            |
+| `onQueryBlocked`        | `(result) => void`      | -                           | Callback when query is blocked       |
+| `onDocumentBlocked`     | `(doc, result) => void` | -                           | Callback when document is blocked    |
+| `onResponseBlocked`     | `(result) => void`      | -                           | Callback when response is blocked    |
 
 ## Security Features
 

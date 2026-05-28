@@ -38,7 +38,7 @@ export enum TokenScope {
   /** Time-limited emergency bypass */
   EMERGENCY = 'emergency',
   /** Read-only access - allows logging but no actual bypass */
-  READONLY = 'readonly',
+  READONLY = 'readonly'
 }
 
 /**
@@ -133,9 +133,7 @@ export class OverrideTokenValidator {
 
     // Create signature payload
     const payload = `${timestamp}:${nonce}:${scope}`;
-    const signature = createHmac(HMAC_ALGORITHM, this.secret)
-      .update(payload)
-      .digest('hex');
+    const signature = createHmac(HMAC_ALGORITHM, this.secret).update(payload).digest('hex');
 
     return `${timestamp}:${signature}:${nonce}:${scope}`;
   }
@@ -163,7 +161,8 @@ export class OverrideTokenValidator {
     }
 
     // Check for future timestamp (clock skew protection)
-    if (timestamp > now + 60000) { // Allow 1 minute clock skew
+    if (timestamp > now + 60000) {
+      // Allow 1 minute clock skew
       return { valid: false, error: 'Token timestamp in future' };
     }
 
@@ -180,9 +179,7 @@ export class OverrideTokenValidator {
 
     // Verify signature
     const payload = `${timestamp}:${nonce}:${scopeStr}`;
-    const expectedSignature = createHmac(HMAC_ALGORITHM, this.secret)
-      .update(payload)
-      .digest('hex');
+    const expectedSignature = createHmac(HMAC_ALGORITHM, this.secret).update(payload).digest('hex');
 
     // Use timing-safe comparison to prevent timing attacks
     const signatureValid = this.timingSafeEqualString(providedSignature, expectedSignature);
@@ -196,7 +193,7 @@ export class OverrideTokenValidator {
     return {
       valid: true,
       scope: scopeStr as TokenScope,
-      timestamp,
+      timestamp
     };
   }
 
@@ -232,12 +229,12 @@ export class OverrideTokenValidator {
       logger.warn('Override token used', {
         scope: usage.scope,
         timestamp: new Date(usage.timestamp).toISOString(),
-        contentHash: usage.contentHash,
+        contentHash: usage.contentHash
       });
     } else {
       logger.warn('Override token validation failed', {
         error: usage.error,
-        contentHash: usage.contentHash,
+        contentHash: usage.contentHash
       });
     }
   }
@@ -299,14 +296,14 @@ export class OverrideTokenValidator {
     if (this.replayCache.size >= this.maxReplayCache) {
       throw new Error(
         'Override token replay cache is at capacity with active entries. ' +
-        'Token rejected to preserve replay protection. ' +
-        'Increase maxReplayCache or wait for active tokens to expire.',
+          'Token rejected to preserve replay protection. ' +
+          'Increase maxReplayCache or wait for active tokens to expire.'
       );
     }
 
     this.replayCache.set(key, {
       nonce: key,
-      usedAt: now,
+      usedAt: now
     });
   }
 
@@ -343,10 +340,7 @@ export class OverrideTokenValidator {
     }
 
     try {
-      return timingSafeEqual(
-        Buffer.from(a, 'utf-8'),
-        Buffer.from(b, 'utf-8')
-      );
+      return timingSafeEqual(Buffer.from(a, 'utf-8'), Buffer.from(b, 'utf-8'));
     } catch {
       return false;
     }
@@ -411,23 +405,22 @@ export function hashContent(content: string): string {
  * @throws Error if secret not available
  */
 export function getOverrideTokenSecret(): string {
-  const secret = process.env.BONKLM_OVERRIDE_SECRET ||
-                 process.env.LLM_GUARDRAILS_OVERRIDE_SECRET;
+  const secret = process.env.BONKLM_OVERRIDE_SECRET || process.env.LLM_GUARDRAILS_OVERRIDE_SECRET;
 
   if (!secret) {
-    const isProduction = process.env.NODE_ENV === 'production' ||
-                        process.env.RAILS_ENV === 'production' ||
-                        process.env.FLASK_ENV === 'production';
+    const isProduction =
+      process.env.NODE_ENV === 'production' ||
+      process.env.RAILS_ENV === 'production' ||
+      process.env.FLASK_ENV === 'production';
 
     if (isProduction) {
-      throw new Error(
-        'BONKLM_OVERRIDE_SECRET must be set in production. ' +
-        'Generate with: openssl rand -base64 32'
-      );
+      throw new Error('BONKLM_OVERRIDE_SECRET must be set in production. ' + 'Generate with: openssl rand -base64 32');
     }
 
     // For development/testing, use a placeholder
-    console.warn('[SECURITY] Using temporary override token secret for development. Set BONKLM_OVERRIDE_SECRET in production!');
+    console.warn(
+      '[SECURITY] Using temporary override token secret for development. Set BONKLM_OVERRIDE_SECRET in production!'
+    );
     return randomBytes(32).toString('base64');
   }
 
@@ -461,9 +454,7 @@ export type OverrideTokenConfigString = string | OverrideTokenConfig;
  * @param config - Configuration string or object
  * @returns Parsed configuration
  */
-export function parseOverrideTokenConfig(
-  config: OverrideTokenConfigString
-): OverrideTokenConfig {
+export function parseOverrideTokenConfig(config: OverrideTokenConfigString): OverrideTokenConfig {
   if (typeof config === 'string') {
     // Legacy mode: simple string (INSECURE - for backward compatibility)
     return { secret: config };

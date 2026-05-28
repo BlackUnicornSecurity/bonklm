@@ -8,11 +8,7 @@
  * jailbreak, and content security threats.
  */
 
-import type {
-  Logger,
-  PromptInjectionConfig,
-  SecretGuardConfig,
-} from '@blackunicorn/bonklm';
+import type { Logger, PromptInjectionConfig, SecretGuardConfig } from '@blackunicorn/bonklm';
 import {
   createLogger,
   createResult,
@@ -20,20 +16,20 @@ import {
   PromptInjectionValidator,
   sanitizeMeta,
   SecretGuard,
-  Severity,
+  Severity
 } from '@blackunicorn/bonklm';
 import type {
   OpenClawAdapterConfig,
   OpenClawGuardrailResult,
   OpenClawMessageContext,
-  OpenClawToolContext,
+  OpenClawToolContext
 } from './types.js';
 
 const DEFAULT_CONFIG: Required<Omit<OpenClawAdapterConfig, 'logger'>> = {
   validateMessages: true,
   validateTools: true,
   blockThreshold: 'warning',
-  logResults: true,
+  logResults: true
 };
 
 /**
@@ -61,7 +57,7 @@ export class OpenClawGuardrailsMiddleware {
     this.config = {
       ...DEFAULT_CONFIG,
       ...config,
-      logger: config.logger ?? createLogger('console'),
+      logger: config.logger ?? createLogger('console')
     } as Required<OpenClawAdapterConfig>;
     this.logger = this.config.logger as unknown as Logger;
 
@@ -77,7 +73,7 @@ export class OpenClawGuardrailsMiddleware {
       return {
         ...createResult(true),
         allowed: true,
-        originalContent: context.content,
+        originalContent: context.content
       };
     }
 
@@ -96,7 +92,7 @@ export class OpenClawGuardrailsMiddleware {
     this.logger.info('Validating OpenClaw message', {
       messageId: sanitizeMeta(context.messageId),
       sessionId: sanitizeMeta(context.sessionId),
-      channel: sanitizeMeta(context.channel),
+      channel: sanitizeMeta(context.channel)
     });
 
     // Run validators
@@ -110,7 +106,7 @@ export class OpenClawGuardrailsMiddleware {
       ...combined,
       allowed: combined.allowed,
       blockedBy: !combined.allowed ? this.getBlockingValidator([promptInjectionResult, secretResult]) : undefined,
-      originalContent: context.content,
+      originalContent: context.content
     };
 
     if (this.config.logResults) {
@@ -118,7 +114,7 @@ export class OpenClawGuardrailsMiddleware {
         this.logger.info('Message validation passed', {
           // Sprint 40 connector CWE-117 sweep — same rationale as line 88.
           messageId: sanitizeMeta(context.messageId),
-          findings_count: result.findings.length,
+          findings_count: result.findings.length
         });
       } else {
         this.logger.warn('Message validation blocked', {
@@ -128,7 +124,7 @@ export class OpenClawGuardrailsMiddleware {
           // future-proofs against custom validator naming.
           blocked_by: result.blockedBy ? sanitizeMeta(result.blockedBy) : undefined,
           severity: result.severity,
-          findings_count: result.findings.length,
+          findings_count: result.findings.length
         });
       }
     }
@@ -143,7 +139,7 @@ export class OpenClawGuardrailsMiddleware {
     if (!this.config.validateTools) {
       return {
         ...createResult(true),
-        allowed: true,
+        allowed: true
       };
     }
 
@@ -152,7 +148,7 @@ export class OpenClawGuardrailsMiddleware {
     // surface attacker-named tools).
     this.logger.info('Validating OpenClaw tool execution', {
       toolName: sanitizeMeta(context.toolName),
-      sessionId: sanitizeMeta(context.sessionId),
+      sessionId: sanitizeMeta(context.sessionId)
     });
 
     // Get content from tool input
@@ -161,7 +157,7 @@ export class OpenClawGuardrailsMiddleware {
     if (!content) {
       return {
         ...createResult(true),
-        allowed: true,
+        allowed: true
       };
     }
 
@@ -175,7 +171,7 @@ export class OpenClawGuardrailsMiddleware {
     const result: OpenClawGuardrailResult = {
       ...combined,
       allowed: combined.allowed,
-      blockedBy: !combined.allowed ? this.getBlockingValidator([promptInjectionResult, secretResult]) : undefined,
+      blockedBy: !combined.allowed ? this.getBlockingValidator([promptInjectionResult, secretResult]) : undefined
     };
 
     if (this.config.logResults) {
@@ -183,13 +179,13 @@ export class OpenClawGuardrailsMiddleware {
         this.logger.info('Tool validation passed', {
           // Sprint 40 connector CWE-117 sweep — same rationale as line 138.
           toolName: sanitizeMeta(context.toolName),
-          findings_count: result.findings.length,
+          findings_count: result.findings.length
         });
       } else {
         this.logger.warn('Tool validation blocked', {
           toolName: sanitizeMeta(context.toolName),
           blocked_by: result.blockedBy ? sanitizeMeta(result.blockedBy) : undefined,
-          severity: result.severity,
+          severity: result.severity
         });
       }
     }
@@ -202,7 +198,9 @@ export class OpenClawGuardrailsMiddleware {
    * This can be registered with OpenClaw's hook system
    */
   createPreActionHook() {
-    return async (context: OpenClawMessageContext | OpenClawToolContext): Promise<{
+    return async (
+      context: OpenClawMessageContext | OpenClawToolContext
+    ): Promise<{
       allowed: boolean;
       blockedBy?: string;
       reason?: string;
@@ -214,7 +212,7 @@ export class OpenClawGuardrailsMiddleware {
       return {
         allowed: result.allowed,
         blockedBy: result.blockedBy,
-        reason: result.findings[0]?.description,
+        reason: result.findings[0]?.description
       };
     };
   }
@@ -224,9 +222,7 @@ export class OpenClawGuardrailsMiddleware {
    */
   private async validate(context: OpenClawMessageContext): Promise<OpenClawGuardrailResult>;
   private async validate(context: OpenClawToolContext): Promise<OpenClawGuardrailResult>;
-  private async validate(
-    context: OpenClawMessageContext | OpenClawToolContext
-  ): Promise<OpenClawGuardrailResult> {
+  private async validate(context: OpenClawMessageContext | OpenClawToolContext): Promise<OpenClawGuardrailResult> {
     if ('content' in context) {
       return this.validateMessage(context);
     } else {
@@ -238,26 +234,22 @@ export class OpenClawGuardrailsMiddleware {
    * Merge multiple validation results
    */
   private mergeResults(results: GuardrailResult[]): GuardrailResult {
-    const allFindings = results.flatMap((r) => r.findings);
+    const allFindings = results.flatMap(r => r.findings);
     results.reduce((sum, r) => sum + r.risk_score, 0);
-    const anyBlocked = results.some((r) => r.blocked);
+    const anyBlocked = results.some(r => r.blocked);
 
     const severityOrder: Record<Severity, number> = {
       [Severity.INFO]: 0,
       [Severity.WARNING]: 1,
       [Severity.BLOCKED]: 2,
-      [Severity.CRITICAL]: 3,
+      [Severity.CRITICAL]: 3
     };
 
     const maxSeverity = results.reduce((max, r) => {
       return severityOrder[r.severity] > severityOrder[max] ? r.severity : max;
     }, Severity.INFO);
 
-    return createResult(
-      !anyBlocked,
-      maxSeverity,
-      allFindings
-    );
+    return createResult(!anyBlocked, maxSeverity, allFindings);
   }
 
   /**

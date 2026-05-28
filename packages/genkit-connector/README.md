@@ -33,12 +33,12 @@ import { configureGenkit } from 'genkit';
 const guardrailsPlugin = createGenkitGuardrailsPlugin({
   validators: [new PromptInjectionValidator()],
   validateFlowInput: true,
-  validateFlowOutput: true,
+  validateFlowOutput: true
 });
 
 // Use with Genkit configuration
 configureGenkit({
-  plugins: [guardrailsPlugin],
+  plugins: [guardrailsPlugin]
 });
 ```
 
@@ -56,9 +56,9 @@ const myFlow = defineFlow(
   {
     name: 'myFlow',
     inputSchema: z.string(),
-    outputSchema: z.string(),
+    outputSchema: z.string()
   },
-  async (input) => {
+  async input => {
     // Your flow logic here
     return `Response to: ${input}`;
   }
@@ -66,12 +66,9 @@ const myFlow = defineFlow(
 
 // Wrap with guardrails
 const guardedFlow = wrapFlow(myFlow, {
-  validators: [
-    new PromptInjectionValidator(),
-    new JailbreakValidator()
-  ],
+  validators: [new PromptInjectionValidator(), new JailbreakValidator()],
   validateFlowInput: true,
-  validateFlowOutput: true,
+  validateFlowOutput: true
 });
 
 // Use normally - guardrails are applied automatically
@@ -90,24 +87,24 @@ interface GuardedGenkitOptions {
   logger?: Logger;
 
   // Feature toggles
-  validateFlowInput?: boolean;      // Default: true
-  validateFlowOutput?: boolean;     // Default: true
-  validateToolCalls?: boolean;      // Default: true
-  validateToolResponses?: boolean;  // Default: true
+  validateFlowInput?: boolean; // Default: true
+  validateFlowOutput?: boolean; // Default: true
+  validateToolCalls?: boolean; // Default: true
+  validateToolResponses?: boolean; // Default: true
 
   // Streaming
-  validateStreaming?: boolean;      // Default: false
-  streamingMode?: 'incremental' | 'buffer';  // Default: 'incremental'
+  validateStreaming?: boolean; // Default: false
+  streamingMode?: 'incremental' | 'buffer'; // Default: 'incremental'
 
   // Security limits
-  maxStreamBufferSize?: number;     // Default: 1MB
-  maxContentLength?: number;        // Default: 100KB
+  maxStreamBufferSize?: number; // Default: 1MB
+  maxContentLength?: number; // Default: 100KB
 
   // Production mode
-  productionMode?: boolean;         // Default: NODE_ENV === 'production'
+  productionMode?: boolean; // Default: NODE_ENV === 'production'
 
   // Timeout
-  validationTimeout?: number;       // Default: 30000ms (30s)
+  validationTimeout?: number; // Default: 30000ms (30s)
 
   // Callbacks
   onBlocked?: (result, context?) => void;
@@ -124,7 +121,7 @@ For streaming responses, use the stream validator:
 const guardrails = createGenkitGuardrailsPlugin({
   validators: [new PromptInjectionValidator()],
   validateStreaming: true,
-  streamingMode: 'incremental',
+  streamingMode: 'incremental'
 });
 
 const validator = guardrails.createStreamValidator();
@@ -150,7 +147,7 @@ Tool calls are validated to prevent injection attacks:
 ```typescript
 const toolCall: GenkitToolCall = {
   name: 'search',
-  input: { query: userInput },
+  input: { query: userInput }
 };
 
 const result = await guardrails.validateToolCall(toolCall);
@@ -166,27 +163,35 @@ const toolResult = await executeTool(toolCall);
 ## Security Features
 
 ### SEC-001: Path Traversal Protection
+
 Path normalization using `path.normalize()` for any path-based operations.
 
 ### SEC-002: Stream Validation
+
 Buffer-and-validate-before-send pattern with early termination on violations.
 
 ### SEC-003: Buffer Overflow Protection
+
 Configurable max buffer size (default 1MB) to prevent DoS attacks.
 
 ### SEC-005: Tool Call Injection
+
 Schema validation for tool arguments to prevent injection attacks.
 
 ### SEC-006: Structured Content Handling
+
 Proper extraction of text from complex message formats (arrays, images, etc.).
 
 ### SEC-007: Production Mode
+
 Generic error messages in production to avoid information leakage.
 
 ### SEC-008: Validation Timeout
+
 AbortController-based timeout to prevent hanging on slow inputs.
 
 ### SEC-010: Request Size Limits
+
 Configurable max content length to prevent DoS via large inputs.
 
 ## API Reference
@@ -196,6 +201,7 @@ Configurable max content length to prevent DoS via large inputs.
 Creates a guardrail plugin object with hook functions.
 
 **Returns:**
+
 - `beforeFlow(input, context?)` - Validate before flow execution
 - `afterFlow(response, context?)` - Validate after flow execution
 - `validateToolCall(toolCall, context?)` - Validate tool call inputs

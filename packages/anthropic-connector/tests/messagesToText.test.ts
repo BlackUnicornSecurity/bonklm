@@ -14,9 +14,7 @@ import type { MessageParam } from '@anthropic-ai/sdk';
 describe('messagesToText Utility', () => {
   describe('String Content', () => {
     it('should extract text from simple string messages', () => {
-      const messages: MessageParam[] = [
-        { role: 'user', content: 'Hello world' },
-      ];
+      const messages: MessageParam[] = [{ role: 'user', content: 'Hello world' }];
 
       const result = messagesToText(messages);
       expect(result).toBe('Hello world');
@@ -26,7 +24,7 @@ describe('messagesToText Utility', () => {
       const messages: MessageParam[] = [
         { role: 'user', content: 'First message' },
         { role: 'assistant', content: 'Second message' },
-        { role: 'user', content: 'Third message' },
+        { role: 'user', content: 'Third message' }
       ];
 
       const result = messagesToText(messages);
@@ -34,18 +32,14 @@ describe('messagesToText Utility', () => {
     });
 
     it('should handle empty string content', () => {
-      const messages: MessageParam[] = [
-        { role: 'user', content: '' },
-      ];
+      const messages: MessageParam[] = [{ role: 'user', content: '' }];
 
       const result = messagesToText(messages);
       expect(result).toBe('');
     });
 
     it('should handle special characters in string content', () => {
-      const messages: MessageParam[] = [
-        { role: 'user', content: 'Hello\nWorld\t!@#$%^&*()' },
-      ];
+      const messages: MessageParam[] = [{ role: 'user', content: 'Hello\nWorld\t!@#$%^&*()' }];
 
       const result = messagesToText(messages);
       expect(result).toBe('Hello\nWorld\t!@#$%^&*()');
@@ -57,10 +51,8 @@ describe('messagesToText Utility', () => {
       const messages: MessageParam[] = [
         {
           role: 'user',
-          content: [
-            { type: 'text', text: 'Hello from array' },
-          ],
-        },
+          content: [{ type: 'text', text: 'Hello from array' }]
+        }
       ];
 
       const result = messagesToText(messages);
@@ -74,9 +66,9 @@ describe('messagesToText Utility', () => {
           content: [
             { type: 'text', text: 'First block' },
             { type: 'text', text: 'Second block' },
-            { type: 'text', text: 'Third block' },
-          ],
-        },
+            { type: 'text', text: 'Third block' }
+          ]
+        }
       ];
 
       const result = messagesToText(messages);
@@ -94,12 +86,12 @@ describe('messagesToText Utility', () => {
               source: {
                 type: 'base64',
                 media_type: 'image/png',
-                data: 'iVBORw0KGgoAAAANS...',
-              },
+                data: 'iVBORw0KGgoAAAANS...'
+              }
             },
-            { type: 'text', text: 'More text' },
-          ],
-        },
+            { type: 'text', text: 'More text' }
+          ]
+        }
       ];
 
       const result = messagesToText(messages);
@@ -110,8 +102,8 @@ describe('messagesToText Utility', () => {
       const messages: MessageParam[] = [
         {
           role: 'user',
-          content: [],
-        },
+          content: []
+        }
       ];
 
       const result = messagesToText(messages);
@@ -128,19 +120,19 @@ describe('messagesToText Utility', () => {
               source: {
                 type: 'base64',
                 media_type: 'image/jpeg',
-                data: 'abc123',
-              },
+                data: 'abc123'
+              }
             },
             {
               type: 'image',
               source: {
                 type: 'base64',
                 media_type: 'image/png',
-                data: 'def456',
-              },
-            },
-          ],
-        },
+                data: 'def456'
+              }
+            }
+          ]
+        }
       ];
 
       const result = messagesToText(messages);
@@ -154,9 +146,9 @@ describe('messagesToText Utility', () => {
           content: [
             { type: 'text', text: 'Valid text' },
             { type: 'text' } as any, // Missing text property
-            { type: 'text', text: 'More valid text' },
-          ],
-        },
+            { type: 'text', text: 'More valid text' }
+          ]
+        }
       ];
 
       const result = messagesToText(messages);
@@ -170,11 +162,9 @@ describe('messagesToText Utility', () => {
         { role: 'user', content: 'String message' },
         {
           role: 'assistant',
-          content: [
-            { type: 'text', text: 'Array message' },
-          ],
+          content: [{ type: 'text', text: 'Array message' }]
         },
-        { role: 'user', content: 'Another string' },
+        { role: 'user', content: 'Another string' }
       ];
 
       const result = messagesToText(messages);
@@ -188,9 +178,9 @@ describe('messagesToText Utility', () => {
         { role: 'user', content: 'Valid message 2' },
         {
           role: 'user',
-          content: [],
+          content: []
         },
-        { role: 'user', content: 'Valid message 3' },
+        { role: 'user', content: 'Valid message 3' }
       ];
 
       const result = messagesToText(messages);
@@ -200,18 +190,14 @@ describe('messagesToText Utility', () => {
 
   describe('Null and Undefined Handling', () => {
     it('should handle null content', () => {
-      const messages: MessageParam[] = [
-        { role: 'user', content: null as any },
-      ];
+      const messages: MessageParam[] = [{ role: 'user', content: null as any }];
 
       const result = messagesToText(messages);
       expect(result).toBe('');
     });
 
     it('should handle undefined content', () => {
-      const messages: MessageParam[] = [
-        { role: 'user', content: undefined as any },
-      ];
+      const messages: MessageParam[] = [{ role: 'user', content: undefined as any }];
 
       const result = messagesToText(messages);
       expect(result).toBe('');
@@ -222,7 +208,7 @@ describe('messagesToText Utility', () => {
         { role: 'user', content: 'Valid message' },
         { role: 'user', content: null as any },
         { role: 'user', content: undefined as any },
-        { role: 'user', content: 'Another valid message' },
+        { role: 'user', content: 'Another valid message' }
       ];
 
       const result = messagesToText(messages);
@@ -233,9 +219,7 @@ describe('messagesToText Utility', () => {
   describe('Edge Cases', () => {
     it('should handle very long text content', () => {
       const longText = 'A'.repeat(10000);
-      const messages: MessageParam[] = [
-        { role: 'user', content: longText },
-      ];
+      const messages: MessageParam[] = [{ role: 'user', content: longText }];
 
       const result = messagesToText(messages);
       expect(result).toBe(longText);
@@ -243,9 +227,7 @@ describe('messagesToText Utility', () => {
     });
 
     it('should handle Unicode characters', () => {
-      const messages: MessageParam[] = [
-        { role: 'user', content: 'Hello 世界 🌍 Привет مرحبا' },
-      ];
+      const messages: MessageParam[] = [{ role: 'user', content: 'Hello 世界 🌍 Привет مرحبا' }];
 
       const result = messagesToText(messages);
       expect(result).toBe('Hello 世界 🌍 Привет مرحبا');
@@ -257,9 +239,9 @@ describe('messagesToText Utility', () => {
           role: 'user',
           content: [
             { type: 'text', text: 'Hello 👋' },
-            { type: 'text', text: 'World 🌍' },
-          ],
-        },
+            { type: 'text', text: 'World 🌍' }
+          ]
+        }
       ];
 
       const result = messagesToText(messages);
@@ -267,36 +249,28 @@ describe('messagesToText Utility', () => {
     });
 
     it('should handle newlines and tabs within content', () => {
-      const messages: MessageParam[] = [
-        { role: 'user', content: 'Line 1\nLine 2\tTabbed' },
-      ];
+      const messages: MessageParam[] = [{ role: 'user', content: 'Line 1\nLine 2\tTabbed' }];
 
       const result = messagesToText(messages);
       expect(result).toBe('Line 1\nLine 2\tTabbed');
     });
 
     it('should convert non-string, non-array content to string', () => {
-      const messages: MessageParam[] = [
-        { role: 'user', content: 12345 as any },
-      ];
+      const messages: MessageParam[] = [{ role: 'user', content: 12345 as any }];
 
       const result = messagesToText(messages);
       expect(result).toBe('12345');
     });
 
     it('should handle boolean content', () => {
-      const messages: MessageParam[] = [
-        { role: 'user', content: true as any },
-      ];
+      const messages: MessageParam[] = [{ role: 'user', content: true as any }];
 
       const result = messagesToText(messages);
       expect(result).toBe('true');
     });
 
     it('should handle object content (convert to string)', () => {
-      const messages: MessageParam[] = [
-        { role: 'user', content: { key: 'value' } as any },
-      ];
+      const messages: MessageParam[] = [{ role: 'user', content: { key: 'value' } as any }];
 
       const result = messagesToText(messages);
       expect(result).toBe('[object Object]');
@@ -313,7 +287,7 @@ describe('messagesToText Utility', () => {
       const messages: MessageParam[] = [
         { role: 'user', content: null as any },
         { role: 'user', content: undefined as any },
-        { role: 'assistant', content: null as any },
+        { role: 'assistant', content: null as any }
       ];
 
       const result = messagesToText(messages);
@@ -333,11 +307,11 @@ describe('messagesToText Utility', () => {
               source: {
                 type: 'base64',
                 media_type: 'image/png',
-                data: 'BASE64_ENCODED_DATA_HERE',
-              },
-            },
-          ],
-        },
+                data: 'BASE64_ENCODED_DATA_HERE'
+              }
+            }
+          ]
+        }
       ];
 
       const result = messagesToText(messages);
@@ -347,9 +321,7 @@ describe('messagesToText Utility', () => {
     });
 
     it('should handle injection attempt in content', () => {
-      const messages: MessageParam[] = [
-        { role: 'user', content: '<script>alert("xss")</script>' },
-      ];
+      const messages: MessageParam[] = [{ role: 'user', content: '<script>alert("xss")</script>' }];
 
       const result = messagesToText(messages);
       expect(result).toContain('<script>alert("xss")</script>');
@@ -362,7 +334,7 @@ describe('messagesToText Utility', () => {
         { role: 'assistant', content: 'Hi there!' },
         { role: 'user', content: 'How are you?' },
         { role: 'assistant', content: 'I am doing well!' },
-        { role: 'user', content: 'What can you do?' },
+        { role: 'user', content: 'What can you do?' }
       ];
 
       const result = messagesToText(messages);

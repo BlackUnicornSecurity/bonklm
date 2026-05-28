@@ -56,9 +56,9 @@ function readJson(path) {
 function enumerateToolPackages() {
   if (!existsSync(TOOLS_DIR)) return [];
   return readdirSync(TOOLS_DIR)
-    .filter((name) => !name.startsWith('.'))
-    .map((name) => join(TOOLS_DIR, name))
-    .filter((path) => {
+    .filter(name => !name.startsWith('.'))
+    .map(name => join(TOOLS_DIR, name))
+    .filter(path => {
       try {
         return statSync(path).isDirectory() && existsSync(join(path, 'package.json'));
       } catch {
@@ -86,7 +86,7 @@ function validateToolsPackage(pkgPath) {
     return {
       tier: 'A',
       name: undefined,
-      violations: [`${pkgJsonPath}: package.json missing or unreadable.`],
+      violations: [`${pkgJsonPath}: package.json missing or unreadable.`]
     };
   }
 

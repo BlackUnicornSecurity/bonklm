@@ -18,7 +18,7 @@ import type {
   OpenAIChatResponse,
   OpenAICompatibleClient,
   OpenAIStreamChunk,
-  WrapInferenceOptions,
+  WrapInferenceOptions
 } from './types.js';
 import { InferenceProviderBlockedError } from './types.js';
 
@@ -89,7 +89,7 @@ export function wrapOpenAICompatibleClient<C extends OpenAICompatibleClient>(
   // Shallow clone (project immutability rule + double-wrap defense).
   const wrappedCompletions = {
     ...client.chat.completions,
-    create: wrapped as typeof client.chat.completions.create,
+    create: wrapped as typeof client.chat.completions.create
   } as Record<symbol, boolean | undefined> & typeof client.chat.completions;
   wrappedCompletions[BONKLM_WRAPPED_SYMBOL] = true;
 
@@ -97,14 +97,12 @@ export function wrapOpenAICompatibleClient<C extends OpenAICompatibleClient>(
     ...client,
     chat: {
       ...client.chat,
-      completions: wrappedCompletions,
-    },
+      completions: wrappedCompletions
+    }
   } as C;
 }
 
-const BONKLM_WRAPPED_SYMBOL: unique symbol = Symbol.for(
-  '@blackunicorn/bonklm-inference-providers/wrapped'
-);
+const BONKLM_WRAPPED_SYMBOL: unique symbol = Symbol.for('@blackunicorn/bonklm-inference-providers/wrapped');
 
 // =============================================================================
 // Helpers
@@ -218,15 +216,11 @@ async function safeValidate(
 }
 
 function isAsyncIterable<T>(x: unknown): x is AsyncIterable<T> {
-  return x !== null && typeof x === 'object' && Symbol.asyncIterator in (x);
+  return x !== null && typeof x === 'object' && Symbol.asyncIterator in x;
 }
 
 function isChatResponse(x: unknown): x is OpenAIChatResponse {
-  return (
-    x !== null &&
-    typeof x === 'object' &&
-    Array.isArray((x as OpenAIChatResponse).choices)
-  );
+  return x !== null && typeof x === 'object' && Array.isArray((x as OpenAIChatResponse).choices);
 }
 
 function extractAssistantText(response: OpenAIChatResponse): string {
@@ -265,7 +259,7 @@ function fireBlock(
       phase,
       reason: result.findings[0]?.description ?? 'unknown',
       category: result.findings[0]?.category,
-      severity: String(result.severity),
+      severity: String(result.severity)
     });
   } catch (err) {
     safeOnError(options, err);

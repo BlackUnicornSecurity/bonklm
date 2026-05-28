@@ -6,31 +6,20 @@
  * module-scope dedup with FIFO eviction, probe-await, 4-branch outcome.
  */
 import { createServer, type Server } from 'node:http';
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  it,
-} from 'vitest';
-import {
-  runStartupProbe,
-  applyProbeOutcome,
-  __clearProbeCacheForTests,
-  type ProbeOutcome,
-} from '../src/probe.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { runStartupProbe, applyProbeOutcome, __clearProbeCacheForTests, type ProbeOutcome } from '../src/probe.js';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 import { withCallContext, getCallContext } from '../src/als-context.js';
 import type { IAgentRuntimeLike } from '../src/types.js';
 
 const fakeRuntime: IAgentRuntimeLike = {
   agentId: 'test-agent',
-  createMemory: async () => undefined,
+  createMemory: async () => undefined
 };
 
 /** Spin up an HTTP server bound to 127.0.0.1 with the given status code. */
 async function spinUpServer(statusCode: number): Promise<{ server: Server; port: number }> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const server = createServer((_req, res) => {
       res.statusCode = statusCode;
       res.end();
@@ -45,7 +34,7 @@ async function spinUpServer(statusCode: number): Promise<{ server: Server; port:
 }
 
 async function closeServer(server: Server): Promise<void> {
-  return new Promise((resolve) => server.close(() => resolve()));
+  return new Promise(resolve => server.close(() => resolve()));
 }
 
 describe('runStartupProbe — 4-branch outcomes', () => {
@@ -67,7 +56,7 @@ describe('runStartupProbe — 4-branch outcomes', () => {
       const outcome = await runStartupProbe({
         agentId: 'test',
         port,
-        acknowledgeClass4Risk: true,
+        acknowledgeClass4Risk: true
       });
       expect(outcome.kind).toBe('unauth_detected_acknowledged');
     } finally {
@@ -101,7 +90,7 @@ describe('runStartupProbe — 4-branch outcomes', () => {
     const outcome = await runStartupProbe({
       agentId: 'test',
       port: 9999,
-      envBindings: { BONKLM_SKIP_RUNTIME_PROBE: '1', NODE_ENV: 'development' },
+      envBindings: { BONKLM_SKIP_RUNTIME_PROBE: '1', NODE_ENV: 'development' }
     });
     expect(outcome.kind).toBe('skipped');
   });
@@ -113,7 +102,7 @@ describe('runStartupProbe — 4-branch outcomes', () => {
     const outcome = await runStartupProbe({
       agentId: 'test',
       port: 1,
-      envBindings: { BONKLM_SKIP_RUNTIME_PROBE: '1', NODE_ENV: 'production' },
+      envBindings: { BONKLM_SKIP_RUNTIME_PROBE: '1', NODE_ENV: 'production' }
     });
     expect(outcome.kind).toBe('unreachable');
   });
@@ -137,16 +126,14 @@ describe('runStartupProbe — dedup memo + FIFO eviction', () => {
   it('50-plugin parallel init resolves quickly (dedup defeats DoS amplification)', async () => {
     // All 50 share the same cache key → ONE probe fires.
     const start = Date.now();
-    const promises = Array.from({ length: 50 }, () =>
-      runStartupProbe({ agentId: 'dedup-test', port: 1 })
-    );
+    const promises = Array.from({ length: 50 }, () => runStartupProbe({ agentId: 'dedup-test', port: 1 }));
     const outcomes = await Promise.all(promises);
     const elapsed = Date.now() - start;
     // Worst case is 4s (2s IPv4 + 2s IPv6); we want well under that
     // because all 50 share the same probe.
     expect(elapsed).toBeLessThan(6000);
     // All outcomes are the SAME reference.
-    expect(outcomes.every((o) => o === outcomes[0])).toBe(true);
+    expect(outcomes.every(o => o === outcomes[0])).toBe(true);
   });
 });
 
@@ -154,30 +141,25 @@ describe('runStartupProbe — ALS-clear during probe', () => {
   beforeEach(() => __clearProbeCacheForTests());
 
   it('probe runs with ambient call context CLEARED even when called from inside withCallContext', async () => {
-    let observedInsideProbe: ReturnType<typeof getCallContext> = undefined as
-      | ReturnType<typeof getCallContext>;
+    let observedInsideProbe: ReturnType<typeof getCallContext> = undefined as ReturnType<typeof getCallContext>;
     const { server, port } = await spinUpServer(401);
     try {
       // Start a withCallContext scope, then trigger the probe from
       // inside. The probe's HTTP request callback path must observe
       // getCallContext() === undefined.
-      await withCallContext(
-        fakeRuntime,
-        { sourceTrust: 'agent_internal', pluginName: 'parent' },
-        async () => {
-          // Sanity — outside the probe, we DO see parent context.
-          expect(getCallContext()?.pluginName).toBe('parent');
+      await withCallContext(fakeRuntime, { sourceTrust: 'agent_internal', pluginName: 'parent' }, async () => {
+        // Sanity — outside the probe, we DO see parent context.
+        expect(getCallContext()?.pluginName).toBe('parent');
 
-          // The probe's executeProbe runs runWithoutCallContext(...)
-          // around its work. We can't directly inspect the HTTP
-          // callback's view here without a side-channel, but we can
-          // assert the wrapping helper does clear context — that's
-          // covered by als-context.test.ts. Here we just verify the
-          // probe ran without crashing under an active parent ctx.
-          const outcome = await runStartupProbe({ agentId: 'als-clear', port });
-          expect(outcome.kind).toBe('unreachable'); // 401 = "safe" branch
-        }
-      );
+        // The probe's executeProbe runs runWithoutCallContext(...)
+        // around its work. We can't directly inspect the HTTP
+        // callback's view here without a side-channel, but we can
+        // assert the wrapping helper does clear context — that's
+        // covered by als-context.test.ts. Here we just verify the
+        // probe ran without crashing under an active parent ctx.
+        const outcome = await runStartupProbe({ agentId: 'als-clear', port });
+        expect(outcome.kind).toBe('unreachable'); // 401 = "safe" branch
+      });
       // After the probe + parent scope return, no leaked context.
       expect(getCallContext()).toBeUndefined();
       // Silence the lint about unused; observedInsideProbe is reserved
@@ -213,7 +195,7 @@ describe('applyProbeOutcome — side-effect application', () => {
   it('Branch 3 does NOT throw (unreachable → log + continue)', () => {
     const outcome: ProbeOutcome = {
       kind: 'unreachable',
-      reason: 'mock unreachable',
+      reason: 'mock unreachable'
     };
     expect(() => applyProbeOutcome(outcome, {})).not.toThrow();
   });
@@ -237,7 +219,7 @@ describe('runStartupProbe — redirect: manual on 3xx', () => {
       res.setHeader('Location', 'http://127.0.0.1:99999/auth/login');
       res.end();
     });
-    await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+    await new Promise<void>(r => server.listen(0, '127.0.0.1', () => r()));
     const addr = server.address();
     if (!addr || typeof addr !== 'object') throw new Error('no port');
     try {
@@ -265,7 +247,7 @@ describe('runStartupProbe — AbortController 2000ms timeout', () => {
     const server: Server = createServer((_req, _res) => {
       // intentionally never respond
     });
-    await new Promise<void>((r) => server.listen(0, '127.0.0.1', () => r()));
+    await new Promise<void>(r => server.listen(0, '127.0.0.1', () => r()));
     const addr = server.address();
     if (!addr || typeof addr !== 'object') throw new Error('no port');
     const port = addr.port;

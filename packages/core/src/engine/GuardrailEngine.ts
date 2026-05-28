@@ -8,11 +8,7 @@
 
 import { createLogger, type Logger, LogLevel } from '../base/GenericLogger.js';
 import { createResult, RiskLevel, Severity } from '../base/GuardrailResult.js';
-import {
-  hashContent,
-  OverrideTokenValidator,
-  parseOverrideTokenConfig,
-} from '../security/override-token.js';
+import { hashContent, OverrideTokenValidator, parseOverrideTokenConfig } from '../security/override-token.js';
 import { StreamValidationError } from '../connector-utils/errors.js';
 import { sanitizeLogString, serializeError } from '../common/index.js';
 import { CircuitBreaker, type CircuitBreakerMetrics } from './CircuitBreaker.js';
@@ -28,7 +24,7 @@ import type {
   InterceptCallback,
   Validator,
   ValidatorInput,
-  ValidatorResult,
+  ValidatorResult
 } from './GuardrailEngine.types.js';
 
 // Re-export types for public API surface compatibility.
@@ -39,7 +35,7 @@ export type {
   EngineResult,
   InterceptCallback,
   Validator,
-  ValidatorResult,
+  ValidatorResult
 } from './GuardrailEngine.types.js';
 
 /**
@@ -63,7 +59,6 @@ const DEFAULT_CIRCUIT_BREAKER_THRESHOLD = 3;
 // StreamValidationError + CircuitBreaker now live in dedicated modules
 // (../connector-utils/errors.ts and ./CircuitBreaker.ts respectively) to keep
 // this orchestration file under the 800-line size cap. They are imported above.
-
 
 /**
  * GuardrailEngine - Main orchestration class for LLM guardrails.
@@ -145,8 +140,7 @@ export class GuardrailEngine {
     const isEmptyConfig = this.validators.length === 0;
     if (isEmptyConfig && config.allowEmptyForTesting !== true) {
       throw new Error(
-        'Empty validator list is unsafe; use a no-op validator explicitly ' +
-        'or pass `allowEmptyForTesting: true`.'
+        'Empty validator list is unsafe; use a no-op validator explicitly ' + 'or pass `allowEmptyForTesting: true`.'
       );
     }
 
@@ -169,22 +163,20 @@ export class GuardrailEngine {
       // pipeline. Misleading users into thinking the engine is completely
       // inert would invite suppression of this warning in observability.
       const guardSuffix =
-        this.guards.length > 0
-          ? ` ${this.guards.length} guard(s) ARE wired and will still run.`
-          : ' No guards either.';
+        this.guards.length > 0 ? ` ${this.guards.length} guard(s) ARE wired and will still run.` : ' No guards either.';
       this.logger.warn(
         `[CRITICAL] GuardrailEngine constructed with no validators ` +
-        `(allowEmptyForTesting=true). This engine performs NO ` +
-        `validator-layer checks and is intended for unit tests only.` +
-        `${guardSuffix}` +
-        ` Do NOT deploy to production.`
+          `(allowEmptyForTesting=true). This engine performs NO ` +
+          `validator-layer checks and is intended for unit tests only.` +
+          `${guardSuffix}` +
+          ` Do NOT deploy to production.`
       );
     }
 
     this.circuitBreaker = new CircuitBreaker({
       threshold: this.circuitBreakerThreshold,
       timeoutMs: this.circuitBreakerTimeout,
-      logger: this.logger,
+      logger: this.logger
     });
 
     // S011-006: Initialize override token validator
@@ -192,7 +184,9 @@ export class GuardrailEngine {
       if (typeof config.overrideToken === 'string') {
         // Legacy mode: plaintext token (INSECURE)
         this.overrideToken = config.overrideToken;
-        this.logger.warn('[SECURITY] Using legacy plaintext override token. Consider upgrading to cryptographic validation.');
+        this.logger.warn(
+          '[SECURITY] Using legacy plaintext override token. Consider upgrading to cryptographic validation.'
+        );
       } else {
         // New mode: cryptographic token validation
         const tokenConfig = parseOverrideTokenConfig(config.overrideToken);
@@ -210,7 +204,7 @@ export class GuardrailEngine {
       maxBufferSize: this.maxBufferSize,
       circuitBreakerThreshold: this.circuitBreakerThreshold,
       overrideTokenEnabled: !!(this.overrideToken || this.overrideTokenValidator),
-      overrideTokenType: this.overrideToken ? 'legacy' : this.overrideTokenValidator ? 'cryptographic' : 'none',
+      overrideTokenType: this.overrideToken ? 'legacy' : this.overrideTokenValidator ? 'cryptographic' : 'none'
     });
   }
 
@@ -302,7 +296,7 @@ export class GuardrailEngine {
   onIntercept(callback: InterceptCallback): void {
     this.interceptCallbacks.push(callback);
     this.logger.debug('Intercept callback registered', {
-      totalCallbacks: this.interceptCallbacks.length,
+      totalCallbacks: this.interceptCallbacks.length
     });
   }
 
@@ -347,11 +341,7 @@ export class GuardrailEngine {
    * await engine.notifyCachedResult(results, contentString, 'inngest:validateInput');
    * ```
    */
-  async notifyCachedResult(
-    results: ValidatorResult[],
-    content: string,
-    validationContext?: string
-  ): Promise<void> {
+  async notifyCachedResult(results: ValidatorResult[], content: string, validationContext?: string): Promise<void> {
     if (this.interceptCallbacks.length === 0) {
       return;
     }
@@ -378,7 +368,7 @@ export class GuardrailEngine {
     }
 
     // Fire callbacks asynchronously without blocking validation
-    const promises = this.interceptCallbacks.map((callback) =>
+    const promises = this.interceptCallbacks.map(callback =>
       Promise.resolve().then(async () => {
         try {
           await callback(result, { content, validation_context: validationContext });
@@ -409,14 +399,14 @@ export class GuardrailEngine {
         return {
           valid: true,
           scope: result.scope,
-          timestamp: result.timestamp,
+          timestamp: result.timestamp
         };
       }
       // Log failed validation attempts for audit
       const contentHash = hashContent(content);
       this.logger.warn('Override token validation failed', {
         error: result.error,
-        contentHash,
+        contentHash
       });
       return { valid: false };
     }
@@ -450,17 +440,19 @@ export class GuardrailEngine {
         risk_level: RiskLevel.HIGH,
         risk_score: 50,
         reason: 'Circuit breaker is open due to repeated buffer overflow violations',
-        findings: [{
-          category: 'circuit_breaker',
-          severity: Severity.CRITICAL,
-          description: 'Request blocked: Circuit breaker is open',
-          weight: 50,
-        }],
+        findings: [
+          {
+            category: 'circuit_breaker',
+            severity: Severity.CRITICAL,
+            description: 'Request blocked: Circuit breaker is open',
+            weight: 50
+          }
+        ],
         results: [],
         validatorCount: this.validators.length,
         guardCount: this.guards.length,
         executionTime: Date.now() - startTime,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       };
 
       await this.invokeInterceptCallbacks(blockedResult, content, context);
@@ -475,7 +467,7 @@ export class GuardrailEngine {
       this.logger.warn('Validation bypassed via override token', {
         scope: overrideResult.scope,
         contentHash,
-        timestamp: new Date(overrideResult.timestamp!).toISOString(),
+        timestamp: new Date(overrideResult.timestamp!).toISOString()
       });
 
       return {
@@ -489,7 +481,7 @@ export class GuardrailEngine {
         validatorCount: this.validators.length,
         guardCount: this.guards.length,
         executionTime: Date.now() - startTime,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       };
     }
 
@@ -500,7 +492,7 @@ export class GuardrailEngine {
     allResults.push(...validatorResults);
 
     // Check if we should short-circuit
-    if (this.shortCircuit && allResults.some((r) => r.blocked)) {
+    if (this.shortCircuit && allResults.some(r => r.blocked)) {
       // Sprint 42 CWE-117 sweep — surfaced by mcp integration test:
       // validator-output `reason` can carry attacker-influenced text
       // (matched-pattern slice with embedded `\n` etc.). Sprint 38 swept
@@ -508,9 +500,9 @@ export class GuardrailEngine {
       // was missed because it's in core/engine, outside the
       // connector-utils enumeration scope. Wrap with the canonical
       // `sanitizeLogString` primitive per ADR-0001.
-      const blockedReason = allResults.find((r) => r.blocked)?.reason;
+      const blockedReason = allResults.find(r => r.blocked)?.reason;
       this.logger.warn('Validation blocked (short-circuit)', {
-        reason: blockedReason !== undefined ? sanitizeLogString(blockedReason) : undefined,
+        reason: blockedReason !== undefined ? sanitizeLogString(blockedReason) : undefined
       });
 
       const result = this.aggregateResults(allResults, startTime);
@@ -558,8 +550,7 @@ export class GuardrailEngine {
     // Stringified form fed to intercept callbacks (their signature
     // takes `content: string`). Use a minimal canonical form: text
     // input passes through verbatim; structured inputs JSON-encode.
-    const contentForCallback =
-      input.kind === 'text' ? input.content : JSON.stringify(input);
+    const contentForCallback = input.kind === 'text' ? input.content : JSON.stringify(input);
 
     // Circuit breaker shortcut (same protective layer as validate()).
     if (this.isCircuitBreakerOpen()) {
@@ -576,14 +567,14 @@ export class GuardrailEngine {
             category: 'circuit_breaker',
             severity: Severity.CRITICAL,
             description: 'Request blocked: Circuit breaker is open',
-            weight: 50,
-          },
+            weight: 50
+          }
         ],
         results: [],
         validatorCount: this.validators.length,
         guardCount: this.guards.length,
         executionTime: Date.now() - startTime,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       };
       await this.invokeInterceptCallbacks(blockedResult, contentForCallback);
       return blockedResult;
@@ -609,10 +600,10 @@ export class GuardrailEngine {
               // wraps remote input in its error. The description flows
               // into `aggregateResults` → `EngineResult.findings` →
               // consumer log surfaces. Sanitize per ADR-0001.
-              description: `Validator ${name} threw an error: ${sanitizeLogString(String(error))}`,
-            },
+              description: `Validator ${name} threw an error: ${sanitizeLogString(String(error))}`
+            }
           ]),
-          validatorName: name,
+          validatorName: name
         });
         if (this.shortCircuit) break;
       }
@@ -653,7 +644,7 @@ export class GuardrailEngine {
         const result = await validator.validate(content);
         results.push({
           ...result,
-          validatorName: name,
+          validatorName: name
         });
 
         // Log findings
@@ -668,14 +659,16 @@ export class GuardrailEngine {
       } catch (error) {
         this.logger.error(`Error in validator ${name}`, { error: serializeError(error) });
         results.push({
-          ...createResult(false, Severity.CRITICAL, [{
-            category: 'validator_error',
-            severity: Severity.CRITICAL,
-            // Sprint 42 architect HIGH closure (sister site #2 of 4):
-            // see #1 rationale above (validateInput catch).
-            description: `Validator ${name} threw an error: ${sanitizeLogString(String(error))}`,
-          }]),
-          validatorName: name,
+          ...createResult(false, Severity.CRITICAL, [
+            {
+              category: 'validator_error',
+              severity: Severity.CRITICAL,
+              // Sprint 42 architect HIGH closure (sister site #2 of 4):
+              // see #1 rationale above (validateInput catch).
+              description: `Validator ${name} threw an error: ${sanitizeLogString(String(error))}`
+            }
+          ]),
+          validatorName: name
         });
       }
     }
@@ -687,7 +680,7 @@ export class GuardrailEngine {
    * Run validators in parallel.
    */
   private async runValidatorsParallel(content: string): Promise<ValidatorResult[]> {
-    const promises = this.validators.map(async (validator) => {
+    const promises = this.validators.map(async validator => {
       const name = validator.name ?? validator.constructor.name;
       this.logger.debug(`Running validator: ${name}`);
 
@@ -695,19 +688,21 @@ export class GuardrailEngine {
         const result = await validator.validate(content);
         return {
           ...result,
-          validatorName: name,
+          validatorName: name
         };
       } catch (error) {
         this.logger.error(`Error in validator ${name}`, { error: serializeError(error) });
         return {
-          ...createResult(false, Severity.CRITICAL, [{
-            category: 'validator_error',
-            severity: Severity.CRITICAL,
-            // Sprint 42 architect HIGH closure (sister site #3 of 4):
-            // parallel-validator catch path.
-            description: `Validator ${name} threw an error: ${sanitizeLogString(String(error))}`,
-          }]),
-          validatorName: name,
+          ...createResult(false, Severity.CRITICAL, [
+            {
+              category: 'validator_error',
+              severity: Severity.CRITICAL,
+              // Sprint 42 architect HIGH closure (sister site #3 of 4):
+              // parallel-validator catch path.
+              description: `Validator ${name} threw an error: ${sanitizeLogString(String(error))}`
+            }
+          ]),
+          validatorName: name
         };
       }
     });
@@ -733,7 +728,7 @@ export class GuardrailEngine {
         const result = await guard.validate(content, context);
         results.push({
           ...result,
-          validatorName: name,
+          validatorName: name
         });
 
         if (result.findings.length > 0) {
@@ -747,14 +742,16 @@ export class GuardrailEngine {
       } catch (error) {
         this.logger.error(`Error in guard ${name}`, { error: serializeError(error) });
         results.push({
-          ...createResult(false, Severity.CRITICAL, [{
-            category: 'guard_error',
-            severity: Severity.CRITICAL,
-            // Sprint 42 architect HIGH closure (sister site #4 of 4):
-            // guard catch path mirrors validator catch.
-            description: `Guard ${name} threw an error: ${sanitizeLogString(String(error))}`,
-          }]),
-          validatorName: name,
+          ...createResult(false, Severity.CRITICAL, [
+            {
+              category: 'guard_error',
+              severity: Severity.CRITICAL,
+              // Sprint 42 architect HIGH closure (sister site #4 of 4):
+              // guard catch path mirrors validator catch.
+              description: `Guard ${name} threw an error: ${sanitizeLogString(String(error))}`
+            }
+          ]),
+          validatorName: name
         });
       }
     }
@@ -766,9 +763,9 @@ export class GuardrailEngine {
    * Aggregate individual results into a final result.
    */
   private aggregateResults(results: ValidatorResult[], startTime: number): EngineResult {
-    const allFindings = results.flatMap((r) => r.findings);
+    const allFindings = results.flatMap(r => r.findings);
     const totalRiskScore = results.reduce((sum, r) => sum + r.risk_score, 0);
-    const anyBlocked = results.some((r) => r.blocked);
+    const anyBlocked = results.some(r => r.blocked);
 
     // Determine max severity
     const maxSeverity = results.reduce((max, r) => {
@@ -776,7 +773,7 @@ export class GuardrailEngine {
         [Severity.INFO]: 0,
         [Severity.WARNING]: 1,
         [Severity.BLOCKED]: 2,
-        [Severity.CRITICAL]: 3,
+        [Severity.CRITICAL]: 3
       };
       return severityOrder[r.severity] > severityOrder[max] ? r.severity : max;
     }, Severity.INFO);
@@ -820,7 +817,7 @@ export class GuardrailEngine {
     return {
       allowed,
       blocked: !allowed,
-      reason: anyBlocked ? results.find((r) => r.blocked)?.reason : undefined,
+      reason: anyBlocked ? results.find(r => r.blocked)?.reason : undefined,
       severity: maxSeverity,
       risk_level: riskLevel,
       risk_score: totalRiskScore,
@@ -830,7 +827,7 @@ export class GuardrailEngine {
       validatorCount: this.validators.length,
       guardCount: this.guards.length,
       executionTime: Date.now() - startTime,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     };
   }
 
@@ -841,7 +838,7 @@ export class GuardrailEngine {
     this.validators.push(validator);
     this.logger.debug('Validator added', {
       name: validator.name ?? validator.constructor.name,
-      totalValidators: this.validators.length,
+      totalValidators: this.validators.length
     });
   }
 
@@ -852,7 +849,7 @@ export class GuardrailEngine {
     this.guards.push(guard);
     this.logger.debug('Guard added', {
       name: guard.name ?? guard.constructor.name,
-      totalGuards: this.guards.length,
+      totalGuards: this.guards.length
     });
   }
 
@@ -860,9 +857,7 @@ export class GuardrailEngine {
    * Remove a validator by name.
    */
   removeValidator(name: string): boolean {
-    const index = this.validators.findIndex(
-      (v) => (v.name ?? v.constructor.name) === name
-    );
+    const index = this.validators.findIndex(v => (v.name ?? v.constructor.name) === name);
     if (index !== -1) {
       this.validators.splice(index, 1);
       this.logger.debug('Validator removed', { name, totalValidators: this.validators.length });
@@ -875,9 +870,7 @@ export class GuardrailEngine {
    * Remove a guard by name.
    */
   removeGuard(name: string): boolean {
-    const index = this.guards.findIndex(
-      (g) => (g.name ?? g.constructor.name) === name
-    );
+    const index = this.guards.findIndex(g => (g.name ?? g.constructor.name) === name);
     if (index !== -1) {
       this.guards.splice(index, 1);
       this.logger.debug('Guard removed', { name, totalGuards: this.guards.length });
@@ -917,7 +910,7 @@ export class GuardrailEngine {
       shortCircuit: this.shortCircuit,
       executionOrder: this.executionOrder,
       sensitivity: this.sensitivity,
-      action: this.action,
+      action: this.action
     };
   }
 }
@@ -932,10 +925,7 @@ export class GuardrailEngine {
  * });
  * ```
  */
-export async function validateWithEngine(
-  content: string,
-  config?: GuardrailEngineConfig
-): Promise<EngineResult> {
+export async function validateWithEngine(content: string, config?: GuardrailEngineConfig): Promise<EngineResult> {
   const engine = new GuardrailEngine(config);
   return engine.validate(content);
 }

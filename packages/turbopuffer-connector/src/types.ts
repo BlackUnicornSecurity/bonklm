@@ -12,11 +12,7 @@
  *
  * @package @blackunicorn/bonklm-turbopuffer
  */
-import type {
-  Logger,
-  MemoryWriteValidator,
-  RetrievedDocValidator,
-} from '@blackunicorn/bonklm';
+import type { Logger, MemoryWriteValidator, RetrievedDocValidator } from '@blackunicorn/bonklm';
 
 /**
  * Configuration for `createGuardedNamespace`.
@@ -233,10 +229,7 @@ export interface GuardedNamespace {
    * Signature matches the SDK: `params` is `?: ... | null` to align
    * with `NamespaceWriteParams | null | undefined` (rev R0 closure).
    */
-  write(
-    params?: GuardedNamespaceWriteParams | null,
-    options?: unknown
-  ): Promise<unknown>;
+  write(params?: GuardedNamespaceWriteParams | null, options?: unknown): Promise<unknown>;
 
   /**
    * Run a query + validate retrieved rows. `RetrievedDocValidator`

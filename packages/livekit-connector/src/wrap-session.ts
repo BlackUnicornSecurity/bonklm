@@ -45,14 +45,9 @@ const BONKLM_WIRED_SYMBOL: unique symbol = Symbol.for('@blackunicorn/bonklm-live
  * Wire the session-level event listeners. Returns the session for
  * fluent-chain convenience. Throws if the session was already wired.
  */
-export function wrapLiveKitAgentSession<S extends AgentSession>(
-  session: S,
-  config: LiveKitGuardrailConfig
-): S {
+export function wrapLiveKitAgentSession<S extends AgentSession>(session: S, config: LiveKitGuardrailConfig): S {
   if (!session || typeof (session as { on?: unknown }).on !== 'function') {
-    throw new TypeError(
-      'wrapLiveKitAgentSession: session must be an AgentSession instance with .on() event emitter.'
-    );
+    throw new TypeError('wrapLiveKitAgentSession: session must be an AgentSession instance with .on() event emitter.');
   }
   if (!config || !(config.audioStreamValidator instanceof AudioStreamValidator)) {
     throw new TypeError(
@@ -74,7 +69,7 @@ export function wrapLiveKitAgentSession<S extends AgentSession>(
   // -------------------------------------------------------------------------
   // user_input_transcribed
   // -------------------------------------------------------------------------
-  session.on(AgentSessionEventTypes.UserInputTranscribed, (event) => {
+  session.on(AgentSessionEventTypes.UserInputTranscribed, event => {
     // event-listener wrapper — LiveKit's TypedEventEmitter does NOT
     // await async listeners. Route errors to config.onError so they're
     // not silently swallowed (code-reviewer CONCERN-3 closure).
@@ -84,7 +79,7 @@ export function wrapLiveKitAgentSession<S extends AgentSession>(
   // -------------------------------------------------------------------------
   // function_tools_executed
   // -------------------------------------------------------------------------
-  session.on(AgentSessionEventTypes.FunctionToolsExecuted, (event) => {
+  session.on(AgentSessionEventTypes.FunctionToolsExecuted, event => {
     void handleFunctionToolsExecuted(event, av, config, finalBudget);
   });
 

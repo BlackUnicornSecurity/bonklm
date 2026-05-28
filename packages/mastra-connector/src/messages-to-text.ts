@@ -39,7 +39,7 @@ import type { MastraContentPart, MastraMessage, MastraToolCall } from './types.j
  */
 export function messagesToText(messages: MastraMessage[]): string {
   return messages
-    .map((m) => {
+    .map(m => {
       const content = m.content;
 
       // Handle messages without content
@@ -55,15 +55,15 @@ export function messagesToText(messages: MastraMessage[]): string {
       // Handle array content (SEC-006: structured data, images, tool calls, etc.)
       if (Array.isArray(content)) {
         return content
-          .map((part) => contentPartToText(part))
-          .filter((c) => c.length > 0)
+          .map(part => contentPartToText(part))
+          .filter(c => c.length > 0)
           .join('\n');
       }
 
       // Handle other types (convert to string)
       return String(content);
     })
-    .filter((c) => c.length > 0)
+    .filter(c => c.length > 0)
     .join('\n');
 }
 
@@ -102,13 +102,10 @@ function contentPartToText(part: MastraContentPart): string {
         return `Tool Result: ${part.toolResult.content}`;
       }
       if (Array.isArray(part.toolResult?.content)) {
-        return (
-          `Tool Result: ${ 
-          part.toolResult.content
-            .map((p) => contentPartToText(p))
-            .filter((c) => c.length > 0)
-            .join('\n')}`
-        );
+        return `Tool Result: ${part.toolResult.content
+          .map(p => contentPartToText(p))
+          .filter(c => c.length > 0)
+          .join('\n')}`;
       }
       return part.toolResult?.isError ? 'Tool Error' : '';
 
@@ -141,7 +138,7 @@ function contentPartToText(part: MastraContentPart): string {
  */
 export function toolCallsToText(toolCalls: MastraToolCall[]): string {
   return toolCalls
-    .map((tool) => {
+    .map(tool => {
       const parts: string[] = [];
       if (tool.name) {
         parts.push(`Tool: ${tool.name}`);
@@ -157,7 +154,7 @@ export function toolCallsToText(toolCalls: MastraToolCall[]): string {
       }
       return parts.join('\n');
     })
-    .filter((c) => c.length > 0)
+    .filter(c => c.length > 0)
     .join('\n\n');
 }
 

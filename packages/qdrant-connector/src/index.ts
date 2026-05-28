@@ -15,7 +15,7 @@ export type {
   GuardedQdrantResult,
   QdrantSearchOptions,
   QdrantPoint,
-  BlockedPointHandling,
+  BlockedPointHandling
 } from './types.js';
 
 export { DEFAULT_VALIDATION_TIMEOUT, DEFAULT_MAX_LIMIT } from './types.js';

@@ -27,7 +27,7 @@ import type {
   ShadowLogAppendInput,
   ShadowLogEntry,
   ShadowLogStorageAdapter,
-  VerifyChainResult,
+  VerifyChainResult
 } from './types.js';
 
 const DEFAULT_MAX_ENTRIES_PER_ROOM = 10_000;
@@ -47,15 +47,9 @@ const DEFAULT_MAX_TOTAL_ENTRIES = 1_000_000;
  * Exported for tests; consumers should use `ShadowLog.append` which
  * applies this internally.
  */
-export async function computeContentHash(
-  text: string,
-  sourceTrust: string,
-  entityId: string
-): Promise<string> {
+export async function computeContentHash(text: string, sourceTrust: string, entityId: string): Promise<string> {
   const canonical =
-    `${text.length}:${text}` +
-    `|${sourceTrust.length}:${sourceTrust}` +
-    `|${entityId.length}:${entityId}`;
+    `${text.length}:${text}` + `|${sourceTrust.length}:${sourceTrust}` + `|${entityId.length}:${entityId}`;
   return sha256Hex(canonical);
 }
 
@@ -65,17 +59,11 @@ export async function computeContentHash(
  *
  * Exported for tests + verifyChain.
  */
-export async function computeChainLinkHash(
-  prevContentHash: string,
-  prevPrevEntryHash: string | null
-): Promise<string> {
+export async function computeChainLinkHash(prevContentHash: string, prevPrevEntryHash: string | null): Promise<string> {
   return sha256Hex(prevContentHash + (prevPrevEntryHash ?? ''));
 }
 
-export function createShadowLog(
-  adapter: ShadowLogStorageAdapter,
-  options: CreateShadowLogOptions = {}
-): ShadowLog {
+export function createShadowLog(adapter: ShadowLogStorageAdapter, options: CreateShadowLogOptions = {}): ShadowLog {
   const maxEntriesPerRoom = options.maxEntriesPerRoom ?? DEFAULT_MAX_ENTRIES_PER_ROOM;
   const maxTotalEntries = options.maxTotalEntries ?? DEFAULT_MAX_TOTAL_ENTRIES;
   const evictionPolicy = options.evictionPolicy ?? 'refuse-write';
@@ -99,16 +87,16 @@ export function createShadowLog(
   // produce two entries with identical chain links — silent chain
   // corruption. The lock serializes appends per room.
   const roomLocks = new Map<string, Promise<void>>();
-  async function withRoomLock<T>(
-    roomId: string,
-    fn: () => Promise<T>
-  ): Promise<T> {
+  async function withRoomLock<T>(roomId: string, fn: () => Promise<T>): Promise<T> {
     const prior = roomLocks.get(roomId) ?? Promise.resolve();
     let release!: () => void;
-    const next = new Promise<void>((resolve) => {
+    const next = new Promise<void>(resolve => {
       release = resolve;
     });
-    roomLocks.set(roomId, prior.then(() => next));
+    roomLocks.set(
+      roomId,
+      prior.then(() => next)
+    );
     try {
       await prior;
       return await fn();
@@ -126,11 +114,7 @@ export function createShadowLog(
       return withRoomLock(input.roomId, async () => {
         // Compute canonical hashes BEFORE talking to the adapter so a
         // buggy adapter cannot influence the chain link.
-        const contentHash = await computeContentHash(
-          input.text,
-          input.sourceTrust,
-          input.entityId
-        );
+        const contentHash = await computeContentHash(input.text, input.sourceTrust, input.entityId);
 
         // Read the prior entry's contentHash to derive prevEntryHash
         // for the new entry. Inside the lock these two reads are
@@ -142,9 +126,9 @@ export function createShadowLog(
           prevEntryHash = null; // genesis entry
         } else {
           const recent = await adapter.readByRoom(input.roomId, {
-            limit: Number.MAX_SAFE_INTEGER,
+            limit: Number.MAX_SAFE_INTEGER
           });
-          const matchingPrior = recent.find((e) => e.contentHash === prevContentHash);
+          const matchingPrior = recent.find(e => e.contentHash === prevContentHash);
           const priorPrev = matchingPrior?.prevEntryHash ?? null;
           prevEntryHash = await computeChainLinkHash(prevContentHash, priorPrev);
         }
@@ -157,7 +141,7 @@ export function createShadowLog(
           contentHash,
           prevEntryHash,
           createdAt: Date.now(),
-          sourceTrust: input.sourceTrust,
+          sourceTrust: input.sourceTrust
         };
 
         // Apply bounded-storage policy BEFORE the adapter write so an
@@ -167,7 +151,7 @@ export function createShadowLog(
           roomId: input.roomId,
           maxEntriesPerRoom,
           maxTotalEntries,
-          evictionPolicy,
+          evictionPolicy
         });
 
         await adapter.append(entry);
@@ -189,10 +173,7 @@ export function createShadowLog(
       });
     },
 
-    async readByRoom(
-      roomId: string,
-      opts?: ReadByRoomOptions
-    ): Promise<ShadowLogEntry[]> {
+    async readByRoom(roomId: string, opts?: ReadByRoomOptions): Promise<ShadowLogEntry[]> {
       return adapter.readByRoom(roomId, opts);
     },
 
@@ -212,11 +193,7 @@ export function createShadowLog(
         const entry = ordered[i];
 
         // 1. Verify entry's own contentHash is canonical.
-        const recomputedContentHash = await computeContentHash(
-          entry.text,
-          entry.sourceTrust,
-          entry.entityId
-        );
+        const recomputedContentHash = await computeContentHash(entry.text, entry.sourceTrust, entry.entityId);
         if (recomputedContentHash !== entry.contentHash) {
           return { ok: false, brokenAt: i };
         }
@@ -228,10 +205,7 @@ export function createShadowLog(
             return { ok: false, brokenAt: i };
           }
         } else {
-          const expectedChainLink = await computeChainLinkHash(
-            expectedPrevContentHash,
-            expectedPrevPrevEntryHash
-          );
+          const expectedChainLink = await computeChainLinkHash(expectedPrevContentHash, expectedPrevPrevEntryHash);
           if (entry.prevEntryHash !== expectedChainLink) {
             return { ok: false, brokenAt: i };
           }
@@ -243,7 +217,7 @@ export function createShadowLog(
       }
 
       return { ok: true };
-    },
+    }
   };
 }
 

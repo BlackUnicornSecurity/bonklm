@@ -10,9 +10,9 @@
 import type { Logger } from '../base/GenericLogger.js';
 
 export enum CircuitBreakerState {
-  CLOSED = 'CLOSED',          // Normal operation
-  OPEN = 'OPEN',              // Blocking requests after threshold
-  HALF_OPEN = 'HALF_OPEN',    // Testing if recovery is possible
+  CLOSED = 'CLOSED', // Normal operation
+  OPEN = 'OPEN', // Blocking requests after threshold
+  HALF_OPEN = 'HALF_OPEN' // Testing if recovery is possible
 }
 
 export interface CircuitBreakerMetrics {
@@ -42,7 +42,7 @@ export class CircuitBreaker {
   private metrics: CircuitBreakerMetrics = {
     violationCount: 0,
     lastViolationTime: 0,
-    state: CircuitBreakerState.CLOSED,
+    state: CircuitBreakerState.CLOSED
   };
 
   constructor(private readonly options: CircuitBreakerOptions) {}
@@ -80,14 +80,14 @@ export class CircuitBreaker {
     this.options.logger.warn('Buffer overflow violation recorded', {
       violationCount: this.metrics.violationCount,
       threshold: this.options.threshold,
-      state: this.metrics.state,
+      state: this.metrics.state
     });
 
     if (this.metrics.state === CircuitBreakerState.HALF_OPEN) {
       this.metrics.state = CircuitBreakerState.OPEN;
       this.metrics.openUntil = now + this.options.timeoutMs;
       this.options.logger.error('Circuit breaker re-tripped from HALF_OPEN due to new violation', {
-        openUntil: new Date(this.metrics.openUntil).toISOString(),
+        openUntil: new Date(this.metrics.openUntil).toISOString()
       });
       return;
     }
@@ -97,7 +97,7 @@ export class CircuitBreaker {
       this.metrics.openUntil = now + this.options.timeoutMs;
       this.options.logger.error('Circuit breaker tripped due to buffer overflow violations', {
         violationCount: this.metrics.violationCount,
-        openUntil: new Date(this.metrics.openUntil).toISOString(),
+        openUntil: new Date(this.metrics.openUntil).toISOString()
       });
     }
   }

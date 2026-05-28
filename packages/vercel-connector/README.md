@@ -29,18 +29,15 @@ import { PromptInjectionValidator, JailbreakValidator } from '@blackunicorn/bonk
 // Create the guarded AI wrapper
 const openai = createOpenAI();
 const guardedAI = createGuardedAI({
-  validators: [
-    new PromptInjectionValidator(),
-    new JailbreakValidator(),
-  ],
+  validators: [new PromptInjectionValidator(), new JailbreakValidator()],
   validateStreaming: true,
-  streamingMode: 'incremental',
+  streamingMode: 'incremental'
 });
 
 // Use with generateText
 const result = await guardedAI.generateText({
   model: openai('gpt-4'),
-  messages: [{ role: 'user', content: userInput }],
+  messages: [{ role: 'user', content: userInput }]
 });
 
 console.log(result.text);
@@ -52,7 +49,7 @@ console.log(result.text);
 // Enable streaming validation
 const stream = await guardedAI.streamText({
   model: openai('gpt-4'),
-  messages: [{ role: 'user', content: userInput }],
+  messages: [{ role: 'user', content: userInput }]
 });
 
 // Stream is validated incrementally to prevent malicious content
@@ -71,10 +68,7 @@ Array of validators to apply to inputs and outputs.
 import { PromptInjectionValidator, JailbreakValidator } from '@blackunicorn/bonklm';
 
 const guardedAI = createGuardedAI({
-  validators: [
-    new PromptInjectionValidator(),
-    new JailbreakValidator(),
-  ],
+  validators: [new PromptInjectionValidator(), new JailbreakValidator()]
 });
 ```
 
@@ -86,9 +80,7 @@ Array of guards to apply (context-aware validators).
 import { SecretGuard } from '@blackunicorn/bonklm';
 
 const guardedAI = createGuardedAI({
-  guards: [
-    new SecretGuard(),
-  ],
+  guards: [new SecretGuard()]
 });
 ```
 
@@ -101,7 +93,7 @@ Enable validation for streaming responses.
 
 ```typescript
 const guardedAI = createGuardedAI({
-  validateStreaming: true,
+  validateStreaming: true
 });
 ```
 
@@ -112,14 +104,15 @@ Stream validation mode.
 - **Type**: `'incremental' | 'buffer'`
 - **Default**: `'incremental'`
 
-**`'incremental'`**: Validates every N chunks during streaming. Early terminates when violation detected.
+**`'incremental'`**: Validates every N chunks during streaming. Early terminates when violation
+detected.
 
 **`'buffer'`**: Accumulates entire stream before validating (faster, less secure).
 
 ```typescript
 const guardedAI = createGuardedAI({
   validateStreaming: true,
-  streamingMode: 'incremental', // Recommended for security
+  streamingMode: 'incremental' // Recommended for security
 });
 ```
 
@@ -133,7 +126,7 @@ Maximum buffer size for stream accumulation (prevents DoS).
 ```typescript
 const guardedAI = createGuardedAI({
   validateStreaming: true,
-  maxStreamBufferSize: 1024 * 1024, // 1MB
+  maxStreamBufferSize: 1024 * 1024 // 1MB
 });
 ```
 
@@ -148,13 +141,13 @@ When `true`, error messages are generic to avoid leaking security information.
 
 ```typescript
 const guardedAI = createGuardedAI({
-  productionMode: true,
+  productionMode: true
 });
 
 // Error: "Content blocked" (generic)
 
 const guardedAI = createGuardedAI({
-  productionMode: false,
+  productionMode: false
 });
 
 // Error: "Content blocked: Prompt injection detected" (detailed)
@@ -169,7 +162,7 @@ Validation timeout in milliseconds.
 
 ```typescript
 const guardedAI = createGuardedAI({
-  validationTimeout: 10000, // 10 seconds
+  validationTimeout: 10000 // 10 seconds
 });
 ```
 
@@ -179,15 +172,15 @@ Callback invoked when input or output is blocked.
 
 ```typescript
 const guardedAI = createGuardedAI({
-  onBlocked: (result) => {
+  onBlocked: result => {
     console.log('Blocked:', result.reason);
     // Log to monitoring service
     logSecurityEvent({
       type: 'guardrail_block',
       reason: result.reason,
-      severity: result.severity,
+      severity: result.severity
     });
-  },
+  }
 });
 ```
 
@@ -198,9 +191,9 @@ Callback invoked when stream is blocked during validation.
 ```typescript
 const guardedAI = createGuardedAI({
   validateStreaming: true,
-  onStreamBlocked: (accumulated) => {
+  onStreamBlocked: accumulated => {
     console.log('Stream blocked after:', accumulated.length, 'chars');
-  },
+  }
 });
 ```
 
@@ -214,15 +207,15 @@ const messages = [
     role: 'user',
     content: [
       { type: 'text', text: 'What do you see in this image?' },
-      { type: 'image', image: 'https://example.com/image.png' },
-    ],
-  },
+      { type: 'image', image: 'https://example.com/image.png' }
+    ]
+  }
 ];
 
 // Only text content is validated
 const result = await guardedAI.generateText({
   model: openai('gpt-4-vision-preview'),
-  messages,
+  messages
 });
 ```
 

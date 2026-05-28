@@ -11,24 +11,14 @@ export {
   type FrameworkDetectionOptions,
   detectFrameworks,
   isFrameworkDetected,
-  getFrameworkVersion,
+  getFrameworkVersion
 } from './framework.js';
 
 // Service Detection
-export {
-  type DetectedService,
-  detectServices,
-  isOllamaAvailable,
-  getVectorDbContainers,
-} from './services.js';
+export { type DetectedService, detectServices, isOllamaAvailable, getVectorDbContainers } from './services.js';
 
 // Timeout Wrapper
-export {
-  type DetectionPhase,
-  DETECTION_TIMEOUTS,
-  detectWithTimeout,
-  createTimeoutPromise,
-} from './timeout.js';
+export { type DetectionPhase, DETECTION_TIMEOUTS, detectWithTimeout, createTimeoutPromise } from './timeout.js';
 
 // Credential Detection
 export {
@@ -38,5 +28,5 @@ export {
   isCredentialPresent,
   getCredentialMasked,
   getPresentCredentials,
-  getSupportedCredentialNames,
+  getSupportedCredentialNames
 } from './credentials.js';

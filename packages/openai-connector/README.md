@@ -38,18 +38,18 @@ import { PromptInjectionValidator } from '@blackunicorn/bonklm';
 
 // Create the OpenAI client
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY
 });
 
 // Wrap with guardrails
 const guardedOpenAI = createGuardedOpenAI(openai, {
-  validators: [new PromptInjectionValidator()],
+  validators: [new PromptInjectionValidator()]
 });
 
 // Use like normal OpenAI client
 const response = await guardedOpenAI.chat.completions.create({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: userInput }],
+  messages: [{ role: 'user', content: userInput }]
 });
 
 console.log(response.choices[0].message.content);
@@ -60,10 +60,7 @@ console.log(response.choices[0].message.content);
 ```typescript
 const guardedOpenAI = createGuardedOpenAI(openai, {
   // Validators to apply
-  validators: [
-    new PromptInjectionValidator(),
-    new JailbreakValidator(),
-  ],
+  validators: [new PromptInjectionValidator(), new JailbreakValidator()],
 
   // Guards to apply (with context)
   guards: [],
@@ -82,8 +79,8 @@ const guardedOpenAI = createGuardedOpenAI(openai, {
   validationTimeout: 30000, // 30 seconds
 
   // Callbacks
-  onBlocked: (result) => console.log('Blocked:', result.reason),
-  onStreamBlocked: (accumulated) => console.log('Stream blocked'),
+  onBlocked: result => console.log('Blocked:', result.reason),
+  onStreamBlocked: accumulated => console.log('Stream blocked')
 });
 ```
 
@@ -93,7 +90,7 @@ const guardedOpenAI = createGuardedOpenAI(openai, {
 const stream = await guardedOpenAI.chat.completions.create({
   model: 'gpt-4',
   messages: [{ role: 'user', content: 'Tell me a story' }],
-  stream: true,
+  stream: true
 });
 
 for await (const chunk of stream) {
@@ -102,7 +99,8 @@ for await (const chunk of stream) {
 }
 ```
 
-With streaming validation enabled, the stream is validated incrementally and terminated early if violations are detected.
+With streaming validation enabled, the stream is validated incrementally and terminated early if
+violations are detected.
 
 ## Multimodal Content
 
@@ -118,11 +116,11 @@ const response = await guardedOpenAI.chat.completions.create({
         { type: 'text', text: 'What do you see?' },
         {
           type: 'image_url',
-          image_url: { url: 'https://example.com/image.jpg' },
-        },
-      ],
-    },
-  ],
+          image_url: { url: 'https://example.com/image.jpg' }
+        }
+      ]
+    }
+  ]
 });
 ```
 
@@ -143,9 +141,9 @@ const messages = [
     role: 'user',
     content: [
       { type: 'text', text: 'Look at this' },
-      { type: 'image_url', image_url: { url: '...' } },
-    ],
-  },
+      { type: 'image_url', image_url: { url: '...' } }
+    ]
+  }
 ];
 
 const text = messagesToText(messages);
@@ -158,7 +156,7 @@ const text = messagesToText(messages);
 try {
   const response = await guardedOpenAI.chat.completions.create({
     model: 'gpt-4',
-    messages: [{ role: 'user', content: userInput }],
+    messages: [{ role: 'user', content: userInput }]
   });
 } catch (error) {
   if (error.message === 'Content blocked') {
@@ -175,19 +173,23 @@ try {
 
 ### SEC-002: Incremental Stream Validation
 
-When `validateStreaming` is enabled, streaming responses are validated every N chunks. If a violation is detected, the stream terminates early, preventing malicious content from being sent.
+When `validateStreaming` is enabled, streaming responses are validated every N chunks. If a
+violation is detected, the stream terminates early, preventing malicious content from being sent.
 
 ### SEC-003: Max Buffer Size Enforcement
 
-Prevents DoS attacks via large streaming responses. The stream is terminated when accumulated content exceeds `maxStreamBufferSize`.
+Prevents DoS attacks via large streaming responses. The stream is terminated when accumulated
+content exceeds `maxStreamBufferSize`.
 
 ### SEC-006: Complex Message Content Handling
 
-Properly extracts and validates text from multimodal messages containing images, audio, files, or structured content.
+Properly extracts and validates text from multimodal messages containing images, audio, files, or
+structured content.
 
 ### SEC-007: Production Mode Error Messages
 
-In production mode, returns generic "Content blocked" messages to avoid leaking security information.
+In production mode, returns generic "Content blocked" messages to avoid leaking security
+information.
 
 ### SEC-008: Validation Timeout
 

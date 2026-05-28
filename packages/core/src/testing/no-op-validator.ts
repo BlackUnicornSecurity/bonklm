@@ -48,6 +48,6 @@ export function noOpValidator(name?: string): Validator {
       // Fresh object per call — callers may mutate / inspect freely without
       // affecting subsequent invocations.
       return createResult(true, Severity.INFO, []);
-    },
+    }
   };
 }

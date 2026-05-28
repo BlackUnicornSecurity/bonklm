@@ -24,16 +24,8 @@
  * @package @blackunicorn/bonklm-vercel
  */
 
-import {
-  createLogger,
-  GuardrailEngine,
-  type Logger,
-  validateWithTimeoutSecure,
-} from '@blackunicorn/bonklm';
-import {
-  ConnectorValidationError,
-  logValidationFailure,
-} from '@blackunicorn/bonklm/core/connector-utils';
+import { createLogger, GuardrailEngine, type Logger, validateWithTimeoutSecure } from '@blackunicorn/bonklm';
+import { ConnectorValidationError, logValidationFailure } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * Minimal duck-typed shape of the v5/v6 LanguageModelV2 middleware
@@ -155,13 +147,14 @@ export function bonkMiddleware(
     const r = await validateWithTimeoutSecure({
       operation: () => engine.validate(content, context),
       timeoutMs: timeout,
-      timeoutSentinel: () => ({
-        allowed: false,
-        blocked: true,
-        reason: 'Validation timeout',
-        findings: [],
-      } as { allowed: boolean; blocked: boolean; reason?: string }),
-      logger,
+      timeoutSentinel: () =>
+        ({
+          allowed: false,
+          blocked: true,
+          reason: 'Validation timeout',
+          findings: []
+        }) as { allowed: boolean; blocked: boolean; reason?: string },
+      logger
     });
     return r;
   };
@@ -269,6 +262,6 @@ export function bonkMiddleware(
       }
 
       return { ...result, stream: guardedStream() };
-    },
+    }
   };
 }

@@ -20,7 +20,7 @@ import {
   FAKE_DATA_INDICATORS,
   type PiiSeverity,
   SENSITIVE_CONTEXT_PATTERNS,
-  TEST_FILE_INDICATORS,
+  TEST_FILE_INDICATORS
 } from './patterns.js';
 import { redactPIIValue } from './validators.js';
 
@@ -64,7 +64,7 @@ export function isTestFile(filePath: string | undefined): boolean {
   if (!filePath) return false;
 
   const pathLower = filePath.toLowerCase();
-  return TEST_FILE_INDICATORS.some((indicator) => pathLower.includes(indicator));
+  return TEST_FILE_INDICATORS.some(indicator => pathLower.includes(indicator));
 }
 
 /**
@@ -80,7 +80,7 @@ export function isSensitiveContext(content: string, line: string): boolean {
 
   // Check surrounding context (5 lines before and after)
   const lines = content.split('\n');
-  const lineIndex = lines.findIndex((l) => l.includes(line.trim()));
+  const lineIndex = lines.findIndex(l => l.includes(line.trim()));
 
   if (lineIndex !== -1) {
     const start = Math.max(0, lineIndex - 5);
@@ -110,7 +110,7 @@ export function isFakeData(content: string, line: string): boolean {
 
   // Check surrounding context (3 lines before and after)
   const lines = content.split('\n');
-  const lineIndex = lines.findIndex((l) => l.includes(line.trim()));
+  const lineIndex = lines.findIndex(l => l.includes(line.trim()));
 
   if (lineIndex !== -1) {
     const start = Math.max(0, lineIndex - 3);
@@ -191,15 +191,14 @@ export function detectPii(content: string): PiiDetection[] {
       }
 
       // Redact the match value for safer in-memory storage
-      const redactedMatch = piiPattern.redactionMask ||
-        redactPIIValue(matchText, piiPattern.name);
+      const redactedMatch = piiPattern.redactionMask || redactPIIValue(matchText, piiPattern.name);
 
       detections.push({
         patternName: piiPattern.name,
         match: redactedMatch.slice(0, 20) + (redactedMatch.length > 20 ? '...' : ''),
         line: matchLine.trim().slice(0, 80),
         lineNumber,
-        severity: piiPattern.severity,
+        severity: piiPattern.severity
       });
     }
   }
@@ -219,7 +218,7 @@ export class PIIGuard {
       ...mergeConfig(config),
       filePath: config?.filePath,
       allowTestFiles: config?.allowTestFiles ?? true,
-      minSeverity: config?.minSeverity ?? 'warning',
+      minSeverity: config?.minSeverity ?? 'warning'
     } as Required<Omit<PIIGuardConfig, 'filePath'>> & { filePath?: string };
   }
 
@@ -235,12 +234,14 @@ export class PIIGuard {
 
     // Check if this is a test file
     if (this.config.allowTestFiles && isTestFile(effectiveFilePath)) {
-      return createResult(true, Sev.INFO, [{
-        category: 'pii_guard',
-        description: 'Test/mock data file bypassed',
-        severity: Sev.INFO,
-        weight: 0,
-      }]);
+      return createResult(true, Sev.INFO, [
+        {
+          category: 'pii_guard',
+          description: 'Test/mock data file bypassed',
+          severity: Sev.INFO,
+          weight: 0
+        }
+      ]);
     }
 
     // Detect PII
@@ -251,18 +252,20 @@ export class PIIGuard {
     }
 
     // Separate by severity
-    const criticalPii = detections.filter((d) => d.severity === 'critical');
-    const warningPii = detections.filter((d) => d.severity === 'warning');
-    const infoPii = detections.filter((d) => d.severity === 'info');
+    const criticalPii = detections.filter(d => d.severity === 'critical');
+    const warningPii = detections.filter(d => d.severity === 'warning');
+    const infoPii = detections.filter(d => d.severity === 'info');
 
     // If only info-level PII, allow with log
     if (criticalPii.length === 0 && warningPii.length === 0) {
-      return createResult(true, Sev.INFO, [{
-        category: 'pii_guard',
-        description: `Only info-level PII detected: ${infoPii.length} finding(s)`,
-        severity: Sev.INFO,
-        weight: 1,
-      }]);
+      return createResult(true, Sev.INFO, [
+        {
+          category: 'pii_guard',
+          description: `Only info-level PII detected: ${infoPii.length} finding(s)`,
+          severity: Sev.INFO,
+          weight: 1
+        }
+      ]);
     }
 
     // Build findings
@@ -270,26 +273,22 @@ export class PIIGuard {
     const minSeverityOrder = severityOrder[this.config.minSeverity] ?? 2;
 
     const findings = detections
-      .filter((d) => severityOrder[d.severity] >= minSeverityOrder)
+      .filter(d => severityOrder[d.severity] >= minSeverityOrder)
       .slice(0, 10)
-      .map((d) => ({
+      .map(d => ({
         category: 'pii_detected',
         pattern_name: d.patternName,
         severity: d.severity === 'critical' ? Sev.CRITICAL : d.severity === 'warning' ? Sev.WARNING : Sev.INFO,
         match: d.match,
         description: `${d.patternName} at line ${d.lineNumber}: "${d.match}"`,
         line_number: d.lineNumber,
-        weight: d.severity === 'critical' ? 20 : d.severity === 'warning' ? 10 : 1,
+        weight: d.severity === 'critical' ? 20 : d.severity === 'warning' ? 10 : 1
       }));
 
     const hasCritical = criticalPii.length > 0;
     const shouldBlock = this.config.action === 'block' && findings.length > 0;
 
-    return createResult(
-      !shouldBlock,
-      hasCritical ? Sev.CRITICAL : Sev.WARNING,
-      findings
-    );
+    return createResult(!shouldBlock, hasCritical ? Sev.CRITICAL : Sev.WARNING, findings);
   }
 
   /**
@@ -364,10 +363,7 @@ export class PIIGuard {
  * @param filePath - Optional file path for test file detection
  * @returns Validation result
  */
-export function checkPII(
-  content: string,
-  filePath?: string
-): import('../../base/GuardrailResult.js').GuardrailResult {
+export function checkPII(content: string, filePath?: string): import('../../base/GuardrailResult.js').GuardrailResult {
   const guard = new PIIGuard();
   return guard.validate(content, filePath);
 }

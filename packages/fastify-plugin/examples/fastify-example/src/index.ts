@@ -9,17 +9,12 @@
 
 import Fastify from 'fastify';
 import guardrailsPlugin from '@blackunicorn/bonklm-fastify';
-import {
-  PromptInjectionValidator,
-  JailbreakValidator,
-  SecretGuard,
-  PIIGuard,
-} from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, JailbreakValidator, SecretGuard, PIIGuard } from '@blackunicorn/bonklm';
 
 const fastify = Fastify({
   logger: {
-    level: process.env.LOG_LEVEL || 'info',
-  },
+    level: process.env.LOG_LEVEL || 'info'
+  }
 });
 
 /**
@@ -35,13 +30,13 @@ await fastify.register(guardrailsPlugin, {
   // Validators check for known attack patterns
   validators: [
     new PromptInjectionValidator(), // Detects prompt injection attempts
-    new JailbreakValidator(), // Detects jailbreak patterns
+    new JailbreakValidator() // Detects jailbreak patterns
   ],
 
   // Guards check for sensitive data leaks
   guards: [
     new SecretGuard(), // Detects secrets, API keys, passwords
-    new PIIGuard(), // Detects PII (email, phone, SSN, etc.)
+    new PIIGuard() // Detects PII (email, phone, SSN, etc.)
   ],
 
   // Only validate requests on these paths
@@ -72,7 +67,7 @@ await fastify.register(guardrailsPlugin, {
       reason: result.reason,
       risk_level: result.risk_level,
       path: req.url,
-      ip: req.ip,
+      ip: req.ip
     });
 
     await reply.status(400).send({
@@ -80,13 +75,13 @@ await fastify.register(guardrailsPlugin, {
       // Include reason in development mode only
       ...(process.env.NODE_ENV !== 'production' && {
         reason: result.reason,
-        risk_level: result.risk_level,
-      }),
+        risk_level: result.risk_level
+      })
     });
   },
 
   // Optional: Custom body extractor
-  bodyExtractor: (req) => {
+  bodyExtractor: req => {
     // Extract content from various request body formats
     if (req.body?.message) return String(req.body.message);
     if (req.body?.prompt) return String(req.body.prompt);
@@ -98,7 +93,7 @@ await fastify.register(guardrailsPlugin, {
     } catch {
       return '[Unparsable body]';
     }
-  },
+  }
 });
 
 /**
@@ -151,7 +146,7 @@ fastify.post('/api/completion', async (request, reply) => {
  */
 async function simulateAIResponse(message: string): Promise<string> {
   // Simulate processing delay
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await new Promise(resolve => setTimeout(resolve, 100));
 
   return `AI response to: ${message}`;
 }
@@ -162,7 +157,7 @@ async function simulateAIResponse(message: string): Promise<string> {
  */
 async function simulateAICompletion(prompt: string): Promise<string> {
   // Simulate processing delay
-  await new Promise((resolve) => setTimeout(resolve, 100));
+  await new Promise(resolve => setTimeout(resolve, 100));
 
   return `Completion for: ${prompt}`;
 }
@@ -176,8 +171,8 @@ fastify.setErrorHandler((error, request, reply) => {
   reply.status(500).send({
     error: 'Internal server error',
     ...(process.env.NODE_ENV !== 'production' && {
-      message: error.message,
-    }),
+      message: error.message
+    })
   });
 });
 

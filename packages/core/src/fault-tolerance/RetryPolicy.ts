@@ -42,7 +42,7 @@ const DEFAULT_CONFIG: Required<Omit<RetryConfig, 'logger' | 'retryableErrorCodes
   backoffMultiplier: 2,
   maxDelay: 30000, // 30 seconds
   jitter: 0.1, // 10% jitter
-  enabled: true,
+  enabled: true
 };
 
 /**
@@ -59,16 +59,13 @@ const DEFAULT_RETRYABLE_CODES = [
   '429', // Too Many Requests
   '502', // Bad Gateway
   '503', // Service Unavailable
-  '504', // Gateway Timeout
+  '504' // Gateway Timeout
 ];
 
 /**
  * Default retryable error types
  */
-const DEFAULT_RETRYABLE_TYPES = [
-  'NetworkError',
-  'TimeoutError',
-];
+const DEFAULT_RETRYABLE_TYPES = ['NetworkError', 'TimeoutError'];
 
 /**
  * Retry result
@@ -104,14 +101,8 @@ export class RetryPolicy {
 
   constructor(config: RetryConfig = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config, logger: config.logger || console };
-    this.retryableErrorCodes = new Set([
-      ...DEFAULT_RETRYABLE_CODES,
-      ...(config.retryableErrorCodes || []),
-    ]);
-    this.retryableErrorTypes = new Set([
-      ...DEFAULT_RETRYABLE_TYPES,
-      ...(config.retryableErrorTypes || []),
-    ]);
+    this.retryableErrorCodes = new Set([...DEFAULT_RETRYABLE_CODES, ...(config.retryableErrorCodes || [])]);
+    this.retryableErrorTypes = new Set([...DEFAULT_RETRYABLE_TYPES, ...(config.retryableErrorTypes || [])]);
     this.logger = this.config.logger;
   }
 
@@ -128,7 +119,7 @@ export class RetryPolicy {
           success: false,
           error: error as Error,
           attempts: 1,
-          totalDelay: 0,
+          totalDelay: 0
         };
       }
     }
@@ -144,20 +135,18 @@ export class RetryPolicy {
         const value = await fn({
           attemptNumber: attempt,
           delay,
-          remainingAttempts,
+          remainingAttempts
         });
 
         if (attempt > 1) {
-          this.logger.info(
-            `[Retry] Success after ${attempt} attempts (total delay: ${totalDelay}ms)`
-          );
+          this.logger.info(`[Retry] Success after ${attempt} attempts (total delay: ${totalDelay}ms)`);
         }
 
         return {
           success: true,
           value,
           attempts: attempt,
-          totalDelay,
+          totalDelay
         };
       } catch (error) {
         lastError = error as Error;
@@ -172,9 +161,7 @@ export class RetryPolicy {
           // non-enumerable Error fields + sanitizes via
           // sanitizeLogString internally — no double-wrap needed per
           // Sprint 46 lesson).
-          this.logger.warn(
-            `[Retry] Non-retryable error or max attempts reached: ${serializeError(lastError).message}`
-          );
+          this.logger.warn(`[Retry] Non-retryable error or max attempts reached: ${serializeError(lastError).message}`);
           break;
         }
 
@@ -199,7 +186,7 @@ export class RetryPolicy {
       success: false,
       error: lastError!,
       attempts: this.config.maxAttempts,
-      totalDelay,
+      totalDelay
     };
   }
 
@@ -253,7 +240,7 @@ export class RetryPolicy {
    * Sleep for specified milliseconds
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms));
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
 }
 

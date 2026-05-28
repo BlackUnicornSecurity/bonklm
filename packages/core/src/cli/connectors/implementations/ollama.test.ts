@@ -27,21 +27,21 @@ describe('Ollama Connector', () => {
   describe('Config Schema', () => {
     it('should accept valid URL', () => {
       const result = ollamaConnector.configSchema.safeParse({
-        baseUrl: 'http://localhost:11434',
+        baseUrl: 'http://localhost:11434'
       });
       expect(result.success).toBe(true);
     });
 
     it('should accept https URL', () => {
       const result = ollamaConnector.configSchema.safeParse({
-        baseUrl: 'https://ollama.example.com',
+        baseUrl: 'https://ollama.example.com'
       });
       expect(result.success).toBe(true);
     });
 
     it('should reject invalid URL', () => {
       const result = ollamaConnector.configSchema.safeParse({
-        baseUrl: 'not-a-url',
+        baseUrl: 'not-a-url'
       });
       expect(result.success).toBe(false);
     });
@@ -53,7 +53,7 @@ describe('Ollama Connector', () => {
 
     it('should accept optional baseUrl', () => {
       const result = ollamaConnector.configSchema.safeParse({
-        baseUrl: undefined,
+        baseUrl: undefined
       });
       expect(result.success).toBe(true);
     });
@@ -64,7 +64,7 @@ describe('Ollama Connector', () => {
       // Use localhost with a port that's unlikely to be in use
       // This avoids DNS lookup timeout that occurs with invalid hostnames
       const result = await ollamaConnector.test({
-        baseUrl: 'http://localhost:48080', // Non-standard port, unlikely to be in use
+        baseUrl: 'http://localhost:48080' // Non-standard port, unlikely to be in use
       });
       expect(result).toBeDefined();
       expect(typeof result.connection).toBe('boolean');
@@ -81,7 +81,7 @@ describe('Ollama Connector', () => {
   describe('Code Snippet Generation', () => {
     it('should generate valid code snippet', () => {
       const snippet = ollamaConnector.generateSnippet({
-        baseUrl: 'http://localhost:11434',
+        baseUrl: 'http://localhost:11434'
       });
       expect(snippet).toContain('ollamaConnector');
       expect(snippet).toContain('localhost:11434');
@@ -94,7 +94,7 @@ describe('Ollama Connector', () => {
 
     it('should use custom baseUrl when provided', () => {
       const snippet = ollamaConnector.generateSnippet({
-        baseUrl: 'http://ollama.example.com:8080',
+        baseUrl: 'http://ollama.example.com:8080'
       });
       expect(snippet).toContain('http://ollama.example.com:8080');
     });

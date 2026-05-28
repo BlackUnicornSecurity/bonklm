@@ -1,6 +1,7 @@
 # @blackunicorn/bonklm-ollama
 
-[Ollama](https://ollama.com/) SDK connector for BonkLM. Provides security guardrails for local LLM inference with Ollama.
+[Ollama](https://ollama.com/) SDK connector for BonkLM. Provides security guardrails for local LLM
+inference with Ollama.
 
 ## Features
 
@@ -29,7 +30,7 @@ const ollama = new Ollama({ host: 'http://localhost:11434' });
 
 // Wrap with guardrails
 const guardedOllama = createGuardedOllama(ollama, {
-  validators: [new PromptInjectionValidator()],
+  validators: [new PromptInjectionValidator()]
 });
 
 // Use chat API
@@ -60,18 +61,18 @@ Creates a guarded wrapper around the Ollama client.
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `validators` | `Validator[]` | `[]` | Validators to apply to inputs and outputs |
-| `guards` | `Guard[]` | `[]` | Guards to apply to inputs and outputs |
-| `logger` | `Logger` | `createLogger('console')` | Logger instance for validation events |
-| `validateStreaming` | `boolean` | `false` | Enable incremental stream validation |
-| `streamingMode` | `'incremental' \| 'buffer'` | `'incremental'` | Stream validation mode |
-| `maxStreamBufferSize` | `number` | `1048576` | Maximum buffer size in bytes (1MB) |
-| `productionMode` | `boolean` | `process.env.NODE_ENV === 'production'` | Generic errors in production |
-| `validationTimeout` | `number` | `30000` | Validation timeout in milliseconds (30s) |
-| `onBlocked` | `(result) => void` | `undefined` | Callback when input/output is blocked |
-| `onStreamBlocked` | `(accumulated) => void` | `undefined` | Callback when stream is blocked |
+| Option                | Type                        | Default                                 | Description                               |
+| --------------------- | --------------------------- | --------------------------------------- | ----------------------------------------- |
+| `validators`          | `Validator[]`               | `[]`                                    | Validators to apply to inputs and outputs |
+| `guards`              | `Guard[]`                   | `[]`                                    | Guards to apply to inputs and outputs     |
+| `logger`              | `Logger`                    | `createLogger('console')`               | Logger instance for validation events     |
+| `validateStreaming`   | `boolean`                   | `false`                                 | Enable incremental stream validation      |
+| `streamingMode`       | `'incremental' \| 'buffer'` | `'incremental'`                         | Stream validation mode                    |
+| `maxStreamBufferSize` | `number`                    | `1048576`                               | Maximum buffer size in bytes (1MB)        |
+| `productionMode`      | `boolean`                   | `process.env.NODE_ENV === 'production'` | Generic errors in production              |
+| `validationTimeout`   | `number`                    | `30000`                                 | Validation timeout in milliseconds (30s)  |
+| `onBlocked`           | `(result) => void`          | `undefined`                             | Callback when input/output is blocked     |
+| `onStreamBlocked`     | `(accumulated) => void`     | `undefined`                             | Callback when stream is blocked           |
 
 ### Chat API
 
@@ -104,7 +105,7 @@ Enable streaming validation for real-time protection:
 const guardedOllama = createGuardedOllama(ollama, {
   validators: [new PromptInjectionValidator()],
   validateStreaming: true,
-  streamingMode: 'incremental',
+  streamingMode: 'incremental'
 });
 
 // Stream chat responses

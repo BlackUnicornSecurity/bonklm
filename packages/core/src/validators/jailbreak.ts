@@ -16,27 +16,16 @@ import { createLogger, type Logger } from '../base/GenericLogger.js';
 import { createResult, Finding, type GuardrailResult, Severity } from '../base/GuardrailResult.js';
 import { type JailbreakConfig, mergeConfig, type ValidatorConfig } from '../base/ValidatorConfig.js';
 import { normalizeText } from './text-normalizer.js';
-import {
-  type SessionPatternFinding,
-  updateSessionState,
-} from '../session/SessionTracker.js';
+import { type SessionPatternFinding, updateSessionState } from '../session/SessionTracker.js';
 import { getRegexCache, type RegexCache } from './pattern-engine.js';
-import {
-  ALL_PATTERNS,
-  JAILBREAK_KEYWORDS,
-  JAILBREAK_PHRASES,
-} from './jailbreak-patterns.js';
+import { ALL_PATTERNS, JAILBREAK_KEYWORDS, JAILBREAK_PHRASES } from './jailbreak-patterns.js';
 
-import {
-  detectHeuristicPatterns,
-  type HeuristicFinding,
-} from './jailbreak-heuristic.js';
+import { detectHeuristicPatterns, type HeuristicFinding } from './jailbreak-heuristic.js';
 
 // Re-export HeuristicFinding and detectHeuristicPatterns for back-compat — callers
 // previously imported them from './validators/jailbreak.js'.
 export { detectHeuristicPatterns } from './jailbreak-heuristic.js';
 export type { HeuristicFinding } from './jailbreak-heuristic.js';
-
 
 // =============================================================================
 // CONSTANTS
@@ -64,7 +53,6 @@ export interface JailbreakFinding {
   escalated?: boolean;
 }
 
-
 /**
  * Fuzzy finding result.
  */
@@ -77,7 +65,6 @@ export interface FuzzyFinding {
   weight: number;
   description: string;
 }
-
 
 /**
  * Multi-turn finding result.
@@ -105,7 +92,6 @@ export interface JailbreakAnalysisResult {
   risk_level: 'LOW' | 'MEDIUM' | 'HIGH';
   is_escalating: boolean;
 }
-
 
 /**
  * Calculate similarity ratio between two strings (SequenceMatcher equivalent).
@@ -171,7 +157,7 @@ export function fuzzyMatchKeywords(text: string, threshold = 0.75, cache?: Regex
           similarity,
           severity: Severity.WARNING,
           weight: 3,
-          description: `Fuzzy match: "${word}" similar to "${keyword}" (${Math.round(similarity * 100)}%)`,
+          description: `Fuzzy match: "${word}" similar to "${keyword}" (${Math.round(similarity * 100)}%)`
         });
       }
     }
@@ -193,14 +179,13 @@ export function fuzzyMatchKeywords(text: string, threshold = 0.75, cache?: Regex
         similarity: 1.0,
         severity: Severity.WARNING,
         weight: 4,
-        description: `Phrase match: "${phrase}"`,
+        description: `Phrase match: "${phrase}"`
       });
     }
   }
 
   return findings;
 }
-
 
 // =============================================================================
 // MULTI-TURN PATTERN DETECTION
@@ -216,18 +201,19 @@ export function detectMultiTurnPatterns(text: string): MultiTurnFinding[] {
     {
       name: 'setup_preamble',
       pattern: /(?:first|before\s+we\s+start|let\s+me\s+explain|here's\s+how\s+this\s+works)/i,
-      description: 'Setup preamble detected',
+      description: 'Setup preamble detected'
     },
     {
       name: 'persistent_state_change',
-      pattern: /(?:from\s+now\s+on|going\s+forward|for\s+the\s+rest\s+of)\s+(?:this|our)\s+(?:conversation|chat|session)/i,
-      description: 'Persistent state change attempt',
+      pattern:
+        /(?:from\s+now\s+on|going\s+forward|for\s+the\s+rest\s+of)\s+(?:this|our)\s+(?:conversation|chat|session)/i,
+      description: 'Persistent state change attempt'
     },
     {
       name: 'persistence_instruction',
       pattern: /(?:remember|don't\s+forget|keep\s+in\s+mind).*\b(?:throughout|always|every\s+response)/i,
-      description: 'Persistence instruction detected',
-    },
+      description: 'Persistence instruction detected'
+    }
   ];
 
   for (const { name, pattern, description } of setupPatterns) {
@@ -237,7 +223,7 @@ export function detectMultiTurnPatterns(text: string): MultiTurnFinding[] {
         pattern_name: name,
         severity: Severity.INFO,
         weight: 2,
-        description,
+        description
       });
     }
   }
@@ -264,7 +250,7 @@ export function detectJailbreakPatterns(content: string): JailbreakFinding[] {
         severity: patternDef.severity,
         weight: patternDef.weight,
         match: match[0].slice(0, 100),
-        description: patternDef.description,
+        description: patternDef.description
       });
     }
   }
@@ -339,12 +325,15 @@ const getPatternCategory = getPatternNameCategory;
  * Default configuration for JailbreakValidator.
  */
 const DEFAULT_JAILBREAK_CONFIG: Required<
-  Pick<JailbreakConfig, 'enableSessionTracking' | 'sessionEscalationThreshold' | 'enableFuzzyMatching' | 'enableHeuristics'>
+  Pick<
+    JailbreakConfig,
+    'enableSessionTracking' | 'sessionEscalationThreshold' | 'enableFuzzyMatching' | 'enableHeuristics'
+  >
 > = {
   enableSessionTracking: true,
   sessionEscalationThreshold: 12, // Reduced from 15 to catch fragmentation attacks
   enableFuzzyMatching: true,
-  enableHeuristics: true,
+  enableHeuristics: true
 };
 
 // =============================================================================
@@ -372,7 +361,8 @@ export class JailbreakValidator {
   constructor(config: JailbreakConfig = {}) {
     // First merge with base defaults, then with jailbreak-specific defaults
     const baseMerged = mergeConfig(config);
-    this.config = { ...baseMerged, ...DEFAULT_JAILBREAK_CONFIG, ...config } as Required<JailbreakConfig> & ValidatorConfig;
+    this.config = { ...baseMerged, ...DEFAULT_JAILBREAK_CONFIG, ...config } as Required<JailbreakConfig> &
+      ValidatorConfig;
     this.logger = this.config.logger ?? createLogger('console', this.config.logLevel);
   }
 
@@ -387,14 +377,16 @@ export class JailbreakValidator {
     // Prevent DoS attacks with extremely large inputs
     if (content.length > MAX_INPUT_LENGTH) {
       return {
-        findings: [{
-          category: 'input_too_large',
-          pattern_name: 'size_limit_exceeded',
-          severity: Severity.WARNING,
-          weight: 5,
-          match: `Input length ${content.length} exceeds maximum ${MAX_INPUT_LENGTH}`,
-          description: 'Input too large to process safely',
-        }],
+        findings: [
+          {
+            category: 'input_too_large',
+            pattern_name: 'size_limit_exceeded',
+            severity: Severity.WARNING,
+            weight: 5,
+            match: `Input length ${content.length} exceeds maximum ${MAX_INPUT_LENGTH}`,
+            description: 'Input too large to process safely'
+          }
+        ],
         fuzzy_findings: [],
         heuristic_findings: [],
         multi_turn_findings: [],
@@ -403,7 +395,7 @@ export class JailbreakValidator {
         should_block: false,
         risk_score: 5,
         risk_level: 'LOW',
-        is_escalating: false,
+        is_escalating: false
       };
     }
 
@@ -447,7 +439,7 @@ export class JailbreakValidator {
       should_block: shouldBlock,
       risk_score: riskScore,
       risk_level: riskLevel,
-      is_escalating: isEscalating,
+      is_escalating: isEscalating
     };
   }
 
@@ -465,7 +457,7 @@ export class JailbreakValidator {
       should_block: false,
       risk_score: 0,
       risk_level: 'LOW',
-      is_escalating: false,
+      is_escalating: false
     };
   }
 
@@ -492,7 +484,7 @@ export class JailbreakValidator {
         pattern_name: 'heavy_obfuscation',
         severity: Severity.WARNING,
         weight: 5,
-        description: 'Heavy text obfuscation detected',
+        description: 'Heavy text obfuscation detected'
       });
     }
 
@@ -503,7 +495,7 @@ export class JailbreakValidator {
    * Merge unique findings into target array.
    */
   private mergeUniqueFindings(target: JailbreakFinding[], source: JailbreakFinding[]): void {
-    const existingNames = new Set(target.map((f) => f.pattern_name));
+    const existingNames = new Set(target.map(f => f.pattern_name));
     for (const finding of source) {
       if (!existingNames.has(finding.pattern_name)) {
         target.push(finding);
@@ -536,13 +528,7 @@ export class JailbreakValidator {
     sessionId?: string
   ): { riskScore: number; riskLevel: 'LOW' | 'MEDIUM' | 'HIGH'; isEscalating: boolean } {
     if (this.config.enableSessionTracking && sessionId && findings.length > 0) {
-      return this.calculateSessionRisk(
-        findings,
-        fuzzyFindings,
-        heuristicFindings,
-        multiTurnFindings,
-        sessionId
-      );
+      return this.calculateSessionRisk(findings, fuzzyFindings, heuristicFindings, multiTurnFindings, sessionId);
     }
 
     return this.calculateLocalRisk(findings, fuzzyFindings, heuristicFindings);
@@ -558,12 +544,7 @@ export class JailbreakValidator {
     multiTurnFindings: MultiTurnFinding[],
     sessionId: string
   ): { riskScore: number; riskLevel: 'LOW' | 'MEDIUM' | 'HIGH'; isEscalating: boolean } {
-    const sessionFindings = this.buildSessionFindings(
-      findings,
-      fuzzyFindings,
-      heuristicFindings,
-      multiTurnFindings
-    );
+    const sessionFindings = this.buildSessionFindings(findings, fuzzyFindings, heuristicFindings, multiTurnFindings);
 
     const sessionResult = updateSessionState(sessionId, sessionFindings);
     const riskScore = sessionResult.riskScore;
@@ -589,7 +570,7 @@ export class JailbreakValidator {
         category: f.category,
         weight: f.weight,
         pattern_name: f.pattern_name,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       });
     }
 
@@ -598,7 +579,7 @@ export class JailbreakValidator {
         category: f.category,
         weight: f.weight,
         pattern_name: `fuzzy_${f.target_keyword}`,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       });
     }
 
@@ -607,7 +588,7 @@ export class JailbreakValidator {
         category: f.category,
         weight: f.weight,
         pattern_name: f.heuristic_name,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       });
     }
 
@@ -616,7 +597,7 @@ export class JailbreakValidator {
         category: f.category,
         weight: f.weight,
         pattern_name: f.pattern_name,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       });
     }
 
@@ -639,7 +620,7 @@ export class JailbreakValidator {
     return {
       riskScore,
       riskLevel: this.determineRiskLevel(riskScore, false),
-      isEscalating: false,
+      isEscalating: false
     };
   }
 
@@ -680,12 +661,7 @@ export class JailbreakValidator {
     riskScore: number,
     isEscalating: boolean
   ): { highestSeverity: Severity; shouldBlock: boolean } {
-    const highestSeverity = this.getHighestSeverity(
-      findings,
-      fuzzyFindings,
-      heuristicFindings,
-      multiTurnFindings
-    );
+    const highestSeverity = this.getHighestSeverity(findings, fuzzyFindings, heuristicFindings, multiTurnFindings);
 
     const shouldBlock =
       highestSeverity === Severity.WARNING ||
@@ -708,16 +684,16 @@ export class JailbreakValidator {
       [Severity.INFO]: 0,
       [Severity.WARNING]: 1,
       [Severity.BLOCKED]: 2,
-      [Severity.CRITICAL]: 3,
+      [Severity.CRITICAL]: 3
     };
 
     let highestSeverity: Severity = Severity.INFO;
 
     for (const severity of [
-      ...findings.map((f) => f.severity),
-      ...fuzzyFindings.map((f) => f.severity),
-      ...heuristicFindings.map((f) => f.severity),
-      ...multiTurnFindings.map((f) => f.severity),
+      ...findings.map(f => f.severity),
+      ...fuzzyFindings.map(f => f.severity),
+      ...heuristicFindings.map(f => f.severity),
+      ...multiTurnFindings.map(f => f.severity)
     ]) {
       if (severityOrder[severity] > severityOrder[highestSeverity]) {
         highestSeverity = severity;
@@ -734,33 +710,33 @@ export class JailbreakValidator {
     const result = this.analyze(content, sessionId);
 
     const allFindings: Finding[] = [
-      ...result.findings.map((f) => ({
+      ...result.findings.map(f => ({
         category: f.category,
         pattern_name: f.pattern_name,
         severity: f.severity,
         match: f.match,
         description: f.description,
-        weight: f.weight,
+        weight: f.weight
       })),
-      ...result.fuzzy_findings.map((f) => ({
+      ...result.fuzzy_findings.map(f => ({
         category: f.category,
         severity: f.severity,
         description: f.description,
-        weight: f.weight,
+        weight: f.weight
       })),
-      ...result.heuristic_findings.map((f) => ({
+      ...result.heuristic_findings.map(f => ({
         category: f.category,
         severity: f.severity,
         description: f.description,
-        weight: f.weight,
+        weight: f.weight
       })),
-      ...result.multi_turn_findings.map((f) => ({
+      ...result.multi_turn_findings.map(f => ({
         category: f.category,
         pattern_name: f.pattern_name,
         severity: f.severity,
         description: f.description,
-        weight: f.weight,
-      })),
+        weight: f.weight
+      }))
     ];
 
     const allowed = !result.should_block;
@@ -772,7 +748,7 @@ export class JailbreakValidator {
         risk_score: result.risk_score,
         risk_level: result.risk_level,
         is_escalating: result.is_escalating,
-        blocked: !allowed,
+        blocked: !allowed
       });
     }
 
@@ -791,7 +767,11 @@ export function validateJailbreak(content: string, config?: JailbreakConfig): Gu
 /**
  * Convenience function to analyze content.
  */
-export function analyzeJailbreak(content: string, config?: JailbreakConfig, sessionId?: string): JailbreakAnalysisResult {
+export function analyzeJailbreak(
+  content: string,
+  config?: JailbreakConfig,
+  sessionId?: string
+): JailbreakAnalysisResult {
   const validator = new JailbreakValidator(config);
   return validator.analyze(content, sessionId);
 }

@@ -12,17 +12,21 @@ function makeMockTracer(): {
 } {
   const attrs: Record<string, string | number | boolean> = {};
   const tracer: BonklmTracer = {
-    startActiveSpan: <T>(_name: string, _opts: { attributes?: Record<string, string | number | boolean> }, fn: (span: BonklmSpan) => T): T => {
+    startActiveSpan: <T>(
+      _name: string,
+      _opts: { attributes?: Record<string, string | number | boolean> },
+      fn: (span: BonklmSpan) => T
+    ): T => {
       const span: BonklmSpan = {
         setAttribute: (k, v) => {
           attrs[k] = v;
         },
         addEvent: vi.fn(),
         setStatus: vi.fn(),
-        end: vi.fn(),
+        end: vi.fn()
       };
       return fn(span);
-    },
+    }
   };
   return { tracer, attrs };
 }
@@ -36,7 +40,7 @@ function makeResult(overrides: Partial<GuardrailResult> = {}): GuardrailResult {
     risk_score: 0,
     findings: [],
     timestamp: Date.now(),
-    ...overrides,
+    ...overrides
   };
 }
 
@@ -47,7 +51,7 @@ describe('emitVoltOpsSpan', () => {
       emitVoltOpsSpan(makeResult(), {
         tracer,
         scanner: '',
-        surface: 'text_input',
+        surface: 'text_input'
       })
     ).toThrow(TypeError);
   });
@@ -57,7 +61,7 @@ describe('emitVoltOpsSpan', () => {
     emitVoltOpsSpan(makeResult(), {
       tracer,
       scanner: 'pii-redactor',
-      surface: 'text_output',
+      surface: 'text_output'
     });
     expect(attrs['bonklm.scanner']).toBe('pii-redactor');
     // R2-10 set still present.
@@ -72,9 +76,7 @@ describe('emitVoltOpsSpan', () => {
       makeResult({
         blocked: true,
         severity: Severity.CRITICAL,
-        findings: [
-          { category: 'pii', severity: Severity.CRITICAL, description: 'SSN detected' },
-        ],
+        findings: [{ category: 'pii', severity: Severity.CRITICAL, description: 'SSN detected' }]
       }),
       { tracer, scanner: 'pii-redactor', surface: 'text_output' }
     );
@@ -86,9 +88,7 @@ describe('emitVoltOpsSpan', () => {
   it('returns the result unchanged', () => {
     const { tracer } = makeMockTracer();
     const r = makeResult();
-    expect(
-      emitVoltOpsSpan(r, { tracer, scanner: 'x', surface: 'text_input' })
-    ).toBe(r);
+    expect(emitVoltOpsSpan(r, { tracer, scanner: 'x', surface: 'text_input' })).toBe(r);
   });
 
   it('merges extraAttributes', () => {
@@ -97,7 +97,7 @@ describe('emitVoltOpsSpan', () => {
       tracer,
       scanner: 'x',
       surface: 'text_input',
-      extraAttributes: { 'service.version': '1.2.3' },
+      extraAttributes: { 'service.version': '1.2.3' }
     });
     expect(attrs['service.version']).toBe('1.2.3');
   });

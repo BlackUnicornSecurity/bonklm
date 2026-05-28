@@ -33,10 +33,7 @@ export type HonoNext = () => Promise<void>;
 /**
  * Duck-typed Hono MiddlewareHandler signature.
  */
-export type HonoMiddlewareHandler = (
-  c: HonoContextLike,
-  next: HonoNext
-) => Promise<Response | void>;
+export type HonoMiddlewareHandler = (c: HonoContextLike, next: HonoNext) => Promise<Response | void>;
 
 /**
  * Configuration for {@link honoGuardrails}.

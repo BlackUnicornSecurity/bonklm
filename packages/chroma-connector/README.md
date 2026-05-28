@@ -16,9 +16,13 @@
 
 ## Overview
 
-The `@blackunicorn/bonklm-chroma` package provides security guardrails for [ChromaDB](https://www.trychroma.com/) vector database operations. It validates queries, sanitizes filters, and detects poisoned documents to protect your RAG (Retrieval-Augmented Generation) applications from adversarial attacks.
+The `@blackunicorn/bonklm-chroma` package provides security guardrails for
+[ChromaDB](https://www.trychroma.com/) vector database operations. It validates queries, sanitizes
+filters, and detects poisoned documents to protect your RAG (Retrieval-Augmented Generation)
+applications from adversarial attacks.
 
 This package contains:
+
 - **Query Injection Validation** - Validates query text before retrieval
 - **Filter Sanitization** - Prevents NoSQL injection in metadata filters
 - **Document Poisoning Detection** - Validates retrieved documents for malicious content
@@ -81,19 +85,19 @@ console.log('Documents blocked:', results.documentsBlocked);
 
 ### GuardedChromaOptions
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `validators` | `Validator[]` | `[]` | Validators for query text |
-| `guards` | `Guard[]` | `[]` | Guards for content filtering |
-| `logger` | `Logger` | `console` | Logger instance |
-| `validateRetrievedDocs` | `boolean` | `true` | Validate retrieved documents |
-| `sanitizeFilters` | `boolean` | `true` | Sanitize filter expressions |
-| `onBlockedDocument` | `'filter' \| 'abort'` | `'filter'` | Action when document is blocked |
-| `productionMode` | `boolean` | `NODE_ENV === 'production'` | Generic errors in production |
-| `validationTimeout` | `number` | `30000` | Validation timeout in ms |
-| `maxNResults` | `number` | `100` | Maximum nResults value |
-| `onQueryBlocked` | `(result) => void` | - | Callback when query is blocked |
-| `onDocumentBlocked` | `(doc, result) => void` | - | Callback when document is blocked |
+| Option                  | Type                    | Default                     | Description                       |
+| ----------------------- | ----------------------- | --------------------------- | --------------------------------- |
+| `validators`            | `Validator[]`           | `[]`                        | Validators for query text         |
+| `guards`                | `Guard[]`               | `[]`                        | Guards for content filtering      |
+| `logger`                | `Logger`                | `console`                   | Logger instance                   |
+| `validateRetrievedDocs` | `boolean`               | `true`                      | Validate retrieved documents      |
+| `sanitizeFilters`       | `boolean`               | `true`                      | Sanitize filter expressions       |
+| `onBlockedDocument`     | `'filter' \| 'abort'`   | `'filter'`                  | Action when document is blocked   |
+| `productionMode`        | `boolean`               | `NODE_ENV === 'production'` | Generic errors in production      |
+| `validationTimeout`     | `number`                | `30000`                     | Validation timeout in ms          |
+| `maxNResults`           | `number`                | `100`                       | Maximum nResults value            |
+| `onQueryBlocked`        | `(result) => void`      | -                           | Callback when query is blocked    |
+| `onDocumentBlocked`     | `(doc, result) => void` | -                           | Callback when document is blocked |
 
 ---
 
@@ -132,14 +136,14 @@ Result of a guarded query operation.
 
 ```typescript
 interface GuardedChromaQueryResult {
-  documents: string[][];          // Valid documents only
-  metadatas?: any[][];            // Valid metadata only
-  ids: string[][];                // Valid IDs only
-  embeddings?: number[][][];      // Embeddings (if requested)
-  distances?: number[][];         // Distances (filtered to valid)
-  documentsBlocked: number;       // Count of blocked documents
-  filtered: boolean;              // True if any documents blocked
-  raw: any;                       // Original ChromaDB result
+  documents: string[][]; // Valid documents only
+  metadatas?: any[][]; // Valid metadata only
+  ids: string[][]; // Valid IDs only
+  embeddings?: number[][][]; // Embeddings (if requested)
+  distances?: number[][]; // Distances (filtered to valid)
+  documentsBlocked: number; // Count of blocked documents
+  filtered: boolean; // True if any documents blocked
+  raw: any; // Original ChromaDB result
 }
 ```
 
@@ -169,14 +173,14 @@ Prevents NoSQL injection in metadata filters:
 await guardedCollection.query({
   queryTexts: ['test'],
   where: {
-    '__proto__': { 'admin': true }  // Blocked: prototype pollution
+    __proto__: { admin: true } // Blocked: prototype pollution
   }
 });
 
 await guardedCollection.query({
   queryTexts: ['test'],
   where: {
-    '$regex': '.*'  // Blocked: dangerous operator
+    $regex: '.*' // Blocked: dangerous operator
   }
 });
 ```
@@ -204,7 +208,7 @@ Detects and blocks documents with circular references that could cause infinite 
 ```typescript
 // Documents with circular references are rejected
 const doc = { foo: 'bar' };
-doc.self = doc;  // Circular reference
+doc.self = doc; // Circular reference
 
 await guardedCollection.add({
   documents: [JSON.stringify(doc)],
@@ -234,10 +238,7 @@ Prevents DoS attacks via deeply nested structures:
 import { JailbreakValidator } from '@blackunicorn/bonklm';
 
 const guardedCollection = createGuardedCollection(collection, {
-  validators: [
-    new PromptInjectionValidator(),
-    new JailbreakValidator()
-  ],
+  validators: [new PromptInjectionValidator(), new JailbreakValidator()],
   validateRetrievedDocs: true
 });
 ```
@@ -247,7 +248,7 @@ const guardedCollection = createGuardedCollection(collection, {
 ```typescript
 const guardedCollection = createGuardedCollection(collection, {
   validateRetrievedDocs: true,
-  onBlockedDocument: 'abort',  // Fail closed
+  onBlockedDocument: 'abort', // Fail closed
   onDocumentBlocked: (doc, result) => {
     console.error('Document blocked:', result.reason);
   }
@@ -268,7 +269,7 @@ try {
 
 ```typescript
 const guardedCollection = createGuardedCollection(collection, {
-  productionMode: true,  // Generic error messages
+  productionMode: true, // Generic error messages
   validateRetrievedDocs: true
 });
 

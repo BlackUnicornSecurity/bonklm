@@ -20,13 +20,7 @@
  *     helpers.
  */
 import type { Validator } from '../engine/GuardrailEngine.types.js';
-import {
-  createResult,
-  type Finding,
-  type GuardrailResult,
-  RiskLevel,
-  Severity,
-} from '../base/GuardrailResult.js';
+import { createResult, type Finding, type GuardrailResult, RiskLevel, Severity } from '../base/GuardrailResult.js';
 
 /**
  * Cumulative-audit export — the per-composite error-category strings
@@ -39,11 +33,10 @@ export const VALIDATOR_ERROR_CATEGORIES = {
   toolCallArgs: 'tool_call_args_validator_error',
   retrievedDoc: 'retrieved_doc_validator_error',
   memoryWrite: 'memory_write_validator_error',
-  composedContext: 'composed_context_validator_error',
+  composedContext: 'composed_context_validator_error'
 } as const;
 
-export type ValidatorErrorCategory =
-  (typeof VALIDATOR_ERROR_CATEGORIES)[keyof typeof VALIDATOR_ERROR_CATEGORIES];
+export type ValidatorErrorCategory = (typeof VALIDATOR_ERROR_CATEGORIES)[keyof typeof VALIDATOR_ERROR_CATEGORIES];
 
 /**
  * Capability interface for validators that own a pattern dictionary
@@ -69,7 +62,7 @@ export function maxSeverity(a: Severity, b: Severity): Severity {
     [Severity.INFO]: 0,
     [Severity.WARNING]: 1,
     [Severity.BLOCKED]: 2,
-    [Severity.CRITICAL]: 3,
+    [Severity.CRITICAL]: 3
   };
   return order[b] > order[a] ? b : a;
 }
@@ -106,8 +99,8 @@ export async function runValidatorChain(
           category: errorCategory,
           severity: Severity.CRITICAL,
           description: `Underlying validator threw: ${String(err)}`,
-          weight: 25,
-        },
+          weight: 25
+        }
       ]);
     }
     const nextScore = merged.risk_score + r.risk_score;
@@ -120,7 +113,7 @@ export async function runValidatorChain(
       severity: maxSeverity(merged.severity, r.severity),
       findings: [...merged.findings, ...r.findings],
       risk_score: nextScore,
-      risk_level: riskFromScore(nextScore),
+      risk_level: riskFromScore(nextScore)
     };
     if (r.blocked) break;
   }

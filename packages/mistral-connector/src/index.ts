@@ -24,14 +24,11 @@
  *   - `MistralEngineLike`
  *   - `MistralGuardrailBlockedErrorShape`
  */
-export {
-  wrapMistral,
-  MistralGuardrailBlockedError,
-} from './wrap-mistral.js';
+export { wrapMistral, MistralGuardrailBlockedError } from './wrap-mistral.js';
 export type {
   MistralEngineLike,
   MistralGuardrailBlockedErrorShape,
   MistralLike,
   WrapMistralOptions,
-  WrappedMistralClient,
+  WrappedMistralClient
 } from './types.js';

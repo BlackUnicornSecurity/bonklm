@@ -43,7 +43,7 @@ const REPORT_TXT_PATH = join(__dirname, 'graduation-report.txt');
 // Thresholds per Story 4.5 AC.
 const RECALL_THRESHOLD = 0.95;
 const FPR_THRESHOLD = 0.05;
-const PRECISION_THRESHOLD = 0.80;
+const PRECISION_THRESHOLD = 0.8;
 
 // =============================================================================
 // Hash integrity check
@@ -65,9 +65,9 @@ const actualHash = createHash('sha256').update(corpusJson).digest('hex');
 if (actualHash !== expectedHash) {
   throw new Error(
     `Corpus hash mismatch — patterns.json has been mutated since corpus.hash was pinned.\n` +
-    `Expected: ${expectedHash}\nActual:   ${actualHash}\n` +
-    `If this mutation is intentional, regenerate via build-corpus.mjs ` +
-    `and document the corpus-rev bump in a separate PR before re-running the gate.`
+      `Expected: ${expectedHash}\nActual:   ${actualHash}\n` +
+      `If this mutation is intentional, regenerate via build-corpus.mjs ` +
+      `and document the corpus-rev bump in a separate PR before re-running the gate.`
   );
 }
 
@@ -78,12 +78,8 @@ const benignCorpus = JSON.parse(readFileSync(BENIGN_PATH, 'utf-8'));
 // Evaluator
 // =============================================================================
 
-const { CodeInjectionValidator } = await import(
-  '../../dist/validators/code-injection.js'
-);
-const { PathTraversalValidator } = await import(
-  '../../dist/validators/path-traversal.js'
-);
+const { CodeInjectionValidator } = await import('../../dist/validators/code-injection.js');
+const { PathTraversalValidator } = await import('../../dist/validators/path-traversal.js');
 
 /**
  * Sandbox-utils integration shape: a payload is BLOCKED if EITHER
@@ -116,7 +112,7 @@ async function evaluate(corpus, expectedBlock) {
       actual_block: r.blocked,
       correct: r.blocked === expectedBlock,
       findings_count: r.findings.length,
-      first_finding_category: r.findings[0]?.category,
+      first_finding_category: r.findings[0]?.category
     });
   }
   return results;
@@ -134,10 +130,10 @@ console.log(`Benign corpus: ${benignResults.length} entries evaluated`);
 // Metrics
 // =============================================================================
 
-const truePositives = attackResults.filter((r) => r.actual_block).length;
-const falseNegatives = attackResults.filter((r) => !r.actual_block).length;
-const trueNegatives = benignResults.filter((r) => !r.actual_block).length;
-const falsePositives = benignResults.filter((r) => r.actual_block).length;
+const truePositives = attackResults.filter(r => r.actual_block).length;
+const falseNegatives = attackResults.filter(r => !r.actual_block).length;
+const trueNegatives = benignResults.filter(r => !r.actual_block).length;
+const falsePositives = benignResults.filter(r => r.actual_block).length;
 
 const recall = truePositives / (truePositives + falseNegatives);
 const fpr = falsePositives / (falsePositives + trueNegatives);
@@ -153,17 +149,17 @@ const allPass = recallPass && fprPass && precisionPass;
 // =============================================================================
 
 const falseNegativesByCategory = {};
-for (const r of attackResults.filter((r) => !r.actual_block)) {
+for (const r of attackResults.filter(r => !r.actual_block)) {
   const k = `${r.category}:${r.subcategory}`;
   falseNegativesByCategory[k] = (falseNegativesByCategory[k] || 0) + 1;
 }
 
 const falsePositivesByPayload = benignResults
-  .filter((r) => r.actual_block)
-  .map((r) => ({
+  .filter(r => r.actual_block)
+  .map(r => ({
     id: r.id,
     payload: r.payload.slice(0, 80),
-    first_finding_category: r.first_finding_category,
+    first_finding_category: r.first_finding_category
   }));
 
 // =============================================================================
@@ -175,35 +171,35 @@ const report = {
   corpus_hash: expectedHash,
   corpus_size: {
     attack: attackResults.length,
-    benign: benignResults.length,
+    benign: benignResults.length
   },
   confusion_matrix: {
     true_positives: truePositives,
     false_negatives: falseNegatives,
     true_negatives: trueNegatives,
-    false_positives: falsePositives,
+    false_positives: falsePositives
   },
   metrics: {
     recall,
     fpr,
-    precision,
+    precision
   },
   thresholds: {
     recall: RECALL_THRESHOLD,
     fpr: FPR_THRESHOLD,
-    precision: PRECISION_THRESHOLD,
+    precision: PRECISION_THRESHOLD
   },
   gate_results: {
     recall_pass: recallPass,
     fpr_pass: fprPass,
     precision_pass: precisionPass,
     all_pass: allPass,
-    decision: allPass ? 'GRADUATE' : 'KEEP_EXPERIMENTAL',
+    decision: allPass ? 'GRADUATE' : 'KEEP_EXPERIMENTAL'
   },
   gap_categories: {
     false_negatives_by_subcategory: falseNegativesByCategory,
-    false_positive_payloads: falsePositivesByPayload,
-  },
+    false_positive_payloads: falsePositivesByPayload
+  }
 };
 
 writeFileSync(REPORT_JSON_PATH, JSON.stringify(report, null, 2) + '\n', 'utf-8');
@@ -226,9 +222,16 @@ Corpus size: ${attackResults.length} attack + ${benignResults.length} benign
   ${allPass ? '✅ GRADUATE — remove `experimental: true` flag from sandbox-utils + e2b-adapter + daytona-adapter.' : '❌ KEEP_EXPERIMENTAL — defer to v0.8 with gap categories below.'}
 
 ## Gap categories
-${Object.entries(falseNegativesByCategory).length === 0 ? '  (no false negatives)' : '  False-negatives by subcategory:\n' + Object.entries(falseNegativesByCategory).map(([k, v]) => `    ${k}: ${v}`).join('\n')}
+${
+  Object.entries(falseNegativesByCategory).length === 0
+    ? '  (no false negatives)'
+    : '  False-negatives by subcategory:\n' +
+      Object.entries(falseNegativesByCategory)
+        .map(([k, v]) => `    ${k}: ${v}`)
+        .join('\n')
+}
 
-${falsePositivesByPayload.length === 0 ? '  (no false positives)' : '  False-positive payloads:\n' + falsePositivesByPayload.map((p) => `    ${p.id} [${p.first_finding_category}]: ${p.payload}`).join('\n')}
+${falsePositivesByPayload.length === 0 ? '  (no false positives)' : '  False-positive payloads:\n' + falsePositivesByPayload.map(p => `    ${p.id} [${p.first_finding_category}]: ${p.payload}`).join('\n')}
 `;
 
 writeFileSync(REPORT_TXT_PATH, txt, 'utf-8');

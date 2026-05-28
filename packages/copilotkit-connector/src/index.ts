@@ -9,16 +9,10 @@
  */
 
 // Main exports
-export {
-  createGuardedCopilotKit,
-} from './copilotkit-guardrail.js';
+export { createGuardedCopilotKit } from './copilotkit-guardrail.js';
 
 // Utility exports
-export {
-  messagesToText,
-  actionsToText,
-  normalizeToString,
-} from './messages-to-text.js';
+export { messagesToText, actionsToText, normalizeToString } from './messages-to-text.js';
 
 // Type exports
 export type {
@@ -27,7 +21,7 @@ export type {
   CopilotKitAction,
   CopilotKitContext,
   HookResult,
-  CopilotKitContentPart,
+  CopilotKitContentPart
 } from './types.js';
 
 export {
@@ -35,5 +29,5 @@ export {
   DEFAULT_MAX_BUFFER_SIZE,
   DEFAULT_MAX_CONTENT_LENGTH,
   DEFAULT_VALIDATION_TIMEOUT,
-  VALIDATION_INTERVAL,
+  VALIDATION_INTERVAL
 } from './types.js';

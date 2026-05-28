@@ -37,7 +37,7 @@ import {
   defaultKeyFn,
   IN_MEMORY_TTL_CEILING_MS,
   InMemoryLRUCache,
-  type ValidatorCache,
+  type ValidatorCache
 } from '../../src/engine/cached-validator.js';
 import { GuardrailEngine } from '../../src/engine/GuardrailEngine.js';
 
@@ -49,7 +49,7 @@ const okResult = (note: string): GuardrailResult => ({
   risk_level: RiskLevel.LOW,
   risk_score: 0,
   findings: [],
-  timestamp: Date.now(),
+  timestamp: Date.now()
 });
 
 const blockResult = (note: string): GuardrailResult => ({
@@ -60,14 +60,13 @@ const blockResult = (note: string): GuardrailResult => ({
   risk_level: RiskLevel.HIGH,
   risk_score: 0.95,
   findings: [],
-  timestamp: Date.now(),
+  timestamp: Date.now()
 });
 
 function makeValidator(name: string, fn: (input: ValidatorInput) => GuardrailResult): Validator {
   return {
     name,
-    validate: (input) =>
-      typeof input === 'string' ? okResult('legacy string ignored') : fn(input),
+    validate: input => (typeof input === 'string' ? okResult('legacy string ignored') : fn(input))
   };
 }
 
@@ -89,10 +88,7 @@ describe('Story 2.7 — cachedValidate surface', () => {
     });
 
     it('cachedValidate runs without cache (smoke)', async () => {
-      const results = await cachedValidate(
-        [makeValidator('V', () => okResult('cold'))],
-        textInput
-      );
+      const results = await cachedValidate([makeValidator('V', () => okResult('cold'))], textInput);
       expect(results).toHaveLength(1);
       expect(results[0].fromCache).toBe(false);
     });
@@ -121,12 +117,12 @@ describe('Story 2.7 — cachedValidate surface', () => {
       const a: ValidatorInput = {
         kind: 'tool_call',
         toolName: 'send',
-        args: { from: 'a', to: 'b', body: 'hi' },
+        args: { from: 'a', to: 'b', body: 'hi' }
       };
       const b: ValidatorInput = {
         kind: 'tool_call',
         toolName: 'send',
-        args: { body: 'hi', to: 'b', from: 'a' },
+        args: { body: 'hi', to: 'b', from: 'a' }
       };
       expect(await defaultKeyFn(a, 'V')).toBe(await defaultKeyFn(b, 'V'));
     });
@@ -209,10 +205,10 @@ describe('Story 2.7 — cachedValidate surface', () => {
   describe('AC #4: salted keyFn + engine.getInstanceId() isolation', () => {
     it('createSaltedKeyFn produces different keys for different IDs', async () => {
       const e1 = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('pass'))],
+        validators: [makeValidator('V', () => okResult('pass'))]
       });
       const e2 = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('pass'))],
+        validators: [makeValidator('V', () => okResult('pass'))]
       });
       const k1 = createSaltedKeyFn(e1.getInstanceId());
       const k2 = createSaltedKeyFn(e2.getInstanceId());
@@ -221,10 +217,10 @@ describe('Story 2.7 — cachedValidate surface', () => {
 
     it('engine.getInstanceId() is stable + unique per engine', () => {
       const e1 = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('p'))],
+        validators: [makeValidator('V', () => okResult('p'))]
       });
       const e2 = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('p'))],
+        validators: [makeValidator('V', () => okResult('p'))]
       });
       expect(e1.getInstanceId()).toBe(e1.getInstanceId());
       expect(e1.getInstanceId()).not.toBe(e2.getInstanceId());
@@ -233,20 +229,20 @@ describe('Story 2.7 — cachedValidate surface', () => {
 
     it('two engines sharing a cache do NOT see each others entries', async () => {
       const e1 = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('e1'))],
+        validators: [makeValidator('V', () => okResult('e1'))]
       });
       const e2 = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('e2'))],
+        validators: [makeValidator('V', () => okResult('e2'))]
       });
       const cache = new InMemoryLRUCache({ maxEntries: 64 });
       const validators = [makeValidator('V', () => okResult('shared'))];
       const r1 = await cachedValidate(validators, textInput, {
         cache,
-        keyFn: createSaltedKeyFn(e1.getInstanceId()),
+        keyFn: createSaltedKeyFn(e1.getInstanceId())
       });
       const r2 = await cachedValidate(validators, textInput, {
         cache,
-        keyFn: createSaltedKeyFn(e2.getInstanceId()),
+        keyFn: createSaltedKeyFn(e2.getInstanceId())
       });
       expect(r1[0].fromCache).toBe(false);
       expect(r2[0].fromCache).toBe(false);
@@ -265,20 +261,20 @@ describe('Story 2.7 — cachedValidate surface', () => {
     it('throws when cache provided + bare default keyFn', async () => {
       const cache = new InMemoryLRUCache();
       const validators = [makeValidator('V', () => okResult('cold'))];
-      await expect(
-        cachedValidate(validators, textInput, { cache, keyFn: defaultKeyFn })
-      ).rejects.toThrow(/unsalted keyFn/);
+      await expect(cachedValidate(validators, textInput, { cache, keyFn: defaultKeyFn })).rejects.toThrow(
+        /unsalted keyFn/
+      );
     });
 
     it('accepts cache + createSaltedKeyFn', async () => {
       const e = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('p'))],
+        validators: [makeValidator('V', () => okResult('p'))]
       });
       const cache = new InMemoryLRUCache();
       const validators = [makeValidator('V', () => okResult('cold'))];
       const r = await cachedValidate(validators, textInput, {
         cache,
-        keyFn: createSaltedKeyFn(e.getInstanceId()),
+        keyFn: createSaltedKeyFn(e.getInstanceId())
       });
       expect(r[0].fromCache).toBe(false);
     });
@@ -288,7 +284,7 @@ describe('Story 2.7 — cachedValidate surface', () => {
       const validators = [makeValidator('V', () => okResult('cold'))];
       const r = await cachedValidate(validators, textInput, {
         cache,
-        keyFn: createUnsaltedKeyFn(),
+        keyFn: createUnsaltedKeyFn()
       });
       expect(r[0].fromCache).toBe(false);
     });
@@ -301,7 +297,7 @@ describe('Story 2.7 — cachedValidate surface', () => {
       await expect(
         cachedValidate([anon], textInput, {
           cache,
-          keyFn: createUnsaltedKeyFn(),
+          keyFn: createUnsaltedKeyFn()
         })
       ).rejects.toThrow(/no `name` property/);
     });
@@ -359,12 +355,12 @@ describe('Story 2.7 — cachedValidate surface', () => {
         get: () => undefined,
         set: () => {
           throw new Error('redis-down');
-        },
+        }
       };
       const validators = [makeValidator('V', () => blockResult('blocked-cold'))];
       const r = await cachedValidate(validators, textInput, {
         cache: failingCache,
-        keyFn: createUnsaltedKeyFn(),
+        keyFn: createUnsaltedKeyFn()
       });
       // BLOCK decision MUST surface even if the cache write failed.
       expect(r[0].blocked).toBe(true);
@@ -378,13 +374,13 @@ describe('Story 2.7 — cachedValidate surface', () => {
         get: () => undefined,
         set: () => {
           throw new Error('boom');
-        },
+        }
       };
       const validators = [makeValidator('V', () => okResult('cold'))];
       await cachedValidate(validators, textInput, {
         cache: failingCache,
         keyFn: createUnsaltedKeyFn(),
-        logger: { warn },
+        logger: { warn }
       });
       expect(warn).toHaveBeenCalledWith(
         expect.stringMatching(/cache\.set failed/),
@@ -402,17 +398,17 @@ describe('Story 2.7 — cachedValidate surface', () => {
         risk_level: RiskLevel.LOW,
         risk_score: 0,
         findings: [],
-        timestamp: Date.now(),
+        timestamp: Date.now()
       } as unknown as GuardrailResult;
       const setSpy = vi.fn();
       const cache: ValidatorCache = {
         get: () => undefined,
-        set: setSpy,
+        set: setSpy
       };
       const validators: Validator[] = [{ name: 'V', validate: () => malformed }];
       const r = await cachedValidate(validators, textInput, {
         cache,
-        keyFn: createUnsaltedKeyFn(),
+        keyFn: createUnsaltedKeyFn()
       });
       expect(setSpy).not.toHaveBeenCalled();
       expect(r[0].fromCache).toBe(false);
@@ -435,7 +431,7 @@ describe('Story 2.7 — cachedValidate surface', () => {
 
     it('accepts the canonical engine instance ID', () => {
       const e = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('p'))],
+        validators: [makeValidator('V', () => okResult('p'))]
       });
       expect(() => createSaltedKeyFn(e.getInstanceId())).not.toThrow();
     });
@@ -446,13 +442,13 @@ describe('Story 2.7 — cachedValidate surface', () => {
       const setSpy = vi.fn();
       const cache: ValidatorCache = {
         get: () => undefined,
-        set: setSpy,
+        set: setSpy
       };
       const validators = [makeValidator('V', () => okResult('cold'))];
       await cachedValidate(validators, textInput, {
         cache,
         keyFn: createUnsaltedKeyFn(),
-        defaultTtlMs: 5_000,
+        defaultTtlMs: 5_000
       });
       expect(setSpy).toHaveBeenCalledWith(expect.any(String), expect.any(Object), 5_000);
     });
@@ -461,14 +457,14 @@ describe('Story 2.7 — cachedValidate surface', () => {
       const setSpy = vi.fn();
       const cache: ValidatorCache = {
         get: () => undefined,
-        set: setSpy,
+        set: setSpy
       };
       const validators = [makeValidator('V', () => blockResult('hot'))];
       await cachedValidate(validators, textInput, {
         cache,
         keyFn: createUnsaltedKeyFn(),
         defaultTtlMs: 10_000,
-        blockedTtlMs: 1_000,
+        blockedTtlMs: 1_000
       });
       expect(setSpy).toHaveBeenCalledWith(expect.any(String), expect.any(Object), 1_000);
     });
@@ -493,11 +489,11 @@ describe('Story 2.7 — cachedValidate surface', () => {
       })();
       await cachedValidate([oldValidator], textInput, {
         cache,
-        keyFn: collidingKeyFn,
+        keyFn: collidingKeyFn
       });
       const r = await cachedValidate([newValidator], textInput, {
         cache,
-        keyFn: collidingKeyFn,
+        keyFn: collidingKeyFn
       });
       // newValidator's first lookup hits the slot but storedName ===
       // 'OldName' ≠ 'NewName' → miss + cold run.
@@ -512,17 +508,17 @@ describe('Story 2.7 — cachedValidate surface', () => {
       const cache = new InMemoryLRUCache({ maxEntries: 16 });
 
       const e = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('p'))],
+        validators: [makeValidator('V', () => okResult('p'))]
       });
       await cachedValidate(validators, textInput, {
         cache,
         cacheNamespace: 'env:dev',
-        keyFn: createSaltedKeyFn(e.getInstanceId()),
+        keyFn: createSaltedKeyFn(e.getInstanceId())
       });
       const r = await cachedValidate(validators, textInput, {
         cache,
         cacheNamespace: 'env:prod',
-        keyFn: createSaltedKeyFn(e.getInstanceId()),
+        keyFn: createSaltedKeyFn(e.getInstanceId())
       });
       // Different namespace → different key → MISS → cold.
       expect(r[0].fromCache).toBe(false);
@@ -554,9 +550,7 @@ describe('Story 2.7 — cachedValidate surface', () => {
       });
       const validators: Validator[] = [{ name: 'V', validate }];
       const keyFn = createUnsaltedKeyFn();
-      await expect(cachedValidate(validators, textInput, { cache, keyFn })).rejects.toThrow(
-        'cold boom'
-      );
+      await expect(cachedValidate(validators, textInput, { cache, keyFn })).rejects.toThrow('cold boom');
       const r2 = await cachedValidate(validators, textInput, { cache, keyFn });
       expect(validate).toHaveBeenCalledTimes(2);
       expect(r2[0].fromCache).toBe(false);
@@ -565,10 +559,10 @@ describe('Story 2.7 — cachedValidate surface', () => {
     it('async Redis-style cache adapter works transparently', async () => {
       const store = new Map<string, GuardrailResult>();
       const asyncCache: ValidatorCache = {
-        get: async (k) => store.get(k),
+        get: async k => store.get(k),
         set: async (k, v) => {
           store.set(k, v);
-        },
+        }
       };
       const validate = vi.fn().mockReturnValue(okResult('cold'));
       const validators: Validator[] = [{ name: 'V', validate }];
@@ -585,7 +579,7 @@ describe('Story 2.7 — cachedValidate surface', () => {
         get: () => {
           throw new Error('redis-flap');
         },
-        set: () => undefined,
+        set: () => undefined
       };
       const warn = vi.fn();
       const validate = vi.fn().mockReturnValue(okResult('cold'));
@@ -593,7 +587,7 @@ describe('Story 2.7 — cachedValidate surface', () => {
       const r = await cachedValidate(validators, textInput, {
         cache: failingGetCache,
         keyFn: createUnsaltedKeyFn(),
-        logger: { warn },
+        logger: { warn }
       });
       expect(validate).toHaveBeenCalledTimes(1);
       expect(r[0].fromCache).toBe(false);

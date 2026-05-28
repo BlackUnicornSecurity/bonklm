@@ -34,5 +34,5 @@ export {
   type SandboxValidatorOptions,
   type SandboxWrapStreamOptions,
   type OnSandboxErrorAction,
-  EXPERIMENTAL_WARN_LABEL,
+  EXPERIMENTAL_WARN_LABEL
 } from './primitives.js';

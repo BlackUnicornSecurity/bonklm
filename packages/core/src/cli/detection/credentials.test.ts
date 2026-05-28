@@ -15,7 +15,7 @@ import {
   getPresentCredentials,
   getSupportedCredentialNames,
   type DetectedCredential,
-  type CredentialName,
+  type CredentialName
 } from './credentials.js';
 
 describe('Credential Detection', () => {
@@ -42,14 +42,14 @@ describe('Credential Detection', () => {
       const result = detectCredentials();
 
       expect(result).toHaveLength(3);
-      expect(result.every((cred) => !cred.present)).toBe(true);
+      expect(result.every(cred => !cred.present)).toBe(true);
     });
 
     it('should detect OpenAI API key when set', () => {
       process.env.OPENAI_API_KEY = 'sk-test1234567890abcdefghijklmn';
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai).toBeDefined();
       expect(openai?.present).toBe(true);
@@ -62,7 +62,7 @@ describe('Credential Detection', () => {
       process.env.ANTHROPIC_API_KEY = 'sk-ant-test1234567890abcdefghijklmn';
 
       const result = detectCredentials();
-      const anthropic = result.find((c) => c.name === 'anthropic');
+      const anthropic = result.find(c => c.name === 'anthropic');
 
       expect(anthropic).toBeDefined();
       expect(anthropic?.present).toBe(true);
@@ -75,7 +75,7 @@ describe('Credential Detection', () => {
       process.env.OLLAMA_HOST = 'http://localhost:11434';
 
       const result = detectCredentials();
-      const ollama = result.find((c) => c.name === 'ollama');
+      const ollama = result.find(c => c.name === 'ollama');
 
       expect(ollama).toBeDefined();
       expect(ollama?.present).toBe(true);
@@ -90,18 +90,18 @@ describe('Credential Detection', () => {
       process.env.ANTHROPIC_API_KEY = 'sk-ant-test1234567890abcdefghijklmn';
 
       const result = detectCredentials();
-      const present = result.filter((c) => c.present);
+      const present = result.filter(c => c.present);
 
       expect(present).toHaveLength(2);
-      expect(result.some((c) => c.name === 'openai' && c.present)).toBe(true);
-      expect(result.some((c) => c.name === 'anthropic' && c.present)).toBe(true);
+      expect(result.some(c => c.name === 'openai' && c.present)).toBe(true);
+      expect(result.some(c => c.name === 'anthropic' && c.present)).toBe(true);
     });
 
     it('should return "not set" for absent credentials', () => {
       delete process.env.OPENAI_API_KEY;
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.maskedValue).toBe('not set');
     });
@@ -110,7 +110,7 @@ describe('Credential Detection', () => {
       process.env.OPENAI_API_KEY = '';
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       // Empty string is treated as "not set"
       expect(openai?.present).toBe(false);
@@ -121,9 +121,7 @@ describe('Credential Detection', () => {
       const result = detectCredentials();
 
       expect(result).toHaveLength(3);
-      expect(result.map((c) => c.name)).toEqual(
-        expect.arrayContaining(['openai', 'anthropic', 'ollama'])
-      );
+      expect(result.map(c => c.name)).toEqual(expect.arrayContaining(['openai', 'anthropic', 'ollama']));
     });
   });
 
@@ -134,7 +132,7 @@ describe('Credential Detection', () => {
       process.env.OPENAI_API_KEY = 'sk-test1234567890abcdefghijklmn';
 
       const result = detectCredentials();
-      const keys = result.map((c) => c.key);
+      const keys = result.map(c => c.key);
 
       // Should only contain our whitelisted keys
       expect(keys).not.toContain('MALICIOUS_API_KEY');
@@ -146,7 +144,7 @@ describe('Credential Detection', () => {
       (Object.prototype as any).malicious = 'MALICIOUS_API_KEY';
 
       const result = detectCredentials();
-      const keys = result.map((c) => c.key);
+      const keys = result.map(c => c.key);
 
       // Should not pick up the polluted property
       expect(keys).not.toContain('MALICIOUS_API_KEY');
@@ -157,18 +155,14 @@ describe('Credential Detection', () => {
 
     it('should validate each env var name against whitelist', () => {
       // The whitelist regex should only match exact patterns
-      const validPatterns = [
-        'OPENAI_API_KEY',
-        'ANTHROPIC_API_KEY',
-        'OLLAMA_HOST',
-      ];
+      const validPatterns = ['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'OLLAMA_HOST'];
 
       const invalidPatterns = [
         'OPENAI_API_KEY_EXTRA',
         'PREFIX_OPENAI_API_KEY',
         'openai_api_key', // lowercase
         'OpenAI_Api_Key', // mixed case
-        'MALICIOUS_KEY',
+        'MALICIOUS_KEY'
       ];
 
       // Import the internal validation function indirectly
@@ -176,15 +170,15 @@ describe('Credential Detection', () => {
       process.env.OPENAI_API_KEY = 'sk-test';
 
       const result = detectCredentials();
-      const detectedKeys = result.map((c) => c.key);
+      const detectedKeys = result.map(c => c.key);
 
       // All valid patterns should be checked
-      validPatterns.forEach((pattern) => {
+      validPatterns.forEach(pattern => {
         expect(detectedKeys).toContain(pattern);
       });
 
       // Invalid patterns should not appear
-      invalidPatterns.forEach((pattern) => {
+      invalidPatterns.forEach(pattern => {
         expect(detectedKeys).not.toContain(pattern);
       });
     });
@@ -195,7 +189,7 @@ describe('Credential Detection', () => {
       (process.env as any).OPENAI_API_KEY = 12345;
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(false);
       expect(openai?.maskedValue).toBe('not set');
@@ -205,7 +199,7 @@ describe('Credential Detection', () => {
       (process.env as any).OPENAI_API_KEY = { key: 'value' };
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(false);
       expect(openai?.maskedValue).toBe('not set');
@@ -215,7 +209,7 @@ describe('Credential Detection', () => {
       (process.env as any).OPENAI_API_KEY = true;
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(false);
       expect(openai?.maskedValue).toBe('not set');
@@ -225,7 +219,7 @@ describe('Credential Detection', () => {
       process.env.OPENAI_API_KEY = null as any;
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(false);
       expect(openai?.maskedValue).toBe('not set');
@@ -235,7 +229,7 @@ describe('Credential Detection', () => {
       process.env.OPENAI_API_KEY = undefined as any;
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(false);
       expect(openai?.maskedValue).toBe('not set');
@@ -249,7 +243,7 @@ describe('Credential Detection', () => {
       // The test passes if no errors are thrown
       // and the masked value doesn't contain the actual key
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.maskedValue).not.toContain('test1234567890');
       expect(openai?.maskedValue).not.toBe('sk-test1234567890abcdefghijklmn');
@@ -262,7 +256,7 @@ describe('Credential Detection', () => {
 
       // Should handle gracefully (treat as not set)
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(false);
       expect(openai?.maskedValue).toBe('not set');
@@ -347,10 +341,10 @@ describe('Credential Detection', () => {
       const result = getPresentCredentials();
 
       expect(result).toHaveLength(2);
-      expect(result.every((c) => c.present)).toBe(true);
-      expect(result.some((c) => c.name === 'openai')).toBe(true);
-      expect(result.some((c) => c.name === 'ollama')).toBe(true);
-      expect(result.some((c) => c.name === 'anthropic')).toBe(false);
+      expect(result.every(c => c.present)).toBe(true);
+      expect(result.some(c => c.name === 'openai')).toBe(true);
+      expect(result.some(c => c.name === 'ollama')).toBe(true);
+      expect(result.some(c => c.name === 'anthropic')).toBe(false);
     });
 
     it('should return empty array when no credentials are set', () => {
@@ -386,7 +380,7 @@ describe('Credential Detection', () => {
       process.env.OPENAI_API_KEY = 'sk-测试🔑abc123';
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(true);
       expect(openai?.maskedValue).toMatch(/^sk\*+\w{4}$/);
@@ -397,7 +391,7 @@ describe('Credential Detection', () => {
       process.env.OPENAI_API_KEY = longKey;
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(true);
     });
@@ -406,7 +400,7 @@ describe('Credential Detection', () => {
       process.env.OLLAMA_HOST = 'https://user:pass@example.com:8080/path';
 
       const result = detectCredentials();
-      const ollama = result.find((c) => c.name === 'ollama');
+      const ollama = result.find(c => c.name === 'ollama');
 
       expect(ollama?.present).toBe(true);
       expect(ollama?.maskedValue).not.toContain('user');
@@ -438,7 +432,7 @@ describe('Credential Detection', () => {
         name: 'openai',
         key: 'OPENAI_API_KEY',
         maskedValue: 'sk****1234',
-        present: true,
+        present: true
       };
       expect(cred.name).toBe('openai');
     });
@@ -484,7 +478,7 @@ describe('Credential Detection', () => {
       (process.env as any).OPENAI_API_KEY = new String('sk-test1234567890abcdefghijklmn');
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(false);
       expect(openai?.maskedValue).toBe('not set');
@@ -492,11 +486,11 @@ describe('Credential Detection', () => {
 
     it('should reject objects with toString method', () => {
       (process.env as any).OPENAI_API_KEY = {
-        toString: () => 'sk-test1234567890abcdefghijklmn',
+        toString: () => 'sk-test1234567890abcdefghijklmn'
       };
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(false);
       expect(openai?.maskedValue).toBe('not set');
@@ -504,11 +498,11 @@ describe('Credential Detection', () => {
 
     it('should reject objects with valueOf method', () => {
       (process.env as any).OPENAI_API_KEY = {
-        valueOf: () => 'sk-test1234567890abcdefghijklmn',
+        valueOf: () => 'sk-test1234567890abcdefghijklmn'
       };
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(false);
       expect(openai?.maskedValue).toBe('not set');
@@ -518,7 +512,7 @@ describe('Credential Detection', () => {
       (process.env as any).OPENAI_API_KEY = ['sk-test1234567890abcdefghijklmn'];
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(false);
       expect(openai?.maskedValue).toBe('not set');
@@ -528,7 +522,7 @@ describe('Credential Detection', () => {
       (process.env as any).OPENAI_API_KEY = () => 'sk-test1234567890abcdefghijklmn';
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(false);
       expect(openai?.maskedValue).toBe('not set');
@@ -538,7 +532,7 @@ describe('Credential Detection', () => {
       (process.env as any).OPENAI_API_KEY = Buffer.from('sk-test1234567890abcdefghijklmn');
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(false);
       expect(openai?.maskedValue).toBe('not set');
@@ -550,7 +544,7 @@ describe('Credential Detection', () => {
       process.env.OPENAI_API_KEY = '   ';
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       // Whitespace-only is still a string, so present=true
       // (this is expected behavior - caller can trim if needed)
@@ -561,7 +555,7 @@ describe('Credential Detection', () => {
       process.env.OPENAI_API_KEY = 'sk-test\n1234';
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(true);
       expect(openai?.maskedValue).toContain('sk');
@@ -571,7 +565,7 @@ describe('Credential Detection', () => {
       process.env.OPENAI_API_KEY = 'sk-test\x001234';
 
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.present).toBe(true);
     });
@@ -581,7 +575,7 @@ describe('Credential Detection', () => {
 
       // If any error occurs, the credential should not appear in the error
       const result = detectCredentials();
-      const openai = result.find((c) => c.name === 'openai');
+      const openai = result.find(c => c.name === 'openai');
 
       expect(openai?.maskedValue).not.toContain('test1234567890');
       expect(openai?.maskedValue).not.toBe('sk-test1234567890abcdefghijklmn');

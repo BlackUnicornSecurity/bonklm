@@ -36,13 +36,7 @@ interface CorpusEntry {
   notes?: string;
 }
 
-const corpusDir = join(
-  dirname(fileURLToPath(import.meta.url)),
-  '..',
-  '..',
-  'benchmarks',
-  'sandbox-attack-corpus'
-);
+const corpusDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'benchmarks', 'sandbox-attack-corpus');
 
 let patterns: CorpusEntry[];
 
@@ -65,7 +59,7 @@ describe('sandbox-attack-corpus — composition + hash integrity', () => {
   });
 
   it('5-10 entries are flagged hand_curated (AAD-D requirement)', () => {
-    const hc = patterns.filter((p) => p.hand_curated).length;
+    const hc = patterns.filter(p => p.hand_curated).length;
     expect(hc).toBeGreaterThanOrEqual(5);
     expect(hc).toBeLessThanOrEqual(10);
   });
@@ -89,8 +83,7 @@ describe('sandbox-attack-corpus — composition + hash integrity', () => {
    *  3. Commit all three (patterns.json, corpus.hash, this test) together
    */
   it('hardcoded sha256 anchor matches sha256(patterns.json) — defeats atomic poisoning', () => {
-    const EXPECTED_CORPUS_SHA256 =
-      'db9c1986a01ae0d4f5281c74a038b0392415132d21e38aac80b6aacea778fff4';
+    const EXPECTED_CORPUS_SHA256 = 'db9c1986a01ae0d4f5281c74a038b0392415132d21e38aac80b6aacea778fff4';
     const raw = readFileSync(join(corpusDir, 'patterns.json'), 'utf-8');
     const computed = createHash('sha256').update(raw).digest('hex');
     expect(computed).toBe(EXPECTED_CORPUS_SHA256);
@@ -113,9 +106,7 @@ describe('sandbox-attack-corpus — Sprint 16 recall baseline', () => {
 
     for (const entry of patterns) {
       const r =
-        entry.category === 'path_traversal'
-          ? await pt.validate(entry.payload)
-          : await ci.validate(entry.payload);
+        entry.category === 'path_traversal' ? await pt.validate(entry.payload) : await ci.validate(entry.payload);
       if (r.blocked) {
         blocked++;
       } else {
@@ -136,13 +127,11 @@ describe('sandbox-attack-corpus — Sprint 16 recall baseline', () => {
     const ci = new CodeInjectionValidator();
     const pt = new PathTraversalValidator({ cwd: '/srv/sandbox' });
 
-    const mechEntries = patterns.filter((p) => !p.hand_curated);
+    const mechEntries = patterns.filter(p => !p.hand_curated);
     let blocked = 0;
     for (const entry of mechEntries) {
       const r =
-        entry.category === 'path_traversal'
-          ? await pt.validate(entry.payload)
-          : await ci.validate(entry.payload);
+        entry.category === 'path_traversal' ? await pt.validate(entry.payload) : await ci.validate(entry.payload);
       if (r.blocked) blocked++;
     }
     const recall = blocked / mechEntries.length;

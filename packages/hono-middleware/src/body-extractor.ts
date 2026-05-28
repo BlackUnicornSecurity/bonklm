@@ -63,15 +63,7 @@ export interface ExtractedBody {
  * but the consumer's route handler will still see the raw body and
  * can choose how to respond (typically 400 / 415).
  */
-const SUPPORTED_CHARSETS = new Set([
-  'utf-8',
-  'utf8',
-  'us-ascii',
-  'ascii',
-  'iso-8859-1',
-  'latin-1',
-  'latin1',
-]);
+const SUPPORTED_CHARSETS = new Set(['utf-8', 'utf8', 'us-ascii', 'ascii', 'iso-8859-1', 'latin-1', 'latin1']);
 
 /**
  * Parse the charset parameter out of a `content-type` header value.
@@ -85,7 +77,11 @@ function parseCharset(contentType: string): string {
     const part = parts[i].trim();
     if (part.toLowerCase().startsWith('charset=')) {
       // Strip optional quoting per RFC 7231 §3.1.1.1.
-      return part.slice('charset='.length).trim().replace(/^["']|["']$/g, '').toLowerCase();
+      return part
+        .slice('charset='.length)
+        .trim()
+        .replace(/^["']|["']$/g, '')
+        .toLowerCase();
     }
   }
   return 'utf-8';
@@ -178,10 +174,7 @@ async function readBodyBounded(
  *
  * Never throws — returns `{ text: '' }` on any failure.
  */
-export async function extractBody(
-  req: Request,
-  bodyFields?: string[]
-): Promise<ExtractedBody> {
+export async function extractBody(req: Request, bodyFields?: string[]): Promise<ExtractedBody> {
   const { raw, charsetUnsupported } = await readBodyBounded(req);
   if (charsetUnsupported === true) {
     return { text: '', charsetUnsupported: true };
@@ -269,6 +262,6 @@ function extractFromForm(raw: string, bodyFields?: string[]): ExtractedBody {
   }
 
   const values: string[] = [];
-  params.forEach((value) => values.push(value));
+  params.forEach(value => values.push(value));
   return { text: values.join('\n') };
 }

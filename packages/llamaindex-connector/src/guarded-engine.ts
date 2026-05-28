@@ -14,15 +14,18 @@
  * @package @blackunicorn/bonklm-llamaindex
  */
 
-import { createLogger, createResult, GuardrailEngine, type GuardrailResult, type Logger, sanitizeMeta, Severity, validateWithTimeoutSecure } from '@blackunicorn/bonklm';
-import type {
-  GuardedLlamaIndexOptions,
-  GuardedQueryResult,
-} from './types.js';
 import {
-  DEFAULT_MAX_RETRIEVED_DOCS,
-  DEFAULT_VALIDATION_TIMEOUT,
-} from './types.js';
+  createLogger,
+  createResult,
+  GuardrailEngine,
+  type GuardrailResult,
+  type Logger,
+  sanitizeMeta,
+  Severity,
+  validateWithTimeoutSecure
+} from '@blackunicorn/bonklm';
+import type { GuardedLlamaIndexOptions, GuardedQueryResult } from './types.js';
+import { DEFAULT_MAX_RETRIEVED_DOCS, DEFAULT_VALIDATION_TIMEOUT } from './types.js';
 
 /**
  * Default logger instance.
@@ -71,10 +74,7 @@ export interface GuardedRetriever {
  * const result = await guardedEngine.query('Tell me about X');
  * ```
  */
-export function createGuardedQueryEngine(
-  queryEngine: any,
-  options: GuardedLlamaIndexOptions = {}
-): GuardedQueryEngine {
+export function createGuardedQueryEngine(queryEngine: any, options: GuardedLlamaIndexOptions = {}): GuardedQueryEngine {
   const {
     validators = [],
     guards = [],
@@ -86,13 +86,13 @@ export function createGuardedQueryEngine(
     maxRetrievedDocs = DEFAULT_MAX_RETRIEVED_DOCS,
     onQueryBlocked,
     onDocumentBlocked,
-    onResponseBlocked,
+    onResponseBlocked
   } = options;
 
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   /**
@@ -100,10 +100,7 @@ export function createGuardedQueryEngine(
    *
    * @internal
    */
-  const validateWithTimeout = async (
-    content: string,
-    context?: string
-  ): Promise<GuardrailResult> => {
+  const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult> => {
     const result = await validateWithTimeoutSecure<GuardrailResult>({
       operation: () => engine.validate(content, context) as Promise<GuardrailResult>,
       timeoutMs: validationTimeout,
@@ -113,10 +110,10 @@ export function createGuardedQueryEngine(
             category: 'timeout',
             description: 'Validation timeout',
             severity: Severity.CRITICAL,
-            weight: 30,
-          },
+            weight: 30
+          }
         ]),
-      logger,
+      logger
     });
     return result;
   };
@@ -169,7 +166,7 @@ export function createGuardedQueryEngine(
         const safeReason = sanitizeMeta(result.reason);
         logger.warn('[Guardrails] Document blocked', {
           reason: safeReason,
-          documentPreview: sanitizeMeta(content.substring(0, 100)),
+          documentPreview: sanitizeMeta(content.substring(0, 100))
         });
         if (onDocumentBlocked) {
           onDocumentBlocked(content.substring(0, 200), result);
@@ -199,7 +196,7 @@ export function createGuardedQueryEngine(
       // Step 2: Apply retrieval limit if specified
       const queryOptions = {
         ...options,
-        similarityTopK: Math.min(options.similarityTopK || maxRetrievedDocs, maxRetrievedDocs),
+        similarityTopK: Math.min(options.similarityTopK || maxRetrievedDocs, maxRetrievedDocs)
       };
 
       // Step 3: Execute the query
@@ -222,7 +219,7 @@ export function createGuardedQueryEngine(
           response: '[Content filtered by guardrails]',
           filtered: true,
           documentsBlocked: blocked,
-          raw: result,
+          raw: result
         };
       }
 
@@ -231,9 +228,9 @@ export function createGuardedQueryEngine(
         sourceNodes: validNodes,
         filtered: false,
         documentsBlocked: blocked,
-        raw: result,
+        raw: result
       };
-    },
+    }
   };
 }
 
@@ -271,13 +268,13 @@ export function createGuardedRetriever(
     validationTimeout = DEFAULT_VALIDATION_TIMEOUT,
     maxRetrievedDocs = DEFAULT_MAX_RETRIEVED_DOCS,
     onQueryBlocked,
-    onDocumentBlocked,
+    onDocumentBlocked
   } = options;
 
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult> => {
@@ -290,10 +287,10 @@ export function createGuardedRetriever(
             category: 'timeout',
             description: 'Validation timeout',
             severity: Severity.CRITICAL,
-            weight: 30,
-          },
+            weight: 30
+          }
         ]),
-      logger,
+      logger
     });
     return result;
   };
@@ -324,7 +321,7 @@ export function createGuardedRetriever(
       // Apply retrieval limit
       const retrieveOptions = {
         ...options,
-        similarityTopK: Math.min(options.similarityTopK || maxRetrievedDocs, maxRetrievedDocs),
+        similarityTopK: Math.min(options.similarityTopK || maxRetrievedDocs, maxRetrievedDocs)
       };
 
       // Execute retrieval
@@ -347,7 +344,7 @@ export function createGuardedRetriever(
           const safeReason = sanitizeMeta(result.reason);
           logger.warn('[Guardrails] Retrieved document blocked', {
             reason: safeReason,
-            documentPreview: sanitizeMeta(content.substring(0, 100)),
+            documentPreview: sanitizeMeta(content.substring(0, 100))
           });
           if (onDocumentBlocked) {
             onDocumentBlocked(content.substring(0, 200), result);
@@ -360,14 +357,11 @@ export function createGuardedRetriever(
       }
 
       return valid;
-    },
+    }
   };
 }
 
 /**
  * Re-exports types for convenience.
  */
-export type {
-  GuardedLlamaIndexOptions,
-  GuardedQueryResult,
-} from './types.js';
+export type { GuardedLlamaIndexOptions, GuardedQueryResult } from './types.js';

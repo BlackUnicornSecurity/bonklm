@@ -25,7 +25,7 @@ import type { GuardrailEngine, Validator } from '@blackunicorn/bonklm';
 import {
   adaptValidatorToUniversalInput,
   assertNotWrapped,
-  markWrapped,
+  markWrapped
 } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
@@ -68,11 +68,7 @@ export class VoltAgentGuardrailBlockedError extends Error {
   readonly category?: string;
   readonly severity?: string;
 
-  constructor(
-    message: string,
-    phase: 'input' | 'output',
-    extra?: { category?: string; severity?: string }
-  ) {
+  constructor(message: string, phase: 'input' | 'output', extra?: { category?: string; severity?: string }) {
     super(message);
     this.phase = phase;
     this.category = extra?.category;
@@ -99,21 +95,16 @@ export interface WrapVoltAgentOptions {
 
 const BONKLM_WIRED = Symbol.for('bonklm.voltagent.wired');
 
-export function wrapVoltAgent<A extends VoltAgentLike>(
-  agent: A,
-  options: WrapVoltAgentOptions
-): A {
+export function wrapVoltAgent<A extends VoltAgentLike>(agent: A, options: WrapVoltAgentOptions): A {
   if (!agent || typeof agent.generateText !== 'function') {
     throw new TypeError('wrapVoltAgent: agent.generateText must be a function.');
   }
   if (!options?.engine && (!options?.inputValidators || options.inputValidators.length === 0)) {
-    throw new TypeError(
-      'wrapVoltAgent: at least one of options.engine or options.inputValidators is required.'
-    );
+    throw new TypeError('wrapVoltAgent: at least one of options.engine or options.inputValidators is required.');
   }
   assertNotWrapped(agent, BONKLM_WIRED, 'wrapVoltAgent');
 
-  const inputValidators = (options.inputValidators ?? []).map((v) =>
+  const inputValidators = (options.inputValidators ?? []).map(v =>
     adaptValidatorToUniversalInput(v, 'wrapVoltAgent.inputValidators')
   );
   const originalGenerateText = agent.generateText.bind(agent);
@@ -142,7 +133,7 @@ export function wrapVoltAgent<A extends VoltAgentLike>(
             await postValidate(buffered, options);
           }
         }
-      : undefined,
+      : undefined
   } as unknown as A;
 
   markWrapped(wrapped, BONKLM_WIRED);
@@ -199,10 +190,7 @@ async function preValidate(
   }
 }
 
-async function postValidate(
-  text: string,
-  options: WrapVoltAgentOptions
-): Promise<void> {
+async function postValidate(text: string, options: WrapVoltAgentOptions): Promise<void> {
   if (!options.engine || text.length === 0) return;
   const r = await options.engine.validate(text);
   if (r.blocked) {
@@ -219,8 +207,8 @@ function extractInputText(input: VoltAgentInput): string {
   if (typeof input?.prompt === 'string') return input.prompt;
   if (Array.isArray(input?.messages)) {
     return input.messages
-      .filter((m) => m.role === 'user')
-      .map((m) => m.content)
+      .filter(m => m.role === 'user')
+      .map(m => m.content)
       .join('\n\n');
   }
   return '';
@@ -229,7 +217,10 @@ function extractInputText(input: VoltAgentInput): string {
 function fireBlock(
   options: WrapVoltAgentOptions,
   phase: 'input' | 'output',
-  result: { findings?: Array<{ category?: string; description?: string }>; severity?: string | { toString: () => string } }
+  result: {
+    findings?: Array<{ category?: string; description?: string }>;
+    severity?: string | { toString: () => string };
+  }
 ): void {
   const finding = result.findings?.[0];
   const event: VoltAgentBlockEvent = {
@@ -238,7 +229,7 @@ function fireBlock(
     phase,
     reason: finding?.description ?? `${phase}_blocked`,
     category: finding?.category,
-    severity: result.severity ? String(result.severity) : undefined,
+    severity: result.severity ? String(result.severity) : undefined
   };
   try {
     options.onBlock?.(event);

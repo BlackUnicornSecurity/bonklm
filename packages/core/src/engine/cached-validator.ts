@@ -60,11 +60,7 @@
  * @package @blackunicorn/bonklm
  */
 import type { GuardrailResult } from '../base/GuardrailResult.js';
-import type {
-  Validator,
-  ValidatorInput,
-  ValidatorResult,
-} from './GuardrailEngine.types.js';
+import type { Validator, ValidatorInput, ValidatorResult } from './GuardrailEngine.types.js';
 
 /**
  * BonkLM cache namespace baked into the default keyFn. Bumping this
@@ -105,11 +101,7 @@ export const DEFAULT_TTL_MS = 60 * 60 * 1000; // 1h
  */
 export interface ValidatorCache {
   get(key: string): GuardrailResult | undefined | Promise<GuardrailResult | undefined>;
-  set(
-    key: string,
-    value: GuardrailResult,
-    ttlMs?: number
-  ): void | Promise<void>;
+  set(key: string, value: GuardrailResult, ttlMs?: number): void | Promise<void>;
   has?(key: string): boolean | Promise<boolean>;
   clear?(): void | Promise<void>;
 }
@@ -210,14 +202,7 @@ export async function cachedValidate(
   legacyKeyFn?: KeyFn
 ): Promise<CachedValidatorResult[]> {
   const options = normaliseOptions(optionsOrCache, legacyKeyFn);
-  const {
-    cache,
-    keyFn: resolvedKeyFn,
-    defaultTtlMs,
-    blockedTtlMs,
-    cacheNamespace,
-    logger,
-  } = options;
+  const { cache, keyFn: resolvedKeyFn, defaultTtlMs, blockedTtlMs, cacheNamespace, logger } = options;
 
   // ── B2 closure: pre-flight name validation ──────────────────────
   // Cache key MUST carry a stable validator identifier. Constructor.name
@@ -281,7 +266,7 @@ export async function cachedValidate(
         error: err instanceof Error ? err.message : String(err),
         // Truncated to avoid leaking the full cacheNamespace prefix
         // into downstream log aggregators (sec-audit F-2).
-        key: truncateKeyForLog(key),
+        key: truncateKeyForLog(key)
       });
       cached = undefined;
     }
@@ -297,10 +282,11 @@ export async function cachedValidate(
         results.push({ ...cached, validatorName: name, fromCache: true });
         continue;
       }
-      logger?.warn?.(
-        'cachedValidate: cached entry validatorName mismatch; treating as miss',
-        { expected: name, stored: storedName, key: truncateKeyForLog(key) }
-      );
+      logger?.warn?.('cachedValidate: cached entry validatorName mismatch; treating as miss', {
+        expected: name,
+        stored: storedName,
+        key: truncateKeyForLog(key)
+      });
     }
 
     // ── Cache miss — run validator. Throw propagates; do NOT cache. ─
@@ -308,10 +294,10 @@ export async function cachedValidate(
 
     // ── B5 closure: structural validation before cache.set ──────
     if (!isWellFormedGuardrailResult(fresh)) {
-      logger?.warn?.(
-        'cachedValidate: validator returned a malformed GuardrailResult; not caching',
-        { validatorName: name, key: truncateKeyForLog(key) }
-      );
+      logger?.warn?.('cachedValidate: validator returned a malformed GuardrailResult; not caching', {
+        validatorName: name,
+        key: truncateKeyForLog(key)
+      });
       results.push({ ...fresh, validatorName: name, fromCache: false });
       continue;
     }
@@ -327,14 +313,11 @@ export async function cachedValidate(
     try {
       await Promise.resolve(cache.set(key, toStore, ttlMs));
     } catch (err) {
-      logger?.warn?.(
-        'cachedValidate: cache.set failed; result still returned to caller',
-        {
-          error: err instanceof Error ? err.message : String(err),
-          validatorName: name,
-          key: truncateKeyForLog(key),
-        }
-      );
+      logger?.warn?.('cachedValidate: cache.set failed; result still returned to caller', {
+        error: err instanceof Error ? err.message : String(err),
+        validatorName: name,
+        key: truncateKeyForLog(key)
+      });
     }
 
     results.push({ ...fresh, validatorName: name, fromCache: false });
@@ -396,7 +379,7 @@ function normaliseOptions(
     defaultTtlMs: resolvedTtl,
     blockedTtlMs,
     cacheNamespace: resolvedNamespace,
-    logger,
+    logger
   };
 }
 
@@ -461,10 +444,7 @@ export const defaultKeyFn: KeyFn = (() => {
  * @param baseKeyFn - Optional underlying keyFn. Defaults to namespaced
  *   `defaultKeyFn`.
  */
-export function createSaltedKeyFn(
-  engineInstanceId: string,
-  baseKeyFn: KeyFn = defaultKeyFn
-): KeyFn {
+export function createSaltedKeyFn(engineInstanceId: string, baseKeyFn: KeyFn = defaultKeyFn): KeyFn {
   if (typeof engineInstanceId !== 'string' || engineInstanceId.length === 0) {
     throw new Error('createSaltedKeyFn: engineInstanceId must be a non-empty string');
   }

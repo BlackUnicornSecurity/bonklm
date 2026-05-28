@@ -31,7 +31,7 @@ import {
   clearAllSessions,
   sanitizeLogString,
   sanitizeMeta,
-  serializeError,
+  serializeError
 } from '@blackunicorn/bonklm';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { guardrailsPlugin } from '../src/plugin.js';
@@ -52,9 +52,7 @@ describe('fastify-plugin — Sprint 43 CWE-117 sanitization contract', () => {
 
   it('sanitizes a validator-extracted reason for the dev error-handler body', () => {
     const reason = 'matched ignore_previous\nINJECTED:CRITICAL bypass';
-    expect(sanitizeMeta(reason)).toBe(
-      'matched ignore_previous\\nINJECTED:CRITICAL bypass'
-    );
+    expect(sanitizeMeta(reason)).toBe('matched ignore_previous\\nINJECTED:CRITICAL bypass');
   });
 
   it('sanitizes a caller-supplied request.url path field', () => {
@@ -72,9 +70,7 @@ describe('fastify-plugin — Sprint 43 CWE-117 sanitization contract', () => {
     // attacker-controllable. Pre-Sprint-44, both session-escalated
     // log sites (lines ~388, ~430) embedded sessionId raw in meta.
     const hostileSessionId = 'session-abc\nINJECTED:fake_admin=true';
-    expect(sanitizeMeta(hostileSessionId)).toBe(
-      'session-abc\\nINJECTED:fake_admin=true'
-    );
+    expect(sanitizeMeta(hostileSessionId)).toBe('session-abc\\nINJECTED:fake_admin=true');
   });
 
   it('serializeError replaces raw error.message in validation-error log', () => {
@@ -84,9 +80,7 @@ describe('fastify-plugin — Sprint 43 CWE-117 sanitization contract', () => {
     // `serializeError` which sanitizes via sanitizeLogString
     // internally.
     const out = serializeError(new Error('validator boom\nINJECTED:CRITICAL fake_error_code'));
-    expect(out.message).toBe(
-      'validator boom\\nINJECTED:CRITICAL fake_error_code'
-    );
+    expect(out.message).toBe('validator boom\\nINJECTED:CRITICAL fake_error_code');
     expect(out.name).toBe('Error');
   });
 });
@@ -139,11 +133,11 @@ describe('fastify-plugin — Sprint 45 session-tracking integration', () => {
             category: hostileCategory,
             severity: 'critical' as const,
             description: 'hostile pattern',
-            weight: 1,
-          },
+            weight: 1
+          }
         ],
-        timestamp: Date.now(),
-      }),
+        timestamp: Date.now()
+      })
     };
 
     await fastify.register(guardrailsPlugin, {
@@ -154,9 +148,9 @@ describe('fastify-plugin — Sprint 45 session-tracking integration', () => {
         debug: vi.fn(),
         info: vi.fn(),
         warn: warnSpy,
-        error: errorSpy,
+        error: errorSpy
       },
-      productionMode: false,
+      productionMode: false
     });
 
     fastify.post('/test', async () => {
@@ -172,13 +166,13 @@ describe('fastify-plugin — Sprint 45 session-tracking integration', () => {
       await fastify.inject({
         method: 'POST',
         url: '/test',
-        payload: { message: `turn ${i}` },
+        payload: { message: `turn ${i}` }
       });
     }
 
     // The escalation warn fires with sanitized meta.
     const escalationCalls = warnSpy.mock.calls.filter(
-      (call) => typeof call[0] === 'string' && call[0].includes('Session escalated after validation')
+      call => typeof call[0] === 'string' && call[0].includes('Session escalated after validation')
     );
     expect(escalationCalls.length).toBeGreaterThan(0);
     const [, meta] = escalationCalls[0]!;

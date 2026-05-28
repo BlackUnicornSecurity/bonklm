@@ -104,9 +104,7 @@ export interface ReadByRoomOptions {
  * review required" (NO position info). `brokenAt` is consumable ONLY
  * inside the connector for CRITICAL telemetry + internal logging.
  */
-export type VerifyChainResult =
-  | { ok: true }
-  | { ok: false; brokenAt: number };
+export type VerifyChainResult = { ok: true } | { ok: false; brokenAt: number };
 
 /**
  * Eviction policy when storage caps are reached.

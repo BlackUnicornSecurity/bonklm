@@ -212,11 +212,7 @@ export interface GuardedGenkitOptions {
    * @param result - The validation result.
    * @param context - The Genkit execution context.
    */
-  onToolCallBlocked?: (
-    toolCall: GenkitToolCall,
-    result: GuardrailResult,
-    context?: GenkitFlowContext,
-  ) => void;
+  onToolCallBlocked?: (toolCall: GenkitToolCall, result: GuardrailResult, context?: GenkitFlowContext) => void;
 }
 
 /**

@@ -10,10 +10,7 @@
  * Affected languages today: ar, ur (Sprint 17). Future: fa, he.
  */
 import { describe, it, expect } from 'vitest';
-import {
-  stripBidiControls,
-  normalizeForMultilingualMatch,
-} from '../../src/validators/internal/rtl-bidi-guard.js';
+import { stripBidiControls, normalizeForMultilingualMatch } from '../../src/validators/internal/rtl-bidi-guard.js';
 import { MultilingualDetector } from '../../src/validators/multilingual-patterns.js';
 
 describe('stripBidiControls — removes Unicode bidi-control characters', () => {
@@ -26,7 +23,7 @@ describe('stripBidiControls — removes Unicode bidi-control characters', () => 
     '⁦', // LRI — Left-to-Right Isolate
     '⁧', // RLI — Right-to-Left Isolate
     '⁨', // FSI — First Strong Isolate
-    '⁩', // PDI — Pop Directional Isolate
+    '⁩' // PDI — Pop Directional Isolate
   ];
 
   for (const ch of BIDI_CHARS) {

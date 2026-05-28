@@ -26,7 +26,7 @@ import type {
   VoiceWebhookBlockEvent,
   VoiceWebhookHmacFailureEvent,
   WebhookRequest,
-  WebhookResponse,
+  WebhookResponse
 } from '../types.js';
 
 /** Vapi event-type discriminator from the request body. */
@@ -74,7 +74,7 @@ export function createVapiHandler(config: VapiHandlerConfig): (req: WebhookReque
         signature: req.headers[VAPI_SIGNATURE_HEADER],
         timestamp: req.headers[VAPI_TIMESTAMP_HEADER],
         secret: config.hmacSecret,
-        replayWindowMs: config.replayWindowMs,
+        replayWindowMs: config.replayWindowMs
       });
       if (!hmacResult.valid) {
         emitHmacFailure(config, { vendor: 'vapi', reason: hmacResult.reason });
@@ -122,10 +122,7 @@ export function createVapiHandler(config: VapiHandlerConfig): (req: WebhookReque
 // Handlers
 // =============================================================================
 
-async function handleToolCalls(
-  message: VapiMessage,
-  config: VapiHandlerConfig
-): Promise<WebhookResponse> {
+async function handleToolCalls(message: VapiMessage, config: VapiHandlerConfig): Promise<WebhookResponse> {
   const calls = Array.isArray(message.toolCallList) ? message.toolCallList : [];
   for (const call of calls) {
     const args = call?.function?.arguments;
@@ -142,7 +139,7 @@ async function handleToolCalls(
         phase: 'vapi_tool_call',
         reason: 'tool_call_blocked',
         category: result.findings[0]?.category,
-        severity: String(result.severity),
+        severity: String(result.severity)
       };
       safeOnBlock(config, ev);
       return { status: 403, body: { error: 'tool_call_blocked', findings: result.findings } };
@@ -151,10 +148,7 @@ async function handleToolCalls(
   return { status: 200, body: { ok: true } };
 }
 
-async function handleAssistantRequest(
-  message: VapiMessage,
-  config: VapiHandlerConfig
-): Promise<WebhookResponse> {
+async function handleAssistantRequest(message: VapiMessage, config: VapiHandlerConfig): Promise<WebhookResponse> {
   // Sprint 19 Story 3.4 audit architect-C4 closure: Vapi expects an
   // `assistant` config object in the response body — `{ok:true}`
   // breaks the session. Caller MUST provide `onAssistantRequest`
@@ -165,18 +159,15 @@ async function handleAssistantRequest(
       body: {
         error: 'assistant_request_unconfigured',
         message:
-          'createVapiHandler received an assistant-request event but no onAssistantRequest hook is configured. Vapi expects an assistant config object in the response body.',
-      },
+          'createVapiHandler received an assistant-request event but no onAssistantRequest hook is configured. Vapi expects an assistant config object in the response body.'
+      }
     };
   }
   const assistant = await config.onAssistantRequest(message);
   return { status: 200, body: assistant };
 }
 
-async function handleTranscriptObserveOnly(
-  message: VapiMessage,
-  config: VapiHandlerConfig
-): Promise<WebhookResponse> {
+async function handleTranscriptObserveOnly(message: VapiMessage, config: VapiHandlerConfig): Promise<WebhookResponse> {
   // Transcript is async observe-only — Vapi does NOT wait for our
   // response. We validate and surface telemetry but the LLM call has
   // already fired by the time we receive this event.
@@ -189,7 +180,7 @@ async function handleTranscriptObserveOnly(
       phase: 'vapi_transcript',
       reason: 'transcript_blocked_observe_only',
       category: result.findings[0]?.category,
-      severity: String(result.severity),
+      severity: String(result.severity)
     };
     safeOnBlock(config, ev);
     // Still 200 — Vapi does not act on our response for transcripts.
@@ -210,10 +201,7 @@ function safeOnBlock(config: VapiHandlerConfig, ev: VoiceWebhookBlockEvent): voi
   }
 }
 
-function emitHmacFailure(
-  config: VapiHandlerConfig,
-  ev: VoiceWebhookHmacFailureEvent
-): void {
+function emitHmacFailure(config: VapiHandlerConfig, ev: VoiceWebhookHmacFailureEvent): void {
   try {
     config.onHmacFailure?.(ev);
   } catch (err) {

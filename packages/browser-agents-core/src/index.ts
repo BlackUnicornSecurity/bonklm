@@ -12,16 +12,13 @@
  *   - `BrowserAgentGuardOptions` — `{ engine, allowCuaMode?, logger? }`.
  *   - `BrowserAgentValidateResult` — `{ blocked, allowed, reason?, surface }`.
  */
-export {
-  withBrowserAgentGuardrails,
-  type GuardedBrowserAgentClient,
-} from './with-browser-agent-guardrails.js';
+export { withBrowserAgentGuardrails, type GuardedBrowserAgentClient } from './with-browser-agent-guardrails.js';
 export { BrowserAgentGuardrailBlockedError } from './types.js';
 export type {
   BrowserAgentEvent,
   BrowserAgentGuardOptions,
   BrowserAgentLogger,
-  BrowserAgentValidateResult,
+  BrowserAgentValidateResult
 } from './types.js';
 export {
   CUA_MODE_PATTERN,
@@ -30,5 +27,5 @@ export {
   emitWarning,
   isUnsafeBinaryResult,
   normaliseActArg,
-  sanitizeReasonText,
+  sanitizeReasonText
 } from './shared-helpers.js';

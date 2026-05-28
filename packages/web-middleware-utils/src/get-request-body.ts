@@ -29,19 +29,14 @@ export interface RequestLike {
   body?: unknown;
 }
 
-export async function getRequestBody(
-  req: RequestLike,
-  framework: SupportedFramework
-): Promise<string> {
+export async function getRequestBody(req: RequestLike, framework: SupportedFramework): Promise<string> {
   if (!req) {
     throw new TypeError('getRequestBody: req is required.');
   }
   switch (framework) {
     case 'web': {
       if (typeof req.text !== 'function') {
-        throw new TypeError(
-          'getRequestBody: framework="web" requires req.text() (Web Request).'
-        );
+        throw new TypeError('getRequestBody: framework="web" requires req.text() (Web Request).');
       }
       return req.text();
     }

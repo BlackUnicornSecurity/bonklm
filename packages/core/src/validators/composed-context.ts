@@ -32,18 +32,9 @@
  * `{ phase: AFTER_VALIDATION, surface: 'composed_context' }`.
  */
 import type { Validator, ValidatorInput } from '../engine/GuardrailEngine.types.js';
-import {
-  createResult,
-  type GuardrailResult,
-  Severity,
-} from '../base/GuardrailResult.js';
+import { createResult, type GuardrailResult, Severity } from '../base/GuardrailResult.js';
 import type { Logger } from '../base/GenericLogger.js';
-import {
-  maxSeverity,
-  riskFromScore,
-  runValidatorChain,
-  VALIDATOR_ERROR_CATEGORIES,
-} from './validator-utils.js';
+import { maxSeverity, riskFromScore, runValidatorChain, VALIDATOR_ERROR_CATEGORIES } from './validator-utils.js';
 
 /** Default soft cap (32KB) — exceeding it warns via telemetry. */
 export const DEFAULT_COMPOSED_CONTEXT_SOFT_CAP_BYTES = 32 * 1024;
@@ -143,11 +134,7 @@ interface EntrySelection {
  * If the FIRST entry from the newest end is itself oversized, it's the
  * only entry we scan.
  */
-function selectEntriesNewestFirst(
-  entries: string[],
-  hardCap: number,
-  separatorBytes: number
-): EntrySelection {
+function selectEntriesNewestFirst(entries: string[], hardCap: number, separatorBytes: number): EntrySelection {
   const reversed: string[] = [];
   let bytes = 0;
   let truncated = false;
@@ -192,13 +179,9 @@ function selectEntriesNewestFirst(
  * }
  * ```
  */
-export function createComposedContextValidator(
-  config: ComposedContextValidatorConfig
-): ComposedContextValidator {
+export function createComposedContextValidator(config: ComposedContextValidatorConfig): ComposedContextValidator {
   if (config.validators.length === 0) {
-    throw new Error(
-      'createComposedContextValidator requires at least one underlying validator.'
-    );
+    throw new Error('createComposedContextValidator requires at least one underlying validator.');
   }
   const softCap = config.softCapBytes ?? DEFAULT_COMPOSED_CONTEXT_SOFT_CAP_BYTES;
   const hardCap = config.hardCapBytes ?? DEFAULT_COMPOSED_CONTEXT_HARD_CAP_BYTES;
@@ -215,9 +198,7 @@ export function createComposedContextValidator(
     );
   }
   if (softCap > hardCap) {
-    throw new RangeError(
-      `composed-context softCapBytes (${softCap}) must be <= hardCapBytes (${hardCap})`
-    );
+    throw new RangeError(`composed-context softCapBytes (${softCap}) must be <= hardCapBytes (${hardCap})`);
   }
   const separatorBytes = utf8ByteLength(ENTRY_SEPARATOR);
   const logger = config.logger;
@@ -230,23 +211,21 @@ export function createComposedContextValidator(
           metadata: {
             composedContextBytesScanned: 0,
             composedContextTruncated: false,
-            composedContextSoftCapExceeded: false,
-          },
+            composedContextSoftCapExceeded: false
+          }
         },
         bytesScanned: 0,
         truncated: false,
-        softCapExceeded: false,
+        softCapExceeded: false
       };
     }
 
-    const totalBytes = entries.reduce(
-      (acc, e, i) => acc + utf8ByteLength(e) + (i > 0 ? separatorBytes : 0),
-      0
-    );
+    const totalBytes = entries.reduce((acc, e, i) => acc + utf8ByteLength(e) + (i > 0 ? separatorBytes : 0), 0);
 
-    const selection: EntrySelection = totalBytes <= hardCap
-      ? { kept: entries, bytesScanned: totalBytes, truncated: false }
-      : selectEntriesNewestFirst(entries, hardCap, separatorBytes);
+    const selection: EntrySelection =
+      totalBytes <= hardCap
+        ? { kept: entries, bytesScanned: totalBytes, truncated: false }
+        : selectEntriesNewestFirst(entries, hardCap, separatorBytes);
 
     // Audit-loop BLOCK fix: precedence between hard-cap and soft-cap
     // signals. When truncation fired, the hard-cap event subsumes the
@@ -261,12 +240,12 @@ export function createComposedContextValidator(
         original: entries.length,
         kept: selection.kept.length,
         bytesScanned: selection.bytesScanned,
-        hardCap,
+        hardCap
       });
     } else if (softCapExceeded) {
       logger?.info('[ComposedContextValidator] soft cap exceeded', {
         bytesScanned: selection.bytesScanned,
-        softCap,
+        softCap
       });
     }
 
@@ -285,11 +264,7 @@ export function createComposedContextValidator(
     // missed.
     const reverseResult = forwardResult.blocked
       ? createResult(true, Severity.INFO, [])
-      : await runValidatorChain(
-          config.validators,
-          reverseBlob,
-          VALIDATOR_ERROR_CATEGORIES.composedContext
-        );
+      : await runValidatorChain(config.validators, reverseBlob, VALIDATOR_ERROR_CATEGORIES.composedContext);
 
     const blocked = forwardResult.blocked || reverseResult.blocked;
     const reason = forwardResult.blocked
@@ -320,13 +295,13 @@ export function createComposedContextValidator(
         metadata: {
           composedContextBytesScanned: selection.bytesScanned,
           composedContextTruncated: selection.truncated,
-          composedContextSoftCapExceeded: softCapExceeded,
+          composedContextSoftCapExceeded: softCapExceeded
         },
-        timestamp: Date.now(),
+        timestamp: Date.now()
       },
       bytesScanned: selection.bytesScanned,
       truncated: selection.truncated,
-      softCapExceeded,
+      softCapExceeded
     };
   };
 
@@ -339,6 +314,6 @@ export function createComposedContextValidator(
       const batch = await validateEntries(input.entries);
       return batch.result;
     },
-    validateEntries,
+    validateEntries
   };
 }

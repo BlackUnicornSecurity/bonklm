@@ -26,11 +26,7 @@
  * @package @blackunicorn/bonklm-browser-agents-core
  */
 import type { ValidatorInput } from '@blackunicorn/bonklm';
-import type {
-  BrowserAgentEvent,
-  BrowserAgentGuardOptions,
-  BrowserAgentValidateResult,
-} from './types.js';
+import type { BrowserAgentEvent, BrowserAgentGuardOptions, BrowserAgentValidateResult } from './types.js';
 
 /**
  * Extended client shape returned by `withBrowserAgentGuardrails`.
@@ -81,14 +77,12 @@ export function withBrowserAgentGuardrails<T extends object>(
     } else {
       // sec-audit T5 closure: no logger MUST NOT silence a CUA opt-in
       // warning. Force the warning to a visible channel.
-       
+
       console.warn(msg);
     }
   }
 
-  const validateEvent = async (
-    event: BrowserAgentEvent
-  ): Promise<BrowserAgentValidateResult> => {
+  const validateEvent = async (event: BrowserAgentEvent): Promise<BrowserAgentValidateResult> => {
     const { input, surface } = eventToValidatorInput(event);
     // arch-audit BLOCK-3 closure: `engine.validateInput(input)` keeps
     // the structured discriminated-union shape AND fires the engine's
@@ -100,7 +94,7 @@ export function withBrowserAgentGuardrails<T extends object>(
       blocked: engineResult.blocked,
       allowed: engineResult.allowed,
       reason: engineResult.blocked ? engineResult.reason : undefined,
-      surface,
+      surface
     };
   };
 
@@ -108,8 +102,8 @@ export function withBrowserAgentGuardrails<T extends object>(
   const guarded = Object.assign(Object.create(Object.getPrototypeOf(client)), client, {
     bonklm: Object.freeze({
       validateEvent,
-      engineInstanceId: engine.getInstanceId(),
-    }),
+      engineInstanceId: engine.getInstanceId()
+    })
   }) as GuardedBrowserAgentClient<T>;
 
   return guarded;
@@ -135,9 +129,9 @@ function eventToValidatorInput(event: BrowserAgentEvent): {
         input: {
           kind: 'tool_call',
           toolName: event.action,
-          args: event.args ?? {},
+          args: event.args ?? {}
         },
-        surface: 'tool_call',
+        surface: 'tool_call'
       };
     case 'extract':
       return {
@@ -146,21 +140,21 @@ function eventToValidatorInput(event: BrowserAgentEvent): {
           docs: [
             {
               content: safeStringifyExtractResult(event.result),
-              metadata: { schemaPresent: event.schema !== undefined },
-            },
-          ],
+              metadata: { schemaPresent: event.schema !== undefined }
+            }
+          ]
         },
-        surface: 'retrieved_doc',
+        surface: 'retrieved_doc'
       };
     case 'observe':
       return {
         input: { kind: 'text', content: event.prompt },
-        surface: 'text_input',
+        surface: 'text_input'
       };
     case 'agent.execute':
       return {
         input: { kind: 'composed_context', entries: [event.task] },
-        surface: 'composed_context',
+        surface: 'composed_context'
       };
     case 'file':
       // High-blast-radius op flagged via toolName prefix so
@@ -171,19 +165,19 @@ function eventToValidatorInput(event: BrowserAgentEvent): {
           toolName: `file.${event.op}`,
           args: {
             path: event.path,
-            ...(event.content !== undefined ? { content: event.content } : {}),
-          },
+            ...(event.content !== undefined ? { content: event.content } : {})
+          }
         },
-        surface: 'tool_call',
+        surface: 'tool_call'
       };
     case 'mcp.tool':
       return {
         input: {
           kind: 'tool_call',
           toolName: `${event.server}/${event.tool}`,
-          args: event.args ?? {},
+          args: event.args ?? {}
         },
-        surface: 'tool_call',
+        surface: 'tool_call'
       };
     default: {
       // Exhaustiveness check at compile time; throws at runtime for

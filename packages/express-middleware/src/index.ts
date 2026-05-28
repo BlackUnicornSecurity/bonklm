@@ -7,9 +7,4 @@
  */
 
 export { createGuardrailsMiddleware } from './middleware.js';
-export type {
-  GuardrailsMiddlewareConfig,
-  GuardrailsRequest,
-  ErrorHandler,
-  BodyExtractor,
-} from './types.js';
+export type { GuardrailsMiddlewareConfig, GuardrailsRequest, ErrorHandler, BodyExtractor } from './types.js';

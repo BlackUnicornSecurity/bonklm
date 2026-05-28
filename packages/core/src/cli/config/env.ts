@@ -17,17 +17,7 @@
  * - No predictable temp file patterns
  */
 
-import {
-  access,
-  chmod,
-  constants,
-  mkdtemp,
-  readFile,
-  rename,
-  rm,
-  stat,
-  writeFile,
-} from 'fs/promises';
+import { access, chmod, constants, mkdtemp, readFile, rename, rm, stat, writeFile } from 'fs/promises';
 import { platform, tmpdir } from 'os';
 import { existsSync } from 'fs';
 import { dirname, join } from 'path';

@@ -20,5 +20,5 @@ export type {
   VoltAgentOutput,
   VoltAgentStreamChunk,
   VoltAgentBlockEvent,
-  WrapVoltAgentOptions,
+  WrapVoltAgentOptions
 } from './wrap-voltagent.js';

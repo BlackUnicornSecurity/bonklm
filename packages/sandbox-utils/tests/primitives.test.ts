@@ -7,12 +7,7 @@
  * pattern-bearing test source files.
  */
 import { describe, it, expect, vi } from 'vitest';
-import {
-  validateCode,
-  validatePath,
-  wrapStream,
-  EXPERIMENTAL_WARN_LABEL,
-} from '../src/index.js';
+import { validateCode, validatePath, wrapStream, EXPERIMENTAL_WARN_LABEL } from '../src/index.js';
 
 const EX = 'ex' + 'ec';
 
@@ -61,7 +56,7 @@ describe('fail-CLOSED default (Story 3.5 AC + security GAP-7)', () => {
   it('synthesizes ALLOW on validator timeout when onSandboxError=allow', async () => {
     const r = await validateCode('print("hi")', {
       timeoutMs: 0,
-      onSandboxError: 'allow',
+      onSandboxError: 'allow'
     });
     expect(r.allowed).toBe(true);
     expect(r.blocked).toBe(false);
@@ -77,12 +72,9 @@ describe('AAD-4 — one-time-per-wrapper WARN suppression', () => {
       timeoutMs: 0,
       onSandboxError: 'allow',
       nodeEnv: 'production',
-      warn,
+      warn
     });
-    expect(warn).toHaveBeenCalledWith(
-      EXPERIMENTAL_WARN_LABEL,
-      expect.objectContaining({ reason: expect.any(String) })
-    );
+    expect(warn).toHaveBeenCalledWith(EXPERIMENTAL_WARN_LABEL, expect.objectContaining({ reason: expect.any(String) }));
   });
 
   it('does NOT emit WARN in non-production', async () => {
@@ -91,7 +83,7 @@ describe('AAD-4 — one-time-per-wrapper WARN suppression', () => {
       timeoutMs: 0,
       onSandboxError: 'allow',
       nodeEnv: 'development',
-      warn,
+      warn
     });
     expect(warn).not.toHaveBeenCalled();
   });
@@ -107,7 +99,7 @@ describe('AAD-4 — one-time-per-wrapper WARN suppression', () => {
         onSandboxError: 'allow',
         nodeEnv: 'production',
         warn,
-        wrapperKey: wrapperKeyA,
+        wrapperKey: wrapperKeyA
       });
     }
     // wrapperKeyB: 1 fail-open event → 1 WARN
@@ -116,7 +108,7 @@ describe('AAD-4 — one-time-per-wrapper WARN suppression', () => {
       onSandboxError: 'allow',
       nodeEnv: 'production',
       warn,
-      wrapperKey: wrapperKeyB,
+      wrapperKey: wrapperKeyB
     });
     // Distinct wrappers get distinct WARNs.
     expect(warn.mock.calls.length).toBe(2);
@@ -131,7 +123,7 @@ describe('AAD-4 — one-time-per-wrapper WARN suppression', () => {
         onSandboxError: 'allow',
         nodeEnv: 'production',
         warn,
-        wrapperKey,
+        wrapperKey
       });
     }
     expect(warn.mock.calls.length).toBe(1);
@@ -151,7 +143,7 @@ describe('wrapStream — chunk validation', () => {
   it('passes benign chunks through unchanged', async () => {
     const out = await drain(
       wrapStream(toStream(['hello ', 'world']), {
-        validators: ['code'],
+        validators: ['code']
       })
     );
     expect(out).toEqual(['hello ', 'world']);
@@ -161,7 +153,7 @@ describe('wrapStream — chunk validation', () => {
     await expect(
       drain(
         wrapStream(toStream(['hi ', `${EX}('rm -rf /')`]), {
-          validators: ['code'],
+          validators: ['code']
         })
       )
     ).rejects.toThrow(/Sandbox stream blocked/);
@@ -173,7 +165,7 @@ describe('wrapStream — chunk validation', () => {
       drain(
         wrapStream(toStream(['hi ', `${EX}('rm -rf /')`]), {
           validators: ['code'],
-          onBlock,
+          onBlock
         })
       )
     ).rejects.toThrow();
@@ -187,7 +179,7 @@ describe('wrapStream — chunk validation', () => {
           validators: ['code'],
           onBlock: () => {
             throw new Error('telemetry bug');
-          },
+          }
         })
       )
     ).rejects.toThrow(/Sandbox stream blocked/);
@@ -202,7 +194,7 @@ describe('wrapStream — chunk validation', () => {
           onBlock: () => {
             throw new Error('telemetry bug');
           },
-          onError,
+          onError
         })
       )
     ).rejects.toThrow();
@@ -215,9 +207,7 @@ describe('wrapStream — chunk validation', () => {
     async function* binStream() {
       yield new Uint8Array([1, 2, 3]) as unknown as string;
     }
-    const out = await drain(
-      wrapStream(binStream() as never, { validators: ['code'] })
-    );
+    const out = await drain(wrapStream(binStream() as never, { validators: ['code'] }));
     expect(out).toHaveLength(1);
   });
 });

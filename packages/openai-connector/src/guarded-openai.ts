@@ -20,7 +20,7 @@ import type OpenAI from 'openai';
 import type {
   ChatCompletion,
   ChatCompletionChunk,
-  ChatCompletionMessageParam,
+  ChatCompletionMessageParam
 } from 'openai/resources/chat/completions';
 import {
   createLogger,
@@ -30,19 +30,15 @@ import {
   type Logger,
   sanitizeMeta,
   Severity,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
 import type {
   GuardedChatCompletion,
   GuardedChatCompletionOptions,
   GuardedOpenAIOptions,
-  MessageContent,
+  MessageContent
 } from './types.js';
-import {
-  DEFAULT_MAX_BUFFER_SIZE,
-  DEFAULT_VALIDATION_TIMEOUT,
-  VALIDATION_INTERVAL,
-} from './types.js';
+import { DEFAULT_MAX_BUFFER_SIZE, DEFAULT_VALIDATION_TIMEOUT, VALIDATION_INTERVAL } from './types.js';
 import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
@@ -77,7 +73,7 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  */
 export function messagesToText(messages: ChatCompletionMessageParam[]): string {
   return messages
-    .map((m) => {
+    .map(m => {
       const content = m.content as MessageContent | undefined;
 
       // Handle messages without content (e.g., tool call messages)
@@ -93,15 +89,15 @@ export function messagesToText(messages: ChatCompletionMessageParam[]): string {
       // Handle array content (SEC-006: structured data, images, etc.)
       if (Array.isArray(content)) {
         return content
-          .filter((c) => c.type === 'text' || c.type === 'refusal') // Only extract text/refusal parts
-          .map((c) => c.text || c.refusal || '')
+          .filter(c => c.type === 'text' || c.type === 'refusal') // Only extract text/refusal parts
+          .map(c => c.text || c.refusal || '')
           .join('\n');
       }
 
       // Handle other types (convert to string)
       return String(content);
     })
-    .filter((c) => c.length > 0)
+    .filter(c => c.length > 0)
     .join('\n');
 }
 
@@ -138,16 +134,13 @@ export function messagesToText(messages: ChatCompletionMessageParam[]): string {
  * @throws {TypeError} If value is not a positive finite number
  */
 
-
 export function createGuardedOpenAI(
   client: OpenAI,
-  options: GuardedOpenAIOptions = {},
+  options: GuardedOpenAIOptions = {}
 ): OpenAI & {
   chat: {
     completions: {
-      create: (
-        opts: GuardedChatCompletionOptions,
-      ) => Promise<ChatCompletion | AsyncIterable<ChatCompletionChunk>>;
+      create: (opts: GuardedChatCompletionOptions) => Promise<ChatCompletion | AsyncIterable<ChatCompletionChunk>>;
     };
   };
 } {
@@ -161,7 +154,7 @@ export function createGuardedOpenAI(
     productionMode = process.env.NODE_ENV === 'production', // SEC-007
     validationTimeout = DEFAULT_VALIDATION_TIMEOUT, // SEC-008: Default 30s
     onBlocked,
-    onStreamBlocked,
+    onStreamBlocked
   } = options;
 
   // Validate critical security options
@@ -171,7 +164,7 @@ export function createGuardedOpenAI(
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   /**
@@ -183,10 +176,7 @@ export function createGuardedOpenAI(
    *
    * @internal
    */
-  const validateWithTimeout = async (
-    content: string,
-    context?: string,
-  ): Promise<GuardrailResult[]> => {
+  const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult[]> => {
     // DEV-001: Correct API signature - use string context, not object
     const engineResult = await validateWithTimeoutSecure({
       operation: () => engine.validate(content, context),
@@ -197,10 +187,10 @@ export function createGuardedOpenAI(
             category: 'timeout',
             description: 'Validation timeout',
             severity: Severity.CRITICAL,
-            weight: 30,
-          },
+            weight: 30
+          }
         ]),
-      logger,
+      logger
     });
 
     // Convert EngineResult to GuardrailResult[]
@@ -221,7 +211,7 @@ export function createGuardedOpenAI(
     const prompt = messagesToText(messages);
     const inputResults = await validateWithTimeout(prompt, 'input');
 
-    const blocked = inputResults.find((r) => !r.allowed);
+    const blocked = inputResults.find(r => !r.allowed);
     if (blocked) {
       // Sprint 43 CWE-117 sweep: sanitize `blocked.reason` at both
       // log-meta + dev-mode throw boundaries.
@@ -242,16 +232,14 @@ export function createGuardedOpenAI(
    *
    * @internal
    */
-  const createValidatedStream = (
-    stream: AsyncIterable<ChatCompletionChunk>,
-  ): AsyncIterable<ChatCompletionChunk> => {
+  const createValidatedStream = (stream: AsyncIterable<ChatCompletionChunk>): AsyncIterable<ChatCompletionChunk> => {
     // openai-connector currently only implements 'incremental' mode. If a caller
     // passes 'buffer', validation is silently skipped — surface that intent
     // explicitly via a warning rather than a silent no-op.
     if (validateStreaming && streamingMode === 'buffer') {
       logger.warn(
         '[Guardrails] streamingMode:"buffer" not implemented for openai connector — falling back to no stream validation. ' +
-        'Use streamingMode:"incremental" (default) for live validation.'
+          'Use streamingMode:"incremental" (default) for live validation.'
       );
     }
     if (validateStreaming && streamingMode === 'incremental') {
@@ -262,7 +250,7 @@ export function createGuardedOpenAI(
         validateWithTimeout,
         maxStreamBufferSize,
         logger,
-        onStreamBlocked,
+        onStreamBlocked
       );
     }
 
@@ -277,7 +265,7 @@ export function createGuardedOpenAI(
     completions: {
       ...client.chat.completions,
       create: async (
-        opts: GuardedChatCompletionOptions,
+        opts: GuardedChatCompletionOptions
       ): Promise<ChatCompletion | AsyncIterable<ChatCompletionChunk>> => {
         // Validate input first
         await validateInput(opts.messages);
@@ -287,31 +275,27 @@ export function createGuardedOpenAI(
 
         if (isStreaming) {
           // Create streaming request
-          const stream = await client.chat.completions.create(
-            opts,
-          );
+          const stream = await client.chat.completions.create(opts);
 
           // Wrap stream with validation if enabled
           return createValidatedStream(stream);
         }
 
         // Non-streaming request
-        const response = await client.chat.completions.create(
-          opts,
-        );
+        const response = await client.chat.completions.create(opts);
 
         // Validate output content
         const content = response.choices[0]?.message?.content || '';
         if (content) {
           const outputResults = await validateWithTimeout(content, 'output');
-          const outputBlocked = outputResults.find((r) => !r.allowed);
+          const outputBlocked = outputResults.find(r => !r.allowed);
 
           if (outputBlocked) {
             // Sprint 43 CWE-117 sweep: sanitize `outputBlocked.reason`
             // at log-meta + dev-mode filteredContent boundaries.
             const safeReason = sanitizeMeta(outputBlocked.reason);
             logger.warn('[Guardrails] Output blocked', {
-              reason: safeReason,
+              reason: safeReason
             });
             if (onBlocked) onBlocked(outputBlocked);
 
@@ -330,25 +314,23 @@ export function createGuardedOpenAI(
                   ...response.choices[0],
                   message: {
                     ...response.choices[0].message,
-                    content: filteredContent,
-                  },
-                },
-              ],
+                    content: filteredContent
+                  }
+                }
+              ]
             };
           }
         }
 
         return response;
-      },
-    },
+      }
+    }
   };
 
   return guardedClient as typeof client & {
     chat: {
       completions: {
-        create: (
-          opts: GuardedChatCompletionOptions,
-        ) => Promise<ChatCompletion | AsyncIterable<ChatCompletionChunk>>;
+        create: (opts: GuardedChatCompletionOptions) => Promise<ChatCompletion | AsyncIterable<ChatCompletionChunk>>;
       };
     };
   };
@@ -367,7 +349,7 @@ async function* createIncrementalValidatedStream(
   validateWithTimeout: (content: string, context?: string) => Promise<GuardrailResult[]>,
   maxStreamBufferSize: number,
   logger: Logger,
-  onStreamBlocked: ((accumulated: string) => void) | undefined,
+  onStreamBlocked: ((accumulated: string) => void) | undefined
 ): AsyncIterable<ChatCompletionChunk> {
   let accumulatedText = '';
   let validationCounter = 0;
@@ -387,7 +369,7 @@ async function* createIncrementalValidatedStream(
       if (accumulatedText.length + content.length > maxStreamBufferSize) {
         logger.warn('[Guardrails] Stream buffer exceeded', {
           size: accumulatedText.length + content.length,
-          limit: maxStreamBufferSize,
+          limit: maxStreamBufferSize
         });
         // Throw StreamValidationError for proper error handling
         const error: any = new Error('Stream buffer exceeded maximum size');
@@ -404,9 +386,9 @@ async function* createIncrementalValidatedStream(
       // SEC-002: Incremental validation every N chunks
       if (validationCounter % VALIDATION_INTERVAL === 0) {
         const results = await validateWithTimeout(accumulatedText, 'output');
-        if (results.some((r) => !r.allowed)) {
+        if (results.some(r => !r.allowed)) {
           logger.warn('[Guardrails] Stream blocked during incremental validation', {
-            chunkCount: validationCounter,
+            chunkCount: validationCounter
           });
           if (onStreamBlocked) onStreamBlocked(accumulatedText);
 
@@ -422,7 +404,7 @@ async function* createIncrementalValidatedStream(
     // Final validation on stream completion
     if (accumulatedText.length > 0) {
       const results = await validateWithTimeout(accumulatedText, 'output');
-      if (results.some((r) => !r.allowed)) {
+      if (results.some(r => !r.allowed)) {
         logger.warn('[Guardrails] Stream blocked at final validation');
         if (onStreamBlocked) onStreamBlocked(accumulatedText);
         // Stream already ended, just log
@@ -440,9 +422,4 @@ async function* createIncrementalValidatedStream(
 /**
  * Re-exports types for convenience.
  */
-export type {
-  GuardedOpenAIOptions,
-  GuardedChatCompletionOptions,
-  GuardedChatCompletion,
-  MessageContent,
-};
+export type { GuardedOpenAIOptions, GuardedChatCompletionOptions, GuardedChatCompletion, MessageContent };

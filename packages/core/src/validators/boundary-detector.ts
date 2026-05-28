@@ -52,26 +52,26 @@ const CLOSING_SYSTEM_TAG_PATTERNS: BoundaryPattern[] = [
     name: 'closing_system_xml',
     pattern: /<\/\s*(?:system|instructions|context|prompt)\s*>/i,
     severity: Sev.CRITICAL,
-    description: 'XML closing system/instructions tag',
+    description: 'XML closing system/instructions tag'
   },
   {
     name: 'closing_inst_tag',
     pattern: /\[\/?INST\]/i,
     severity: Sev.CRITICAL,
-    description: 'Instruction delimiter tag [/INST] or [INST]',
+    description: 'Instruction delimiter tag [/INST] or [INST]'
   },
   {
     name: 'end_system_marker',
     pattern: /\[(?:END|STOP)\s+(?:SYSTEM|INSTRUCTIONS|CONTEXT)\]/i,
     severity: Sev.CRITICAL,
-    description: 'Bracketed end-of-system marker',
+    description: 'Bracketed end-of-system marker'
   },
   {
     name: 'closing_s_tag',
     pattern: /<\/s>/,
     severity: Sev.CRITICAL,
-    description: 'Sentence boundary tag </s> (model-specific)',
-  },
+    description: 'Sentence boundary tag </s> (model-specific)'
+  }
 ];
 
 /**
@@ -82,20 +82,20 @@ const CONTROL_TOKEN_PATTERNS: BoundaryPattern[] = [
     name: 'openai_control_token',
     pattern: /<\|(?:endoftext|im_start|im_end|system|user|assistant|pad)\|>/i,
     severity: Sev.CRITICAL,
-    description: 'OpenAI-style control token injection',
+    description: 'OpenAI-style control token injection'
   },
   {
     name: 'llama_sys_tag',
     pattern: /<<\/?SYS>>/,
     severity: Sev.CRITICAL,
-    description: 'LLaMA system tag <<SYS>> or <</SYS>>',
+    description: 'LLaMA system tag <<SYS>> or <</SYS>>'
   },
   {
     name: 'special_token_s',
     pattern: /<s>/,
     severity: Sev.WARNING,
-    description: 'Special token <s> (sentence start)',
-  },
+    description: 'Special token <s> (sentence start)'
+  }
 ];
 
 /**
@@ -106,26 +106,26 @@ const SYSTEM_PROMPT_CLOSE_PATTERNS: BoundaryPattern[] = [
     name: 'dashed_end_marker',
     pattern: /---\s*(?:END|STOP)\s+(?:SYSTEM|OF)\s+(?:PROMPT|INSTRUCTIONS|SYSTEM)\s*---/i,
     severity: Sev.WARNING,
-    description: 'Dashed end-of-system-prompt marker',
+    description: 'Dashed end-of-system-prompt marker'
   },
   {
     name: 'equals_end_marker',
     pattern: /===\s*(?:SYSTEM|INSTRUCTIONS?)\s+(?:END|COMPLETE|DONE)\s*===/i,
     severity: Sev.WARNING,
-    description: 'Equals-delimited system end marker',
+    description: 'Equals-delimited system end marker'
   },
   {
     name: 'asterisk_end_marker',
     pattern: /\*\*\*\s*(?:END|STOP)\s+(?:OF\s+)?(?:INSTRUCTIONS|SYSTEM)\s*\*\*\*/i,
     severity: Sev.WARNING,
-    description: 'Asterisk-delimited instruction end marker',
+    description: 'Asterisk-delimited instruction end marker'
   },
   {
     name: 'braced_end_marker',
     pattern: /\{(?:end_of_system_prompt|end_system|system_end|stop_instructions)\}/i,
     severity: Sev.WARNING,
-    description: 'Brace-delimited system end marker',
-  },
+    description: 'Brace-delimited system end marker'
+  }
 ];
 
 /**
@@ -136,26 +136,26 @@ const META_INSTRUCTION_PATTERNS: BoundaryPattern[] = [
     name: 'begin_user_content',
     pattern: /(?:BEGIN|START)\s+(?:USER|HUMAN)\s+(?:CONTENT|INPUT|MESSAGE)/i,
     severity: Sev.WARNING,
-    description: 'Meta-instruction: begin user content marker',
+    description: 'Meta-instruction: begin user content marker'
   },
   {
     name: 'end_system_content',
     pattern: /(?:END|STOP)\s+(?:SYSTEM|AI|ASSISTANT)\s+(?:CONTENT|MESSAGE|INSTRUCTIONS)/i,
     severity: Sev.WARNING,
-    description: 'Meta-instruction: end system content marker',
+    description: 'Meta-instruction: end system content marker'
   },
   {
     name: 'below_is_user',
     pattern: /(?:BELOW|FOLLOWING)\s+(?:IS|ARE)\s+(?:THE\s+)?(?:USER|HUMAN)\s+(?:INPUT|CONTENT|MESSAGE)/i,
     severity: Sev.WARNING,
-    description: 'Meta-instruction: directional user content marker',
+    description: 'Meta-instruction: directional user content marker'
   },
   {
     name: 'above_was_system',
     pattern: /(?:ABOVE|PRECEDING)\s+(?:WAS|IS)\s+(?:THE\s+)?(?:SYSTEM|AI)\s+(?:PROMPT|MESSAGE|INSTRUCTIONS)/i,
     severity: Sev.WARNING,
-    description: 'Meta-instruction: directional system reference marker',
-  },
+    description: 'Meta-instruction: directional system reference marker'
+  }
 ];
 
 /**
@@ -165,7 +165,7 @@ const ALL_BOUNDARY_CATEGORIES = [
   { patterns: CLOSING_SYSTEM_TAG_PATTERNS, category: 'closing_system_tag' },
   { patterns: CONTROL_TOKEN_PATTERNS, category: 'control_token' },
   { patterns: SYSTEM_PROMPT_CLOSE_PATTERNS, category: 'system_prompt_close' },
-  { patterns: META_INSTRUCTION_PATTERNS, category: 'meta_instruction_boundary' },
+  { patterns: META_INSTRUCTION_PATTERNS, category: 'meta_instruction_boundary' }
 ];
 
 // =============================================================================
@@ -181,10 +181,7 @@ const ALL_BOUNDARY_CATEGORIES = [
  * @param normalizedContent - Content after normalizeText() processing (optional)
  * @returns Array of boundary manipulation findings
  */
-export function detectBoundaryManipulation(
-  rawContent: string,
-  normalizedContent?: string
-): BoundaryFinding[] {
+export function detectBoundaryManipulation(rawContent: string, normalizedContent?: string): BoundaryFinding[] {
   if (!rawContent || rawContent.trim().length === 0) {
     return [];
   }
@@ -203,7 +200,7 @@ export function detectBoundaryManipulation(
           pattern_name: patternDef.name,
           severity: patternDef.severity,
           match: match[0].slice(0, 100),
-          description: patternDef.description,
+          description: patternDef.description
         });
       }
     }
@@ -221,7 +218,7 @@ export function detectBoundaryManipulation(
             pattern_name: `confusable_${patternDef.name}`,
             severity: patternDef.severity,
             match: match[0].slice(0, 100),
-            description: `Confusable variant: ${patternDef.description}`,
+            description: `Confusable variant: ${patternDef.description}`
           });
         }
       }
@@ -241,7 +238,7 @@ export class BoundaryDetector {
   constructor(config?: BoundaryDetectorConfig) {
     this.config = mergeConfig({
       ...config,
-      detectConfusableVariants: config?.detectConfusableVariants ?? true,
+      detectConfusableVariants: config?.detectConfusableVariants ?? true
     }) as Required<BoundaryDetectorConfig>;
   }
 
@@ -260,28 +257,23 @@ export class BoundaryDetector {
     }
 
     // Convert findings to Finding format
-    const convertedFindings = findings.map((f) => ({
+    const convertedFindings = findings.map(f => ({
       category: f.category,
       pattern_name: f.pattern_name,
       severity: f.severity,
       match: f.match,
       description: f.description,
-      weight: f.severity === Sev.CRITICAL ? 20 : f.severity === Sev.WARNING ? 10 : 5,
+      weight: f.severity === Sev.CRITICAL ? 20 : f.severity === Sev.WARNING ? 10 : 5
     }));
 
     // Determine if we should block based on findings
-    const hasCritical = findings.some((f) => f.severity === Sev.CRITICAL);
-    const hasWarning = findings.some((f) => f.severity === Sev.WARNING);
+    const hasCritical = findings.some(f => f.severity === Sev.CRITICAL);
+    const hasWarning = findings.some(f => f.severity === Sev.WARNING);
 
     const shouldBlock =
-      this.config.action === 'block' &&
-      (hasCritical || (hasWarning && this.config.sensitivity === 'strict'));
+      this.config.action === 'block' && (hasCritical || (hasWarning && this.config.sensitivity === 'strict'));
 
-    return createResult(
-      !shouldBlock,
-      hasCritical ? Sev.CRITICAL : Sev.WARNING,
-      convertedFindings
-    );
+    return createResult(!shouldBlock, hasCritical ? Sev.CRITICAL : Sev.WARNING, convertedFindings);
   }
 
   /**

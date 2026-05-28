@@ -33,7 +33,7 @@ import { sanitizeLogString } from '../../common/index.js';
 const STATUS_GLYPH = {
   pass: '✓',
   warn: '⚠',
-  fail: '✗',
+  fail: '✗'
 } as const;
 
 /**
@@ -131,9 +131,7 @@ export function resolveHooksPath(cwd: string): string | null {
     // section, then search within that slice. We accept the `[core
     // "subkey"]` variant for forward-compat with newer git, even though
     // current git emits a flat `[core]`.
-    const coreSection =
-      /\[core(?:\s+"[^"]*")?\][^[]*/gi
-        .exec(config)?.[0] ?? '';
+    const coreSection = /\[core(?:\s+"[^"]*")?\][^[]*/gi.exec(config)?.[0] ?? '';
     const match = /^\s*hooksPath\s*=\s*(.+?)\s*$/im.exec(coreSection);
     if (!match) {
       return defaultPath;
@@ -165,7 +163,7 @@ export function readConfiguredPreCommit(cwd: string): string | null {
     // prototype-pollution defence. Cheap; mandatory across boundaries.
     const parsed = secureJsonParse(raw, null, {
       protoAction: 'remove',
-      constructorAction: 'remove',
+      constructorAction: 'remove'
     }) as { 'simple-git-hooks'?: unknown };
     const cfg = parsed['simple-git-hooks'];
     // Array.isArray check excludes arrays (which are `typeof === 'object'`)
@@ -216,10 +214,9 @@ export function checkPreCommitHook(cwd: string): DoctorCheckResult {
     return {
       name: 'pre-commit hook',
       status: 'warn',
-      message:
-        'Not a git repo and no simple-git-hooks pre-commit declared — nothing to verify.',
+      message: 'Not a git repo and no simple-git-hooks pre-commit declared — nothing to verify.',
       remediation:
-        'If you intend to use BonkLM as a contributor, clone the repo with `git clone` and run `pnpm install`.',
+        'If you intend to use BonkLM as a contributor, clone the repo with `git clone` and run `pnpm install`.'
     };
   }
 
@@ -227,10 +224,9 @@ export function checkPreCommitHook(cwd: string): DoctorCheckResult {
     return {
       name: 'pre-commit hook',
       status: 'warn',
-      message:
-        'No `simple-git-hooks.pre-commit` directive in package.json — nothing to enforce locally.',
+      message: 'No `simple-git-hooks.pre-commit` directive in package.json — nothing to enforce locally.',
       remediation:
-        'This is expected for downstream consumers of `@blackunicorn/bonklm`. Internal contributors should run from the BonkLM repo root.',
+        'This is expected for downstream consumers of `@blackunicorn/bonklm`. Internal contributors should run from the BonkLM repo root.'
     };
   }
 
@@ -238,10 +234,9 @@ export function checkPreCommitHook(cwd: string): DoctorCheckResult {
     return {
       name: 'pre-commit hook',
       status: 'warn',
-      message:
-        'package.json declares a simple-git-hooks pre-commit but the cwd is not a git working tree.',
+      message: 'package.json declares a simple-git-hooks pre-commit but the cwd is not a git working tree.',
       remediation:
-        'Run the doctor from the project root containing `.git/`. If you cloned via a tarball, re-clone with `git clone` so the pre-commit hook can install.',
+        'Run the doctor from the project root containing `.git/`. If you cloned via a tarball, re-clone with `git clone` so the pre-commit hook can install.'
     };
   }
 
@@ -266,8 +261,7 @@ export function checkPreCommitHook(cwd: string): DoctorCheckResult {
       name: 'pre-commit hook',
       status: 'fail',
       message: `Pre-commit hook missing at ${hookFileDisplay}.`,
-      remediation:
-        'Run `pnpm install` to install pre-commit hooks via the simple-git-hooks postinstall step.',
+      remediation: 'Run `pnpm install` to install pre-commit hooks via the simple-git-hooks postinstall step.'
     };
   }
 
@@ -275,15 +269,12 @@ export function checkPreCommitHook(cwd: string): DoctorCheckResult {
   try {
     body = readFileSync(hookFile, 'utf8');
   } catch (error) {
-    const errMessage = sanitizeLogString(
-      error instanceof Error ? error.message : 'unknown error'
-    );
+    const errMessage = sanitizeLogString(error instanceof Error ? error.message : 'unknown error');
     return {
       name: 'pre-commit hook',
       status: 'fail',
       message: `Pre-commit hook unreadable at ${hookFileDisplay}: ${errMessage}.`,
-      remediation:
-        'Check file permissions, then run `pnpm install` to reinstall the pre-commit hook.',
+      remediation: 'Check file permissions, then run `pnpm install` to reinstall the pre-commit hook.'
     };
   }
 
@@ -297,14 +288,14 @@ export function checkPreCommitHook(cwd: string): DoctorCheckResult {
       status: 'fail',
       message: `Pre-commit hook installed at ${hookFileDisplay} but its body does not reference the configured command (\`${configuredDisplay}\`).`,
       remediation:
-        'package.json was likely updated after the hook was installed. Re-run `pnpm install` to refresh the hook.',
+        'package.json was likely updated after the hook was installed. Re-run `pnpm install` to refresh the hook.'
     };
   }
 
   return {
     name: 'pre-commit hook',
     status: 'pass',
-    message: `Pre-commit hook installed at ${hookFileDisplay} and references \`${configuredDisplay}\`.`,
+    message: `Pre-commit hook installed at ${hookFileDisplay} and references \`${configuredDisplay}\`.`
   };
 }
 
@@ -330,13 +321,11 @@ export function checkEnvFile(cwd: string): DoctorCheckResult {
   const hasExample = existsSync(examplePath);
 
   if (hasEnv || hasExample) {
-    const found = [hasEnv ? '.env' : null, hasExample ? '.env.example' : null]
-      .filter(Boolean)
-      .join(' and ');
+    const found = [hasEnv ? '.env' : null, hasExample ? '.env.example' : null].filter(Boolean).join(' and ');
     return {
       name: 'env file',
       status: 'pass',
-      message: `Found ${found} in project root.`,
+      message: `Found ${found} in project root.`
     };
   }
 
@@ -346,7 +335,7 @@ export function checkEnvFile(cwd: string): DoctorCheckResult {
     message:
       'Neither .env nor .env.example found in project root. Environment variables may need to be injected via CI or shell.',
     remediation:
-      'Copy .env.example to .env and populate values, or ensure your CI platform injects the required environment variables.',
+      'Copy .env.example to .env and populate values, or ensure your CI platform injects the required environment variables.'
   };
 }
 
@@ -385,13 +374,13 @@ export interface SpawnResult {
 export function checkPnpmAudit(
   cwd: string,
   _spawnFn: (cmd: string, args: string[], opts: object) => SpawnResult = (cmd, args, opts) =>
-    spawnSync(cmd, args, opts as Parameters<typeof spawnSync>[2]) as SpawnResult,
+    spawnSync(cmd, args, opts as Parameters<typeof spawnSync>[2]) as SpawnResult
 ): DoctorCheckResult {
   const result = _spawnFn('pnpm', ['audit', '--prod', '--audit-level=high', '--json'], {
     cwd,
     encoding: 'utf8',
     timeout: 30_000,
-    env: process.env,
+    env: process.env
   });
 
   // spawnSync sets `error` when the binary cannot be found or the child was
@@ -403,7 +392,7 @@ export function checkPnpmAudit(
       name: 'pnpm audit',
       status: 'warn',
       message: `pnpm audit could not run: ${errMsg}`,
-      remediation: 'Ensure pnpm is installed and on PATH, then re-run `bonklm doctor`.',
+      remediation: 'Ensure pnpm is installed and on PATH, then re-run `bonklm doctor`.'
     };
   }
 
@@ -418,22 +407,14 @@ export function checkPnpmAudit(
       name: 'pnpm audit',
       status: 'warn',
       message: 'pnpm audit output could not be parsed as JSON.',
-      remediation: 'Run `pnpm audit --prod --audit-level=high` manually to inspect findings.',
+      remediation: 'Run `pnpm audit --prod --audit-level=high` manually to inspect findings.'
     };
   }
 
   // pnpm audit --json shape: { metadata: { vulnerabilities: { high: N, critical: N, ... } } }
-  if (
-    parsed !== null &&
-    typeof parsed === 'object' &&
-    'metadata' in (parsed)
-  ) {
+  if (parsed !== null && typeof parsed === 'object' && 'metadata' in parsed) {
     const metadata = (parsed as Record<string, unknown>).metadata;
-    if (
-      metadata !== null &&
-      typeof metadata === 'object' &&
-      'vulnerabilities' in (metadata)
-    ) {
+    if (metadata !== null && typeof metadata === 'object' && 'vulnerabilities' in metadata) {
       const vulns = (metadata as Record<string, unknown>).vulnerabilities as Record<string, number>;
       const high = Number(vulns.high ?? 0);
       const critical = Number(vulns.critical ?? 0);
@@ -442,15 +423,14 @@ export function checkPnpmAudit(
         return {
           name: 'pnpm audit',
           status: 'pass',
-          message: 'No HIGH or CRITICAL advisories found in prod dependency tree.',
+          message: 'No HIGH or CRITICAL advisories found in prod dependency tree.'
         };
       }
       return {
         name: 'pnpm audit',
         status: 'fail',
         message: `pnpm audit found ${total} HIGH/CRITICAL advisory(ies) (high: ${high}, critical: ${critical}).`,
-        remediation:
-          'Run `pnpm audit --prod --audit-level=high` to review findings and update affected dependencies.',
+        remediation: 'Run `pnpm audit --prod --audit-level=high` to review findings and update affected dependencies.'
       };
     }
   }
@@ -460,7 +440,7 @@ export function checkPnpmAudit(
     name: 'pnpm audit',
     status: 'warn',
     message: 'pnpm audit output had an unexpected shape; could not determine advisory count.',
-    remediation: 'Run `pnpm audit --prod --audit-level=high` manually to inspect findings.',
+    remediation: 'Run `pnpm audit --prod --audit-level=high` manually to inspect findings.'
   };
 }
 
@@ -479,7 +459,7 @@ const BONKLM_FRAMEWORK_CONNECTORS = [
   '@blackunicorn/bonklm-hono',
   '@blackunicorn/bonklm-elysia',
   '@blackunicorn/bonklm-nestjs',
-  '@blackunicorn/bonklm-nextjs',
+  '@blackunicorn/bonklm-nextjs'
 ] as const;
 
 /**
@@ -501,7 +481,7 @@ const KNOWN_LIMITER_PACKAGES = [
   'elysia-rate-limit',
   '@nestjs/throttler',
   '@upstash/ratelimit',
-  'rate-limiter-flexible',
+  'rate-limiter-flexible'
 ] as const;
 
 /**
@@ -535,7 +515,7 @@ export function checkRateLimiterAdvisory(cwd: string): DoctorCheckResult {
     return {
       name: 'rate-limiter advisory',
       status: 'pass',
-      message: 'No package.json found at cwd; rate-limiter advisory skipped.',
+      message: 'No package.json found at cwd; rate-limiter advisory skipped.'
     };
   }
 
@@ -548,7 +528,7 @@ export function checkRateLimiterAdvisory(cwd: string): DoctorCheckResult {
       name: 'rate-limiter advisory',
       status: 'warn',
       message: `Could not read package.json: ${errMsg}`,
-      remediation: 'Verify package.json is readable and re-run `bonklm doctor`.',
+      remediation: 'Verify package.json is readable and re-run `bonklm doctor`.'
     };
   }
 
@@ -560,7 +540,7 @@ export function checkRateLimiterAdvisory(cwd: string): DoctorCheckResult {
       name: 'rate-limiter advisory',
       status: 'warn',
       message: 'package.json could not be parsed as JSON.',
-      remediation: 'Run `node --check package.json` (or equivalent) to inspect.',
+      remediation: 'Run `node --check package.json` (or equivalent) to inspect.'
     };
   }
 
@@ -568,7 +548,7 @@ export function checkRateLimiterAdvisory(cwd: string): DoctorCheckResult {
     return {
       name: 'rate-limiter advisory',
       status: 'warn',
-      message: 'package.json had an unexpected shape; rate-limiter advisory could not run.',
+      message: 'package.json had an unexpected shape; rate-limiter advisory could not run.'
     };
   }
 
@@ -577,12 +557,12 @@ export function checkRateLimiterAdvisory(cwd: string): DoctorCheckResult {
   const devDeps = (pkg.devDependencies ?? {}) as Record<string, unknown>;
   const allDeps = { ...deps, ...devDeps };
 
-  const installedConnectors = BONKLM_FRAMEWORK_CONNECTORS.filter((name) => name in allDeps);
+  const installedConnectors = BONKLM_FRAMEWORK_CONNECTORS.filter(name => name in allDeps);
   if (installedConnectors.length === 0) {
     return {
       name: 'rate-limiter advisory',
       status: 'pass',
-      message: 'No BonkLM framework connector installed; rate-limiter advisory is moot.',
+      message: 'No BonkLM framework connector installed; rate-limiter advisory is moot.'
     };
   }
 
@@ -594,28 +574,28 @@ export function checkRateLimiterAdvisory(cwd: string): DoctorCheckResult {
       return {
         name: 'rate-limiter advisory',
         status: 'pass',
-        message: `Rate-limiting policy explicitly acknowledged in package.json ("bonklm.rateLimit": "${sanitizeLogString(String(rateLimit))}").`,
+        message: `Rate-limiting policy explicitly acknowledged in package.json ("bonklm.rateLimit": "${sanitizeLogString(String(rateLimit))}").`
       };
     }
   }
 
-  const installedLimiters = KNOWN_LIMITER_PACKAGES.filter((name) => name in allDeps);
+  const installedLimiters = KNOWN_LIMITER_PACKAGES.filter(name => name in allDeps);
   if (installedLimiters.length > 0) {
     return {
       name: 'rate-limiter advisory',
       status: 'pass',
-      message: `Upstream rate limiter detected: ${installedLimiters.map((n) => sanitizeLogString(n)).join(', ')}.`,
+      message: `Upstream rate limiter detected: ${installedLimiters.map(n => sanitizeLogString(n)).join(', ')}.`
     };
   }
 
   // Connector installed, no limiter, no opt-out → warn.
-  const connectorList = installedConnectors.map((n) => sanitizeLogString(n)).join(', ');
+  const connectorList = installedConnectors.map(n => sanitizeLogString(n)).join(', ');
   return {
     name: 'rate-limiter advisory',
     status: 'warn',
     message: `BonkLM framework connector(s) installed without a known upstream rate limiter: ${connectorList}.`,
     remediation:
-      'Install one of: express-rate-limit, @fastify/rate-limit, hono-rate-limiter, elysia-rate-limit, @nestjs/throttler, @upstash/ratelimit, rate-limiter-flexible. See docs/user/security/rate-limiting.md. To suppress, set `bonklm.rateLimit` to `"documented"`, `"external"`, or `"in-process"` in package.json.',
+      'Install one of: express-rate-limit, @fastify/rate-limit, hono-rate-limiter, elysia-rate-limit, @nestjs/throttler, @upstash/ratelimit, rate-limiter-flexible. See docs/user/security/rate-limiting.md. To suppress, set `bonklm.rateLimit` to `"documented"`, `"external"`, or `"in-process"` in package.json.'
   };
 }
 
@@ -638,7 +618,7 @@ export function checkRateLimiterAdvisory(cwd: string): DoctorCheckResult {
  */
 export function runDoctor(
   cwd: string = process.cwd(),
-  _auditSpawnFn?: (cmd: string, args: string[], opts: object) => SpawnResult,
+  _auditSpawnFn?: (cmd: string, args: string[], opts: object) => SpawnResult
 ): DoctorReport {
   // B.14 — validate cwd existence and directory-ness at the boundary.
   // Non-existent paths or regular files silently produced misleading reports
@@ -652,15 +632,12 @@ export function runDoctor(
 
   if (cwdStat === null || !cwdStat.isDirectory()) {
     const cwdDisplay = sanitizeLogString(cwd);
-    const reason = cwdStat === null
-      ? 'path does not exist'
-      : 'path is not a directory';
+    const reason = cwdStat === null ? 'path does not exist' : 'path is not a directory';
     const invalidCheck: DoctorCheckResult = {
       name: 'cwd_invalid',
       status: 'fail',
       message: `runDoctor cwd is invalid (${reason}): ${cwdDisplay}`,
-      remediation:
-        'Pass an existing directory path to runDoctor(), or call it without arguments to use process.cwd().',
+      remediation: 'Pass an existing directory path to runDoctor(), or call it without arguments to use process.cwd().'
     };
     return { checks: [invalidCheck], overallStatus: 'fail' };
   }
@@ -669,7 +646,7 @@ export function runDoctor(
     checkPreCommitHook(cwd),
     checkEnvFile(cwd),
     checkPnpmAudit(cwd, _auditSpawnFn),
-    checkRateLimiterAdvisory(cwd),
+    checkRateLimiterAdvisory(cwd)
   ];
 
   let overallStatus: 'pass' | 'warn' | 'fail' = 'pass';
@@ -760,9 +737,7 @@ function renderJson(report: DoctorReport): string {
  * Doctor command implementation.
  */
 export const doctorCommand = new Command('doctor')
-  .description(
-    'Diagnose the local BonkLM contributor environment (pre-commit hook installation, etc.)'
-  )
+  .description('Diagnose the local BonkLM contributor environment (pre-commit hook installation, etc.)')
   .option('--json', 'Output in JSON format')
   .action((options: DoctorOptions) => {
     const report = runDoctor();

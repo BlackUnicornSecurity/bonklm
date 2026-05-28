@@ -22,5 +22,5 @@ export {
   ConfigValidationError,
   Validators,
   type ConfigValidationResult,
-  type ValidationRule,
+  type ValidationRule
 } from './ConfigValidator.js';

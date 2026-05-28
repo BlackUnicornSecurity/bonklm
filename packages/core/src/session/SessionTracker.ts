@@ -219,7 +219,7 @@ function createFreshState(sessionId: string): SessionState {
     fragment_buffer: [],
     instruction_count: 0,
     info_finding_count: 0,
-    finding_timestamps: [],
+    finding_timestamps: []
   };
 }
 
@@ -288,10 +288,7 @@ function saveSessionState(state: SessionState): void {
  * @param findings - Array of pattern findings from current turn
  * @returns Result indicating whether to escalate and why
  */
-export function updateSessionState(
-  sessionId: string,
-  findings: SessionPatternFinding[]
-): SessionUpdateResult {
+export function updateSessionState(sessionId: string, findings: SessionPatternFinding[]): SessionUpdateResult {
   const state = getSessionState(sessionId);
   const now = Date.now();
 
@@ -302,8 +299,7 @@ export function updateSessionState(
   // Process each finding
   for (const finding of findings) {
     // Track category occurrences
-    state.patterns_by_category[finding.category] =
-      (state.patterns_by_category[finding.category] || 0) + 1;
+    state.patterns_by_category[finding.category] = (state.patterns_by_category[finding.category] || 0) + 1;
 
     // Accumulate weight
     state.accumulated_weight += finding.weight;
@@ -330,8 +326,8 @@ export function updateSessionState(
     state.findings_history.push({
       turn: state.turn_count,
       timestamp: now,
-      categories: [...new Set(findings.map((f) => f.category))],
-      weight: findings.reduce((sum, f) => sum + f.weight, 0),
+      categories: [...new Set(findings.map(f => f.category))],
+      weight: findings.reduce((sum, f) => sum + f.weight, 0)
     });
 
     // Trim history to last 20 entries
@@ -354,7 +350,7 @@ export function updateSessionState(
     reason: escalationReason,
     riskScore: state.accumulated_weight,
     turnCount: state.turn_count,
-    repeatedCategories,
+    repeatedCategories
   };
 }
 
@@ -423,7 +419,7 @@ export function isSessionEscalated(sessionId: string): {
     return {
       escalated: true,
       reason: `Accumulated weight ${state.accumulated_weight.toFixed(1)} >= ${ACCUMULATION_THRESHOLD}`,
-      riskScore: state.accumulated_weight,
+      riskScore: state.accumulated_weight
     };
   }
 
@@ -433,7 +429,7 @@ export function isSessionEscalated(sessionId: string): {
       return {
         escalated: true,
         reason: `Category "${category}" repeated ${count} times`,
-        riskScore: state.accumulated_weight,
+        riskScore: state.accumulated_weight
       };
     }
   }
@@ -441,7 +437,7 @@ export function isSessionEscalated(sessionId: string): {
   return {
     escalated: false,
     reason: '',
-    riskScore: state.accumulated_weight,
+    riskScore: state.accumulated_weight
   };
 }
 
@@ -456,7 +452,8 @@ const MAX_FRAGMENT_BUFFER_CHARS = 500;
 const MAX_FRAGMENT_COUNT = 5;
 
 /** Keywords that indicate partial injection fragments */
-const FRAGMENT_KEYWORDS = /\b(ignore|bypass|override|disable|remove|forget|reveal|show|previous|prior|instructions?|rules?|system|prompt|safety|jailbreak|unrestricted|constraints?|restrictions?)\b/gi;
+const FRAGMENT_KEYWORDS =
+  /\b(ignore|bypass|override|disable|remove|forget|reveal|show|previous|prior|instructions?|rules?|system|prompt|safety|jailbreak|unrestricted|constraints?|restrictions?)\b/gi;
 
 /**
  * Update fragment buffer with content from current turn.
@@ -483,7 +480,7 @@ export function updateFragmentBuffer(
   }
 
   // Add unique keywords to buffer (deduplicate within same turn)
-  const uniqueKeywords = [...new Set(keywords.map((k) => k.toLowerCase()))];
+  const uniqueKeywords = [...new Set(keywords.map(k => k.toLowerCase()))];
   const newFragment = uniqueKeywords.join(' ');
 
   // Add to buffer, respecting size limits
@@ -508,14 +505,26 @@ export function updateFragmentBuffer(
   // Only check if we have fragments from multiple turns (>=2)
   if (state.fragment_buffer.length >= 2) {
     const injectionPhrases = [
-      { pattern: /ignore\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions?|rules?)/i, name: 'fragmented_ignore_instructions' },
-      { pattern: /bypass\s+(?:all\s+)?(?:safety|security|restrictions?|constraints?)/i, name: 'fragmented_bypass_safety' },
+      {
+        pattern: /ignore\s+(?:all\s+)?(?:previous|prior)\s+(?:instructions?|rules?)/i,
+        name: 'fragmented_ignore_instructions'
+      },
+      {
+        pattern: /bypass\s+(?:all\s+)?(?:safety|security|restrictions?|constraints?)/i,
+        name: 'fragmented_bypass_safety'
+      },
       { pattern: /override\s+(?:all\s+)?(?:system|instructions?|rules?)/i, name: 'fragmented_override_system' },
-      { pattern: /disable\s+(?:all\s+)?(?:safety|restrictions?|constraints?|rules?)/i, name: 'fragmented_disable_safety' },
+      {
+        pattern: /disable\s+(?:all\s+)?(?:safety|restrictions?|constraints?|rules?)/i,
+        name: 'fragmented_disable_safety'
+      },
       { pattern: /reveal\s+(?:system\s+)?prompt/i, name: 'fragmented_reveal_prompt' },
       { pattern: /jailbreak\s+(?:unrestricted|system)/i, name: 'fragmented_jailbreak' },
       { pattern: /remove\s+(?:all\s+)?(?:restrictions?|constraints?|safety)/i, name: 'fragmented_remove_restrictions' },
-      { pattern: /forget\s+(?:all\s+)?(?:previous|prior)?\s*(?:rules?|instructions?)/i, name: 'fragmented_forget_rules' },
+      {
+        pattern: /forget\s+(?:all\s+)?(?:previous|prior)?\s*(?:rules?|instructions?)/i,
+        name: 'fragmented_forget_rules'
+      }
     ];
 
     for (const phrase of injectionPhrases) {
@@ -523,7 +532,7 @@ export function updateFragmentBuffer(
         findings.push({
           pattern_name: phrase.name,
           severity: 'WARNING',
-          combined_text: combinedText.slice(0, 200),
+          combined_text: combinedText.slice(0, 200)
         });
       }
     }
@@ -564,7 +573,7 @@ export function updateInstructionCount(
 
   return {
     manyShotDetected: state.instruction_count > SESSION_INSTRUCTION_THRESHOLD,
-    cumulativeCount: state.instruction_count,
+    cumulativeCount: state.instruction_count
   };
 }
 
@@ -608,11 +617,7 @@ export interface SlowDripResult {
  * @param turnCount - Current turn number
  * @returns Detection result with velocity and escalation info
  */
-export function detectSlowDrip(
-  sessionId: string,
-  infoCount: number,
-  turnCount: number
-): SlowDripResult {
+export function detectSlowDrip(sessionId: string, infoCount: number, turnCount: number): SlowDripResult {
   const state = getSessionState(sessionId);
   const now = Date.now();
 
@@ -633,7 +638,7 @@ export function detectSlowDrip(
   }
 
   // Trim old timestamps outside velocity window
-  state.finding_timestamps = state.finding_timestamps.filter((t) => now - t < VELOCITY_WINDOW_MS);
+  state.finding_timestamps = state.finding_timestamps.filter(t => now - t < VELOCITY_WINDOW_MS);
 
   // Cap timestamp array size
   if (state.finding_timestamps.length > MAX_FINDING_TIMESTAMPS) {
@@ -642,8 +647,7 @@ export function detectSlowDrip(
 
   // Calculate velocity (findings per minute in rolling window)
   const velocityWindowFindings = state.finding_timestamps.length;
-  const findingsVelocity =
-    velocityWindowFindings > 0 ? velocityWindowFindings / (VELOCITY_WINDOW_MS / 60000) : 0;
+  const findingsVelocity = velocityWindowFindings > 0 ? velocityWindowFindings / (VELOCITY_WINDOW_MS / 60000) : 0;
 
   // Check slow-drip conditions
   const elapsed = now - (state.last_updated || now);
@@ -657,10 +661,12 @@ export function detectSlowDrip(
 
   return {
     slowDripDetected,
-    reason: slowDripDetected ? `Slow-drip detected: ${state.info_finding_count} INFO findings across ${turnCount} turns` : '',
+    reason: slowDripDetected
+      ? `Slow-drip detected: ${state.info_finding_count} INFO findings across ${turnCount} turns`
+      : '',
     infoFindingCount: state.info_finding_count,
     findingsVelocity,
-    shouldEscalate: slowDripDetected,
+    shouldEscalate: slowDripDetected
   };
 }
 
@@ -683,6 +689,6 @@ export function getSessionStats(sessionId: string): {
     accumulatedWeight: state.accumulated_weight,
     categoryCounts: { ...state.patterns_by_category },
     lastUpdated: state.last_updated,
-    isExpired: elapsed >= SESSION_TIMEOUT_MS,
+    isExpired: elapsed >= SESSION_TIMEOUT_MS
   };
 }

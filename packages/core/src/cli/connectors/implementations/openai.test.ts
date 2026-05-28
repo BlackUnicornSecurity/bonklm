@@ -28,21 +28,21 @@ describe('OpenAI Connector', () => {
   describe('Config Schema', () => {
     it('should accept valid OpenAI API key', () => {
       const result = openaiConnector.configSchema.safeParse({
-        apiKey: 'sk-1234567890abcdef',
+        apiKey: 'sk-1234567890abcdef'
       });
       expect(result.success).toBe(true);
     });
 
     it('should reject API key without sk- prefix', () => {
       const result = openaiConnector.configSchema.safeParse({
-        apiKey: 'invalid-key',
+        apiKey: 'invalid-key'
       });
       expect(result.success).toBe(false);
     });
 
     it('should reject empty string', () => {
       const result = openaiConnector.configSchema.safeParse({
-        apiKey: '',
+        apiKey: ''
       });
       expect(result.success).toBe(false);
     });

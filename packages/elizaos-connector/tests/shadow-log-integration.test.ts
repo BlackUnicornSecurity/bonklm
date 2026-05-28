@@ -2,10 +2,7 @@
  * Story 2.4a — ElizaOS shadow log integration tests.
  */
 import { describe, expect, it, vi } from 'vitest';
-import {
-  createShadowLog,
-  createInMemoryShadowLogStorage,
-} from '@blackunicorn/bonklm';
+import { createShadowLog, createInMemoryShadowLogStorage } from '@blackunicorn/bonklm';
 import {
   assertRoomAccess,
   buildEolFindingV04,
@@ -14,7 +11,7 @@ import {
   shadowLogIntegrityFailureMessage,
   ShadowLogAuthError,
   verifyAndReadAuthenticatedMessages,
-  type DrizzleShadowLogClient,
+  type DrizzleShadowLogClient
 } from '../src/index.js';
 
 describe('mapMessageReceivedToShadowLog', () => {
@@ -24,7 +21,7 @@ describe('mapMessageReceivedToShadowLog', () => {
         messageId: 'm-1',
         roomId: 'r-1',
         entityId: 'e-1',
-        content: { text: 'hello' },
+        content: { text: 'hello' }
       },
       'authenticated'
     );
@@ -33,7 +30,7 @@ describe('mapMessageReceivedToShadowLog', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'hello',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
   });
 
@@ -43,7 +40,7 @@ describe('mapMessageReceivedToShadowLog', () => {
         messageId: 'm-1',
         roomId: 'r-1',
         entityId: 'e-1',
-        content: {},
+        content: {}
       },
       'unauthenticated_http'
     );
@@ -53,16 +50,12 @@ describe('mapMessageReceivedToShadowLog', () => {
 
 describe('assertRoomAccess — cross-room authorization', () => {
   it('throws when authenticatedRoomIds is undefined (fail closed)', () => {
-    expect(() => assertRoomAccess(undefined, 'r-1')).toThrow(
-      /no authenticated room set/
-    );
+    expect(() => assertRoomAccess(undefined, 'r-1')).toThrow(/no authenticated room set/);
   });
 
   it('throws when requestedRoomId is NOT in the authenticated set', () => {
     const allowed = new Set(['r-1', 'r-2']);
-    expect(() => assertRoomAccess(allowed, 'r-victim')).toThrow(
-      /NOT in the authenticated session/
-    );
+    expect(() => assertRoomAccess(allowed, 'r-victim')).toThrow(/NOT in the authenticated session/);
   });
 
   it('does NOT throw when the room is in the authenticated set', () => {
@@ -79,9 +72,7 @@ describe('assertRoomAccess — cross-room authorization', () => {
       const err = e as ShadowLogAuthError;
       // publicMessage MUST NOT carry the roomId — safe to forward
       // to HTTP responses without leaking the requested room.
-      expect(err.publicMessage).toBe(
-        'Cross-room access denied; admin review required.'
-      );
+      expect(err.publicMessage).toBe('Cross-room access denied; admin review required.');
       expect(err.publicMessage).not.toContain('victim-room');
       // detailMessage DOES carry the roomId — for logging only.
       expect(err.detailMessage).toContain('victim-room');
@@ -97,20 +88,20 @@ describe('verifyAndReadAuthenticatedMessages', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'user said hello',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     await shadowLog.append({
       messageId: 'b',
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'unauthenticated content',
-      sourceTrust: 'unauthenticated_http',
+      sourceTrust: 'unauthenticated_http'
     });
 
     const result = await verifyAndReadAuthenticatedMessages({
       shadowLog,
       roomId: 'r-1',
-      authenticatedRoomIds: new Set(['r-1']),
+      authenticatedRoomIds: new Set(['r-1'])
     });
     expect(result.ok).toBe(true);
     if (result.ok === true) {
@@ -126,7 +117,7 @@ describe('verifyAndReadAuthenticatedMessages', () => {
       verifyAndReadAuthenticatedMessages({
         shadowLog,
         roomId: 'r-victim',
-        authenticatedRoomIds: new Set(['r-mine']),
+        authenticatedRoomIds: new Set(['r-mine'])
       })
     ).rejects.toThrow();
   });
@@ -142,10 +133,8 @@ describe('verifyAndReadAuthenticatedMessages', () => {
         return [...stored];
       },
       async getLatestHashForRoom() {
-        return stored.length > 0
-          ? stored[stored.length - 1].contentHash
-          : null;
-      },
+        return stored.length > 0 ? stored[stored.length - 1].contentHash : null;
+      }
     };
     const shadowLog = createShadowLog(adapter);
     await shadowLog.append({
@@ -153,7 +142,7 @@ describe('verifyAndReadAuthenticatedMessages', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'first',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     // Tamper.
     stored[0] = { ...stored[0], text: 'ATTACKER' };
@@ -163,7 +152,7 @@ describe('verifyAndReadAuthenticatedMessages', () => {
       shadowLog,
       roomId: 'r-1',
       authenticatedRoomIds: new Set(['r-1']),
-      onTamperDetected: tamperCallback,
+      onTamperDetected: tamperCallback
     });
 
     expect(result.ok).toBe(false);
@@ -172,7 +161,7 @@ describe('verifyAndReadAuthenticatedMessages', () => {
     // Internal callback DOES get brokenAt.
     expect(tamperCallback).toHaveBeenCalledWith({
       roomId: 'r-1',
-      brokenAt: 0,
+      brokenAt: 0
     });
   });
 
@@ -186,10 +175,8 @@ describe('verifyAndReadAuthenticatedMessages', () => {
         return [...stored];
       },
       async getLatestHashForRoom() {
-        return stored.length > 0
-          ? stored[stored.length - 1].contentHash
-          : null;
-      },
+        return stored.length > 0 ? stored[stored.length - 1].contentHash : null;
+      }
     };
     const shadowLog = createShadowLog(adapter);
     await shadowLog.append({
@@ -197,7 +184,7 @@ describe('verifyAndReadAuthenticatedMessages', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'first',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     stored[0] = { ...stored[0], text: 'ATTACKER' };
 
@@ -207,7 +194,7 @@ describe('verifyAndReadAuthenticatedMessages', () => {
       authenticatedRoomIds: new Set(['r-1']),
       onTamperDetected: () => {
         throw new Error('callback boom');
-      },
+      }
     });
     // The callback throw is swallowed; result is still { ok: false }.
     expect(result.ok).toBe(false);
@@ -259,7 +246,7 @@ describe('createElizaOSDrizzleShadowLogStorage', () => {
       },
       async deleteOldestForRoom(roomId) {
         calls.push(`deleteOldestForRoom:${roomId}`);
-      },
+      }
     };
     const adapter = createElizaOSDrizzleShadowLogStorage({ client });
 
@@ -271,7 +258,7 @@ describe('createElizaOSDrizzleShadowLogStorage', () => {
       contentHash: 'h',
       prevEntryHash: null,
       createdAt: Date.now(),
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     await adapter.readByRoom('r-1');
     await adapter.getLatestHashForRoom('r-1');
@@ -285,7 +272,7 @@ describe('createElizaOSDrizzleShadowLogStorage', () => {
       'selectLatestHashForRoom:r-1',
       'countByRoom:r-1',
       'totalCount',
-      'deleteOldestForRoom:r-1',
+      'deleteOldestForRoom:r-1'
     ]);
   });
 
@@ -298,14 +285,12 @@ describe('createElizaOSDrizzleShadowLogStorage', () => {
         stored.push({ ...values });
       },
       async selectByRoom(roomId) {
-        return stored.filter((e) => e.roomId === roomId);
+        return stored.filter(e => e.roomId === roomId);
       },
       async selectLatestHashForRoom(roomId) {
-        const matching = stored.filter((e) => e.roomId === roomId);
-        return matching.length > 0
-          ? matching[matching.length - 1].contentHash
-          : null;
-      },
+        const matching = stored.filter(e => e.roomId === roomId);
+        return matching.length > 0 ? matching[matching.length - 1].contentHash : null;
+      }
     };
     const adapter = createElizaOSDrizzleShadowLogStorage({ client });
     const shadowLog = createShadowLog(adapter);
@@ -315,14 +300,14 @@ describe('createElizaOSDrizzleShadowLogStorage', () => {
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'first',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     await shadowLog.append({
       messageId: 'b',
       roomId: 'r-1',
       entityId: 'e-1',
       text: 'second',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     const result = await shadowLog.verifyChain('r-1');
     expect(result).toEqual({ ok: true });

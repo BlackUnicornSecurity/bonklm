@@ -46,9 +46,7 @@
  *   - `createGuardedNamespace` write-block error messages
  *     (Sprint 14 cumulative sec cross-S1 closure)
  */
-export function sanitizeReasonText(
-  reason: string | undefined
-): string | undefined {
+export function sanitizeReasonText(reason: string | undefined): string | undefined {
   if (typeof reason !== 'string') return undefined;
   if (reason.length === 0) return undefined;
   // Align TAB handling with sanitizeLogString.
@@ -65,9 +63,7 @@ export function sanitizeReasonText(
   // to callers — matching sanitizeLogString's forensic-signal contract while
   // keeping the 200-char + empty-return semantics unchanged.
   // eslint-disable-next-line no-control-regex
-  const hexEscaped = reason.replace(/[\x00-\x1f\x7f]/g, (c) =>
-    `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`
-  );
+  const hexEscaped = reason.replace(/[\x00-\x1f\x7f]/g, c => `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`);
   const stripped = hexEscaped.replace(/[^\x20-\x7E]/g, '').slice(0, 200);
   return stripped.length > 0 ? stripped : undefined;
 }

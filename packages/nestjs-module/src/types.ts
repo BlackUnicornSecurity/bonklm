@@ -153,9 +153,7 @@ export interface GuardrailsModuleAsyncOptions {
   /**
    * Function to dynamically provide module options.
    */
-  useFactory: (
-    ...args: any[]
-  ) => Promise<GuardrailsModuleOptions> | GuardrailsModuleOptions;
+  useFactory: (...args: any[]) => Promise<GuardrailsModuleOptions> | GuardrailsModuleOptions;
 
   /**
    * Dependencies to inject into the factory function.

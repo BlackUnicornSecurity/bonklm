@@ -33,17 +33,9 @@
  * site without re-deriving the IDs.
  */
 import type { Validator, ValidatorInput } from '../engine/GuardrailEngine.types.js';
-import {
-  createResult,
-  type GuardrailResult,
-  Severity,
-} from '../base/GuardrailResult.js';
+import { createResult, type GuardrailResult, Severity } from '../base/GuardrailResult.js';
 import type { Logger } from '../base/GenericLogger.js';
-import {
-  applyRedaction,
-  runValidatorChain,
-  VALIDATOR_ERROR_CATEGORIES,
-} from './validator-utils.js';
+import { applyRedaction, runValidatorChain, VALIDATOR_ERROR_CATEGORIES } from './validator-utils.js';
 
 const DEFAULT_REDACT_REPLACEMENT = '[REDACTED]';
 
@@ -140,13 +132,9 @@ function buildMetadata(payload: MemoryWritePayload): Record<string, unknown> {
  * await store.persist(r.payload.content); // redacted in 'redact' mode
  * ```
  */
-export function createMemoryWriteValidator(
-  config: MemoryWriteValidatorConfig
-): MemoryWriteValidator {
+export function createMemoryWriteValidator(config: MemoryWriteValidatorConfig): MemoryWriteValidator {
   if (config.validators.length === 0) {
-    throw new Error(
-      'createMemoryWriteValidator requires at least one underlying validator.'
-    );
+    throw new Error('createMemoryWriteValidator requires at least one underlying validator.');
   }
   const mode: MemoryWriteFailureMode = config.onFailure ?? 'block-write';
   const replacement = config.redactReplacement ?? DEFAULT_REDACT_REPLACEMENT;
@@ -165,21 +153,16 @@ export function createMemoryWriteValidator(
       return {
         result: { ...leafResult, metadata },
         payload,
-        blocked: false,
+        blocked: false
       };
     }
 
     if (mode === 'redact') {
-      const redactedContent = applyRedaction(
-        payload.content,
-        leafResult.findings,
-        config.validators,
-        replacement
-      );
+      const redactedContent = applyRedaction(payload.content, leafResult.findings, config.validators, replacement);
       logger?.info('[MemoryWriteValidator] redacted memory write', {
         sessionId: payload.sessionId,
         userId: payload.userId,
-        findings: leafResult.findings.length,
+        findings: leafResult.findings.length
       });
       return {
         // Redact mode: validator flagged content, but we mitigated
@@ -191,10 +174,10 @@ export function createMemoryWriteValidator(
           allowed: true,
           blocked: false,
           reason: undefined,
-          metadata,
+          metadata
         },
         payload: { ...payload, content: redactedContent },
-        blocked: false,
+        blocked: false
       };
     }
 
@@ -202,12 +185,12 @@ export function createMemoryWriteValidator(
     logger?.warn('[MemoryWriteValidator] memory write blocked', {
       sessionId: payload.sessionId,
       userId: payload.userId,
-      reason: leafResult.reason,
+      reason: leafResult.reason
     });
     return {
       result: { ...leafResult, metadata },
       payload,
-      blocked: true,
+      blocked: true
     };
   };
 
@@ -220,6 +203,6 @@ export function createMemoryWriteValidator(
       const r = await validateWrite(input.payload);
       return r.result;
     },
-    validateWrite,
+    validateWrite
   };
 }

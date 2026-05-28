@@ -37,38 +37,21 @@
  *  - Construct A shadow-log read replacing user-authored-memory bucket.
  *  - 30-day-post-v0.5.0 EOL flag in `package.json.deprecated`.
  */
-export {
-  installSealedWrapMemory,
-  withCallContext,
-  getCallContext,
-} from './wrap-memory.js';
+export { installSealedWrapMemory, withCallContext, getCallContext } from './wrap-memory.js';
 
 export {
   assertCallContextRuntime,
   bindEngineCallContext,
   runWithoutCallContext,
   withCallContextSync,
-  type CallContext,
+  type CallContext
 } from './als-context.js';
 
-export {
-  detectTypoSquat,
-  detectTypoSquatBatch,
-  levenshteinDistance,
-  type TypoSquatResult,
-} from './typo-squat.js';
+export { detectTypoSquat, detectTypoSquatBatch, levenshteinDistance, type TypoSquatResult } from './typo-squat.js';
 
-export {
-  runStartupProbe,
-  applyProbeOutcome,
-  type ProbeOutcome,
-  type ProbeOptions,
-} from './probe.js';
+export { runStartupProbe, applyProbeOutcome, type ProbeOutcome, type ProbeOptions } from './probe.js';
 
-export {
-  evaluateRecipientGate,
-  wrapSigningAction,
-} from './tool-call-args-gate.js';
+export { evaluateRecipientGate, wrapSigningAction } from './tool-call-args-gate.js';
 
 export {
   auditCharacterFile,
@@ -77,7 +60,7 @@ export {
   buildReport,
   probeOutcomeToFindings,
   runDoctor,
-  runDoctorRuntime,
+  runDoctorRuntime
 } from './doctor.js';
 
 export { bonklmPlugin } from './plugin.js';
@@ -90,7 +73,7 @@ export {
   mapMessageReceivedToShadowLog,
   type DrizzleShadowLogClient,
   type DrizzleShadowLogStorageOptions,
-  type ElizaMessageReceivedEvent,
+  type ElizaMessageReceivedEvent
 } from './shadow-log-adapter.js';
 
 export {
@@ -99,13 +82,10 @@ export {
   buildEolFindingV04,
   warnAcknowledgeClass4RiskDeprecated,
   type AuthenticatedMessagesResult,
-  type VerifyAndReadOptions,
+  type VerifyAndReadOptions
 } from './shadow-log-integration.js';
 
-export {
-  BONKLM_PLUGIN_PRIORITY,
-  VERIFIED_PUBLISHER_ALLOWLIST,
-} from './types.js';
+export { BONKLM_PLUGIN_PRIORITY, VERIFIED_PUBLISHER_ALLOWLIST } from './types.js';
 
 export type {
   ActionLike,
@@ -119,7 +99,7 @@ export type {
   PluginLoadContext,
   ProviderLike,
   ProviderResultLike,
-  SourceTrust,
+  SourceTrust
 } from './types.js';
 
 export { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';

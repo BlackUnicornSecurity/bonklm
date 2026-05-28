@@ -66,21 +66,9 @@
  *    stack to include both `AudioStreamValidator`'s final path AND
  *    `ComposedContextValidator` at the composition layer.
  */
-import type {
-  HookSurface,
-  Validator,
-  ValidatorInput,
-} from '../engine/GuardrailEngine.types.js';
-import {
-  createResult,
-  type Finding,
-  type GuardrailResult,
-  Severity,
-} from '../base/GuardrailResult.js';
-import {
-  BufferedReleaseGate,
-  type BufferedReleaseGateConfig,
-} from '../connector-utils/buffered-release-gate.js';
+import type { HookSurface, Validator, ValidatorInput } from '../engine/GuardrailEngine.types.js';
+import { createResult, type Finding, type GuardrailResult, Severity } from '../base/GuardrailResult.js';
+import { BufferedReleaseGate, type BufferedReleaseGateConfig } from '../connector-utils/buffered-release-gate.js';
 import { PromptInjectionValidator } from './prompt-injection.js';
 import { CodeInjectionValidator } from './code-injection.js';
 import { scoreToRiskLevel } from './internal/unwrap-input.js';
@@ -111,11 +99,7 @@ export const MAX_AUDIO_STREAM_NEEDLE_LENGTH = 512;
 
 export type AudioStreamSeverity = 'critical' | 'warning';
 
-export type AudioStreamCategory =
-  | 'injection'
-  | 'jailbreak'
-  | 'high_risk_action'
-  | 'data_exfil';
+export type AudioStreamCategory = 'injection' | 'jailbreak' | 'high_risk_action' | 'data_exfil';
 
 export interface AudioStreamPattern {
   /**
@@ -217,38 +201,123 @@ export interface AudioStreamValidatorConfig {
 
 const DEFAULT_AUDIO_STREAM_PATTERNS: AudioStreamPattern[] = [
   // injection
-  { needle: 'ignore previous instructions', category: 'injection', severity: 'critical', description: 'classic system-prompt override' },
-  { needle: 'ignore all previous', category: 'injection', severity: 'critical', description: 'system-prompt override variant' },
-  { needle: 'disregard previous', category: 'injection', severity: 'critical', description: 'system-prompt override variant' },
-  { needle: 'disregard all previous', category: 'injection', severity: 'critical', description: 'system-prompt override variant' },
-  { needle: 'forget your instructions', category: 'injection', severity: 'critical', description: 'system-prompt override variant' },
-  { needle: 'forget the previous', category: 'injection', severity: 'critical', description: 'system-prompt override variant' },
-  { needle: 'reveal the system prompt', category: 'injection', severity: 'critical', description: 'system-prompt disclosure' },
-  { needle: 'repeat the system prompt', category: 'injection', severity: 'critical', description: 'system-prompt disclosure' },
-  { needle: 'show me the system prompt', category: 'injection', severity: 'critical', description: 'system-prompt disclosure' },
-  { needle: 'read me the system', category: 'injection', severity: 'critical', description: 'system-prompt disclosure (voice phrasing)' },
+  {
+    needle: 'ignore previous instructions',
+    category: 'injection',
+    severity: 'critical',
+    description: 'classic system-prompt override'
+  },
+  {
+    needle: 'ignore all previous',
+    category: 'injection',
+    severity: 'critical',
+    description: 'system-prompt override variant'
+  },
+  {
+    needle: 'disregard previous',
+    category: 'injection',
+    severity: 'critical',
+    description: 'system-prompt override variant'
+  },
+  {
+    needle: 'disregard all previous',
+    category: 'injection',
+    severity: 'critical',
+    description: 'system-prompt override variant'
+  },
+  {
+    needle: 'forget your instructions',
+    category: 'injection',
+    severity: 'critical',
+    description: 'system-prompt override variant'
+  },
+  {
+    needle: 'forget the previous',
+    category: 'injection',
+    severity: 'critical',
+    description: 'system-prompt override variant'
+  },
+  {
+    needle: 'reveal the system prompt',
+    category: 'injection',
+    severity: 'critical',
+    description: 'system-prompt disclosure'
+  },
+  {
+    needle: 'repeat the system prompt',
+    category: 'injection',
+    severity: 'critical',
+    description: 'system-prompt disclosure'
+  },
+  {
+    needle: 'show me the system prompt',
+    category: 'injection',
+    severity: 'critical',
+    description: 'system-prompt disclosure'
+  },
+  {
+    needle: 'read me the system',
+    category: 'injection',
+    severity: 'critical',
+    description: 'system-prompt disclosure (voice phrasing)'
+  },
   { needle: 'from now on you', category: 'injection', severity: 'critical', description: 'role-rewrite preamble' },
   { needle: 'override your', category: 'injection', severity: 'critical', description: 'directive override' },
 
   // jailbreak
   { needle: 'dan mode', category: 'jailbreak', severity: 'critical', description: 'DAN persona invocation' },
   { needle: 'do anything now', category: 'jailbreak', severity: 'critical', description: 'DAN persona expansion' },
-  { needle: 'developer mode', category: 'jailbreak', severity: 'critical', description: 'developer-mode persona invocation' },
+  {
+    needle: 'developer mode',
+    category: 'jailbreak',
+    severity: 'critical',
+    description: 'developer-mode persona invocation'
+  },
   { needle: 'jailbreak', category: 'jailbreak', severity: 'critical', description: 'explicit jailbreak request' },
   { needle: 'pretend you are', category: 'jailbreak', severity: 'warning', description: 'persona-swap preamble' },
   { needle: 'act as if you have no', category: 'jailbreak', severity: 'warning', description: 'rule-removal preamble' },
 
   // high_risk_action (voice-specific)
-  { needle: 'wire transfer', category: 'high_risk_action', severity: 'critical', description: 'unauthorised funds movement' },
-  { needle: 'send money to', category: 'high_risk_action', severity: 'critical', description: 'unauthorised funds movement' },
-  { needle: 'transfer funds', category: 'high_risk_action', severity: 'critical', description: 'unauthorised funds movement' },
-  { needle: 'approve this transaction', category: 'high_risk_action', severity: 'critical', description: 'unauthorised approval' },
-  { needle: 'execute this trade', category: 'high_risk_action', severity: 'critical', description: 'unauthorised trade' },
-  { needle: 'place the order', category: 'high_risk_action', severity: 'warning', description: 'order-placement (context-dependent)' },
+  {
+    needle: 'wire transfer',
+    category: 'high_risk_action',
+    severity: 'critical',
+    description: 'unauthorised funds movement'
+  },
+  {
+    needle: 'send money to',
+    category: 'high_risk_action',
+    severity: 'critical',
+    description: 'unauthorised funds movement'
+  },
+  {
+    needle: 'transfer funds',
+    category: 'high_risk_action',
+    severity: 'critical',
+    description: 'unauthorised funds movement'
+  },
+  {
+    needle: 'approve this transaction',
+    category: 'high_risk_action',
+    severity: 'critical',
+    description: 'unauthorised approval'
+  },
+  {
+    needle: 'execute this trade',
+    category: 'high_risk_action',
+    severity: 'critical',
+    description: 'unauthorised trade'
+  },
+  {
+    needle: 'place the order',
+    category: 'high_risk_action',
+    severity: 'warning',
+    description: 'order-placement (context-dependent)'
+  },
 
   // data_exfil
   { needle: 'list all users', category: 'data_exfil', severity: 'warning', description: 'bulk PII read' },
-  { needle: 'dump the database', category: 'data_exfil', severity: 'critical', description: 'bulk data dump' },
+  { needle: 'dump the database', category: 'data_exfil', severity: 'critical', description: 'bulk data dump' }
 ];
 
 // =============================================================================
@@ -442,19 +511,18 @@ export class AudioStreamValidator implements Validator {
 
     const rawPatterns = config.patterns ?? DEFAULT_AUDIO_STREAM_PATTERNS;
     validatePatternSet(rawPatterns);
-    this.patterns = rawPatterns.map((p) => ({
+    this.patterns = rawPatterns.map(p => ({
       ...p,
-      needle: lowercaseAscii(p.needle),
+      needle: lowercaseAscii(p.needle)
     }));
-    this.automaton = new AhoCorasick(this.patterns.map((p) => p.needle));
+    this.automaton = new AhoCorasick(this.patterns.map(p => p.needle));
 
     // minCharsBeforeRelease wins over minBufferBeforeRelease (story alias).
-    const minChars =
-      config.minCharsBeforeRelease ?? config.minBufferBeforeRelease ?? 0;
+    const minChars = config.minCharsBeforeRelease ?? config.minBufferBeforeRelease ?? 0;
     const gateConfig: BufferedReleaseGateConfig = {
       minCharsBeforeRelease: minChars,
       detectSentenceBoundary: config.detectSentenceBoundary ?? false,
-      minSentenceLength: config.minSentenceLength,
+      minSentenceLength: config.minSentenceLength
     };
     this.gate = new BufferedReleaseGate(gateConfig);
 
@@ -467,11 +535,7 @@ export class AudioStreamValidator implements Validator {
     // Edge-runtime callers wanting to shed the CodeInjection import
     // cost should pass `finalValidators: [new PromptInjectionValidator()]`
     // explicitly.
-    this.finalValidators =
-      config.finalValidators ?? [
-        new PromptInjectionValidator(),
-        new CodeInjectionValidator(),
-      ];
+    this.finalValidators = config.finalValidators ?? [new PromptInjectionValidator(), new CodeInjectionValidator()];
   }
 
   // -------------------------------------------------------------------------
@@ -501,7 +565,7 @@ export class AudioStreamValidator implements Validator {
         matches: [],
         earlyBlock: this.earlyBlock,
         partialCoverageOnly: true,
-        surface: AUDIO_STREAM_SURFACE,
+        surface: AUDIO_STREAM_SURFACE
       };
     }
 
@@ -544,7 +608,7 @@ export class AudioStreamValidator implements Validator {
             pattern,
             startIndex,
             endIndex: i,
-            index: i,
+            index: i
           });
           if (pattern.severity === 'critical') {
             this.earlyBlock = true;
@@ -560,7 +624,7 @@ export class AudioStreamValidator implements Validator {
       matches,
       earlyBlock: this.earlyBlock,
       partialCoverageOnly: true,
-      surface: AUDIO_STREAM_SURFACE,
+      surface: AUDIO_STREAM_SURFACE
     };
   }
 
@@ -616,7 +680,7 @@ export class AudioStreamValidator implements Validator {
             description: `Final validator '${v.name ?? 'unnamed'}' threw: ${
               err instanceof Error ? err.message : String(err)
             }. Fail-secure: result forced to BLOCK.`,
-            weight: 10,
+            weight: 10
           });
           aggregateScore += 10;
         }
@@ -632,7 +696,7 @@ export class AudioStreamValidator implements Validator {
     result.risk_level = scoreToRiskLevel(aggregateScore);
     result.metadata = {
       ...(result.metadata ?? {}),
-      surface: AUDIO_STREAM_SURFACE,
+      surface: AUDIO_STREAM_SURFACE
     };
     return result;
   }
@@ -675,24 +739,22 @@ export class AudioStreamValidator implements Validator {
     }
 
     const partial = this.validatePartial(content);
-    const findings: Finding[] = partial.matches.map((m) => ({
+    const findings: Finding[] = partial.matches.map(m => ({
       category: m.pattern.category,
       severity: m.pattern.severity === 'critical' ? Severity.CRITICAL : Severity.WARNING,
       match: m.pattern.needle,
       description: m.pattern.description,
-      weight: m.pattern.severity === 'critical' ? 10 : 5,
+      weight: m.pattern.severity === 'critical' ? 10 : 5
     }));
     const worstSeverity =
-      findings.find((f) => f.severity === Severity.CRITICAL)?.severity ??
-      findings[0]?.severity ??
-      Severity.INFO;
+      findings.find(f => f.severity === Severity.CRITICAL)?.severity ?? findings[0]?.severity ?? Severity.INFO;
     const result = createResult(!partial.earlyBlock, worstSeverity, findings);
     result.risk_score = findings.reduce((s, f) => s + (f.weight ?? 0), 0);
     result.risk_level = scoreToRiskLevel(result.risk_score);
     result.metadata = {
       surface: AUDIO_STREAM_SURFACE,
       partialCoverageOnly: true,
-      earlyBlock: partial.earlyBlock,
+      earlyBlock: partial.earlyBlock
     };
     return result;
   }

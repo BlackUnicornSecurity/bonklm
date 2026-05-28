@@ -5,11 +5,7 @@
  * locked surface vocab enforced.
  */
 import { describe, it, expect, vi } from 'vitest';
-import {
-  bonklmTrace,
-  type BonklmSpan,
-  type BonklmTracer,
-} from '../../src/telemetry/otlp-export.js';
+import { bonklmTrace, type BonklmSpan, type BonklmTracer } from '../../src/telemetry/otlp-export.js';
 import { Severity, RiskLevel, type GuardrailResult } from '../../src/base/GuardrailResult.js';
 
 function makeMockTracer(): {
@@ -27,7 +23,11 @@ function makeMockTracer(): {
   const capturedStatus: { current: { code: number; message?: string } | null } = { current: null };
 
   const tracer: BonklmTracer = {
-    startActiveSpan: <T>(name: string, _opts: { attributes?: Record<string, string | number | boolean> }, fn: (span: BonklmSpan) => T): T => {
+    startActiveSpan: <T>(
+      name: string,
+      _opts: { attributes?: Record<string, string | number | boolean> },
+      fn: (span: BonklmSpan) => T
+    ): T => {
       capturedName.current = name;
       const span: BonklmSpan = {
         setAttribute: vi.fn((k: string, v: string | number | boolean) => {
@@ -39,11 +39,11 @@ function makeMockTracer(): {
         setStatus: vi.fn((status: { code: number; message?: string }) => {
           capturedStatus.current = status;
         }),
-        end: vi.fn(),
+        end: vi.fn()
       };
       capturedSpan.current = span;
       return fn(span);
-    },
+    }
   };
 
   return { tracer, capturedSpan, capturedAttrs, capturedName, capturedEvents, capturedStatus };
@@ -58,7 +58,7 @@ function makeResult(overrides: Partial<GuardrailResult> = {}): GuardrailResult {
     risk_score: 0,
     findings: [],
     timestamp: Date.now(),
-    ...overrides,
+    ...overrides
   };
 }
 
@@ -71,9 +71,7 @@ describe('bonklmTrace — surface', () => {
 
   it('throws TypeError when validator is empty', () => {
     const { tracer } = makeMockTracer();
-    expect(() =>
-      bonklmTrace(makeResult(), { tracer, validator: '', surface: 'text_input' })
-    ).toThrow(TypeError);
+    expect(() => bonklmTrace(makeResult(), { tracer, validator: '', surface: 'text_input' })).toThrow(TypeError);
   });
 
   it('throws TypeError on invalid surface vocab (R2-10 lock)', () => {
@@ -82,7 +80,7 @@ describe('bonklmTrace — surface', () => {
       bonklmTrace(makeResult(), {
         tracer,
         validator: 'x',
-        surface: 'prompt' as unknown as 'text_input',
+        surface: 'prompt' as unknown as 'text_input'
       })
     ).toThrow(/R2-10 locked vocab/);
   });
@@ -96,7 +94,7 @@ describe('bonklmTrace — surface', () => {
       'retrieved_doc',
       'memory_write',
       'audio_partial',
-      'composed_context',
+      'composed_context'
     ] as const;
     for (const s of surfaces) {
       expect(() => bonklmTrace(makeResult(), { tracer, validator: 'x', surface: s })).not.toThrow();
@@ -117,9 +115,7 @@ describe('bonklmTrace — span attributes', () => {
       makeResult({
         blocked: true,
         severity: Severity.CRITICAL,
-        findings: [
-          { category: 'prompt_injection', severity: Severity.CRITICAL, description: 'malicious' },
-        ],
+        findings: [{ category: 'prompt_injection', severity: Severity.CRITICAL, description: 'malicious' }]
       }),
       { tracer, validator: 'prompt-injection', surface: 'text_input' }
     );
@@ -135,7 +131,7 @@ describe('bonklmTrace — span attributes', () => {
     bonklmTrace(makeResult({ blocked: false }), {
       tracer,
       validator: 'x',
-      surface: 'text_output',
+      surface: 'text_output'
     });
     expect(capturedAttrs.current['bonklm.action']).toBe('allow');
   });
@@ -146,7 +142,7 @@ describe('bonklmTrace — span attributes', () => {
       tracer,
       validator: 'x',
       surface: 'text_input',
-      extraAttributes: { 'service.name': 'my-app', 'trace.id': 'abc123' },
+      extraAttributes: { 'service.name': 'my-app', 'trace.id': 'abc123' }
     });
     expect(capturedAttrs.current['service.name']).toBe('my-app');
     expect(capturedAttrs.current['trace.id']).toBe('abc123');
@@ -164,7 +160,7 @@ describe('bonklmTrace — span attributes', () => {
       tracer,
       validator: 'x',
       surface: 'text_input',
-      spanName: 'my.custom.span',
+      spanName: 'my.custom.span'
     });
     expect(capturedName.current).toBe('my.custom.span');
   });
@@ -178,8 +174,8 @@ describe('bonklmTrace — span events + status', () => {
         blocked: true,
         findings: [
           { category: 'a', severity: Severity.CRITICAL, description: 'desc-a' },
-          { category: 'b', severity: Severity.WARNING, description: 'desc-b' },
-        ],
+          { category: 'b', severity: Severity.WARNING, description: 'desc-b' }
+        ]
       }),
       { tracer, validator: 'x', surface: 'text_input' }
     );
@@ -194,7 +190,7 @@ describe('bonklmTrace — span events + status', () => {
     bonklmTrace(makeResult({ blocked: true, reason: 'blocked-x' }), {
       tracer,
       validator: 'x',
-      surface: 'text_input',
+      surface: 'text_input'
     });
     expect(capturedStatus.current).toEqual({ code: 2, message: 'blocked-x' });
   });
@@ -204,7 +200,7 @@ describe('bonklmTrace — span events + status', () => {
     bonklmTrace(makeResult({ blocked: false }), {
       tracer,
       validator: 'x',
-      surface: 'text_input',
+      surface: 'text_input'
     });
     expect(capturedStatus.current).toBeNull();
   });
@@ -236,9 +232,9 @@ describe('bonklmTrace — CWE-117 sanitization (Sprint 38 security-HIGH)', () =>
           {
             category: 'malicious',
             severity: Severity.CRITICAL,
-            description: 'matched\ninjected_log: spoof',
-          },
-        ],
+            description: 'matched\ninjected_log: spoof'
+          }
+        ]
       }),
       { tracer, validator: 'x', surface: 'text_input' }
     );
@@ -257,9 +253,9 @@ describe('bonklmTrace — CWE-117 sanitization (Sprint 38 security-HIGH)', () =>
           {
             category: 'cat\tinjected',
             severity: Severity.WARNING,
-            description: 'd',
-          },
-        ],
+            description: 'd'
+          }
+        ]
       }),
       { tracer, validator: 'x', surface: 'text_input' }
     );
@@ -272,13 +268,13 @@ describe('bonklmTrace — CWE-117 sanitization (Sprint 38 security-HIGH)', () =>
     bonklmTrace(
       makeResult({
         blocked: true,
-        reason: 'blocked\nfake_severity: critical',
+        reason: 'blocked\nfake_severity: critical'
       }),
       { tracer, validator: 'x', surface: 'text_input' }
     );
     expect(capturedStatus.current).toEqual({
       code: 2,
-      message: 'blocked\\nfake_severity: critical',
+      message: 'blocked\\nfake_severity: critical'
     });
   });
 });

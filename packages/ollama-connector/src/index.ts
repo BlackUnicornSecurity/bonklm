@@ -89,7 +89,7 @@ export type {
   GuardedChatOptions,
   GuardedGenerateOptions,
   GuardedChatResult,
-  GuardedGenerateResult,
+  GuardedGenerateResult
 } from './types.js';
 
 // Re-export Ollama types from the SDK for convenience
@@ -102,8 +102,4 @@ export type { OllamaMessage } from './types.js';
 export { StreamValidationError } from './types.js';
 
 // Constants
-export {
-  VALIDATION_INTERVAL,
-  DEFAULT_MAX_BUFFER_SIZE,
-  DEFAULT_VALIDATION_TIMEOUT,
-} from './types.js';
+export { VALIDATION_INTERVAL, DEFAULT_MAX_BUFFER_SIZE, DEFAULT_VALIDATION_TIMEOUT } from './types.js';

@@ -10,7 +10,7 @@ import {
   registerShutdownHandlers,
   withErrorHandling,
   isExiting,
-  type ExitOptions,
+  type ExitOptions
 } from './exit.js';
 import { WizardError, ExitCode } from './error.js';
 
@@ -71,8 +71,7 @@ describe('exit', () => {
       const stdoutSpy = vi.spyOn(process.stdout, 'write').mockReturnValue(true);
       const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
-      expect(() => exit('SUCCESS', { message: 'Test', useStderr: true }))
-        .toThrow('process.exit called');
+      expect(() => exit('SUCCESS', { message: 'Test', useStderr: true })).toThrow('process.exit called');
       expect(stderrSpy).toHaveBeenCalledWith('Test\n');
       expect(stdoutSpy).not.toHaveBeenCalled();
 
@@ -85,13 +84,7 @@ describe('exit', () => {
     it('should handle WizardError with all properties', () => {
       const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
-      const error = new WizardError(
-        'TEST_ERROR',
-        'Test error message',
-        'Try again',
-        undefined,
-        2
-      );
+      const error = new WizardError('TEST_ERROR', 'Test error message', 'Try again', undefined, 2);
 
       expect(() => exitWithError(error)).toThrow('process.exit called');
       expect(stderrSpy).toHaveBeenCalledWith('TEST_ERROR: Test error message\nSuggestion: Try again\n');
@@ -337,7 +330,7 @@ describe('exit', () => {
 
       const fn = vi.fn().mockRejectedValue(new Error('Function failed'));
       const wrapped = withErrorHandling(fn, {
-        errorMessage: 'Operation failed',
+        errorMessage: 'Operation failed'
       });
 
       await expect(wrapped()).rejects.toThrow('process.exit called');
@@ -351,7 +344,7 @@ describe('exit', () => {
 
       const fn = vi.fn().mockResolvedValue(undefined);
       const wrapped = withErrorHandling(fn, {
-        successMessage: 'Operation succeeded',
+        successMessage: 'Operation succeeded'
       });
 
       // Should not throw or call exit when function succeeds
@@ -389,7 +382,7 @@ describe('exit', () => {
     it('should accept valid options', () => {
       const options: ExitOptions = {
         message: 'Test message',
-        useStderr: true,
+        useStderr: true
       };
 
       expect(options.message).toBe('Test message');
@@ -407,13 +400,7 @@ describe('exit', () => {
     it('should integrate with WizardError exit codes', () => {
       const stderrSpy = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
 
-      const error = new WizardError(
-        'TEST_CODE',
-        'Test message',
-        'Test suggestion',
-        undefined,
-        ExitCode.PARTIAL
-      );
+      const error = new WizardError('TEST_CODE', 'Test message', 'Test suggestion', undefined, ExitCode.PARTIAL);
 
       expect(() => exitWithError(error)).toThrow('process.exit called');
       expect(process.exit).toHaveBeenCalledWith(2);

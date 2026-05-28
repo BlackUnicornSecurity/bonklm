@@ -27,8 +27,6 @@ describe('copilotkit-connector — Sprint 43 CWE-117 sanitization contract', () 
 
   it('sanitizes validator-extracted reason for input/output log paths', () => {
     const reason = 'matched copilot-pattern\nINJECTED:fake_status';
-    expect(sanitizeMeta(reason)).toBe(
-      'matched copilot-pattern\\nINJECTED:fake_status'
-    );
+    expect(sanitizeMeta(reason)).toBe('matched copilot-pattern\\nINJECTED:fake_status');
   });
 });

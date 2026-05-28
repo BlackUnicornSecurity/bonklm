@@ -13,7 +13,7 @@ import {
   isSafeContext,
   isCriticalDeployCommand,
   isProductionEnvironment,
-  isTestEnvironment,
+  isTestEnvironment
 } from '../../../src/guards/production.js';
 
 describe('ProductionGuard', () => {
@@ -66,7 +66,7 @@ describe('ProductionGuard', () => {
       const commands = [
         'kubectl apply -f production.yaml',
         'docker-compose -f docker-compose.prod.yml up',
-        'ansible-playbook deploy-production.yml',
+        'ansible-playbook deploy-production.yml'
       ];
 
       for (const cmd of commands) {
@@ -148,7 +148,7 @@ describe('ProductionGuard', () => {
         'database-prod',
         'aws-prod',
         'gcp-prod',
-        'azure-prod',
+        'azure-prod'
       ];
 
       let detectedCount = 0;
@@ -165,14 +165,7 @@ describe('ProductionGuard', () => {
 
   describe('PG-010: Safe Dev Content', () => {
     it('should allow development content', () => {
-      const safeContent = [
-        'ENV=development',
-        'ENV=dev',
-        'ENV=staging',
-        'localhost:3000',
-        '127.0.0.1',
-        'db-dev.local',
-      ];
+      const safeContent = ['ENV=development', 'ENV=dev', 'ENV=staging', 'localhost:3000', '127.0.0.1', 'db-dev.local'];
 
       for (const content of safeContent) {
         const guard = new ProductionGuard();
@@ -202,11 +195,7 @@ describe('ProductionGuard', () => {
 
   describe('PG-012: Context Patterns', () => {
     it('should verify sensitive context patterns', () => {
-      const sensitiveContexts = [
-        'production database',
-        'production server',
-        'NODE_ENV=production',
-      ];
+      const sensitiveContexts = ['production database', 'production server', 'NODE_ENV=production'];
 
       for (const context of sensitiveContexts) {
         const result = detectProductionIndicators(context);

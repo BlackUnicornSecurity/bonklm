@@ -13,5 +13,5 @@ export {
   SecureCredential,
   type CredentialCallback,
   type CredentialCallbackSync,
-  SecureCredentialError,
+  SecureCredentialError
 } from '../cli/utils/secure-credential.js';

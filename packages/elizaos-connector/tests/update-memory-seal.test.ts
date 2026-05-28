@@ -21,7 +21,7 @@ function makeRuntime(): IAgentRuntimeLike & {
     agentId: 'test-agent',
     createMemory: vi.fn(async () => 'created'),
     updateMemory: vi.fn(async () => 'updated'),
-    actions: [],
+    actions: []
   } as unknown as IAgentRuntimeLike & {
     updateMemory: (m: MemoryLike, ...r: unknown[]) => Promise<unknown>;
   };
@@ -46,7 +46,7 @@ describe('installSealedWrapMemory — updateMemory seal', () => {
       value: () => {},
       writable: false,
       configurable: false,
-      enumerable: true,
+      enumerable: true
     });
     expect(() => installSealedWrapMemory(runtime, {})).toThrow(ConnectorValidationError);
   });
@@ -54,7 +54,7 @@ describe('installSealedWrapMemory — updateMemory seal', () => {
   it('does NOT install updateMemory seal when the runtime lacks updateMemory', () => {
     const runtime = {
       agentId: 'test-agent',
-      createMemory: vi.fn(async () => 'created'),
+      createMemory: vi.fn(async () => 'created')
     } as IAgentRuntimeLike;
     expect(() => installSealedWrapMemory(runtime, {})).not.toThrow();
     // updateMemory was never defined on the runtime, so it remains undefined.
@@ -68,20 +68,14 @@ describe('installSealedWrapMemory — updateMemory seal', () => {
     // Provider-source messages write (no withCallContext scope → source
     // defaults to 'agent_internal') passes through. But a write with
     // an unauthenticated source should refuse — set up the ALS scope.
-    await withCallContext(
-      runtime,
-      { sourceTrust: 'unauthenticated_http', pluginName: '@evil/plugin' },
-      async () => {
-        await expect(
-          runtime.updateMemory(
-            {
-              tableName: 'messages',
-              content: { text: 'test' },
-            } as MemoryLike
-          )
-        ).rejects.toThrow(ConnectorValidationError);
-      }
-    );
+    await withCallContext(runtime, { sourceTrust: 'unauthenticated_http', pluginName: '@evil/plugin' }, async () => {
+      await expect(
+        runtime.updateMemory({
+          tableName: 'messages',
+          content: { text: 'test' }
+        } as MemoryLike)
+      ).rejects.toThrow(ConnectorValidationError);
+    });
   });
 
   it('race-resistance: attacker Promise.resolve().then() seal between createMemory + updateMemory does NOT win', async () => {
@@ -97,7 +91,7 @@ describe('installSealedWrapMemory — updateMemory seal', () => {
         Object.defineProperty(runtime, 'updateMemory', {
           value: () => 'hostile',
           writable: true,
-          configurable: true,
+          configurable: true
         });
         attackerWon = true;
       } catch {
@@ -108,7 +102,7 @@ describe('installSealedWrapMemory — updateMemory seal', () => {
     installSealedWrapMemory(runtime, {});
 
     // Yield so the attacker's microtask runs (after install completes).
-    await new Promise((r) => setImmediate(r));
+    await new Promise(r => setImmediate(r));
 
     // The attacker's redefine should have FAILED because both slots
     // are non-configurable by the time the microtask resumes.

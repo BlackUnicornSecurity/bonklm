@@ -46,7 +46,7 @@ class ProfanityFilter implements Validator {
           severity: Severity.WARNING,
           weight: 5,
           description: `Blocked word detected: "${word}"`,
-          confidence: 'high',
+          confidence: 'high'
         });
       }
     }
@@ -59,7 +59,7 @@ class ProfanityFilter implements Validator {
       risk_level: findings.length > 5 ? RiskLevel.HIGH : RiskLevel.LOW,
       risk_score: findings.length * 5,
       findings,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     };
   }
 }
@@ -76,7 +76,7 @@ class PIIDetector implements Validator {
   private readonly patterns = {
     email: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
     phone: /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g,
-    ssn: /\b\d{3}-\d{2}-\d{4}\b/g,
+    ssn: /\b\d{3}-\d{2}-\d{4}\b/g
   };
 
   validate(content: string): GuardrailResult {
@@ -91,11 +91,8 @@ class PIIDetector implements Validator {
 import { GuardrailEngine } from '@blackunicorn/bonklm';
 
 const engine = new GuardrailEngine({
-  validators: [
-    new ProfanityFilter(),
-    new PIIDetector(),
-  ],
-  shortCircuit: false,
+  validators: [new ProfanityFilter(), new PIIDetector()],
+  shortCircuit: false
 });
 
 const result = await engine.validate(userInput);
@@ -127,14 +124,14 @@ interface Validator {
 
 ```typescript
 interface GuardrailResult {
-  allowed: boolean;           // Whether content is allowed
-  blocked: boolean;           // Whether content is blocked (opposite of allowed)
-  severity: Severity;         // INFO | WARNING | BLOCKED | CRITICAL
-  risk_level: RiskLevel;      // LOW | MEDIUM | HIGH
-  risk_score: number;         // Numeric risk score
-  findings: Finding[];        // Array of detected issues
-  timestamp: number;          // Unix timestamp
-  reason?: string;            // Optional reason for blocking
+  allowed: boolean; // Whether content is allowed
+  blocked: boolean; // Whether content is blocked (opposite of allowed)
+  severity: Severity; // INFO | WARNING | BLOCKED | CRITICAL
+  risk_level: RiskLevel; // LOW | MEDIUM | HIGH
+  risk_score: number; // Numeric risk score
+  findings: Finding[]; // Array of detected issues
+  timestamp: number; // Unix timestamp
+  reason?: string; // Optional reason for blocking
 }
 ```
 
@@ -142,12 +139,12 @@ interface GuardrailResult {
 
 ```typescript
 interface Finding {
-  category: string;           // Category of the finding
-  severity: Severity;         // Severity level
-  weight?: number;            // Weight for risk score calculation
-  match?: string;             // Matched text
-  description: string;        // Human-readable description
-  line_number?: number;       // Line number where found
+  category: string; // Category of the finding
+  severity: Severity; // Severity level
+  weight?: number; // Weight for risk score calculation
+  match?: string; // Matched text
+  description: string; // Human-readable description
+  line_number?: number; // Line number where found
   confidence?: 'critical' | 'high' | 'medium' | 'low';
 }
 ```

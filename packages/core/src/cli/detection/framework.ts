@@ -13,7 +13,6 @@
  * - Dependency limit: Caps checked dependencies to prevent resource exhaustion
  */
 
- 
 import { readFile, realpath, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { cwd } from 'node:process';
@@ -42,20 +41,20 @@ export interface DetectedFramework {
 const FRAMEWORK_PATTERNS = {
   express: {
     dependencies: ['express'],
-    devDependencies: [],
+    devDependencies: []
   },
   fastify: {
     dependencies: ['fastify'],
-    devDependencies: [],
+    devDependencies: []
   },
   nestjs: {
     dependencies: ['@nestjs/core'],
-    devDependencies: [],
+    devDependencies: []
   },
   langchain: {
     dependencies: ['langchain', '@langchain/core'],
-    devDependencies: [],
-  },
+    devDependencies: []
+  }
 } as const;
 
 /** Type containing all framework IDs */
@@ -101,9 +100,7 @@ export interface FrameworkDetectionOptions {
  * // [{ name: 'express', version: '^4.18.0' }]
  * ```
  */
-export async function detectFrameworks(
-  options: FrameworkDetectionOptions = {}
-): Promise<DetectedFramework[]> {
+export async function detectFrameworks(options: FrameworkDetectionOptions = {}): Promise<DetectedFramework[]> {
   // Resolve real paths to prevent symlink attacks (C-4 fix)
   const workingDir = await realpath(options.workingDir || cwd());
   const pkgPath = join(workingDir, options.packageJsonPath || 'package.json');
@@ -184,13 +181,15 @@ export async function detectFrameworks(
     // Call parse with null reviver and options object
     pkg = parse(content, null, {
       protoAction: 'remove',
-      constructorAction: 'remove',
+      constructorAction: 'remove'
     }) as Record<string, unknown>;
 
     // Additional validation: Check for prototype pollution markers
     // Use hasOwnProperty to check if these are own properties (not inherited)
-    if (Object.prototype.hasOwnProperty.call(pkg, '__proto__') ||
-        Object.prototype.hasOwnProperty.call(pkg, 'constructor')) {
+    if (
+      Object.prototype.hasOwnProperty.call(pkg, '__proto__') ||
+      Object.prototype.hasOwnProperty.call(pkg, 'constructor')
+    ) {
       throw new WizardError(
         'INVALID_PACKAGE_JSON',
         'package.json contains prototype pollution',
@@ -289,7 +288,7 @@ export async function isFrameworkDetected(
   options?: FrameworkDetectionOptions
 ): Promise<boolean> {
   const frameworks = await detectFrameworks(options);
-  return frameworks.some((f) => f.name === frameworkId);
+  return frameworks.some(f => f.name === frameworkId);
 }
 
 /**
@@ -310,5 +309,5 @@ export async function getFrameworkVersion(
   options?: FrameworkDetectionOptions
 ): Promise<string | undefined> {
   const frameworks = await detectFrameworks(options);
-  return frameworks.find((f) => f.name === frameworkId)?.version;
+  return frameworks.find(f => f.name === frameworkId)?.version;
 }

@@ -18,5 +18,5 @@ export {
   withRestateGuardrails,
   RestateGuardrailBlockedError,
   type RestateMiddlewareOptions,
-  type RestateGuardrailBlockEvent,
+  type RestateGuardrailBlockEvent
 } from './middleware.js';

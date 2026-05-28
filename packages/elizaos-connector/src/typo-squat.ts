@@ -150,7 +150,7 @@ export function detectTypoSquat(
   return {
     pluginName,
     exactMatch: false,
-    nearestTypoSquat: nearest,
+    nearestTypoSquat: nearest
   };
 }
 
@@ -165,7 +165,5 @@ export function detectTypoSquatBatch(
   pluginNames: ReadonlyArray<string>,
   allowlist: ReadonlyArray<string> = VERIFIED_PUBLISHER_ALLOWLIST
 ): TypoSquatResult[] {
-  return pluginNames
-    .map((name) => detectTypoSquat(name, allowlist))
-    .filter((r) => r.nearestTypoSquat !== undefined);
+  return pluginNames.map(name => detectTypoSquat(name, allowlist)).filter(r => r.nearestTypoSquat !== undefined);
 }

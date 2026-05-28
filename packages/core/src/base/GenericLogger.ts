@@ -9,7 +9,7 @@ export enum LogLevel {
   DEBUG = 'debug',
   INFO = 'info',
   WARN = 'warn',
-  ERROR = 'error',
+  ERROR = 'error'
 }
 
 export interface LogContext {
@@ -32,7 +32,7 @@ export class ConsoleLogger implements Logger {
     [LogLevel.DEBUG]: 0,
     [LogLevel.INFO]: 1,
     [LogLevel.WARN]: 2,
-    [LogLevel.ERROR]: 3,
+    [LogLevel.ERROR]: 3
   };
 
   constructor(level: LogLevel = LogLevel.INFO) {
@@ -82,13 +82,12 @@ export class ConsoleLogger implements Logger {
  * Null logger for disabling output
  */
 export class NullLogger implements Logger {
-   
   debug(_message: string, _context?: LogContext): void {}
-   
+
   info(_message: string, _context?: LogContext): void {}
-   
+
   warn(_message: string, _context?: LogContext): void {}
-   
+
   error(_message: string, _context?: LogContext): void {}
 }
 

@@ -113,11 +113,7 @@ export interface BonklmDurableExecBlockEvent extends BonklmBlockEventBase {
 }
 
 /** Document-ingest surfaces — LlamaParse + Unstructured + Reducto. */
-export type BonklmDocumentPhase =
-  | 'llamaparse'
-  | 'unstructured'
-  | 'reducto'
-  | 'validate_extracted_text';
+export type BonklmDocumentPhase = 'llamaparse' | 'unstructured' | 'reducto' | 'validate_extracted_text';
 
 export interface BonklmDocumentBlockEvent extends BonklmBlockEventBase {
   kind: 'document';
@@ -132,12 +128,7 @@ export interface BonklmDocumentBlockEvent extends BonklmBlockEventBase {
  * Cloudflare Agent surfaces — `setState` + `sql` SELECT + storage reads.
  * Story 3.8 / Sprint 22.
  */
-export type BonklmCfAgentSurface =
-  | 'setState'
-  | 'sql_select'
-  | 'storage_get'
-  | 'storage_list'
-  | 'storage_getAlarm';
+export type BonklmCfAgentSurface = 'setState' | 'sql_select' | 'storage_get' | 'storage_list' | 'storage_getAlarm';
 
 export interface BonklmCfAgentBlockEvent extends BonklmBlockEventBase {
   kind: 'cf-agent';

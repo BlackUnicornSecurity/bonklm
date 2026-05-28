@@ -24,21 +24,16 @@ import {
   type Logger,
   sanitizeMeta,
   Severity,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
 import { applyRetrievedDocValidatorToMatches } from '@blackunicorn/bonklm/core/connector-utils';
-import type {
-  GuardedQdrantOptions,
-  GuardedQdrantResult,
-  QdrantPoint,
-  QdrantSearchOptions,
-} from './types.js';
+import type { GuardedQdrantOptions, GuardedQdrantResult, QdrantPoint, QdrantSearchOptions } from './types.js';
 import {
   DEFAULT_MAX_FILTER_LENGTH,
   DEFAULT_MAX_LIMIT,
   DEFAULT_MAX_PAYLOAD_SIZE,
   DEFAULT_REGEX_TIMEOUT,
-  DEFAULT_VALIDATION_TIMEOUT,
+  DEFAULT_VALIDATION_TIMEOUT
 } from './types.js';
 
 /**
@@ -85,10 +80,7 @@ export interface GuardedQdrantClient {
  * });
  * ```
  */
-export function createGuardedClient(
-  qdrantClient: any,
-  options: GuardedQdrantOptions = {}
-): GuardedQdrantClient {
+export function createGuardedClient(qdrantClient: any, options: GuardedQdrantOptions = {}): GuardedQdrantClient {
   const {
     validators = [],
     guards = [],
@@ -104,13 +96,13 @@ export function createGuardedClient(
     maxFilterLength = DEFAULT_MAX_FILTER_LENGTH,
     maxPayloadSize = DEFAULT_MAX_PAYLOAD_SIZE,
     regexTimeout = DEFAULT_REGEX_TIMEOUT,
-    retrievedDocValidator, // Story 1.2 opt-in batch validator
+    retrievedDocValidator // Story 1.2 opt-in batch validator
   } = options;
 
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   /**
@@ -118,10 +110,7 @@ export function createGuardedClient(
    *
    * @internal
    */
-  const validateWithTimeout = async (
-    content: string,
-    context?: string
-  ): Promise<GuardrailResult> => {
+  const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult> => {
     const result = await validateWithTimeoutSecure<GuardrailResult>({
       operation: () => engine.validate(content, context) as Promise<GuardrailResult>,
       timeoutMs: validationTimeout,
@@ -131,10 +120,10 @@ export function createGuardedClient(
             category: 'timeout',
             description: 'Validation timeout',
             severity: Severity.CRITICAL,
-            weight: 30,
-          },
+            weight: 30
+          }
         ]),
-      logger,
+      logger
     });
     return result;
   };
@@ -159,7 +148,7 @@ export function createGuardedClient(
     }
 
     // Check for non-finite values (NaN, Infinity, -Infinity)
-    const hasInvalidValues = vector.some((v) => typeof v !== 'number' || !Number.isFinite(v));
+    const hasInvalidValues = vector.some(v => typeof v !== 'number' || !Number.isFinite(v));
     if (hasInvalidValues) {
       throw new Error('Vector must contain only finite numbers (no NaN or Infinity)');
     }
@@ -184,11 +173,13 @@ export function createGuardedClient(
     if (filterStr.length > maxFilterLength) {
       logger.warn('[Guardrails] Filter exceeds maximum length', {
         length: filterStr.length,
-        max: maxFilterLength,
+        max: maxFilterLength
       });
       throw new ConnectorValidationError(
-        productionMode ? 'Filter exceeds maximum length' : `Filter exceeds maximum length of ${maxFilterLength} characters`,
-        'filter_too_long',
+        productionMode
+          ? 'Filter exceeds maximum length'
+          : `Filter exceeds maximum length of ${maxFilterLength} characters`,
+        'filter_too_long'
       );
     }
 
@@ -196,11 +187,11 @@ export function createGuardedClient(
     // Qdrant uses: must, must_not, filter, key, match, range, geo, etc.
     // The following are ALWAYS dangerous:
     const dangerousPatterns = [
-      /\beval\b/i,          // eval keyword
-      /\bconstructor\b/i,   // constructor access
-      /\b__proto__\b/i,     // prototype pollution
-      /\$where/i,          // MongoDB $where (not used in Qdrant)
-      /\.\.\./,             // Path traversal
+      /\beval\b/i, // eval keyword
+      /\bconstructor\b/i, // constructor access
+      /\b__proto__\b/i, // prototype pollution
+      /\$where/i, // MongoDB $where (not used in Qdrant)
+      /\.\.\./ // Path traversal
       // Note: $ne and $regex are REMOVED - they can be legitimate in some contexts
       // We handle them differently below
     ];
@@ -210,7 +201,7 @@ export function createGuardedClient(
         logger.warn('[Guardrails] Dangerous filter pattern detected');
         throw new ConnectorValidationError(
           productionMode ? 'Filter contains dangerous patterns' : 'Filter contains dangerous patterns',
-          'dangerous_pattern',
+          'dangerous_pattern'
         );
       }
     }
@@ -231,7 +222,7 @@ export function createGuardedClient(
           if (!hexDigits || hexDigits.length < 2) {
             throw new ConnectorValidationError(
               productionMode ? 'Invalid filter' : 'Filter contains invalid Unicode escapes',
-              'invalid_unicode',
+              'invalid_unicode'
             );
           }
           const hexCode = parseInt(hexDigits.slice(1), 16); // Skip 'u', get '0024'
@@ -239,17 +230,17 @@ export function createGuardedClient(
           if (isNaN(hexCode)) {
             throw new ConnectorValidationError(
               productionMode ? 'Invalid filter' : 'Filter contains invalid Unicode escapes',
-              'invalid_unicode',
+              'invalid_unicode'
             );
           }
           const decoded = String.fromCharCode(hexCode);
           // Check if decoded character is dangerous
-          if (['$', '_', 'p', 'P', 'c', 'C'].some((char) => decoded === char)) {
+          if (['$', '_', 'p', 'P', 'c', 'C'].some(char => decoded === char)) {
             // Could be obfuscation - reject
             logger.warn('[Guardrails] Suspicious Unicode escape detected', { escape });
             throw new ConnectorValidationError(
               productionMode ? 'Invalid filter' : 'Filter contains suspicious Unicode escapes',
-              'unicode_obfuscation',
+              'unicode_obfuscation'
             );
           }
         } catch (e) {
@@ -259,7 +250,7 @@ export function createGuardedClient(
           // Invalid escape, reject
           throw new ConnectorValidationError(
             productionMode ? 'Invalid filter' : 'Filter contains invalid Unicode escapes',
-            'invalid_unicode',
+            'invalid_unicode'
           );
         }
       }
@@ -272,8 +263,8 @@ export function createGuardedClient(
       'constructor',
       '__proto__',
       'prototype',
-      'parent',        // Prototype pollution via parent
-      'where',         // MongoDB $where equivalent
+      'parent', // Prototype pollution via parent
+      'where' // MongoDB $where equivalent
     ];
 
     // Deep validation for nested objects
@@ -281,7 +272,7 @@ export function createGuardedClient(
       if (depth > 10) {
         throw new ConnectorValidationError(
           productionMode ? 'Invalid filter' : 'Filter depth exceeded maximum',
-          'depth_exceeded',
+          'depth_exceeded'
         );
       }
 
@@ -292,7 +283,7 @@ export function createGuardedClient(
             logger.warn('[Guardrails] Dangerous filter key detected', { key });
             throw new ConnectorValidationError(
               productionMode ? 'Invalid filter' : `Filter contains dangerous key: ${key}`,
-              'dangerous_key',
+              'dangerous_key'
             );
           }
 
@@ -312,7 +303,7 @@ export function createGuardedClient(
       }
       throw new ConnectorValidationError(
         productionMode ? 'Invalid filter' : 'Filter validation failed',
-        'validation_failed',
+        'validation_failed'
       );
     }
   };
@@ -333,11 +324,11 @@ export function createGuardedClient(
     if (payloadSize > maxPayloadSize) {
       logger.warn('[Guardrails] Payload exceeds maximum size', {
         size: payloadSize,
-        max: maxPayloadSize,
+        max: maxPayloadSize
       });
       throw new ConnectorValidationError(
         productionMode ? 'Payload exceeds maximum size' : `Payload exceeds maximum size of ${maxPayloadSize} bytes`,
-        'payload_too_large',
+        'payload_too_large'
       );
     }
 
@@ -386,7 +377,7 @@ export function createGuardedClient(
           // Escape special regex characters (except * and ? which are wildcards)
           const escapedPattern = pattern
             .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-            .replace(/\*{1,3}/g, '.*')  // Limit wildcards expansion
+            .replace(/\*{1,3}/g, '.*') // Limit wildcards expansion
             .replace(/\?/g, '.');
 
           // S012-006: Create regex with timeout protection using simple matching
@@ -402,11 +393,10 @@ export function createGuardedClient(
 
               const testPromise = Promise.resolve(regex.test(key));
 
-              const result = await Promise.race([testPromise, timeoutPromise])
-                .catch(() => {
-                  logger.warn('[Guardrails] Regex test timeout', { key, pattern });
-                  return false;
-                });
+              const result = await Promise.race([testPromise, timeoutPromise]).catch(() => {
+                logger.warn('[Guardrails] Regex test timeout', { key, pattern });
+                return false;
+              });
 
               if (result) {
                 filtered[key] = payload[key];
@@ -448,12 +438,11 @@ export function createGuardedClient(
       return applyRetrievedDocValidatorToMatches(
         points,
         retrievedDocValidator,
-        (p) => ({
-          content: [
-            p.payload ? JSON.stringify(p.payload) : '',
-            p.id !== null && p.id !== undefined ? String(p.id) : '',
-          ].filter(Boolean).join(' '),
-          metadata: p.payload as Record<string, unknown> | undefined,
+        p => ({
+          content: [p.payload ? JSON.stringify(p.payload) : '', p.id !== null && p.id !== undefined ? String(p.id) : '']
+            .filter(Boolean)
+            .join(' '),
+          metadata: p.payload as Record<string, unknown> | undefined
         }),
         { productionMode, itemNoun: 'Point' }
       );
@@ -480,7 +469,7 @@ export function createGuardedClient(
         // Filter payload if allowed fields are specified
         const filteredPoint = { ...point };
         if (allowedPayloadFields.length > 0 && point.payload) {
-            filteredPoint.payload = await filterPayload(point.payload);
+          filteredPoint.payload = await filterPayload(point.payload);
         }
         valid.push(filteredPoint);
       } else {
@@ -492,7 +481,7 @@ export function createGuardedClient(
         const safeReason = sanitizeMeta(result.reason);
         logger.warn('[Guardrails] Point blocked', {
           id: sanitizeMeta(point.id),
-          reason: safeReason,
+          reason: safeReason
         });
         if (onPointBlocked) {
           onPointBlocked(point.id, result);
@@ -539,7 +528,7 @@ export function createGuardedClient(
       // Step 5: Execute the search
       const rawResult = await qdrantClient.search(collectionName, {
         ...options,
-        limit,
+        limit
       });
 
       // Step 6: Validate retrieved points
@@ -550,7 +539,7 @@ export function createGuardedClient(
         points: validPoints,
         pointsBlocked: blocked,
         filtered: blocked > 0,
-        raw: rawResult,
+        raw: rawResult
       };
     },
 
@@ -590,7 +579,7 @@ export function createGuardedClient(
       }
 
       return qdrantClient.upsert(collectionName, points);
-    },
+    }
   };
 }
 
@@ -602,5 +591,5 @@ export type {
   GuardedQdrantResult,
   QdrantSearchOptions,
   QdrantPoint,
-  BlockedPointHandling,
+  BlockedPointHandling
 } from './types.js';

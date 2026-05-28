@@ -5,10 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  BashSafetyGuard,
-  checkBashSafety,
-} from '../../../src/guards/bash-safety.js';
+import { BashSafetyGuard, checkBashSafety } from '../../../src/guards/bash-safety.js';
 import { Severity } from '../../../src/base/GuardrailResult.js';
 
 describe('BashSafetyGuard', () => {
@@ -19,13 +16,7 @@ describe('BashSafetyGuard', () => {
     });
 
     it('should detect recursive deletion variants', () => {
-      const variants = [
-        'rm -rf /',
-        'rm -Rf /',
-        'rm -fr /',
-        'rm --recursive -f /',
-        'rm -rf /*',
-      ];
+      const variants = ['rm -rf /', 'rm -Rf /', 'rm -fr /', 'rm --recursive -f /', 'rm -rf /*'];
 
       for (const cmd of variants) {
         const result = checkBashSafety(cmd);
@@ -37,7 +28,7 @@ describe('BashSafetyGuard', () => {
   describe('SQL Injection Detection', () => {
     it('BS-003: should detect SQL injection A03-101 (syntax based)', () => {
       const guard = new BashSafetyGuard({ detectSqlInjection: true, includeFindings: true });
-      const result = guard.validate("SELECT * FROM users WHERE id = 1 OR 1=1");
+      const result = guard.validate('SELECT * FROM users WHERE id = 1 OR 1=1');
       expect(result.findings?.length).toBeGreaterThan(0);
       expect(result.findings?.[0].category).toBe('sql_injection');
     });
@@ -185,7 +176,7 @@ describe('BashSafetyGuard', () => {
 
     it('should assign WARNING to SQL injection', () => {
       const guard = new BashSafetyGuard({ includeFindings: true });
-      const result = guard.validate("SELECT * FROM users WHERE id = 1 OR 1=1");
+      const result = guard.validate('SELECT * FROM users WHERE id = 1 OR 1=1');
       expect(result.severity).toBeDefined();
     });
   });

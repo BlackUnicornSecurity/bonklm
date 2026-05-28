@@ -21,12 +21,7 @@
  * @package @blackunicorn/bonklm-server
  */
 import Fastify from 'fastify';
-import type {
-  FastifyInstance,
-  FastifyReply,
-  FastifyRequest,
-  FastifyServerOptions,
-} from 'fastify';
+import type { FastifyInstance, FastifyReply, FastifyRequest, FastifyServerOptions } from 'fastify';
 import { GuardrailEngine } from '@blackunicorn/bonklm';
 import type { EngineResult } from '@blackunicorn/bonklm';
 import { sanitizeReasonText } from '@blackunicorn/bonklm/core/connector-utils';
@@ -34,7 +29,7 @@ import {
   HMAC_SIGNATURE_HEADER,
   HMAC_TIMESTAMP_HEADER,
   type HmacFailureReason,
-  verifyHmacSignature,
+  verifyHmacSignature
 } from './hmac/index.js';
 import {
   type LiteLLMHookPayload,
@@ -42,7 +37,7 @@ import {
   mapOpenAICompat,
   mapPortkey,
   type OpenAICompatPayload,
-  type PortkeyHookPayload,
+  type PortkeyHookPayload
 } from './payload-mappers/index.js';
 import type { BonklmServerOptions, GuardrailDecision } from './types.js';
 
@@ -52,17 +47,10 @@ export {
   HMAC_TIMESTAMP_HEADER,
   DEFAULT_REPLAY_WINDOW_MS,
   verifyHmacSignature,
-  signHmac,
+  signHmac
 } from './hmac/index.js';
-export type {
-  HmacFailureReason,
-  HmacVerifyResult,
-} from './hmac/index.js';
-export {
-  mapLiteLLM,
-  mapPortkey,
-  mapOpenAICompat,
-} from './payload-mappers/index.js';
+export type { HmacFailureReason, HmacVerifyResult } from './hmac/index.js';
+export { mapLiteLLM, mapPortkey, mapOpenAICompat } from './payload-mappers/index.js';
 
 /** Minimum HMAC secret length (bytes). Sec-audit fail-closed boundary. */
 const MIN_HMAC_SECRET_BYTES = 32;
@@ -99,23 +87,15 @@ function hmacFailureStatus(reason: HmacFailureReason): number {
  * console.log('BonkLM server listening on', server.addresses());
  * ```
  */
-export async function createBonklmGuardrailServer(
-  options: BonklmServerOptions
-): Promise<FastifyInstance> {
+export async function createBonklmGuardrailServer(options: BonklmServerOptions): Promise<FastifyInstance> {
   // Boundary validation.
-  if (
-    typeof options.hmacSecret !== 'string' ||
-    options.hmacSecret.length < MIN_HMAC_SECRET_BYTES
-  ) {
+  if (typeof options.hmacSecret !== 'string' || options.hmacSecret.length < MIN_HMAC_SECRET_BYTES) {
     throw new Error(
       `createBonklmGuardrailServer: hmacSecret MUST be a string of at least ${MIN_HMAC_SECRET_BYTES} characters of entropy. ` +
         'Generate via `openssl rand -base64 32` or equivalent.'
     );
   }
-  if (
-    (options.validators === undefined || options.validators.length === 0) &&
-    options.engine === undefined
-  ) {
+  if ((options.validators === undefined || options.validators.length === 0) && options.engine === undefined) {
     throw new Error(
       'createBonklmGuardrailServer: either `validators: [...]` (non-empty) OR `engine` MUST be supplied.'
     );
@@ -124,7 +104,7 @@ export async function createBonklmGuardrailServer(
   const engine =
     options.engine ??
     new GuardrailEngine({
-      validators: options.validators!,
+      validators: options.validators!
     });
 
   // Story 2.13 audit sec S8 closure: productionMode default flipped
@@ -151,13 +131,13 @@ export async function createBonklmGuardrailServer(
     options.logger === undefined
       ? {
           logger: {
-            level: process.env.NODE_ENV === 'test' ? 'silent' : 'info',
+            level: process.env.NODE_ENV === 'test' ? 'silent' : 'info'
           },
-          bodyLimit,
+          bodyLimit
         }
       : {
           loggerInstance: options.logger as FastifyServerOptions['loggerInstance'],
-          bodyLimit,
+          bodyLimit
         };
   const fastify = Fastify(fastifyOpts) as unknown as FastifyInstance;
 
@@ -201,7 +181,7 @@ export async function createBonklmGuardrailServer(
       signature: Array.isArray(sig) ? sig[0] : sig,
       timestamp: Array.isArray(ts) ? ts[0] : ts,
       secret: options.hmacSecret,
-      replayWindowMs,
+      replayWindowMs
     });
     if (!result.valid) {
       const authError = new Error('hmac_auth_failed') as AuthError;
@@ -220,17 +200,9 @@ export async function createBonklmGuardrailServer(
       done(err as Error);
     }
   };
-  fastify.addContentTypeParser(
-    'application/json',
-    { parseAs: 'string' },
-    captureRawBodyAndAuth
-  );
+  fastify.addContentTypeParser('application/json', { parseAs: 'string' }, captureRawBodyAndAuth);
   // Vendor-suffix variants (`application/vnd.api+json`, etc.).
-  fastify.addContentTypeParser(
-    /^application\/.*\+json$/,
-    { parseAs: 'string' },
-    captureRawBodyAndAuth
-  );
+  fastify.addContentTypeParser(/^application\/.*\+json$/, { parseAs: 'string' }, captureRawBodyAndAuth);
 
   // Centralized error handler: emits the right status for HMAC auth
   // failures, JSON parse errors, body-too-large, etc. Production-
@@ -243,20 +215,17 @@ export async function createBonklmGuardrailServer(
       typeof (err as { statusCode?: number }).statusCode === 'number'
         ? (err as { statusCode: number }).statusCode
         : 400;
-    const message =
-      err instanceof Error ? err.message : 'unknown error';
+    const message = err instanceof Error ? err.message : 'unknown error';
     if (isAuthError) {
       reply.code(status).send({
         error: 'hmac_auth_failed',
-        ...(productionMode
-          ? {}
-          : { reason: (err as AuthError).hmacReason }),
+        ...(productionMode ? {} : { reason: (err as AuthError).hmacReason })
       });
       return;
     }
     reply.code(status).send({
       error: 'bad_request',
-      ...(productionMode ? {} : { message }),
+      ...(productionMode ? {} : { message })
     });
   });
 
@@ -265,35 +234,26 @@ export async function createBonklmGuardrailServer(
 
   // The 3 guardrail routes (HMAC pre-validation runs at the global
   // hook above; route handlers only execute on valid HMAC).
-  fastify.post(
-    '/litellm',
-    async (req: FastifyRequest, _reply: FastifyReply): Promise<GuardrailDecision> => {
-      const payload = req.body as LiteLLMHookPayload;
-      const mapped = mapLiteLLM(payload);
-      const result = await engine.validate(mapped.content);
-      return makeDecision('litellm', result, req.id, productionMode);
-    }
-  );
+  fastify.post('/litellm', async (req: FastifyRequest, _reply: FastifyReply): Promise<GuardrailDecision> => {
+    const payload = req.body as LiteLLMHookPayload;
+    const mapped = mapLiteLLM(payload);
+    const result = await engine.validate(mapped.content);
+    return makeDecision('litellm', result, req.id, productionMode);
+  });
 
-  fastify.post(
-    '/portkey',
-    async (req: FastifyRequest, _reply: FastifyReply): Promise<GuardrailDecision> => {
-      const payload = req.body as PortkeyHookPayload;
-      const mapped = mapPortkey(payload);
-      const result = await engine.validate(mapped.content);
-      return makeDecision('portkey', result, req.id, productionMode);
-    }
-  );
+  fastify.post('/portkey', async (req: FastifyRequest, _reply: FastifyReply): Promise<GuardrailDecision> => {
+    const payload = req.body as PortkeyHookPayload;
+    const mapped = mapPortkey(payload);
+    const result = await engine.validate(mapped.content);
+    return makeDecision('portkey', result, req.id, productionMode);
+  });
 
-  fastify.post(
-    '/openai-compatible',
-    async (req: FastifyRequest, _reply: FastifyReply): Promise<GuardrailDecision> => {
-      const payload = req.body as OpenAICompatPayload;
-      const mapped = mapOpenAICompat(payload);
-      const result = await engine.validate(mapped.content);
-      return makeDecision('openai-compatible', result, req.id, productionMode);
-    }
-  );
+  fastify.post('/openai-compatible', async (req: FastifyRequest, _reply: FastifyReply): Promise<GuardrailDecision> => {
+    const payload = req.body as OpenAICompatPayload;
+    const mapped = mapOpenAICompat(payload);
+    const result = await engine.validate(mapped.content);
+    return makeDecision('openai-compatible', result, req.id, productionMode);
+  });
 
   // Bind server to host/port. The actual `listen` call is deferred
   // to the consumer; consumers can `await server.listen({ port })`
@@ -331,11 +291,11 @@ function makeDecision(
     findings:
       productionMode || !engineResult.findings
         ? undefined
-        : engineResult.findings.map((f) => ({
+        : engineResult.findings.map(f => ({
             category: f.category,
             severity: String(f.severity),
-            description: sanitizeReasonText(f.description) ?? '',
+            description: sanitizeReasonText(f.description) ?? ''
           })),
-    requestId,
+    requestId
   };
 }

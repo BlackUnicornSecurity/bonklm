@@ -24,7 +24,7 @@ import type { GenkitContentPart, GenkitMessage, GenkitToolCall } from './types.j
  */
 export function messagesToText(messages: GenkitMessage[]): string {
   return messages
-    .map((m) => {
+    .map(m => {
       const content = m.content;
 
       // Handle messages without content
@@ -40,15 +40,15 @@ export function messagesToText(messages: GenkitMessage[]): string {
       // Handle array content (SEC-006: structured data, images, tool calls, etc.)
       if (Array.isArray(content)) {
         return content
-          .map((part) => contentPartToText(part))
-          .filter((c) => c.length > 0)
+          .map(part => contentPartToText(part))
+          .filter(c => c.length > 0)
           .join('\n');
       }
 
       // Handle other types (convert to string)
       return String(content);
     })
-    .filter((c) => c.length > 0)
+    .filter(c => c.length > 0)
     .join('\n');
 }
 
@@ -119,7 +119,7 @@ function contentPartToText(part: GenkitContentPart): string {
  */
 export function toolCallsToText(toolCalls: GenkitToolCall[]): string {
   return toolCalls
-    .map((tool) => {
+    .map(tool => {
       const parts: string[] = [];
       if (tool.name) {
         parts.push(`Tool: ${tool.name}`);
@@ -134,7 +134,7 @@ export function toolCallsToText(toolCalls: GenkitToolCall[]): string {
       }
       return parts.join('\n');
     })
-    .filter((c) => c.length > 0)
+    .filter(c => c.length > 0)
     .join('\n\n');
 }
 

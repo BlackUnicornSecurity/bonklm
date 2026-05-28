@@ -139,10 +139,7 @@ export function __clearProbeCacheForTests(): void {
  * attacker-controlled values would flow from HTTP request headers.
  * The probe sees only its OWN config-derived values.
  */
-function resolveEnvVar(
-  envBindings: Record<string, string | undefined> | undefined,
-  key: string
-): string | undefined {
+function resolveEnvVar(envBindings: Record<string, string | undefined> | undefined, key: string): string | undefined {
   if (envBindings !== undefined) {
     return envBindings[key];
   }
@@ -198,7 +195,7 @@ async function probeSingleIp(
       // non-loopback target. The default is `'follow'`; explicit
       // `'manual'` would surface the original 3xx response so a
       // legitimate auth-redirect surfaces as `'safe'`.
-      redirect: 'manual',
+      redirect: 'manual'
     });
     // 200 with no auth → CRITICAL. Anything else (401, 403, 404, 3xx) → safe.
     if (response.status === 200) {
@@ -254,12 +251,12 @@ async function executeProbe(opts: ProbeOptions): Promise<ProbeOutcome> {
       // via the unreachable kind with a clarifying reason.
       return {
         kind: 'unreachable',
-        reason: 'Probe completed; runtime HTTP /memories route is protected or absent (no unauth exposure detected).',
+        reason: 'Probe completed; runtime HTTP /memories route is protected or absent (no unauth exposure detected).'
       };
     }
     return {
       kind: 'unreachable',
-      reason: 'Probe could not reach the runtime HTTP API on either 127.0.0.1 or [::1].',
+      reason: 'Probe could not reach the runtime HTTP API on either 127.0.0.1 or [::1].'
     };
   });
 }
@@ -319,17 +316,14 @@ export function runStartupProbe(opts: ProbeOptions): Promise<ProbeOutcome> {
  * escape-hatch path. Branch 2's CRITICAL log emits a
  * per-startup telemetry event for audit pipelines.
  */
-export function applyProbeOutcome(
-  outcome: ProbeOutcome,
-  opts: { logger?: Logger; productionMode?: boolean }
-): void {
+export function applyProbeOutcome(outcome: ProbeOutcome, opts: { logger?: Logger; productionMode?: boolean }): void {
   const logger = opts.logger ?? createLogger('console');
   switch (outcome.kind) {
     case 'unauth_detected_no_ack': {
       const message =
         'BonkLM startup probe detected an UNAUTHENTICATED /memories route on the local ElizaOS HTTP API. ' +
         'This is a Class-4 vulnerability — Provider plugins can mutate user-authored memories via the unauth ' +
-        'route, defeating BonkLM\'s sealed wrapMemory defence. Either secure the route OR explicitly accept ' +
+        "route, defeating BonkLM's sealed wrapMemory defence. Either secure the route OR explicitly accept " +
         'the risk by passing `acknowledgeClass4Risk: true` to bonklmPlugin(...).';
       logger.error('[BonkLM] CRITICAL — Class-4 unauth /memories route detected; plugin refuses to start.');
       throw new ConnectorValidationError(

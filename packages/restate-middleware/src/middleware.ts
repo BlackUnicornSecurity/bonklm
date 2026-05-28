@@ -23,7 +23,7 @@ import {
   InMemoryLRUCache,
   type Validator,
   type ValidatorCache,
-  type ValidatorInput,
+  type ValidatorInput
 } from '@blackunicorn/bonklm';
 import { adaptValidatorToUniversalInput } from '@blackunicorn/bonklm/core/connector-utils';
 
@@ -122,11 +122,7 @@ export class RestateGuardrailBlockedError extends Error {
   readonly category?: string;
   readonly severity?: string;
 
-  constructor(
-    message: string,
-    validatorName: string,
-    extra?: { category?: string; severity?: string }
-  ) {
+  constructor(message: string, validatorName: string, extra?: { category?: string; severity?: string }) {
     super(message);
     this.validatorName = validatorName;
     this.category = extra?.category;
@@ -149,9 +145,7 @@ export function withRestateGuardrails<Ctx extends RestateCtxLike, In, Out>(
   options: RestateMiddlewareOptions
 ): (ctx: Ctx, input: In) => Promise<Out> {
   if (!options || !Array.isArray(options.validators) || options.validators.length === 0) {
-    throw new TypeError(
-      'withRestateGuardrails: options.validators (non-empty Validator[]) is required.'
-    );
+    throw new TypeError('withRestateGuardrails: options.validators (non-empty Validator[]) is required.');
   }
 
   // Sprint 20 audit closure (architect C3 + security C-2): per-factory
@@ -162,9 +156,7 @@ export function withRestateGuardrails<Ctx extends RestateCtxLike, In, Out>(
   // shared `adaptValidatorToUniversalInput` from core/connector-utils.
   // Capability-detection replaces the previous try-catch-TypeError
   // fallback which masked legitimate validator bugs.
-  const adaptedValidators = options.validators.map((v) =>
-    adaptValidatorToUniversalInput(v, 'withRestateGuardrails')
-  );
+  const adaptedValidators = options.validators.map(v => adaptValidatorToUniversalInput(v, 'withRestateGuardrails'));
 
   const baseJournalKey = options.journalKeySuffix
     ? `bonklm:validation:${options.journalKeySuffix}`
@@ -186,15 +178,13 @@ export function withRestateGuardrails<Ctx extends RestateCtxLike, In, Out>(
     //     compose to `bonklm:validation:obj:user:obj:admin` and
     //     potentially alias a different object's journal entry).
     const objectKey = typeof ctx.key === 'function' ? safeCallKey(ctx, options) : undefined;
-    const journalKey = objectKey
-      ? `${baseJournalKey}:obj:${sanitizeObjectKey(objectKey)}`
-      : baseJournalKey;
+    const journalKey = objectKey ? `${baseJournalKey}:obj:${sanitizeObjectKey(objectKey)}` : baseJournalKey;
     const validatorInput = toValidatorInput(input);
     const runValidate = async () => {
       try {
         return await cachedValidate(adaptedValidators, validatorInput, {
           cache,
-          keyFn: createUnsaltedKeyFn(),
+          keyFn: createUnsaltedKeyFn()
         });
       } catch (err) {
         safeOnError(options, err);
@@ -204,9 +194,7 @@ export function withRestateGuardrails<Ctx extends RestateCtxLike, In, Out>(
 
     // Story 4.4 AC: when ctx.run is available, journal the validation
     // result so Restate replays return the cached decision.
-    const results = ctx.run
-      ? await ctx.run(journalKey, runValidate)
-      : await runValidate();
+    const results = ctx.run ? await ctx.run(journalKey, runValidate) : await runValidate();
 
     for (const result of results) {
       if (result.blocked) {
@@ -217,7 +205,7 @@ export function withRestateGuardrails<Ctx extends RestateCtxLike, In, Out>(
           reason: finding?.description ?? 'unknown',
           validatorName: result.validatorName,
           category: finding?.category,
-          severity: String(result.severity),
+          severity: String(result.severity)
         };
         try {
           options.onBlock?.(event);
@@ -238,7 +226,7 @@ export function withRestateGuardrails<Ctx extends RestateCtxLike, In, Out>(
               reason: event.reason,
               category: event.category,
               severity: event.severity,
-              at: Date.now(),
+              at: Date.now()
             });
           } catch (err) {
             safeOnError(options, err);
@@ -269,10 +257,7 @@ export function withRestateGuardrails<Ctx extends RestateCtxLike, In, Out>(
   };
 }
 
-function safeCallKey(
-  ctx: { key?: () => string },
-  options: RestateMiddlewareOptions
-): string | undefined {
+function safeCallKey(ctx: { key?: () => string }, options: RestateMiddlewareOptions): string | undefined {
   try {
     const k = ctx.key?.();
     return typeof k === 'string' && k.length > 0 ? k : undefined;
@@ -301,9 +286,7 @@ function sanitizeObjectKey(key: string): string {
  * `false` → opt-out; `undefined` → default `'bonklm:last_decision'`;
  * string → caller-supplied.
  */
-function resolveLastDecisionStateKey(
-  options: RestateMiddlewareOptions
-): string | null {
+function resolveLastDecisionStateKey(options: RestateMiddlewareOptions): string | null {
   const cfg = options.lastDecisionStateKey;
   if (cfg === false) return null;
   if (typeof cfg === 'string' && cfg.length > 0) return cfg;

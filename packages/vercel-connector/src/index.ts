@@ -21,7 +21,7 @@ export {
   bonkMiddleware,
   messagesToTextDucked,
   type BonkLanguageModelV2Middleware,
-  type BonkMiddlewareOptions,
+  type BonkMiddlewareOptions
 } from './bonk-middleware.js';
 export {
   wrapAgent,
@@ -29,23 +29,14 @@ export {
   type ToolLoopAgentLike,
   type MCPClientLike,
   type WrapAgentOptions,
-  type WrapMCPClientOptions,
+  type WrapMCPClientOptions
 } from './wrap-agent.js';
 
 // Error classes
 export { StreamValidationError, ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 
 // Type exports
-export type {
-  GuardedAIOptions,
-  GuardedGenerateTextOptions,
-  GuardedStreamOptions,
-  GuardedTextResult,
-} from './types.js';
+export type { GuardedAIOptions, GuardedGenerateTextOptions, GuardedStreamOptions, GuardedTextResult } from './types.js';
 
 // Constants
-export {
-  VALIDATION_INTERVAL,
-  DEFAULT_MAX_BUFFER_SIZE,
-  DEFAULT_VALIDATION_TIMEOUT,
-} from './types.js';
+export { VALIDATION_INTERVAL, DEFAULT_MAX_BUFFER_SIZE, DEFAULT_VALIDATION_TIMEOUT } from './types.js';

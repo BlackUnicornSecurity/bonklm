@@ -12,5 +12,5 @@ export {
   MonitoringLogLevel,
   type LogEntry,
   type MetricsData,
-  type MonitoringLoggerOptions,
+  type MonitoringLoggerOptions
 } from './MonitoringLogger.js';

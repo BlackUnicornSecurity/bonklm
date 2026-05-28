@@ -11,7 +11,7 @@ import {
   createBlockingHook,
   createTransformHook,
   type HookContext,
-  type HookResult,
+  type HookResult
 } from '../../../src/hooks/index.js';
 
 describe('HookManager', () => {
@@ -26,7 +26,7 @@ describe('HookManager', () => {
       const hookId = manager.registerHook({
         name: 'test-hook',
         phase: HookPhase.BEFORE_VALIDATION,
-        handler: async () => ({ success: true }),
+        handler: async () => ({ success: true })
       });
 
       expect(hookId).toBeDefined();
@@ -37,13 +37,13 @@ describe('HookManager', () => {
       const hookId1 = manager.registerHook({
         name: 'hook1',
         phase: HookPhase.BEFORE_VALIDATION,
-        handler: async () => ({ success: true }),
+        handler: async () => ({ success: true })
       });
 
       const hookId2 = manager.registerHook({
         name: 'hook2',
         phase: HookPhase.BEFORE_VALIDATION,
-        handler: async () => ({ success: true }),
+        handler: async () => ({ success: true })
       });
 
       expect(hookId1).not.toBe(hookId2);
@@ -55,7 +55,7 @@ describe('HookManager', () => {
       const hookId = manager.registerHook({
         name: 'test-hook',
         phase: HookPhase.BEFORE_VALIDATION,
-        handler: async () => ({ success: true }),
+        handler: async () => ({ success: true })
       });
 
       const removed = manager.unregisterHook(hookId);
@@ -78,12 +78,12 @@ describe('HookManager', () => {
       manager.registerHook({
         name: 'test-hook',
         phase: HookPhase.BEFORE_VALIDATION,
-        handler,
+        handler
       });
 
       const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       expect(results).toHaveLength(1);
@@ -98,12 +98,12 @@ describe('HookManager', () => {
       manager.registerHook({
         name: 'before-hook',
         phase: HookPhase.BEFORE_VALIDATION,
-        handler,
+        handler
       });
 
       await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       expect(handler).toHaveBeenCalledTimes(1);
@@ -115,12 +115,12 @@ describe('HookManager', () => {
       manager.registerHook({
         name: 'after-hook',
         phase: HookPhase.AFTER_VALIDATION,
-        handler,
+        handler
       });
 
       await manager.executeHooks(HookPhase.AFTER_VALIDATION, {
         phase: HookPhase.AFTER_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       expect(handler).toHaveBeenCalledTimes(1);
@@ -132,12 +132,12 @@ describe('HookManager', () => {
       manager.registerHook({
         name: 'before-block-hook',
         phase: HookPhase.BEFORE_BLOCK,
-        handler,
+        handler
       });
 
       await manager.executeHooks(HookPhase.BEFORE_BLOCK, {
         phase: HookPhase.BEFORE_BLOCK,
-        content: 'test',
+        content: 'test'
       });
 
       expect(handler).toHaveBeenCalledTimes(1);
@@ -149,12 +149,12 @@ describe('HookManager', () => {
       manager.registerHook({
         name: 'after-allow-hook',
         phase: HookPhase.AFTER_ALLOW,
-        handler,
+        handler
       });
 
       await manager.executeHooks(HookPhase.AFTER_ALLOW, {
         phase: HookPhase.AFTER_ALLOW,
-        content: 'test',
+        content: 'test'
       });
 
       expect(handler).toHaveBeenCalledTimes(1);
@@ -172,7 +172,7 @@ describe('HookManager', () => {
         handler: async () => {
           executionOrder.push(100);
           return { success: true };
-        },
+        }
       });
 
       manager.registerHook({
@@ -182,7 +182,7 @@ describe('HookManager', () => {
         handler: async () => {
           executionOrder.push(10);
           return { success: true };
-        },
+        }
       });
 
       manager.registerHook({
@@ -192,12 +192,12 @@ describe('HookManager', () => {
         handler: async () => {
           executionOrder.push(50);
           return { success: true };
-        },
+        }
       });
 
       await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       expect(executionOrder).toEqual([10, 50, 100]);
@@ -212,12 +212,12 @@ describe('HookManager', () => {
         name: 'disabled-hook',
         phase: HookPhase.BEFORE_VALIDATION,
         enabled: false,
-        handler,
+        handler
       });
 
       const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       expect(results).toHaveLength(0);
@@ -234,12 +234,12 @@ describe('HookManager', () => {
         handler: async () => {
           await new Promise(resolve => setTimeout(resolve, 500));
           return { success: true };
-        },
+        }
       });
 
       const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       expect(results).toHaveLength(1);
@@ -255,12 +255,12 @@ describe('HookManager', () => {
         phase: HookPhase.BEFORE_VALIDATION,
         handler: async () => {
           throw new Error('Hook failed');
-        },
+        }
       });
 
       const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       expect(results).toHaveLength(1);
@@ -273,13 +273,13 @@ describe('HookManager', () => {
       manager.registerHook({
         name: 'hook1',
         phase: HookPhase.BEFORE_VALIDATION,
-        handler: async () => ({ success: true }),
+        handler: async () => ({ success: true })
       });
 
       manager.registerHook({
         name: 'hook2',
         phase: HookPhase.AFTER_VALIDATION,
-        handler: async () => ({ success: true }),
+        handler: async () => ({ success: true })
       });
 
       manager.clearHooks();
@@ -294,7 +294,7 @@ describe('HookManager', () => {
       manager.registerHook({
         name: 'hook1',
         phase: HookPhase.BEFORE_VALIDATION,
-        handler: async () => ({ success: true }),
+        handler: async () => ({ success: true })
       });
 
       const hooks = manager.getHooks();
@@ -305,34 +305,26 @@ describe('HookManager', () => {
 
   describe('HM-014: Blocking Hook', () => {
     it('should support blocking via shouldBlock', async () => {
-      const hook = createBlockingHook(
-        'block-test',
-        HookPhase.BEFORE_VALIDATION,
-        async () => true
-      );
+      const hook = createBlockingHook('block-test', HookPhase.BEFORE_VALIDATION, async () => true);
 
       manager.registerHook(hook);
 
       const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       expect(results[0].shouldBlock).toBe(true);
     });
 
     it('should not block when condition is false', async () => {
-      const hook = createBlockingHook(
-        'non-blocking',
-        HookPhase.BEFORE_VALIDATION,
-        async () => false
-      );
+      const hook = createBlockingHook('non-blocking', HookPhase.BEFORE_VALIDATION, async () => false);
 
       manager.registerHook(hook);
 
       const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       expect(results[0].shouldBlock).toBe(false);
@@ -341,17 +333,15 @@ describe('HookManager', () => {
 
   describe('HM-015: Transform Hook', () => {
     it('should transform content', async () => {
-      const hook = createTransformHook(
-        'transform-test',
-        HookPhase.BEFORE_VALIDATION,
-        async (content) => content.toUpperCase()
+      const hook = createTransformHook('transform-test', HookPhase.BEFORE_VALIDATION, async content =>
+        content.toUpperCase()
       );
 
       manager.registerHook(hook);
 
       const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test content',
+        content: 'test content'
       });
 
       expect(results[0].data).toHaveProperty('transformed');
@@ -363,7 +353,7 @@ describe('HookManager', () => {
     it('should handle empty phase', async () => {
       const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       expect(results).toHaveLength(0);
@@ -373,12 +363,12 @@ describe('HookManager', () => {
       manager.registerHook({
         name: 'sync-hook',
         phase: HookPhase.BEFORE_VALIDATION,
-        handler: () => ({ success: true }),
+        handler: () => ({ success: true })
       });
 
       const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       expect(results).toHaveLength(1);
@@ -390,19 +380,19 @@ describe('HookManager', () => {
         name: 'blocking-hook',
         phase: HookPhase.BEFORE_VALIDATION,
         priority: 1,
-        handler: async () => ({ success: true, shouldBlock: true }),
+        handler: async () => ({ success: true, shouldBlock: true })
       });
 
       manager.registerHook({
         name: 'normal-hook',
         phase: HookPhase.BEFORE_VALIDATION,
         priority: 2,
-        handler: async () => ({ success: true }),
+        handler: async () => ({ success: true })
       });
 
       const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       // Both hooks should execute
@@ -420,12 +410,12 @@ describe('HookManager', () => {
         handler: async () => {
           await new Promise(resolve => setTimeout(resolve, 100));
           return { success: true };
-        },
+        }
       });
 
       const results = await customManager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       expect(results[0].success).toBe(false);
@@ -442,21 +432,21 @@ describe('HookManager', () => {
         rateLimit: {
           maxCalls: 3,
           windowMs: 1000,
-          perPhase: true,
-        },
+          perPhase: true
+        }
       });
 
       manager.registerHook({
         name: 'test-hook',
         phase: HookPhase.BEFORE_VALIDATION,
-        handler: async () => ({ success: true }),
+        handler: async () => ({ success: true })
       });
 
       // Execute 3 times (within limit)
       for (let i = 0; i < 3; i++) {
         const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
           phase: HookPhase.BEFORE_VALIDATION,
-          content: 'test',
+          content: 'test'
         });
         expect(results[0].success).toBe(true);
       }
@@ -467,7 +457,7 @@ describe('HookManager', () => {
       // 4th execution should be rate limited
       const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
       expect(results[0].success).toBe(false);
       expect(results[0].message).toContain('Rate limit exceeded');
@@ -478,37 +468,37 @@ describe('HookManager', () => {
         rateLimit: {
           maxCalls: 2,
           windowMs: 1000,
-          perPhase: false,
-        },
+          perPhase: false
+        }
       });
 
       manager.registerHook({
         name: 'test-hook-1',
         phase: HookPhase.BEFORE_VALIDATION,
-        handler: async () => ({ success: true }),
+        handler: async () => ({ success: true })
       });
 
       manager.registerHook({
         name: 'test-hook-2',
         phase: HookPhase.AFTER_VALIDATION,
-        handler: async () => ({ success: true }),
+        handler: async () => ({ success: true })
       });
 
       // Execute 2 times (at limit)
       await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       await manager.executeHooks(HookPhase.AFTER_VALIDATION, {
         phase: HookPhase.AFTER_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       // 3rd execution should be rate limited
       const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
       expect(results[0].success).toBe(false);
       expect(results[0].message).toContain('Rate limit exceeded');
@@ -519,30 +509,30 @@ describe('HookManager', () => {
         rateLimit: {
           maxCalls: 2,
           windowMs: 100, // Short window for testing
-          perPhase: true,
-        },
+          perPhase: true
+        }
       });
 
       manager.registerHook({
         name: 'test-hook',
         phase: HookPhase.BEFORE_VALIDATION,
-        handler: async () => ({ success: true }),
+        handler: async () => ({ success: true })
       });
 
       // Execute 2 times (at limit)
       await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
       await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
 
       // 3rd should be blocked
       let results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
       expect(results[0].success).toBe(false);
 
@@ -552,7 +542,7 @@ describe('HookManager', () => {
       // Should be allowed again
       results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
-        content: 'test',
+        content: 'test'
       });
       expect(results[0].success).toBe(true);
     });
@@ -563,14 +553,14 @@ describe('HookManager', () => {
       manager.registerHook({
         name: 'test-hook',
         phase: HookPhase.BEFORE_VALIDATION,
-        handler: async () => ({ success: true }),
+        handler: async () => ({ success: true })
       });
 
       // Execute many times without rate limiting
       for (let i = 0; i < 10; i++) {
         const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
           phase: HookPhase.BEFORE_VALIDATION,
-          content: 'test',
+          content: 'test'
         });
         expect(results[0].success).toBe(true);
       }

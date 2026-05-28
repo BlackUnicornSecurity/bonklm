@@ -11,7 +11,7 @@ import {
   createOverrideTokenValidator,
   hashContent,
   parseOverrideTokenConfig,
-  type OverrideTokenConfig,
+  type OverrideTokenConfig
 } from '../../../src/security/override-token.js';
 
 describe('OverrideTokenValidator (S011-006)', () => {
@@ -80,7 +80,7 @@ describe('OverrideTokenValidator (S011-006)', () => {
     it('should reject expired token', async () => {
       const shortLivedValidator = new OverrideTokenValidator({
         secret: testSecret,
-        expirationMs: 100, // 100ms expiration
+        expirationMs: 100 // 100ms expiration
       });
 
       const token = shortLivedValidator.generateToken(TokenScope.ADMIN);
@@ -180,7 +180,7 @@ describe('OverrideTokenValidator (S011-006)', () => {
     it('should reject content with only expired tokens', async () => {
       const shortLivedValidator = new OverrideTokenValidator({
         secret: testSecret,
-        expirationMs: 50,
+        expirationMs: 50
       });
 
       const token = shortLivedValidator.generateToken(TokenScope.ADMIN);
@@ -213,14 +213,14 @@ describe('OverrideTokenValidator (S011-006)', () => {
       const smallCacheValidator = new OverrideTokenValidator({
         secret: testSecret,
         maxReplayCache: 3,
-        expirationMs: shortExpiry,
+        expirationMs: shortExpiry
       });
 
       const tokens = [
         smallCacheValidator.generateToken(TokenScope.ADMIN),
         smallCacheValidator.generateToken(TokenScope.ADMIN),
         smallCacheValidator.generateToken(TokenScope.ADMIN),
-        smallCacheValidator.generateToken(TokenScope.ADMIN),
+        smallCacheValidator.generateToken(TokenScope.ADMIN)
       ];
 
       // Fill cache to capacity with 3 used nonces
@@ -230,8 +230,7 @@ describe('OverrideTokenValidator (S011-006)', () => {
 
       // Attempting to use the 4th token while cache is full with active entries
       // MUST throw, not silently evict a live nonce (fail-closed behaviour)
-      expect(() => smallCacheValidator.validateToken(tokens[3]!))
-        .toThrow('replay cache is at capacity');
+      expect(() => smallCacheValidator.validateToken(tokens[3]!)).toThrow('replay cache is at capacity');
     });
 
     it('should clean up old cache entries', () => {
@@ -274,7 +273,7 @@ describe('OverrideTokenValidator (S011-006)', () => {
       const floodValidator = new OverrideTokenValidator({
         secret: testSecret,
         maxReplayCache: cacheSize,
-        expirationMs: shortExpiry,
+        expirationMs: shortExpiry
       });
 
       // Step 1: fill cache with (cacheSize - 1) junk tokens
@@ -317,7 +316,7 @@ describe('OverrideTokenValidator (S011-006)', () => {
       const floodValidator = new OverrideTokenValidator({
         secret: testSecret,
         maxReplayCache: cacheSize,
-        expirationMs: 3600000, // 1 hour — nothing expires during this test
+        expirationMs: 3600000 // 1 hour — nothing expires during this test
       });
 
       // Fill cache to capacity
@@ -330,8 +329,7 @@ describe('OverrideTokenValidator (S011-006)', () => {
 
       // Attempt flood: the (cacheSize + 1)-th token triggers fail-closed throw
       const floodToken = floodValidator.generateToken(TokenScope.ADMIN);
-      expect(() => floodValidator.validateToken(floodToken))
-        .toThrow('replay cache is at capacity');
+      expect(() => floodValidator.validateToken(floodToken)).toThrow('replay cache is at capacity');
 
       // Original tokens remain protected — no nonce was evicted
       for (const used of usedTokens) {
@@ -346,13 +344,11 @@ describe('OverrideTokenValidator (S011-006)', () => {
 
   describe('Configuration', () => {
     it('should require minimum secret length', () => {
-      expect(() => new OverrideTokenValidator({ secret: 'short' }))
-        .toThrow('at least 32 characters');
+      expect(() => new OverrideTokenValidator({ secret: 'short' })).toThrow('at least 32 characters');
     });
 
     it('should accept valid secret', () => {
-      expect(() => new OverrideTokenValidator({ secret: testSecret }))
-        .not.toThrow();
+      expect(() => new OverrideTokenValidator({ secret: testSecret })).not.toThrow();
     });
 
     it('should use default expiration when not specified', () => {
@@ -367,7 +363,7 @@ describe('OverrideTokenValidator (S011-006)', () => {
     it('should use custom expiration when specified', async () => {
       const shortValidator = new OverrideTokenValidator({
         secret: testSecret,
-        expirationMs: 50,
+        expirationMs: 50
       });
 
       const token = shortValidator.generateToken(TokenScope.ADMIN);
@@ -411,7 +407,7 @@ describe('OverrideTokenValidator (S011-006)', () => {
       it('should pass through object config', () => {
         const configObj: OverrideTokenConfig = {
           secret: testSecret,
-          expirationMs: 3600000,
+          expirationMs: 3600000
         };
 
         const config = parseOverrideTokenConfig(configObj);

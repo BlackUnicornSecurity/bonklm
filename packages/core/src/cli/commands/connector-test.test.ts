@@ -21,7 +21,7 @@ describe('connector test command', () => {
 
   it('should have --json option', () => {
     const options = connectorTestCommand.options;
-    const jsonOption = options.find((opt) => opt.long === '--json');
+    const jsonOption = options.find(opt => opt.long === '--json');
     expect(jsonOption).toBeDefined();
   });
 

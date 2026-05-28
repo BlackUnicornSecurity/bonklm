@@ -20,14 +20,9 @@
  * its Server Actions error boundary).
  */
 import type { GuardrailEngine } from '@blackunicorn/bonklm';
-import {
-  runRequestValidation,
-  type WebMiddlewareBlockEvent,
-} from '@blackunicorn/bonklm-web-middleware-utils';
+import { runRequestValidation, type WebMiddlewareBlockEvent } from '@blackunicorn/bonklm-web-middleware-utils';
 
-export type ServerAction<Args extends unknown[], Result> = (
-  ...args: Args
-) => Promise<Result>;
+export type ServerAction<Args extends unknown[], Result> = (...args: Args) => Promise<Result>;
 
 export interface WithBonklmOptions {
   engine: GuardrailEngine;
@@ -53,7 +48,7 @@ export function withBonklm<Args extends unknown[], Result>(
         engine: options.engine,
         shouldValidate: options.shouldValidate,
         onBlock: options.onBlock,
-        onError: options.onError,
+        onError: options.onError
       },
       serialized
     );

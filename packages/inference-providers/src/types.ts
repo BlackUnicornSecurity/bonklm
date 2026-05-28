@@ -52,9 +52,7 @@ export interface OpenAIStreamChunk {
 export interface OpenAICompatibleClient {
   chat: {
     completions: {
-      create: (
-        request: OpenAIChatRequest
-      ) => Promise<OpenAIChatResponse | AsyncIterable<OpenAIStreamChunk>>;
+      create: (request: OpenAIChatRequest) => Promise<OpenAIChatResponse | AsyncIterable<OpenAIStreamChunk>>;
     };
   };
 }

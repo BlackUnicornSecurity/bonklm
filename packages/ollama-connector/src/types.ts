@@ -15,14 +15,7 @@
  * - DEV-002: Logger type
  */
 
-import type {
-  CircuitBreaker,
-  Guard,
-  GuardrailResult,
-  Logger,
-  TelemetryService,
-  Validator,
-} from '@blackunicorn/bonklm';
+import type { CircuitBreaker, Guard, GuardrailResult, Logger, TelemetryService, Validator } from '@blackunicorn/bonklm';
 
 // Re-export Ollama types from the SDK for convenience
 export type { Message, ChatRequest, ChatResponse, GenerateRequest, GenerateResponse } from 'ollama';

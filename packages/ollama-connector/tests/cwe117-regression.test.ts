@@ -28,9 +28,7 @@ describe('ollama-connector — Sprint 43 CWE-117 sanitization contract', () => {
 
   it('sanitizes validator-extracted reason for input/output paths', () => {
     const reason = 'matched ignore_previous\nINJECTED:CRITICAL bypass';
-    expect(sanitizeMeta(reason)).toBe(
-      'matched ignore_previous\\nINJECTED:CRITICAL bypass'
-    );
+    expect(sanitizeMeta(reason)).toBe('matched ignore_previous\\nINJECTED:CRITICAL bypass');
   });
 
   it('sanitizes filteredContent embedded in application response', () => {

@@ -35,18 +35,8 @@
  * leaves but cannot suppress the name scan.
  */
 import type { Validator, ValidatorInput } from '../engine/GuardrailEngine.types.js';
-import {
-  createResult,
-  type Finding,
-  type GuardrailResult,
-  Severity,
-} from '../base/GuardrailResult.js';
-import {
-  maxSeverity,
-  riskFromScore,
-  runValidatorChain,
-  VALIDATOR_ERROR_CATEGORIES,
-} from './validator-utils.js';
+import { createResult, type Finding, type GuardrailResult, Severity } from '../base/GuardrailResult.js';
+import { maxSeverity, riskFromScore, runValidatorChain, VALIDATOR_ERROR_CATEGORIES } from './validator-utils.js';
 
 const DEFAULT_PER_FIELD_DEPTH = 5;
 const MAX_PATH_PREVIEW = 80;
@@ -203,9 +193,7 @@ function previewKey(key: string): string {
 // to match. We pass the error-category string explicitly so each
 // composite preserves its own diagnostic taxonomy.
 
-function normaliseSerializerOutput(
-  raw: ReturnType<ToolCallSerializer>
-): CollectedLeaf[] {
+function normaliseSerializerOutput(raw: ReturnType<ToolCallSerializer>): CollectedLeaf[] {
   if (typeof raw === 'string') return [{ key: 'serialized', value: raw }];
   if (!Array.isArray(raw)) {
     throw new TypeError(
@@ -246,17 +234,13 @@ function buildToolNameLeaves(toolName: string): CollectedLeaf[] {
  * Build a `Validator` that scans the tool name + args through the
  * supplied validator stack.
  */
-export function createToolCallArgsValidator(
-  config: ToolCallArgsValidatorConfig
-): Validator {
+export function createToolCallArgsValidator(config: ToolCallArgsValidatorConfig): Validator {
   const validators = config.validators;
   const maxDepth = config.perFieldDepth ?? DEFAULT_PER_FIELD_DEPTH;
   const serializer: ToolCallSerializer | undefined = config.serializer;
 
   if (validators.length === 0) {
-    throw new Error(
-      'createToolCallArgsValidator requires at least one underlying validator.'
-    );
+    throw new Error('createToolCallArgsValidator requires at least one underlying validator.');
   }
 
   return {
@@ -272,11 +256,7 @@ export function createToolCallArgsValidator(
         if (raw.blocked || !humanized || humanized === input.toLowerCase()) {
           return raw;
         }
-        const humanizedResult = await runValidatorChain(
-          validators,
-          humanized,
-          VALIDATOR_ERROR_CATEGORIES.toolCallArgs
-        );
+        const humanizedResult = await runValidatorChain(validators, humanized, VALIDATOR_ERROR_CATEGORIES.toolCallArgs);
         return humanizedResult.blocked ? humanizedResult : raw;
       }
 
@@ -313,22 +293,18 @@ export function createToolCallArgsValidator(
             category: 'tool_call_args_depth_capped',
             severity: Severity.WARNING,
             description: `Tool-call args walker hit perFieldDepth=${maxDepth} at ${previewKey(leaf.key)}; not all sub-fields were scanned.`,
-            weight: 1,
+            weight: 1
           };
           subResults.push({
             key: leaf.key,
-            result: createResult(true, Severity.WARNING, [truncationFinding]),
+            result: createResult(true, Severity.WARNING, [truncationFinding])
           });
           allFindings.push(truncationFinding);
           aggregateSeverity = maxSeverity(aggregateSeverity, Severity.WARNING);
           continue;
         }
 
-        const leafResult = await runValidatorChain(
-          validators,
-          leaf.value,
-          VALIDATOR_ERROR_CATEGORIES.toolCallArgs
-        );
+        const leafResult = await runValidatorChain(validators, leaf.value, VALIDATOR_ERROR_CATEGORIES.toolCallArgs);
         subResults.push({ key: leaf.key, result: leafResult });
         // Aggregate findings up to the top-level for callers that
         // iterate `result.findings`. `subResults[i].result.findings`
@@ -353,8 +329,8 @@ export function createToolCallArgsValidator(
         risk_score: aggregateScore,
         findings: allFindings,
         subResults,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       };
-    },
+    }
   };
 }

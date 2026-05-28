@@ -27,7 +27,7 @@ describe('Express Connector', () => {
   describe('Config Schema', () => {
     it('should accept boolean validateOnRequest', () => {
       const result = expressConnector.configSchema.safeParse({
-        validateOnRequest: true,
+        validateOnRequest: true
       });
       expect(result.success).toBe(true);
     });
@@ -39,7 +39,7 @@ describe('Express Connector', () => {
 
     it('should accept optional validateOnRequest', () => {
       const result = expressConnector.configSchema.safeParse({
-        validateOnRequest: undefined,
+        validateOnRequest: undefined
       });
       expect(result.success).toBe(true);
     });
@@ -54,7 +54,7 @@ describe('Express Connector', () => {
 
     it('should succeed with any config', async () => {
       const result = await expressConnector.test({
-        validateOnRequest: true,
+        validateOnRequest: true
       });
       expect(result.connection).toBe(true);
       expect(result.validation).toBe(true);
@@ -72,7 +72,7 @@ describe('Express Connector', () => {
 
     it('should include middleware usage pattern', () => {
       const snippet = expressConnector.generateSnippet({});
-      expect(snippet).toContain("app.use(expressMiddleware(guardrails))");
+      expect(snippet).toContain('app.use(expressMiddleware(guardrails))');
     });
   });
 });

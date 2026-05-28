@@ -21,10 +21,7 @@
  * @package @blackunicorn/bonklm/core/connector-utils
  */
 import { ConnectorValidationError } from './errors.js';
-import type {
-  RetrievedDoc,
-  RetrievedDocValidator,
-} from '../validators/retrieved-doc.js';
+import type { RetrievedDoc, RetrievedDocValidator } from '../validators/retrieved-doc.js';
 
 /** Position-stable synthetic-id prefix. Audit-fix from Story 1.2. */
 export const BATCH_POS_PREFIX = '__pos_';
@@ -92,16 +89,12 @@ export async function applyRetrievedDocValidatorToMatches<TMatch>(
   const batch = await validator.validateBatch(docs);
   if (batch.result.blocked) {
     throw new ConnectorValidationError(
-      productionMode
-        ? `${itemNoun} batch blocked`
-        : `${itemNoun} batch blocked: ${batch.result.reason}`,
+      productionMode ? `${itemNoun} batch blocked` : `${itemNoun} batch blocked: ${batch.result.reason}`,
       'validation_failed'
     );
   }
 
-  const survivorPositions = new Set(batch.docs.map((d) => d.id));
-  const valid = matches.filter((_m, i) =>
-    survivorPositions.has(`${BATCH_POS_PREFIX}${i}`)
-  );
+  const survivorPositions = new Set(batch.docs.map(d => d.id));
+  const valid = matches.filter((_m, i) => survivorPositions.has(`${BATCH_POS_PREFIX}${i}`));
   return { valid, blocked: batch.filteredCount };
 }

@@ -16,7 +16,7 @@ describe('AttackLogger', () => {
     logger = new AttackLogger({
       max_logs: 100,
       ttl: 60000,
-      enabled: true,
+      enabled: true
     });
   });
 
@@ -34,15 +34,15 @@ describe('AttackLogger', () => {
       {
         category: 'dan',
         severity: 'blocked',
-        description: 'DAN jailbreak detected',
-      },
+        description: 'DAN jailbreak detected'
+      }
     ],
     timestamp: Date.now(),
     results: [],
     validatorCount: 2,
     guardCount: 0,
     executionTime: 100,
-    ...overrides,
+    ...overrides
   });
 
   describe('constructor', () => {
@@ -57,7 +57,7 @@ describe('AttackLogger', () => {
         max_logs: 500,
         enabled: false,
         origin_type: 'custom',
-        custom_origin: 'my-app',
+        custom_origin: 'my-app'
       });
       expect(customLogger.enabled).toBe(false);
       expect(customLogger.count).toBe(0);
@@ -100,7 +100,7 @@ describe('AttackLogger', () => {
         risk_score: 15,
         validatorCount: 3,
         guardCount: 1,
-        executionTime: 250,
+        executionTime: 250
       });
 
       await logger.logFromIntercept(result, 'test content');
@@ -119,9 +119,9 @@ describe('AttackLogger', () => {
           {
             category: 'multi_layer_encoding',
             severity: 'warning',
-            description: 'Encoded content detected',
-          },
-        ],
+            description: 'Encoded content detected'
+          }
+        ]
       });
 
       await logger.logFromIntercept(result, 'test');
@@ -132,7 +132,7 @@ describe('AttackLogger', () => {
 
     it('should sanitize content when configured', async () => {
       const sanitizeLogger = new AttackLogger({
-        sanitize_pii: true,
+        sanitize_pii: true
       });
 
       const result = createMockResult();
@@ -159,16 +159,16 @@ describe('AttackLogger', () => {
 
     it('should filter by injection type', async () => {
       const result1 = createMockResult({
-        findings: [{ category: 'dan', severity: 'blocked', description: 'DAN' }],
+        findings: [{ category: 'dan', severity: 'blocked', description: 'DAN' }]
       });
       const result2 = createMockResult({
         findings: [
           {
             category: 'multi_layer_encoding',
             severity: 'warning',
-            description: 'Encoding',
-          },
-        ],
+            description: 'Encoding'
+          }
+        ]
       });
 
       await logger.logFromIntercept(result1, 'test1');
@@ -181,10 +181,10 @@ describe('AttackLogger', () => {
 
     it('should filter by attack vector', async () => {
       const result1 = createMockResult({
-        findings: [{ category: 'encoded_payload', severity: 'blocked', description: 'Encoded' }],
+        findings: [{ category: 'encoded_payload', severity: 'blocked', description: 'Encoded' }]
       });
       const result2 = createMockResult({
-        findings: [{ category: 'dan', severity: 'blocked', description: 'DAN' }],
+        findings: [{ category: 'dan', severity: 'blocked', description: 'DAN' }]
       });
 
       await logger.logFromIntercept(result1, 'test1');
@@ -263,7 +263,7 @@ describe('AttackLogger', () => {
     it('should break down by injection type', async () => {
       await logger.logFromIntercept(
         createMockResult({
-          findings: [{ category: 'dan', severity: 'blocked', description: 'DAN' }],
+          findings: [{ category: 'dan', severity: 'blocked', description: 'DAN' }]
         }),
         'test1'
       );
@@ -273,9 +273,9 @@ describe('AttackLogger', () => {
             {
               category: 'multi_layer_encoding',
               severity: 'warning',
-              description: 'Encoding',
-            },
-          ],
+              description: 'Encoding'
+            }
+          ]
         }),
         'test2'
       );
@@ -412,45 +412,35 @@ describe('AttackLogger', () => {
     it('should reject path traversal with ../ sequences', async () => {
       await logger.logFromIntercept(createMockResult(), 'test content');
 
-      await expect(
-        logger.exportJSONToFile('../../../etc/passwd')
-      ).rejects.toThrow('Path traversal detected');
+      await expect(logger.exportJSONToFile('../../../etc/passwd')).rejects.toThrow('Path traversal detected');
     });
 
     it('should reject encoded path traversal sequences', async () => {
       await logger.logFromIntercept(createMockResult(), 'test content');
 
-      await expect(
-        logger.exportJSONToFile('%2e%2e%2f%2e%2e%2fetc%2fpasswd')
-      ).rejects.toThrow('Path traversal detected');
+      await expect(logger.exportJSONToFile('%2e%2e%2f%2e%2e%2fetc%2fpasswd')).rejects.toThrow(
+        'Path traversal detected'
+      );
     });
 
     it('should reject paths with null bytes', async () => {
       await logger.logFromIntercept(createMockResult(), 'test content');
 
-      await expect(
-        logger.exportJSONToFile('test\x00.json')
-      ).rejects.toThrow('null bytes are not allowed');
+      await expect(logger.exportJSONToFile('test\x00.json')).rejects.toThrow('null bytes are not allowed');
     });
 
     it('should reject non-.json file extensions', async () => {
       await logger.logFromIntercept(createMockResult(), 'test content');
 
-      await expect(
-        logger.exportJSONToFile('output.txt')
-      ).rejects.toThrow('only .json files are allowed');
+      await expect(logger.exportJSONToFile('output.txt')).rejects.toThrow('only .json files are allowed');
 
-      await expect(
-        logger.exportJSONToFile('output.js')
-      ).rejects.toThrow('only .json files are allowed');
+      await expect(logger.exportJSONToFile('output.js')).rejects.toThrow('only .json files are allowed');
     });
 
     it('should reject absolute paths outside allowed directory', async () => {
       await logger.logFromIntercept(createMockResult(), 'test content');
 
-      await expect(
-        logger.exportJSONToFile('/etc/passwd.json')
-      ).rejects.toThrow('within the export directory');
+      await expect(logger.exportJSONToFile('/etc/passwd.json')).rejects.toThrow('within the export directory');
     });
 
     it('should allow relative .json paths', async () => {
@@ -496,9 +486,7 @@ describe('AttackLogger', () => {
       await logger.logFromIntercept(createMockResult(), 'test content');
 
       try {
-        await expect(
-          logger.exportJSONToFile('../../../etc/passwd.json')
-        ).rejects.toThrow();
+        await expect(logger.exportJSONToFile('../../../etc/passwd.json')).rejects.toThrow();
       } finally {
         await fs.rm(customDir, { recursive: true, force: true });
         setExportDirectory(process.cwd());

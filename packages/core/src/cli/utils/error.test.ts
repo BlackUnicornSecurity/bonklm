@@ -153,11 +153,7 @@ describe('WizardError', () => {
   });
 
   it('should include suggestion in toString()', () => {
-    const error = new WizardError(
-      'TEST_CODE',
-      'Test error',
-      'Try restarting the application'
-    );
+    const error = new WizardError('TEST_CODE', 'Test error', 'Try restarting the application');
 
     const output = error.toString();
     expect(output).toContain('TEST_CODE');
@@ -174,12 +170,7 @@ describe('WizardError', () => {
 
   it('should sanitize cause error', () => {
     const cause = new Error('Failed with key: sk-1234567890abcdef');
-    const error = new WizardError(
-      'WRAPPER_CODE',
-      'Wrapper error',
-      undefined,
-      cause
-    );
+    const error = new WizardError('WRAPPER_CODE', 'Wrapper error', undefined, cause);
 
     expect(error.cause).toBeDefined();
     expect(error.cause?.message).not.toContain('sk-1234567890abcdef');
@@ -285,7 +276,7 @@ describe('entropy detection edge cases', () => {
       'the quick brown fox',
       'lorem ipsum dolor sit amet',
       'authentication failed',
-      'connection timeout',
+      'connection timeout'
     ];
 
     for (const phrase of commonPhrases) {

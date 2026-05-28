@@ -52,15 +52,8 @@ export interface ContentExtractorOptions {
  * });
  * ```
  */
-export function extractContentFromResponse(
-  response: unknown,
-  options: ContentExtractorOptions = {}
-): string {
-  const {
-    fields,
-    defaultValue = '',
-    throwOnMissing = false,
-  } = options;
+export function extractContentFromResponse(response: unknown, options: ContentExtractorOptions = {}): string {
+  const { fields, defaultValue = '', throwOnMissing = false } = options;
 
   // If already a string, return it
   if (typeof response === 'string') {
@@ -112,7 +105,7 @@ export function extractContentFromResponse(
     'data[0].text',
     'data[0].content',
     // Completion formats
-    'completion',
+    'completion'
   ];
 
   for (const field of standardFields) {
@@ -205,15 +198,12 @@ function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
  * ]);
  * ```
  */
-export function extractContentFirstSuccess(
-  responses: unknown[],
-  options: ContentExtractorOptions = {}
-): string {
+export function extractContentFirstSuccess(responses: unknown[], options: ContentExtractorOptions = {}): string {
   for (const response of responses) {
     try {
       const content = extractContentFromResponse(response, {
         ...options,
-        throwOnMissing: true,
+        throwOnMissing: true
       });
       return content;
     } catch {

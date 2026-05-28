@@ -33,9 +33,7 @@ describe('pinecone-connector — Sprint 43 CWE-117 sanitization contract', () =>
 
   it('sanitizes a validator-extracted reason carrying control chars', () => {
     const reason = 'matched "pattern"\nINJECTED:CRITICAL fake_severity';
-    expect(sanitizeMeta(reason)).toBe(
-      'matched "pattern"\\nINJECTED:CRITICAL fake_severity'
-    );
+    expect(sanitizeMeta(reason)).toBe('matched "pattern"\\nINJECTED:CRITICAL fake_severity');
   });
 
   it('sanitizes TAB-injection vector at the throw boundary', () => {

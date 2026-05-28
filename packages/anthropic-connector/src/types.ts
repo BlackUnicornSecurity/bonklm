@@ -16,14 +16,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import type {
-  CircuitBreaker,
-  Guard,
-  GuardrailResult,
-  Logger,
-  TelemetryService,
-  Validator,
-} from '@blackunicorn/bonklm';
+import type { CircuitBreaker, Guard, GuardrailResult, Logger, TelemetryService, Validator } from '@blackunicorn/bonklm';
 
 // Re-export Anthropic types for convenience
 export type Message = Anthropic.Message;

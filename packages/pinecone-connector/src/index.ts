@@ -9,16 +9,12 @@
 
 export { createGuardedIndex } from './guarded-pinecone.js';
 
-export type {
-  GuardedPineconeOptions,
-  GuardedQueryResult,
-  VectorQueryOptions,
-} from './types.js';
+export type { GuardedPineconeOptions, GuardedQueryResult, VectorQueryOptions } from './types.js';
 
 // S012-002: Export connector-utils error classes
 export {
   ConnectorValidationError,
   StreamValidationError,
   ConnectorConfigurationError,
-  ConnectorTimeoutError,
+  ConnectorTimeoutError
 } from '@blackunicorn/bonklm/core/connector-utils';

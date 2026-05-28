@@ -36,9 +36,7 @@ describe('openai-agents-connector — Sprint 43 CWE-117 sanitization contract', 
     // agent's input — explicit attacker-influence vector ("tool-result
     // as carrier" attack class). Sanitize at the throw boundary.
     const reason = 'matched cross_agent_injection\nINJECTED:fake_handoff=allowed';
-    expect(sanitizeMeta(reason)).toBe(
-      'matched cross_agent_injection\\nINJECTED:fake_handoff=allowed'
-    );
+    expect(sanitizeMeta(reason)).toBe('matched cross_agent_injection\\nINJECTED:fake_handoff=allowed');
   });
 
   it('sanitizes a validator-extracted reason for the tripwire outputInfo.reason field', () => {
@@ -46,8 +44,6 @@ describe('openai-agents-connector — Sprint 43 CWE-117 sanitization contract', 
     // surface in run-history transcripts (UI / log). Sanitize at
     // the connector boundary.
     const reason = 'tool_output unsafe\nINJECTED:tripwire=ignored';
-    expect(sanitizeMeta(reason)).toBe(
-      'tool_output unsafe\\nINJECTED:tripwire=ignored'
-    );
+    expect(sanitizeMeta(reason)).toBe('tool_output unsafe\\nINJECTED:tripwire=ignored');
   });
 });

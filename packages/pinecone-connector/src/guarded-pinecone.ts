@@ -22,22 +22,15 @@ import {
   RiskLevel,
   sanitizeMeta,
   Severity,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
 import {
   applyRetrievedDocValidatorToMatches,
   ConnectorValidationError,
-  logValidationFailure,
+  logValidationFailure
 } from '@blackunicorn/bonklm/core/connector-utils';
-import type {
-  GuardedPineconeOptions,
-  GuardedQueryResult,
-  VectorQueryOptions,
-} from './types.js';
-import {
-  DEFAULT_MAX_TOP_K,
-  DEFAULT_VALIDATION_TIMEOUT,
-} from './types.js';
+import type { GuardedPineconeOptions, GuardedQueryResult, VectorQueryOptions } from './types.js';
+import { DEFAULT_MAX_TOP_K, DEFAULT_VALIDATION_TIMEOUT } from './types.js';
 
 /**
  * Default logger instance.
@@ -81,10 +74,7 @@ export interface GuardedPineconeIndex {
  * });
  * ```
  */
-export function createGuardedIndex(
-  pineconeIndex: any,
-  options: GuardedPineconeOptions = {}
-): GuardedPineconeIndex {
+export function createGuardedIndex(pineconeIndex: any, options: GuardedPineconeOptions = {}): GuardedPineconeIndex {
   const {
     validators = [],
     guards = [],
@@ -97,13 +87,13 @@ export function createGuardedIndex(
     sanitizeMetadataFilters = true,
     onQueryBlocked,
     onVectorBlocked,
-    retrievedDocValidator, // Story 1.2 opt-in batch validator
+    retrievedDocValidator // Story 1.2 opt-in batch validator
   } = options;
 
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   /**
@@ -112,10 +102,7 @@ export function createGuardedIndex(
    *
    * @internal
    */
-  const validateWithTimeout = async (
-    content: string,
-    context?: string
-  ): Promise<EngineResult> => {
+  const validateWithTimeout = async (content: string, context?: string): Promise<EngineResult> => {
     const result = await validateWithTimeoutSecure<EngineResult>({
       operation: () => engine.validate(content, context),
       timeoutMs: validationTimeout,
@@ -126,19 +113,21 @@ export function createGuardedIndex(
         risk_level: RiskLevel.HIGH,
         risk_score: 30,
         reason: 'Validation timeout',
-        findings: [{
-          category: 'timeout',
-          severity: Severity.CRITICAL,
-          description: 'Validation timeout',
-          weight: 30,
-        }],
+        findings: [
+          {
+            category: 'timeout',
+            severity: Severity.CRITICAL,
+            description: 'Validation timeout',
+            weight: 30
+          }
+        ],
         results: [],
         validatorCount: validators.length,
         guardCount: guards.length,
         executionTime: validationTimeout,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       }),
-      logger,
+      logger
     });
     return result;
   };
@@ -158,10 +147,10 @@ export function createGuardedIndex(
 
     // Check for dangerous patterns
     const dangerousPatterns = [
-      /\$\.\./,  // Path traversal
-      /\beval\b/i,  // eval usage
-      /\bconstructor\b/i,  // Constructor access
-      /\b__proto__\b/i,  // Prototype pollution
+      /\$\.\./, // Path traversal
+      /\beval\b/i, // eval usage
+      /\bconstructor\b/i, // Constructor access
+      /\b__proto__\b/i // Prototype pollution
     ];
 
     for (const pattern of dangerousPatterns) {
@@ -169,7 +158,7 @@ export function createGuardedIndex(
         logger.warn('[Guardrails] Dangerous filter pattern detected');
         throw new ConnectorValidationError(
           productionMode ? 'Invalid filter' : 'Filter contains dangerous patterns',
-          'dangerous_pattern',
+          'dangerous_pattern'
         );
       }
     }
@@ -194,7 +183,7 @@ export function createGuardedIndex(
     }
 
     // Validate all values are finite (excludes NaN and Infinity)
-    if (options.vector.some((v) => typeof v !== 'number' || !Number.isFinite(v))) {
+    if (options.vector.some(v => typeof v !== 'number' || !Number.isFinite(v))) {
       throw new ConnectorValidationError('Vector must contain only finite numbers', 'invalid_format');
     }
 
@@ -208,7 +197,7 @@ export function createGuardedIndex(
     const queryContext = JSON.stringify({
       topK,
       namespace: options.namespace,
-      hasFilter: !!options.filter,
+      hasFilter: !!options.filter
     });
 
     const result = await validateWithTimeout(queryContext, 'pinecone_query');
@@ -222,7 +211,7 @@ export function createGuardedIndex(
       // dev-mode throw boundary (caller may log error.message).
       throw new ConnectorValidationError(
         productionMode ? 'Query blocked' : `Query blocked: ${sanitizeMeta(result.reason)}`,
-        'validation_failed',
+        'validation_failed'
       );
     }
   };
@@ -246,12 +235,9 @@ export function createGuardedIndex(
       return applyRetrievedDocValidatorToMatches(
         matches as Array<{ id?: string; metadata?: unknown }>,
         retrievedDocValidator,
-        (m) => ({
-          content: [
-            m.metadata ? JSON.stringify(m.metadata) : '',
-            m.id ?? '',
-          ].filter(Boolean).join(' '),
-          metadata: m.metadata as Record<string, unknown> | undefined,
+        m => ({
+          content: [m.metadata ? JSON.stringify(m.metadata) : '', m.id ?? ''].filter(Boolean).join(' '),
+          metadata: m.metadata as Record<string, unknown> | undefined
         }),
         { productionMode, itemNoun: 'Vector' }
       );
@@ -295,7 +281,7 @@ export function createGuardedIndex(
           // dev-mode throw boundary (sister to query-blocked at line ~221).
           throw new ConnectorValidationError(
             productionMode ? 'Vector blocked' : `Vector blocked: ${sanitizeMeta(result.reason)}`,
-            'validation_failed',
+            'validation_failed'
           );
         }
       }
@@ -319,7 +305,7 @@ export function createGuardedIndex(
       const sanitizedOptions = {
         ...options,
         topK: Math.min(options.topK || 10, maxTopK),
-        filter: sanitizeFilter(options.filter),
+        filter: sanitizeFilter(options.filter)
       };
 
       // Step 3: Execute the query
@@ -334,17 +320,13 @@ export function createGuardedIndex(
         matches: validMatches,
         vectorsBlocked: blocked,
         filtered: blocked > 0,
-        raw: result,
+        raw: result
       };
-    },
+    }
   };
 }
 
 /**
  * Re-exports types for convenience.
  */
-export type {
-  GuardedPineconeOptions,
-  GuardedQueryResult,
-  VectorQueryOptions,
-} from './types.js';
+export type { GuardedPineconeOptions, GuardedQueryResult, VectorQueryOptions } from './types.js';

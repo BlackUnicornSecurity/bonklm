@@ -8,7 +8,7 @@ import { describe, it, expect } from 'vitest';
 import {
   BoundaryDetector,
   detectBoundaryManipulation,
-  detectBoundary,
+  detectBoundary
 } from '../../../src/validators/boundary-detector.js';
 import { Severity } from '../../../src/base/GuardrailResult.js';
 
@@ -133,7 +133,7 @@ describe('BoundaryDetector', () => {
         { text: '***END OF INSTRUCTIONS***', expectedCategory: 'boundary_system_prompt_close' },
         { text: '{end_of_system_prompt}', expectedCategory: 'boundary_system_prompt_close' },
         { text: 'BEGIN USER CONTENT', expectedCategory: 'boundary_meta_instruction_boundary' },
-        { text: 'END SYSTEM INSTRUCTIONS', expectedCategory: 'boundary_meta_instruction_boundary' },
+        { text: 'END SYSTEM INSTRUCTIONS', expectedCategory: 'boundary_meta_instruction_boundary' }
       ];
 
       let detectedCount = 0;

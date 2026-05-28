@@ -24,10 +24,7 @@ const pkgVersion = (JSON.parse(readFileSync(pkgJsonPath, 'utf8')) as { version: 
 
 const program = new Command();
 
-program
-  .name('bonklm')
-  .description('BonkLM - LLM Security Guardrails')
-  .version(pkgVersion);
+program.name('bonklm').description('BonkLM - LLM Security Guardrails').version(pkgVersion);
 
 // D-018 (Sprint 52 Gate 6 ST-06-007): NO default `program.action()`.
 // Commander's behavior: if a default action is set, ANY unknown subcommand
@@ -51,7 +48,7 @@ program.addCommand(doctorCommand);
 // passes a failing invocation as success to CI pipelines. Sprint 50 CLI
 // contract specifies exit 1 on user-error per the documented exit-code
 // matrix (0 happy path, 1 user-error, 2 system-error).
-program.exitOverride((err) => {
+program.exitOverride(err => {
   // Help + version are not errors — they exit 0 cleanly via Commander's
   // standard path (these codes are emitted by Commander after writing
   // help/version output).

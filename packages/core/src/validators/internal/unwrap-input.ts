@@ -31,10 +31,7 @@ import { RiskLevel } from '../../base/GuardrailResult.js';
  * may evade ASCII regex scans. Sprint 18 planned Unicode-escape
  * normalisation pre-scan.
  */
-export function unwrapValidatorInput(
-  input: string | ValidatorInput,
-  validatorName: string
-): string {
+export function unwrapValidatorInput(input: string | ValidatorInput, validatorName: string): string {
   if (typeof input === 'string') return input;
   switch (input.kind) {
     case 'text':
@@ -46,12 +43,10 @@ export function unwrapValidatorInput(
     case 'memory_write':
       return input.payload.content;
     case 'retrieved_docs':
-      return input.docs.map((d) => d.content).join('\n\n');
+      return input.docs.map(d => d.content).join('\n\n');
     case 'tool_call':
       try {
-        return typeof input.args === 'string'
-          ? input.args
-          : JSON.stringify(input.args);
+        return typeof input.args === 'string' ? input.args : JSON.stringify(input.args);
       } catch {
         return String(input.args);
       }
@@ -61,9 +56,7 @@ export function unwrapValidatorInput(
       // we want the compiler to flag this branch.
       const _exhaustive: never = input;
       void _exhaustive;
-      throw new TypeError(
-        `${validatorName}: unsupported ValidatorInput kind '${(input as { kind: string }).kind}'.`
-      );
+      throw new TypeError(`${validatorName}: unsupported ValidatorInput kind '${(input as { kind: string }).kind}'.`);
     }
   }
 }

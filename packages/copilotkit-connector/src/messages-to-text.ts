@@ -24,7 +24,7 @@ import type { CopilotKitAction, CopilotKitContentPart, CopilotKitMessage } from 
  */
 export function messagesToText(messages: CopilotKitMessage[]): string {
   return messages
-    .map((m) => {
+    .map(m => {
       const content = m.content;
 
       // Handle messages without content
@@ -40,15 +40,15 @@ export function messagesToText(messages: CopilotKitMessage[]): string {
       // Handle array content (SEC-006: structured data, images, etc.)
       if (Array.isArray(content)) {
         return content
-          .map((part) => contentPartToText(part))
-          .filter((c) => c.length > 0)
+          .map(part => contentPartToText(part))
+          .filter(c => c.length > 0)
           .join('\n');
       }
 
       // Handle other types (convert to string)
       return String(content);
     })
-    .filter((c) => c.length > 0)
+    .filter(c => c.length > 0)
     .join('\n');
 }
 
@@ -88,7 +88,7 @@ function contentPartToText(part: CopilotKitContentPart): string {
  */
 export function actionsToText(actions: CopilotKitAction[]): string {
   return actions
-    .map((action) => {
+    .map(action => {
       const parts: string[] = [];
       if (action.name) {
         parts.push(`Action: ${action.name}`);
@@ -107,7 +107,7 @@ export function actionsToText(actions: CopilotKitAction[]): string {
       }
       return parts.join('\n');
     })
-    .filter((c) => c.length > 0)
+    .filter(c => c.length > 0)
     .join('\n\n');
 }
 

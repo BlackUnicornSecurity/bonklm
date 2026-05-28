@@ -28,9 +28,7 @@ export interface HmacVerifyOptions {
   nowMs?: () => number;
 }
 
-export type HmacVerifyResult =
-  | { valid: true }
-  | { valid: false; reason: HmacFailureReason };
+export type HmacVerifyResult = { valid: true } | { valid: false; reason: HmacFailureReason };
 
 export type HmacFailureReason =
   | 'missing_signature'
@@ -44,9 +42,7 @@ export type HmacFailureReason =
  * Verify an HMAC-SHA256 signature against a raw request body.
  * Timing-safe comparison + replay-window enforcement.
  */
-export function verifyHmacSignature(
-  options: HmacVerifyOptions
-): HmacVerifyResult {
+export function verifyHmacSignature(options: HmacVerifyOptions): HmacVerifyResult {
   const { rawBody, signature, timestamp, secret } = options;
   const replayWindowMs = options.replayWindowMs ?? DEFAULT_REPLAY_WINDOW_MS;
   const nowMs = options.nowMs ?? Date.now;
@@ -100,11 +96,7 @@ export function verifyHmacSignature(
  * Construct a valid `X-Bonklm-Signature` value for a given body +
  * timestamp + secret. Useful for test harnesses + client SDKs.
  */
-export function signHmac(
-  rawBody: string,
-  timestamp: string | number,
-  secret: string
-): string {
+export function signHmac(rawBody: string, timestamp: string | number, secret: string): string {
   const ts = String(timestamp);
   const hmac = createHmac('sha256', secret);
   hmac.update(`${ts}.${rawBody}`);

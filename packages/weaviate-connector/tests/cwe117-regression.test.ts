@@ -48,9 +48,7 @@ describe('weaviate-connector — Sprint 43 CWE-117 sanitization contract', () =>
     // `result.reason`. Pre-Sprint-43, the weaviate query-blocked
     // log + thrown Error message would embed the raw `\n`.
     const reason = 'matched "pattern"\nINJECTED:CRITICAL fake_severity';
-    expect(sanitizeMeta(reason)).toBe(
-      'matched "pattern"\\nINJECTED:CRITICAL fake_severity'
-    );
+    expect(sanitizeMeta(reason)).toBe('matched "pattern"\\nINJECTED:CRITICAL fake_severity');
   });
 
   it('sanitizes a caller-supplied Weaviate className', () => {
@@ -66,8 +64,6 @@ describe('weaviate-connector — Sprint 43 CWE-117 sanitization contract', () =>
     // upstream may inject control chars to manipulate downstream
     // log aggregators.
     const objectId = 'doc-1234\nINJECTED:fake_status=processed';
-    expect(sanitizeMeta(objectId)).toBe(
-      'doc-1234\\nINJECTED:fake_status=processed'
-    );
+    expect(sanitizeMeta(objectId)).toBe('doc-1234\\nINJECTED:fake_status=processed');
   });
 });

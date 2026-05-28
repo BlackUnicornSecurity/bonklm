@@ -28,7 +28,7 @@ export enum TelemetryEventType {
   CIRCUIT_OPEN = 'circuit.open',
   CIRCUIT_HALF_OPEN = 'circuit.half_open',
   CIRCUIT_CLOSE = 'circuit.close',
-  RETRY_ATTEMPT = 'retry.attempt',
+  RETRY_ATTEMPT = 'retry.attempt'
 }
 
 /**
@@ -118,7 +118,7 @@ const DEFAULT_OPTIONS: Required<Omit<TelemetryServiceOptions, 'collectors' | 'lo
   enabled: true,
   sampleRate: 1.0,
   maxBufferSize: 100,
-  flushInterval: 30000, // 30 seconds
+  flushInterval: 30000 // 30 seconds
 };
 
 /**
@@ -139,7 +139,7 @@ export class ConsoleTelemetryCollector implements TelemetryCollector {
         type: event.type,
         runId: sanitizeMeta(event.runId),
         operation: sanitizeMeta(event.operation),
-        metrics: event.metrics,
+        metrics: event.metrics
       });
     } else {
       console.debug('[Telemetry]', event.type, sanitizeMeta(event.runId), event.metrics);
@@ -151,9 +151,7 @@ export class ConsoleTelemetryCollector implements TelemetryCollector {
  * Callback telemetry collector for user-defined handling
  */
 export class CallbackTelemetryCollector implements TelemetryCollector {
-  constructor(
-    private readonly callback: (event: TelemetryEvent) => void | Promise<void>
-  ) {}
+  constructor(private readonly callback: (event: TelemetryEvent) => void | Promise<void>) {}
 
   async collect(event: TelemetryEvent): Promise<void> {
     await this.callback(event);
@@ -272,7 +270,7 @@ export class TelemetryService {
     // violating the principle of least surprise.
     const safeEvent: TelemetryEvent = {
       ...event,
-      timestamp: event.timestamp ?? Date.now(),
+      timestamp: event.timestamp ?? Date.now()
     };
 
     // Send to all collectors
@@ -304,11 +302,11 @@ export class TelemetryService {
       connector: config.connector,
       operation: `${config.direction}-validation`,
       metrics: {
-        charCount: config.content.length,
+        charCount: config.content.length
       },
       context: {
-        direction: config.direction,
-      },
+        direction: config.direction
+      }
     });
   }
 
@@ -325,9 +323,7 @@ export class TelemetryService {
     allowed: boolean;
   }): void {
     this.record({
-      type: config.allowed
-        ? TelemetryEventType.VALIDATION_COMPLETE
-        : TelemetryEventType.VALIDATION_BLOCKED,
+      type: config.allowed ? TelemetryEventType.VALIDATION_COMPLETE : TelemetryEventType.VALIDATION_BLOCKED,
       runId: config.runId,
       connector: config.connector,
       operation: 'validation',
@@ -335,22 +331,18 @@ export class TelemetryService {
         duration: config.duration,
         validatorCount: config.validatorCount,
         findingCount: config.findingCount,
-        riskScore: config.riskScore,
+        riskScore: config.riskScore
       },
       context: {
-        allowed: config.allowed,
-      },
+        allowed: config.allowed
+      }
     });
   }
 
   /**
    * Record validation error
    */
-  recordValidationError(config: {
-    runId: string;
-    connector?: string;
-    error: Error;
-  }): void {
+  recordValidationError(config: { runId: string; connector?: string; error: Error }): void {
     // Sprint 45 security MEDIUM #4 closure: `config.error.message` /
     // `.name` can carry attacker-influenced text when the error wraps
     // user input (e.g. an upstream validator throws with a hostile
@@ -364,35 +356,27 @@ export class TelemetryService {
       error: {
         name: sanitizeMeta(config.error.name),
         message: sanitizeMeta(config.error.message),
-        code: (config.error as any).code,
-      },
+        code: (config.error as any).code
+      }
     });
   }
 
   /**
    * Record stream start
    */
-  recordStreamStart(config: {
-    runId: string;
-    connector?: string;
-  }): void {
+  recordStreamStart(config: { runId: string; connector?: string }): void {
     this.record({
       type: TelemetryEventType.STREAM_START,
       runId: config.runId,
       connector: config.connector,
-      operation: 'stream',
+      operation: 'stream'
     });
   }
 
   /**
    * Record stream chunk
    */
-  recordStreamChunk(config: {
-    runId: string;
-    connector?: string;
-    tokenCount: number;
-    charCount: number;
-  }): void {
+  recordStreamChunk(config: { runId: string; connector?: string; tokenCount: number; charCount: number }): void {
     this.record({
       type: TelemetryEventType.STREAM_CHUNK,
       runId: config.runId,
@@ -400,43 +384,35 @@ export class TelemetryService {
       operation: 'stream',
       metrics: {
         tokenCount: config.tokenCount,
-        charCount: config.charCount,
-      },
+        charCount: config.charCount
+      }
     });
   }
 
   /**
    * Record stream blocked
    */
-  recordStreamBlocked(config: {
-    runId: string;
-    connector?: string;
-    accumulatedLength: number;
-  }): void {
+  recordStreamBlocked(config: { runId: string; connector?: string; accumulatedLength: number }): void {
     this.record({
       type: TelemetryEventType.STREAM_BLOCKED,
       runId: config.runId,
       connector: config.connector,
       operation: 'stream',
       metrics: {
-        charCount: config.accumulatedLength,
-      },
+        charCount: config.accumulatedLength
+      }
     });
   }
 
   /**
    * Record API call start
    */
-  recordApiCallStart(config: {
-    runId: string;
-    connector: string;
-    method: string;
-  }): void {
+  recordApiCallStart(config: { runId: string; connector: string; method: string }): void {
     this.record({
       type: TelemetryEventType.API_CALL_START,
       runId: config.runId,
       connector: config.connector,
-      operation: config.method,
+      operation: config.method
     });
   }
 
@@ -451,15 +427,13 @@ export class TelemetryService {
     success: boolean;
   }): void {
     this.record({
-      type: config.success
-        ? TelemetryEventType.API_CALL_COMPLETE
-        : TelemetryEventType.API_CALL_ERROR,
+      type: config.success ? TelemetryEventType.API_CALL_COMPLETE : TelemetryEventType.API_CALL_ERROR,
       runId: config.runId,
       connector: config.connector,
       operation: config.method,
       metrics: {
-        duration: config.duration,
-      },
+        duration: config.duration
+      }
     });
   }
 
@@ -516,9 +490,7 @@ export class TelemetryService {
 /**
  * Create a telemetry service with default console collector
  */
-export function createTelemetryService(
-  options?: TelemetryServiceOptions
-): TelemetryService {
+export function createTelemetryService(options?: TelemetryServiceOptions): TelemetryService {
   const collectors = options?.collectors || [];
 
   // Add console collector if no collectors specified
@@ -528,6 +500,6 @@ export function createTelemetryService(
 
   return new TelemetryService({
     ...options,
-    collectors,
+    collectors
   });
 }

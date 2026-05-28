@@ -56,9 +56,21 @@ export interface BashFinding {
  * Safe environment variables that are allowed in commands
  */
 const SAFE_VARIABLES = new Set([
-  '$HOME', '$USER', '$PWD', '$OLDPWD', '$PATH', '$SHELL',
-  '$TERM', '$LANG', '$LC_ALL', '$TZ', '$HOSTNAME',
-  '$LOGNAME', '$TMPDIR', '$XDG_CONFIG_HOME', '$XDG_DATA_HOME',
+  '$HOME',
+  '$USER',
+  '$PWD',
+  '$OLDPWD',
+  '$PATH',
+  '$SHELL',
+  '$TERM',
+  '$LANG',
+  '$LC_ALL',
+  '$TZ',
+  '$HOSTNAME',
+  '$LOGNAME',
+  '$TMPDIR',
+  '$XDG_CONFIG_HOME',
+  '$XDG_DATA_HOME'
 ]);
 
 /**
@@ -83,7 +95,10 @@ function isPathInRepo(target: string, cwd: string): boolean {
  * Split a command string into individual pipeline/chain segments
  */
 export function splitCommandSegments(cmd: string): string[] {
-  return cmd.split(/\s*(?:\|\||&&|[|;])\s*/).map(s => s.trim()).filter(Boolean);
+  return cmd
+    .split(/\s*(?:\|\||&&|[|;])\s*/)
+    .map(s => s.trim())
+    .filter(Boolean);
 }
 
 /**
@@ -254,7 +269,7 @@ export function detectCommandSubstitution(cmd: string): CommandSubstitution[] {
     [/\$\([^)]+\)/g, 'Command substitution $()'],
     [/`[^`]+`/g, 'Backtick command substitution'],
     [/\$\{[^}]+\}/g, 'Variable expansion ${}'],
-    [/\$[A-Za-z_][A-Za-z0-9_]*/g, 'Variable reference'],
+    [/\$[A-Za-z_][A-Za-z0-9_]*/g, 'Variable reference']
   ];
 
   const detected: CommandSubstitution[] = [];
@@ -285,7 +300,7 @@ export function checkDangerousRm(
     /rm\s+(-[rfRF]+\s+)*\/Users\b/,
     /rm\s+(-[rfRF]+\s+)*\/root\b/,
     /rm\s+(-[rfRF]+\s+)*\$HOME\b/,
-    /rm\s+(-[rfRF]+\s+)*\*\s*(\s|;|&|$|\|)/,
+    /rm\s+(-[rfRF]+\s+)*\*\s*(\s|;|&|$|\|)/
   ];
 
   for (const pattern of absoluteBlockPatterns) {
@@ -293,7 +308,7 @@ export function checkDangerousRm(
       return {
         isDangerous: true,
         isAbsolute: true,
-        message: 'ABSOLUTE BLOCK: Catastrophically dangerous rm command detected',
+        message: 'ABSOLUTE BLOCK: Catastrophically dangerous rm command detected'
       };
     }
   }
@@ -308,7 +323,7 @@ export function checkDangerousRm(
           return {
             isDangerous: true,
             isAbsolute: true,
-            message: `ABSOLUTE BLOCK: rm -rf uses unverified variable: ${varName}`,
+            message: `ABSOLUTE BLOCK: rm -rf uses unverified variable: ${varName}`
           };
         }
         continue;
@@ -317,7 +332,7 @@ export function checkDangerousRm(
         return {
           isDangerous: true,
           isAbsolute: true,
-          message: `ABSOLUTE BLOCK: rm -rf targets path outside repository: ${target}`,
+          message: `ABSOLUTE BLOCK: rm -rf targets path outside repository: ${target}`
         };
       }
     }
@@ -333,7 +348,7 @@ export function checkDangerousRm(
           return {
             isDangerous: true,
             isAbsolute: false,
-            message: `STRICT BLOCK: rm uses unverified variable: ${varName}`,
+            message: `STRICT BLOCK: rm uses unverified variable: ${varName}`
           };
         }
         continue;
@@ -342,7 +357,7 @@ export function checkDangerousRm(
         return {
           isDangerous: true,
           isAbsolute: false,
-          message: `STRICT BLOCK: rm targets path outside repository: ${target}`,
+          message: `STRICT BLOCK: rm targets path outside repository: ${target}`
         };
       }
     }
@@ -354,17 +369,14 @@ export function checkDangerousRm(
 /**
  * Check for directory escape attempts
  */
-export function checkDirectoryEscape(
-  cmd: string,
-  cwd: string
-): { isEscape: boolean; message: string } {
+export function checkDirectoryEscape(cmd: string, cwd: string): { isEscape: boolean; message: string } {
   const cdMatch = cmd.match(/\bcd\s+([^\s;&|]+)/);
   if (cdMatch && cdMatch[1]) {
     const target = cdMatch[1];
     if (target.startsWith('/') && !isPathInRepo(target, cwd)) {
       return {
         isEscape: true,
-        message: `Directory escape attempt: cd to ${target} (outside repository)`,
+        message: `Directory escape attempt: cd to ${target} (outside repository)`
       };
     }
   }
@@ -374,7 +386,7 @@ export function checkDirectoryEscape(
     if (traversalCount >= 5) {
       return {
         isEscape: true,
-        message: `Suspicious directory traversal: ${traversalCount} levels of ../`,
+        message: `Suspicious directory traversal: ${traversalCount} levels of ../`
       };
     }
   }
@@ -395,7 +407,7 @@ export function checkDangerousPatterns(cmd: string): { isDangerous: boolean; mes
     [/chown\s+(-[rR]+\s+)*root/, 'Changing ownership to root'],
     [/curl\s+.*\|\s*(sudo\s+)?bash/, 'Pipe curl to bash (dangerous)'],
     [/wget\s+.*\|\s*(sudo\s+)?bash/, 'Pipe wget to bash (dangerous)'],
-    [/eval\s+.*\$/, 'Eval with variable expansion'],
+    [/eval\s+.*\$/, 'Eval with variable expansion']
   ];
 
   for (const [pattern, message] of dangerousPatterns) {
@@ -434,7 +446,7 @@ export class BashSafetyGuard {
       ...config,
       cwd: config?.cwd ?? process.cwd(),
       detectSqlInjection: config?.detectSqlInjection ?? true,
-      detectCommandSubstitution: config?.detectCommandSubstitution ?? true,
+      detectCommandSubstitution: config?.detectCommandSubstitution ?? true
     }) as Required<BashSafetyConfig>;
 
     this.logger = this.config.logger ?? console;
@@ -473,7 +485,7 @@ export class BashSafetyGuard {
             pattern: sub.type,
             severity: Sev.WARNING,
             match: sanitiseShell(sub.match.slice(0, 50)),
-            description: `Command substitution detected: ${sub.type}`,
+            description: `Command substitution detected: ${sub.type}`
           });
         }
         this.logger.warn(`Command substitution detected in: ${sanitiseShell(command.slice(0, 100))}`);
@@ -489,7 +501,7 @@ export class BashSafetyGuard {
           pattern: sqliResult.testId ?? sqliResult.subtype ?? 'unknown',
           severity: sqliResult.severity === 'CRITICAL' ? Sev.CRITICAL : Sev.WARNING,
           match: sanitiseShell(command.slice(0, 100)),
-          description: `SQL injection detected: ${sqliResult.subtype ?? sqliResult.testId}`,
+          description: `SQL injection detected: ${sqliResult.subtype ?? sqliResult.testId}`
         });
       }
     }
@@ -502,7 +514,7 @@ export class BashSafetyGuard {
         pattern: rmCheck.isAbsolute ? 'absolute_block' : 'strict_block',
         severity: Sev.CRITICAL,
         match: sanitiseShell(command.slice(0, 100)),
-        description: rmCheck.message,
+        description: rmCheck.message
       });
     }
 
@@ -514,7 +526,7 @@ export class BashSafetyGuard {
         pattern: 'escape_attempt',
         severity: Sev.CRITICAL,
         match: sanitiseShell(command.slice(0, 100)),
-        description: escapeCheck.message,
+        description: escapeCheck.message
       });
     }
 
@@ -526,7 +538,7 @@ export class BashSafetyGuard {
         pattern: 'dangerous',
         severity: Sev.CRITICAL,
         match: sanitiseShell(command.slice(0, 100)),
-        description: patternCheck.message,
+        description: patternCheck.message
       });
     }
 
@@ -535,16 +547,16 @@ export class BashSafetyGuard {
     }
 
     // Convert to Finding format
-    const convertedFindings = findings.map((f) => ({
+    const convertedFindings = findings.map(f => ({
       category: f.category,
       pattern_name: f.pattern,
       severity: f.severity,
       match: f.match,
       description: f.description,
-      weight: f.severity === Sev.CRITICAL ? 20 : f.severity === Sev.WARNING ? 10 : 5,
+      weight: f.severity === Sev.CRITICAL ? 20 : f.severity === Sev.WARNING ? 10 : 5
     }));
 
-    const hasCritical = findings.some((f) => f.severity === Sev.CRITICAL);
+    const hasCritical = findings.some(f => f.severity === Sev.CRITICAL);
     const shouldBlock = this.config.action === 'block' && hasCritical;
 
     if (shouldBlock) {
@@ -560,11 +572,7 @@ export class BashSafetyGuard {
       this.logger.error(`Bash command blocked: ${sanitizeLogString(findings[0]?.description ?? '')}`);
     }
 
-    return createResult(
-      !shouldBlock,
-      hasCritical ? Sev.CRITICAL : Sev.WARNING,
-      convertedFindings
-    );
+    return createResult(!shouldBlock, hasCritical ? Sev.CRITICAL : Sev.WARNING, convertedFindings);
   }
 
   /**
@@ -585,10 +593,7 @@ export class BashSafetyGuard {
  * @param cwd - Current working directory (optional)
  * @returns Validation result
  */
-export function checkBashSafety(
-  command: string,
-  cwd?: string
-): import('../base/GuardrailResult.js').GuardrailResult {
+export function checkBashSafety(command: string, cwd?: string): import('../base/GuardrailResult.js').GuardrailResult {
   const guard = new BashSafetyGuard({ cwd });
   return guard.validate(command);
 }

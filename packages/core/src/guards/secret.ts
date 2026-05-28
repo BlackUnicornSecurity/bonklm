@@ -18,7 +18,7 @@ import { normalizeText } from '../validators/text-normalizer.js';
 
 const DEFAULT_CONFIG: Required<Pick<SecretGuardConfig, 'checkExamples' | 'entropyThreshold'>> = {
   checkExamples: true,
-  entropyThreshold: 3.5,
+  entropyThreshold: 3.5
 };
 
 type Confidence = 'critical' | 'high' | 'medium';
@@ -43,7 +43,11 @@ interface SecretDetection {
 const CRITICAL_PATTERNS: SecretPattern[] = [
   // AWS
   { pattern: /AKIA[0-9A-Z]{16}/g, secretType: 'AWS Access Key ID', confidence: 'critical' },
-  { pattern: /aws_secret_access_key\s*=\s*["'][A-Za-z0-9/+=]{40}["']/gi, secretType: 'AWS Secret Access Key', confidence: 'critical' },
+  {
+    pattern: /aws_secret_access_key\s*=\s*["'][A-Za-z0-9/+=]{40}["']/gi,
+    secretType: 'AWS Secret Access Key',
+    confidence: 'critical'
+  },
 
   // GitHub
   { pattern: /ghp_[A-Za-z0-9]{36}/g, secretType: 'GitHub Personal Access Token', confidence: 'critical' },
@@ -53,7 +57,11 @@ const CRITICAL_PATTERNS: SecretPattern[] = [
   { pattern: /ghr_[A-Za-z0-9]{36}/g, secretType: 'GitHub Refresh Token', confidence: 'critical' },
 
   // Slack
-  { pattern: /xox[baprs]-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24}/g, secretType: 'Slack Token', confidence: 'critical' },
+  {
+    pattern: /xox[baprs]-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24}/g,
+    secretType: 'Slack Token',
+    confidence: 'critical'
+  },
 
   // Stripe
   { pattern: /sk_live_[A-Za-z0-9]{24,}/g, secretType: 'Stripe Secret Key', confidence: 'critical' },
@@ -65,7 +73,11 @@ const CRITICAL_PATTERNS: SecretPattern[] = [
 
   // OpenAI — legacy keys carry the T3BlbkFJ infix; 2024+ sk-proj- keys do not.
   // The modern pattern uses a negative lookahead so a legacy key isn't reported twice.
-  { pattern: /sk-proj-[A-Za-z0-9]{20,}T3BlbkFJ[A-Za-z0-9]{20,}/g, secretType: 'OpenAI Project Key (legacy format)', confidence: 'critical' },
+  {
+    pattern: /sk-proj-[A-Za-z0-9]{20,}T3BlbkFJ[A-Za-z0-9]{20,}/g,
+    secretType: 'OpenAI Project Key (legacy format)',
+    confidence: 'critical'
+  },
   { pattern: /sk-[A-Za-z0-9]{20}T3BlbkFJ[A-Za-z0-9]{20}/g, secretType: 'OpenAI Legacy Key', confidence: 'critical' },
   { pattern: /sk-proj-(?!.*T3BlbkFJ)[A-Za-z0-9_-]{40,}/g, secretType: 'OpenAI Project Key', confidence: 'critical' },
 
@@ -82,11 +94,24 @@ const CRITICAL_PATTERNS: SecretPattern[] = [
   // credential-noun (key/token/secret/auth/api) on the same line so we
   // tolerate naming variations (MAILGUN_TOKEN, MG_AUTH_KEY, yaml `mailgun:\n  key: …`)
   // without flagging every bare `key-…` 32-char identifier.
-  { pattern: /\bmailgun[\w-]*\s*[:=]?[\s\S]{0,120}?key-[A-Za-z0-9]{32}\b/gi, secretType: 'Mailgun API Key (named)', confidence: 'critical' },
-  { pattern: /\b(?:api[_-]?key|api[_-]?token|secret|auth[_-]?key|auth[_-]?token|token|mg[_-]?[\w-]*key|mg[_-]?[\w-]*token)\b[\s\S]{0,40}?["']?key-[A-Za-z0-9]{32}\b/gi, secretType: 'Mailgun API Key (credential context)', confidence: 'critical' },
+  {
+    pattern: /\bmailgun[\w-]*\s*[:=]?[\s\S]{0,120}?key-[A-Za-z0-9]{32}\b/gi,
+    secretType: 'Mailgun API Key (named)',
+    confidence: 'critical'
+  },
+  {
+    pattern:
+      /\b(?:api[_-]?key|api[_-]?token|secret|auth[_-]?key|auth[_-]?token|token|mg[_-]?[\w-]*key|mg[_-]?[\w-]*token)\b[\s\S]{0,40}?["']?key-[A-Za-z0-9]{32}\b/gi,
+    secretType: 'Mailgun API Key (credential context)',
+    confidence: 'critical'
+  },
 
   // Azure
-  { pattern: /SharedAccessSignature\s+sr=[^\s&]+&sig=[A-Za-z0-9%+/=]+&/g, secretType: 'Azure Shared Access Signature', confidence: 'critical' },
+  {
+    pattern: /SharedAccessSignature\s+sr=[^\s&]+&sig=[A-Za-z0-9%+/=]+&/g,
+    secretType: 'Azure Shared Access Signature',
+    confidence: 'critical'
+  },
 
   // GitLab
   { pattern: /glpat-[A-Za-z0-9\-_]{20,}/g, secretType: 'GitLab Personal Access Token', confidence: 'critical' },
@@ -96,11 +121,19 @@ const CRITICAL_PATTERNS: SecretPattern[] = [
   { pattern: /npm_[A-Za-z0-9]{36}/g, secretType: 'npm Access Token', confidence: 'critical' },
 
   // Private Keys
-  { pattern: /-----BEGIN\s+(?:RSA\s+|EC\s+|DSA\s+|OPENSSH\s+)?PRIVATE\s+KEY-----/g, secretType: 'Private Key', confidence: 'critical' },
+  {
+    pattern: /-----BEGIN\s+(?:RSA\s+|EC\s+|DSA\s+|OPENSSH\s+)?PRIVATE\s+KEY-----/g,
+    secretType: 'Private Key',
+    confidence: 'critical'
+  },
   { pattern: /-----BEGIN\s+PGP\s+PRIVATE\s+KEY\s+BLOCK-----/g, secretType: 'PGP Private Key', confidence: 'critical' },
 
   // Database URLs with credentials
-  { pattern: /(mongodb|postgres|mysql|redis|mariadb):\/\/[^\s:]+:[^\s@]+@[^\s]+/gi, secretType: 'Database Connection URL', confidence: 'critical' },
+  {
+    pattern: /(mongodb|postgres|mysql|redis|mariadb):\/\/[^\s:]+:[^\s@]+@[^\s]+/gi,
+    secretType: 'Database Connection URL',
+    confidence: 'critical'
+  }
 ];
 
 /**
@@ -110,12 +143,24 @@ const HIGH_PATTERNS: SecretPattern[] = [
   { pattern: /pk_live_[A-Za-z0-9]{24,}/g, secretType: 'Stripe Publishable Key', confidence: 'high' },
   { pattern: /AC[a-f0-9]{32}/g, secretType: 'Twilio Account SID', confidence: 'high' },
   { pattern: /api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']/gi, secretType: 'Generic API Key', confidence: 'high' },
-  { pattern: /secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']/gi, secretType: 'Generic Secret Key', confidence: 'high' },
+  {
+    pattern: /secret[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{20,}["']/gi,
+    secretType: 'Generic Secret Key',
+    confidence: 'high'
+  },
   { pattern: /access[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']/gi, secretType: 'Access Token', confidence: 'high' },
   { pattern: /auth[_-]?token\s*=\s*["'][A-Za-z0-9_\-]{20,}["']/gi, secretType: 'Auth Token', confidence: 'high' },
   { pattern: /bearer\s+[A-Za-z0-9_\-\.]{30,}/gi, secretType: 'Bearer Token', confidence: 'high' },
-  { pattern: /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g, secretType: 'JWT Token', confidence: 'high' },
-  { pattern: /firebase[_-]?api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{30,}["']/gi, secretType: 'Firebase API Key', confidence: 'high' },
+  {
+    pattern: /eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,
+    secretType: 'JWT Token',
+    confidence: 'high'
+  },
+  {
+    pattern: /firebase[_-]?api[_-]?key\s*=\s*["'][A-Za-z0-9_\-]{30,}["']/gi,
+    secretType: 'Firebase API Key',
+    confidence: 'high'
+  }
 ];
 
 /**
@@ -123,7 +168,11 @@ const HIGH_PATTERNS: SecretPattern[] = [
  */
 const MEDIUM_PATTERNS: SecretPattern[] = [
   { pattern: /(password|passwd|pwd)\s*=\s*["'][^"']{12,}["']/gi, secretType: 'Password', confidence: 'medium' },
-  { pattern: /(token|secret|credential|private[_-]?key)\s*=\s*["'][A-Za-z0-9+/=]{40,}["']/gi, secretType: 'Generic Secret', confidence: 'medium' },
+  {
+    pattern: /(token|secret|credential|private[_-]?key)\s*=\s*["'][A-Za-z0-9+/=]{40,}["']/gi,
+    secretType: 'Generic Secret',
+    confidence: 'medium'
+  }
 ];
 
 const ALL_PATTERNS = [...CRITICAL_PATTERNS, ...HIGH_PATTERNS, ...MEDIUM_PATTERNS];
@@ -210,7 +259,7 @@ export class SecretGuard {
           match: '[REDACTED]', // Redact matches entirely to prevent partial credential leakage
           line: redactedLine.trim().slice(0, 100),
           lineNumber,
-          confidence: secretPattern.confidence,
+          confidence: secretPattern.confidence
         });
       }
     }
@@ -277,14 +326,15 @@ export class SecretGuard {
       return createResult(true);
     }
 
-    const findings: Finding[] = detections.map((d) => ({
+    const findings: Finding[] = detections.map(d => ({
       category: 'secret_detection',
       pattern_name: d.secretType.toLowerCase().replace(/\s+/g, '_'),
-      severity: d.confidence === 'critical' ? Severity.CRITICAL : d.confidence === 'high' ? Severity.WARNING : Severity.INFO,
+      severity:
+        d.confidence === 'critical' ? Severity.CRITICAL : d.confidence === 'high' ? Severity.WARNING : Severity.INFO,
       match: d.match,
       description: `${d.secretType} detected at line ${d.lineNumber}`,
       line_number: d.lineNumber,
-      weight: d.confidence === 'critical' ? 10 : d.confidence === 'high' ? 5 : 2,
+      weight: d.confidence === 'critical' ? 10 : d.confidence === 'high' ? 5 : 2
     }));
 
     const riskScore = findings.reduce((sum, f) => sum + (f.weight ?? 1), 0);
@@ -296,7 +346,7 @@ export class SecretGuard {
       riskLevel = RiskLevel.MEDIUM;
     }
 
-    const criticalCount = detections.filter((d) => d.confidence === 'critical').length;
+    const criticalCount = detections.filter(d => d.confidence === 'critical').length;
     const allowed = this.config.action === 'allow' || (this.config.action === 'log' && criticalCount === 0);
 
     // Sprint 39 security-audit MEDIUM #1 — meta-shape safety note:
@@ -314,7 +364,7 @@ export class SecretGuard {
       risk_score: riskScore,
       risk_level: riskLevel,
       file: sanitizeLogString(filePath),
-      blocked: !allowed,
+      blocked: !allowed
     });
 
     return createResult(allowed, findings[0]?.severity ?? Severity.WARNING, findings);

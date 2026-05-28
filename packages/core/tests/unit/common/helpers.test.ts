@@ -18,11 +18,7 @@
  * `"{}"` and `error={}` log entries blind operators to real failures.
  */
 import { describe, it, expect } from 'vitest';
-import {
-  isExpectedSecretFile,
-  sanitizeLogString,
-  serializeError,
-} from '../../../src/common/index.js';
+import { isExpectedSecretFile, sanitizeLogString, serializeError } from '../../../src/common/index.js';
 
 describe('isExpectedSecretFile — defensive type guard', () => {
   it('returns false for non-string filePath (object)', () => {
@@ -265,7 +261,7 @@ describe('serializeError — Sprint 37 security-MEDIUM closures', () => {
     const err = new Error('plain message');
     Object.defineProperty(err, 'name', {
       value: 'Custom\nInjected: spoof',
-      writable: false,
+      writable: false
     });
     const out = serializeError(err);
     expect(out.name).toBe('Custom\\nInjected: spoof');

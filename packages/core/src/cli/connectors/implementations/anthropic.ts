@@ -15,7 +15,7 @@ export const anthropicConnector: ConnectorDefinition = {
   category: 'llm',
   detection: {
     envVars: ['ANTHROPIC_API_KEY'],
-    packageJson: ['@anthropic-ai/sdk'],
+    packageJson: ['@anthropic-ai/sdk']
   },
 
   test: async (config, _signal) => {
@@ -24,7 +24,7 @@ export const anthropicConnector: ConnectorDefinition = {
       return {
         connection: false,
         validation: false,
-        error: 'API key is required',
+        error: 'API key is required'
       };
     }
 
@@ -34,24 +34,25 @@ export const anthropicConnector: ConnectorDefinition = {
         sendInHeader: true,
         testEndpoint: 'https://api.anthropic.com/v1/models',
         timeout: DEFAULT_API_TIMEOUT,
-        logLevel: 'none',
+        logLevel: 'none'
       });
 
       return {
         connection: result,
-        validation: result,
+        validation: result
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return {
         connection: false,
         validation: false,
-        error: message,
+        error: message
       };
     }
   },
 
-  generateSnippet: (_config) => `
+  generateSnippet: _config =>
+    `
 import { GuardrailEngine } from '@blackunicorn/bonklm';
 import { anthropicConnector } from '@blackunicorn/bonklm/anthropic-connector';
 
@@ -65,6 +66,6 @@ const engine = new GuardrailEngine({
   `.trim(),
 
   configSchema: z.object({
-    apiKey: z.string().startsWith('sk-ant-', 'Anthropic API key must start with "sk-ant-"'),
-  }),
+    apiKey: z.string().startsWith('sk-ant-', 'Anthropic API key must start with "sk-ant-"')
+  })
 };

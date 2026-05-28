@@ -53,7 +53,7 @@ export function isExampleContent(content: string, line: string): boolean {
     /todo:?\s*replace/i,
     /insert[_-]?your/i,
     /<your[_-]/i,
-    /\[your[_-]/i,
+    /\[your[_-]/i
   ];
 
   for (const indicator of EXAMPLE_INDICATORS) {
@@ -63,7 +63,7 @@ export function isExampleContent(content: string, line: string): boolean {
   }
 
   const lines = content.split('\n');
-  const lineIndex = lines.findIndex((l) => l.includes(line.trim()));
+  const lineIndex = lines.findIndex(l => l.includes(line.trim()));
 
   if (lineIndex !== -1) {
     const start = Math.max(0, lineIndex - 5);
@@ -112,11 +112,11 @@ export function isExpectedSecretFile(filePath: string): boolean {
     'example.env',
     'template.env',
     '.env.development.example',
-    '.env.production.example',
+    '.env.production.example'
   ];
 
   const basename = filePath.split('/').pop()?.toLowerCase() || '';
-  return EXPECTED_SECRET_FILES.some((expected) => basename === expected.toLowerCase());
+  return EXPECTED_SECRET_FILES.some(expected => basename === expected.toLowerCase());
 }
 
 /**
@@ -142,8 +142,9 @@ export function sanitizeLogString(input: string, maxLen: number = DEFAULT_MAX_LO
   // CWE-117 column-injection attack where an attacker's error
   // message contains `\t` to spawn a phantom column.
   // eslint-disable-next-line no-control-regex
-  const stripped = input.replace(/[\x00-\x09\x0b-\x1f\x7f]/g, (c) =>
-    `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`
+  const stripped = input.replace(
+    /[\x00-\x09\x0b-\x1f\x7f]/g,
+    c => `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`
   );
   // Replace newlines/CRs (most common injection vector) with literal markers.
   // Sprint 39 security-MEDIUM #4: U+2028 (LINE SEPARATOR) + U+2029
@@ -176,8 +177,9 @@ export function sanitizeLogString(input: string, maxLen: number = DEFAULT_MAX_LO
   //   U+2067  RIGHT-TO-LEFT ISOLATE
   //   U+2068  FIRST STRONG ISOLATE
   //   U+2069  POP DIRECTIONAL ISOLATE
-  const bidiSafe = flat.replace(/[\u202a-\u202e\u2066-\u2069]/g, (c) =>
-    `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`
+  const bidiSafe = flat.replace(
+    /[\u202a-\u202e\u2066-\u2069]/g,
+    c => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`
   );
   return bidiSafe.length > maxLen ? `${bidiSafe.slice(0, maxLen)}…[truncated]` : bidiSafe;
 }
@@ -225,7 +227,7 @@ export function serializeError(error: unknown): SerializedError {
     return {
       message: sanitizeLogString(error.message),
       name: sanitizeLogString(error.name),
-      stack: error.stack,
+      stack: error.stack
     };
   }
   if (typeof error === 'string') {
@@ -245,9 +247,8 @@ export function serializeError(error: unknown): SerializedError {
     raw = '[circular or non-serialisable]';
   }
   return {
-    message: typeof error === 'object' && error !== null
-      ? '[non-Error object thrown]'
-      : sanitizeLogString(String(error)),
+    message:
+      typeof error === 'object' && error !== null ? '[non-Error object thrown]' : sanitizeLogString(String(error)),
     // Sprint 37 security-MEDIUM M-2: `raw` is also a structured-log
     // field and a custom validator that throws `{ msg: 'x\nfake_log' }`
     // would otherwise inject log lines via the JSON.stringify output.
@@ -255,6 +256,6 @@ export function serializeError(error: unknown): SerializedError {
     // a consumer object containing a nested object with attacker-
     // controlled keys can still emit unicode line-separators (U+2028)
     // or split-via-tab attacks. sanitizeLogString handles both.
-    raw: typeof raw === 'string' ? sanitizeLogString(raw) : raw,
+    raw: typeof raw === 'string' ? sanitizeLogString(raw) : raw
   };
 }

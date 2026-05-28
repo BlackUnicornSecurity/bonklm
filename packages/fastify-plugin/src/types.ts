@@ -151,11 +151,7 @@ export interface GuardrailsRequest extends FastifyRequest {
 /**
  * Error handler function type.
  */
-export type ErrorHandler = (
-  result: GuardrailResult,
-  req: FastifyRequest,
-  reply: FastifyReply
-) => void | Promise<void>;
+export type ErrorHandler = (result: GuardrailResult, req: FastifyRequest, reply: FastifyReply) => void | Promise<void>;
 
 /**
  * @deprecated Body extractor is no longer needed.

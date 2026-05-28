@@ -23,7 +23,7 @@ const mocks = {
   rm: vi.fn(),
   access: vi.fn(),
   stat: vi.fn(),
-  mkdtemp: vi.fn(),
+  mkdtemp: vi.fn()
 };
 
 vi.mock('fs/promises', () => ({
@@ -35,21 +35,21 @@ vi.mock('fs/promises', () => ({
   access: (...args: unknown[]) => mocks.access(...args),
   stat: (...args: unknown[]) => mocks.stat(...args),
   constants: { R_OK: 4, W_OK: 2 },
-  mkdtemp: (...args: unknown[]) => mocks.mkdtemp(...args),
+  mkdtemp: (...args: unknown[]) => mocks.mkdtemp(...args)
 }));
 
 // Mock existsSync
 const existsSyncMock = vi.fn();
 vi.mock('fs', () => ({
   existsSync: (...args: unknown[]) => existsSyncMock(...args),
-  constants: { R_OK: 4, W_OK: 2 },
+  constants: { R_OK: 4, W_OK: 2 }
 }));
 
 // Mock platform
 const platformMock = vi.fn();
 vi.mock('os', () => ({
   platform: (...args: unknown[]) => platformMock(...args),
-  tmpdir: () => '/tmp',
+  tmpdir: () => '/tmp'
 }));
 
 describe('EnvManager', () => {
@@ -109,7 +109,7 @@ describe('EnvManager', () => {
       expect(result).toEqual({
         KEY1: 'value1',
         KEY2: 'value2',
-        KEY3: 'value3',
+        KEY3: 'value3'
       });
       expect(mocks.readFile).toHaveBeenCalledWith('.test.env', 'utf-8');
     });
@@ -133,7 +133,7 @@ describe('EnvManager', () => {
 
       expect(result).toEqual({
         KEY1: 'quoted value',
-        KEY2: 'single quoted',
+        KEY2: 'single quoted'
       });
     });
 
@@ -227,11 +227,9 @@ describe('EnvManager', () => {
       await envManager.write({ KEY: 'value' });
 
       // Verify temp file write
-      expect(mocks.writeFile).toHaveBeenCalledWith(
-        '/tmp/.env-xyz789/write.tmp',
-        expect.stringContaining('KEY=value'),
-        { mode: 0o600 }
-      );
+      expect(mocks.writeFile).toHaveBeenCalledWith('/tmp/.env-xyz789/write.tmp', expect.stringContaining('KEY=value'), {
+        mode: 0o600
+      });
     });
 
     it('should set permissions on temp file before rename', async () => {
@@ -248,7 +246,7 @@ describe('EnvManager', () => {
     it('should verify same filesystem before rename', async () => {
       existsSyncMock.mockReturnValue(false);
       mocks.mkdtemp.mockResolvedValue('/tmp/.env-secure');
-      mocks.stat.mockImplementation((path) => {
+      mocks.stat.mockImplementation(path => {
         // Same filesystem for temp and target
         return Promise.resolve({ dev: 1 });
       });
@@ -289,10 +287,7 @@ describe('EnvManager', () => {
 
       await envManager.write({ KEY: 'value' });
 
-      expect(mocks.rename).toHaveBeenCalledWith(
-        '/tmp/.env-abc/write.tmp',
-        '.test.env'
-      );
+      expect(mocks.rename).toHaveBeenCalledWith('/tmp/.env-abc/write.tmp', '.test.env');
     });
 
     it('should verify permissions after rename', async () => {
@@ -315,7 +310,7 @@ describe('EnvManager', () => {
 
       expect(mocks.rm).toHaveBeenCalledWith('/tmp/.env-cleanup', {
         recursive: true,
-        force: false,  // Implementation uses force: false
+        force: false // Implementation uses force: false
       });
     });
 
@@ -331,7 +326,7 @@ describe('EnvManager', () => {
       // Cleanup still happened despite rename failure
       expect(mocks.rm).toHaveBeenCalledWith('/tmp/.env-fail', {
         recursive: true,
-        force: false,  // Implementation uses force: false
+        force: false // Implementation uses force: false
       });
     });
 
@@ -403,10 +398,7 @@ describe('EnvManager', () => {
       mocks.access.mockRejectedValue(new Error('Permission denied'));
       envManager = new EnvManager('.test.env');
 
-      await expect(envManager.write({ KEY: 'value' })).rejects.toHaveProperty(
-        'code',
-        'PERMISSION_VERIFICATION_FAILED'
-      );
+      await expect(envManager.write({ KEY: 'value' })).rejects.toHaveProperty('code', 'PERMISSION_VERIFICATION_FAILED');
     });
 
     it('should throw WizardError with proper error codes', async () => {
@@ -416,7 +408,7 @@ describe('EnvManager', () => {
       envManager = new EnvManager('.test.env');
 
       await expect(envManager.read()).rejects.toThrow(WizardError);
-      const error = await envManager.read().catch((e) => e);
+      const error = await envManager.read().catch(e => e);
       expect(error.code).toBe('ENV_READ_FAILED');
     });
   });
@@ -439,9 +431,7 @@ describe('EnvManager', () => {
       existsSyncMock.mockReturnValue(false);
       envManager = new EnvManager('.test.env');
 
-      await expect(
-        envManager.write({ NEWLINES: 'line1\nline2' })
-      ).rejects.toHaveProperty('code', 'INVALID_ENV_VALUE');
+      await expect(envManager.write({ NEWLINES: 'line1\nline2' })).rejects.toHaveProperty('code', 'INVALID_ENV_VALUE');
     });
 
     it('should handle allowed special characters in values', async () => {
@@ -454,7 +444,7 @@ describe('EnvManager', () => {
         SPECIAL: 'value with spaces',
         WITH_EQUALS: 'value=with=equals',
         WITH_DASH: 'value-with-dash',
-        WITH_DOTS: 'value.with.dots',
+        WITH_DOTS: 'value.with.dots'
       });
 
       const writeCall = mocks.writeFile.mock.calls[0];
@@ -469,14 +459,10 @@ describe('EnvManager', () => {
       envManager = new EnvManager('.test.env');
 
       // Key with invalid characters
-      await expect(
-        envManager.write({ 'INVALID-KEY': 'value' })
-      ).rejects.toHaveProperty('code', 'INVALID_ENV_KEY');
+      await expect(envManager.write({ 'INVALID-KEY': 'value' })).rejects.toHaveProperty('code', 'INVALID_ENV_KEY');
 
       // Key starting with number
-      await expect(
-        envManager.write({ '123INVALID': 'value' })
-      ).rejects.toHaveProperty('code', 'INVALID_ENV_KEY');
+      await expect(envManager.write({ '123INVALID': 'value' })).rejects.toHaveProperty('code', 'INVALID_ENV_KEY');
     });
 
     it('should handle missing target directory stat gracefully', async () => {

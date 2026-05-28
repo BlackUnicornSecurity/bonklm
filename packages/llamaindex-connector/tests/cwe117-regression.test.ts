@@ -31,9 +31,7 @@ describe('llamaindex-connector — Sprint 43 CWE-117 sanitization contract', () 
 
   it('sanitizes validator-extracted reason across all 9 sites', () => {
     const reason = 'matched RAG-injection-pattern\nINJECTED:CRITICAL fake';
-    expect(sanitizeMeta(reason)).toBe(
-      'matched RAG-injection-pattern\\nINJECTED:CRITICAL fake'
-    );
+    expect(sanitizeMeta(reason)).toBe('matched RAG-injection-pattern\\nINJECTED:CRITICAL fake');
   });
 
   it('sanitizes documentPreview slice carrying retrieved-doc control chars', () => {

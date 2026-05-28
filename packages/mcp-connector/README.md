@@ -1,6 +1,8 @@
 # @blackunicorn/bonklm-mcp
 
-MCP (Model Context Protocol) SDK connector for BonkLM. Provides security guardrails for MCP tool calls, validating both tool inputs and results to prevent injection attacks and ensure safe AI interactions.
+MCP (Model Context Protocol) SDK connector for BonkLM. Provides security guardrails for MCP tool
+calls, validating both tool inputs and results to prevent injection attacks and ensure safe AI
+interactions.
 
 ## Installation
 
@@ -11,7 +13,8 @@ npm install @blackunicorn/bonklm-mcp
 ## Features
 
 - **Tool Call Validation**: Validates tool arguments before execution to prevent injection attacks
-- **Tool Result Filtering**: Validates tool results to prevent malicious content from reaching the AI
+- **Tool Result Filtering**: Validates tool results to prevent malicious content from reaching the
+  AI
 - **Tool Name Allowlisting**: Restrict which tools can be called
 - **Argument Size Limits**: Prevent DoS attacks via large argument payloads
 - **Production Mode**: Generic error messages in production, detailed errors in development
@@ -20,13 +23,13 @@ npm install @blackunicorn/bonklm-mcp
 
 ## Security Features
 
-| Feature | Description | Related Issue |
-|---------|-------------|---------------|
-| Tool Name Validation | Validates tool name format and checks against allowlist | SEC-005 |
-| Argument Schema Validation | Validates argument size to prevent DoS | SEC-005 |
-| Production Mode | Generic errors in production to avoid info leakage | SEC-007 |
-| Validation Timeout | Uses AbortController for timeout enforcement | SEC-008 |
-| Proper Logger Integration | Uses `createLogger('console')` instead of raw console | DEV-002 |
+| Feature                    | Description                                             | Related Issue |
+| -------------------------- | ------------------------------------------------------- | ------------- |
+| Tool Name Validation       | Validates tool name format and checks against allowlist | SEC-005       |
+| Argument Schema Validation | Validates argument size to prevent DoS                  | SEC-005       |
+| Production Mode            | Generic errors in production to avoid info leakage      | SEC-007       |
+| Validation Timeout         | Uses AbortController for timeout enforcement            | SEC-008       |
+| Proper Logger Integration  | Uses `createLogger('console')` instead of raw console   | DEV-002       |
 
 ## Usage
 
@@ -45,11 +48,8 @@ const mcpClient = new Client({
 
 // Create guarded wrapper
 const guardedMCP = createGuardedMCP(mcpClient, {
-  validators: [
-    new PromptInjectionValidator(),
-    new JailbreakValidator()
-  ],
-  allowedTools: ['calculator', 'weather'], // Only allow these tools
+  validators: [new PromptInjectionValidator(), new JailbreakValidator()],
+  allowedTools: ['calculator', 'weather'] // Only allow these tools
 });
 
 // Use the guarded client
@@ -173,6 +173,7 @@ if (result.filtered) {
 Creates a guarded MCP client wrapper.
 
 **Parameters:**
+
 - `client` - The MCP Client instance to wrap
 - `options` - Configuration options (see GuardedMCPOptions above)
 
@@ -183,6 +184,7 @@ Creates a guarded MCP client wrapper.
 Calls an MCP tool with validation.
 
 **Parameters:**
+
 - `opts.name` - The name of the tool to call
 - `opts.arguments` - The arguments to pass to the tool
 
@@ -203,6 +205,7 @@ Closes the MCP client connection.
 ### Tool Injection Prevention
 
 This connector prevents tool injection attacks by:
+
 1. Validating tool names against a strict pattern (alphanumeric, underscore, hyphen only)
 2. Enforcing tool name length limits
 3. Supporting tool name allowlisting
@@ -211,6 +214,7 @@ This connector prevents tool injection attacks by:
 ### Content Validation
 
 All tool arguments and results are validated against the provided validators and guards:
+
 - Prompt injection detection
 - Jailbreak attempt detection
 - Custom validation rules
@@ -218,6 +222,7 @@ All tool arguments and results are validated against the provided validators and
 ### Resource Limits
 
 Default limits can be configured:
+
 - `maxArgumentSize`: 100KB (prevents large payload attacks)
 - `validationTimeout`: 5000ms (prevents hanging)
 

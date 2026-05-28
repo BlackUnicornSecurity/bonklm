@@ -42,13 +42,7 @@ const MAX_CREDENTIAL_LENGTH = 2048;
 /**
  * Allowed connector IDs - whitelist for security
  */
-const ALLOWED_CONNECTOR_IDS = [
-  'openai',
-  'anthropic',
-  'ollama',
-  'express',
-  'langchain',
-] as const;
+const ALLOWED_CONNECTOR_IDS = ['openai', 'anthropic', 'ollama', 'express', 'langchain'] as const;
 
 /**
  * Valid connector ID format pattern
@@ -166,7 +160,7 @@ function getAvailableConnectors(detection: {
       id: connector.id,
       name: connector.name,
       category: connector.category,
-      detected,
+      detected
     });
   }
 
@@ -182,11 +176,7 @@ function getAvailableConnectors(detection: {
 async function collectCredentials(connectorId: string): Promise<Record<string, string>> {
   const connector = getConnector(connectorId);
   if (!connector) {
-    throw new WizardError(
-      'UNKNOWN_CONNECTOR',
-      `Connector not found: ${connectorId}`,
-      'Use a valid connector ID'
-    );
+    throw new WizardError('UNKNOWN_CONNECTOR', `Connector not found: ${connectorId}`, 'Use a valid connector ID');
   }
 
   const config: Record<string, string> = {};
@@ -195,7 +185,7 @@ async function collectCredentials(connectorId: string): Promise<Record<string, s
   for (const envVar of envVars) {
     const value = await p.password({
       message: `Enter ${envVar}:`,
-      validate: (value) => {
+      validate: value => {
         if (!value || value.length === 0) {
           return `${envVar} is required`;
         }
@@ -211,7 +201,7 @@ async function collectCredentials(connectorId: string): Promise<Record<string, s
           return 'Anthropic API key must start with "sk-ant-"';
         }
         return undefined;
-      },
+      }
     });
 
     if (p.isCancel(value)) {
@@ -239,17 +229,10 @@ async function collectCredentials(connectorId: string): Promise<Record<string, s
  * @param config - Configuration for the connector
  * @returns Test result
  */
-async function testSingleConnector(
-  connectorId: string,
-  config: Record<string, string>
-): Promise<ConnectorTestResult> {
+async function testSingleConnector(connectorId: string, config: Record<string, string>): Promise<ConnectorTestResult> {
   const connector = getConnector(connectorId);
   if (!connector) {
-    throw new WizardError(
-      'UNKNOWN_CONNECTOR',
-      `Connector not found: ${connectorId}`,
-      undefined
-    );
+    throw new WizardError('UNKNOWN_CONNECTOR', `Connector not found: ${connectorId}`, undefined);
   }
 
   p.log.step(`Testing ${connector.name}...`);
@@ -259,7 +242,7 @@ async function testSingleConnector(
   return {
     connectorId,
     connectorName: connector.name,
-    result,
+    result
   };
 }
 
@@ -317,7 +300,7 @@ export const wizardCommand = new Command('wizard')
       const availableConnectors = getAvailableConnectors({
         frameworks,
         services,
-        credentials,
+        credentials
       });
 
       if (availableConnectors.length === 0) {
@@ -332,8 +315,8 @@ export const wizardCommand = new Command('wizard')
         options: availableConnectors.map(c => ({
           value: c.id,
           label: c.name,
-          hint: c.detected ? 'detected' : undefined,
-        })),
+          hint: c.detected ? 'detected' : undefined
+        }))
       });
 
       if (p.isCancel(selected)) {
@@ -383,7 +366,7 @@ export const wizardCommand = new Command('wizard')
           // Ask if user wants to use existing credentials
           const useExisting = await p.confirm({
             message: `Use existing credentials for ${connector.name}?`,
-            initialValue: true,
+            initialValue: true
           });
 
           if (p.isCancel(useExisting)) {
@@ -433,7 +416,7 @@ export const wizardCommand = new Command('wizard')
         await audit.log({
           timestamp: new Date().toISOString(),
           action: 'connector_added',
-          success: true,
+          success: true
         });
 
         p.log.success('Configuration saved to .env');
@@ -466,17 +449,17 @@ export const wizardCommand = new Command('wizard')
           configured: successful.map(r => ({
             id: r.connectorId,
             name: r.connectorName,
-            latency: r.result.latency,
+            latency: r.result.latency
           })),
           failed: failed.map(r => ({
             id: r.connectorId,
             name: r.connectorName,
-            error: sanitizeForJson(r.result.error),
+            error: sanitizeForJson(r.result.error)
           })),
           // SECURITY: Remove envEntries entirely to avoid metadata leakage
-          timestamp: new Date().toISOString(),
+          timestamp: new Date().toISOString()
         };
-        console.log(`\n${  JSON.stringify(safeOutput, null, 2)}`);
+        console.log(`\n${JSON.stringify(safeOutput, null, 2)}`);
       }
 
       p.outro(
@@ -484,7 +467,6 @@ export const wizardCommand = new Command('wizard')
           ? `Setup complete! ${successful.length} connector(s) configured.`
           : 'Setup complete. Some connectors failed configuration.'
       );
-
     } catch (error) {
       if (error instanceof WizardError) {
         if (error.exitCode === ExitCode.ERROR) {

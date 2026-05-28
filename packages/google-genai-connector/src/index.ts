@@ -69,7 +69,7 @@ export {
   wrapLive,
   contentsToText,
   responseToText,
-  type GuardedGoogleGenAIClient,
+  type GuardedGoogleGenAIClient
 } from './guarded-google-genai.js';
 
 export type {
@@ -83,11 +83,7 @@ export type {
   GoogleGenerateContentResponse,
   GoogleContentLike,
   GooglePartLike,
-  GoogleLiveServerMessage,
+  GoogleLiveServerMessage
 } from './types.js';
 
-export {
-  DEFAULT_VALIDATION_TIMEOUT,
-  DEFAULT_MAX_BUFFER_SIZE,
-  DEFAULT_VALIDATION_INTERVAL,
-} from './types.js';
+export { DEFAULT_VALIDATION_TIMEOUT, DEFAULT_MAX_BUFFER_SIZE, DEFAULT_VALIDATION_INTERVAL } from './types.js';

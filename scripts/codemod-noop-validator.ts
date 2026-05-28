@@ -48,7 +48,7 @@ import {
   type PropertyAssignment,
   type CallExpression,
   type NewExpression,
-  SyntaxKind,
+  SyntaxKind
 } from 'ts-morph';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -90,21 +90,21 @@ const TARGET_FACTORIES = new Set<string>([
   // Other factory styles
   'createGenkitGuardrailsPlugin',
   'createGuardrailsMiddleware',
-  'createGuardrailsService',
+  'createGuardrailsService'
 ]);
 
 /**
  * Per-call rewrite outcome — recorded in the JSON report.
  */
 type RewriteOutcome =
-  | 'inserted-options-object'      // case 1
-  | 'replaced-empty-options'       // case 2
-  | 'rewrote-empty-validators'     // case 3
-  | 'inserted-validators-prop'     // case 4
+  | 'inserted-options-object' // case 1
+  | 'replaced-empty-options' // case 2
+  | 'rewrote-empty-validators' // case 3
+  | 'inserted-validators-prop' // case 4
   | 'stripped-allowempty-and-injected' // case 5
-  | 'skipped-real-validators'      // case 6
-  | 'skipped-non-object-options'   // options arg is a spread / identifier / ternary etc.
-  | 'skipped-no-options-position'  // factory signature has no second arg position
+  | 'skipped-real-validators' // case 6
+  | 'skipped-non-object-options' // options arg is a spread / identifier / ternary etc.
+  | 'skipped-no-options-position' // factory signature has no second arg position
   | 'skipped-unknown-shape';
 
 interface SiteReport {
@@ -127,14 +127,14 @@ const project = new Project({
   tsConfigFilePath: path.join(REPO_ROOT, 'tsconfig.json'),
   // Skip type-resolution work — pure syntactic codemod.
   skipAddingFilesFromTsConfig: true,
-  skipFileDependencyResolution: true,
+  skipFileDependencyResolution: true
 });
 
 const targets = fs
   .readFileSync(TARGETS_PATH, 'utf-8')
   .split('\n')
-  .map((l) => l.trim())
-  .filter((l) => l.length > 0);
+  .map(l => l.trim())
+  .filter(l => l.length > 0);
 
 const report: FileReport[] = [];
 
@@ -159,7 +159,7 @@ for (const relPath of targets) {
     file: relPath,
     importAdded: false,
     rewrites: 0,
-    sites: [],
+    sites: []
   };
 
   let touchedAnyCall = false;
@@ -167,7 +167,7 @@ for (const relPath of targets) {
   // Visit every call expression and new expression.
   const calls: (CallExpression | NewExpression)[] = [
     ...sourceFile.getDescendantsOfKind(SyntaxKind.CallExpression),
-    ...sourceFile.getDescendantsOfKind(SyntaxKind.NewExpression),
+    ...sourceFile.getDescendantsOfKind(SyntaxKind.NewExpression)
   ];
 
   for (const call of calls) {
@@ -183,10 +183,7 @@ for (const relPath of targets) {
     if (factoryName === 'register') {
       const firstArg = call.getArguments()[0];
       const firstArgText = firstArg?.getText().trim();
-      if (
-        firstArgText === 'guardrailsPlugin' ||
-        firstArgText === 'bonklmPlugin'
-      ) {
+      if (firstArgText === 'guardrailsPlugin' || firstArgText === 'bonklmPlugin') {
         isFastifyStylePluginRegister = true;
       }
     }
@@ -221,7 +218,7 @@ for (const relPath of targets) {
       'createGuardrailsService',
       'createGuardedCopilotKit',
       'createGuardedMastra',
-      'createGuardedAI',
+      'createGuardedAI'
     ]);
     const optionsIndex = SINGLE_ARG_FACTORIES.has(factoryName) ? 0 : 1;
 
@@ -234,12 +231,14 @@ for (const relPath of targets) {
         column: pos.column,
         factory: factoryName,
         outcome,
-        note,
+        note
       });
-      if (outcome !== 'skipped-real-validators' &&
-          outcome !== 'skipped-non-object-options' &&
-          outcome !== 'skipped-no-options-position' &&
-          outcome !== 'skipped-unknown-shape') {
+      if (
+        outcome !== 'skipped-real-validators' &&
+        outcome !== 'skipped-non-object-options' &&
+        outcome !== 'skipped-no-options-position' &&
+        outcome !== 'skipped-unknown-shape'
+      ) {
         fileReport.rewrites++;
         touchedAnyCall = true;
       }
@@ -269,18 +268,11 @@ for (const relPath of targets) {
     }
     const opts = optionsArg as ObjectLiteralExpression;
 
-    const validatorsProp = opts.getProperty('validators') as
-      | PropertyAssignment
-      | undefined;
-    const allowEmptyProp = opts.getProperty('allowEmptyForTesting') as
-      | PropertyAssignment
-      | undefined;
+    const validatorsProp = opts.getProperty('validators') as PropertyAssignment | undefined;
+    const allowEmptyProp = opts.getProperty('allowEmptyForTesting') as PropertyAssignment | undefined;
 
     // CASE 5 (D-E): strip-and-substitute when allowEmptyForTesting: true is present.
-    if (
-      allowEmptyProp &&
-      allowEmptyProp.getInitializerOrThrow().getText().trim() === 'true'
-    ) {
+    if (allowEmptyProp && allowEmptyProp.getInitializerOrThrow().getText().trim() === 'true') {
       // Replace empty `validators: []` with the noOp version, or insert if
       // validators key is absent. Then strip allowEmptyForTesting.
       if (validatorsProp) {
@@ -303,7 +295,7 @@ for (const relPath of targets) {
         // validators at the front, strip the hatch.
         opts.insertPropertyAssignment(0, {
           name: 'validators',
-          initializer: '[noOpValidator()]',
+          initializer: '[noOpValidator()]'
         });
         allowEmptyProp.remove();
         recordSite('stripped-allowempty-and-injected', 'inserted validators');
@@ -330,7 +322,7 @@ for (const relPath of targets) {
       // ts-morph "replace" — easier to just insert the property.
       opts.insertPropertyAssignment(0, {
         name: 'validators',
-        initializer: '[noOpValidator()]',
+        initializer: '[noOpValidator()]'
       });
       recordSite('replaced-empty-options');
       continue;
@@ -339,7 +331,7 @@ for (const relPath of targets) {
     // CASE 4: options has other props, no validators key, no allowEmpty.
     opts.insertPropertyAssignment(0, {
       name: 'validators',
-      initializer: '[noOpValidator()]',
+      initializer: '[noOpValidator()]'
     });
     recordSite('inserted-validators-prop');
   }
@@ -347,15 +339,13 @@ for (const relPath of targets) {
   // Add the import if any call site got rewritten in this file.
   if (touchedAnyCall) {
     const existingImports = sourceFile.getImportDeclarations();
-    const alreadyImported = existingImports.some((imp) =>
-      imp
-        .getNamedImports()
-        .some((named) => named.getName() === 'noOpValidator')
+    const alreadyImported = existingImports.some(imp =>
+      imp.getNamedImports().some(named => named.getName() === 'noOpValidator')
     );
     if (!alreadyImported) {
       sourceFile.addImportDeclaration({
         moduleSpecifier: '@blackunicorn/bonklm/testing',
-        namedImports: ['noOpValidator'],
+        namedImports: ['noOpValidator']
       });
       fileReport.importAdded = true;
     }
@@ -374,21 +364,19 @@ for (const relPath of targets) {
 const stats = {
   mode: DRY_RUN ? 'dry-run' : 'applied',
   totalFiles: report.length,
-  filesWithRewrites: report.filter((f) => f.rewrites > 0).length,
+  filesWithRewrites: report.filter(f => f.rewrites > 0).length,
   totalRewrites: report.reduce((acc, f) => acc + f.rewrites, 0),
-  importsAdded: report.filter((f) => f.importAdded).length,
+  importsAdded: report.filter(f => f.importAdded).length,
   outcomeCounts: report
-    .flatMap((f) => f.sites)
+    .flatMap(f => f.sites)
     .reduce<Record<string, number>>((acc, s) => {
       acc[s.outcome] = (acc[s.outcome] ?? 0) + 1;
       return acc;
-    }, {}),
+    }, {})
 };
 
 const payload = { stats, files: report };
 fs.writeFileSync(REPORT_PATH, JSON.stringify(payload, null, 2), 'utf-8');
 
 console.log(JSON.stringify(stats, null, 2));
-console.log(
-  `\n${DRY_RUN ? 'DRY-RUN' : 'APPLIED'} — full report at ${path.relative(REPO_ROOT, REPORT_PATH)}`
-);
+console.log(`\n${DRY_RUN ? 'DRY-RUN' : 'APPLIED'} — full report at ${path.relative(REPO_ROOT, REPORT_PATH)}`);

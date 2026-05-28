@@ -113,7 +113,7 @@ export interface SandboxStatistics {
 export const SECURITY_LEVELS = {
   STRICT: 'strict',
   STANDARD: 'standard',
-  PERMISSIVE: 'permissive',
+  PERMISSIVE: 'permissive'
 } as const;
 
 export const BLOCKED_GLOBALS = [
@@ -127,7 +127,7 @@ export const BLOCKED_GLOBALS = [
   'globalThis',
   'eval',
   'Function',
-  'WebAssembly',
+  'WebAssembly'
 ] as const;
 
 export const SAFE_GLOBALS = [
@@ -158,7 +158,7 @@ export const SAFE_GLOBALS = [
   'encodeURI',
   'encodeURIComponent',
   'decodeURI',
-  'decodeURIComponent',
+  'decodeURIComponent'
   // CWE-913: host timer globals intentionally excluded.
   // setTimeout / setInterval / setImmediate / clearTimeout / clearInterval /
   // clearImmediate / queueMicrotask can schedule work that outlives the
@@ -185,7 +185,7 @@ export class HookSandbox {
       maxMemory: config?.maxMemory ?? 50 * 1024 * 1024, // 50MB
       maxCpuTime: config?.maxCpuTime ?? 1000,
       allowAsyncOperations: config?.allowAsyncOperations ?? true,
-      logExecutions: config?.logExecutions ?? true,
+      logExecutions: config?.logExecutions ?? true
     };
 
     this.eventEmitter = new PortableEventEmitter();
@@ -202,7 +202,7 @@ export class HookSandbox {
 
     this.emit('initialized', {
       securityLevel: this.config.securityLevel,
-      timeout: this.config.timeout,
+      timeout: this.config.timeout
     });
 
     return true;
@@ -237,7 +237,7 @@ export class HookSandbox {
       let code: string;
       try {
         if (typeof handler === 'function') {
-          code = this.extractFunctionCode((handler as (...args: unknown[]) => unknown));
+          code = this.extractFunctionCode(handler as (...args: unknown[]) => unknown);
         } else {
           // Wrap string code in a function to allow return statements
           code = this.wrapStringCode(handler);
@@ -253,7 +253,7 @@ export class HookSandbox {
             error: 'SECURITY_VIOLATION',
             message: extractMsg,
             blocked: true,
-            sandboxed: true,
+            sandboxed: true
           };
         }
         // Not a security error — re-throw for the outer handler
@@ -270,7 +270,7 @@ export class HookSandbox {
           error: 'SECURITY_VIOLATION',
           message: `Hook code contains dangerous patterns: ${validation.issues.join(', ')}`,
           blocked: true,
-          sandboxed: true,
+          sandboxed: true
         };
       }
 
@@ -282,13 +282,13 @@ export class HookSandbox {
       this.logExecution(executionId, {
         duration,
         success: true,
-        resultType: typeof result,
+        resultType: typeof result
       });
 
       this.emit('hook-executed', {
         executionId,
         duration,
-        success: true,
+        success: true
       });
 
       return {
@@ -296,9 +296,8 @@ export class HookSandbox {
         executionId,
         result,
         duration,
-        sandboxed: true,
+        sandboxed: true
       };
-
     } catch (error) {
       const duration = Date.now() - startTime;
       const err = error as Error;
@@ -316,13 +315,13 @@ export class HookSandbox {
       this.logExecution(executionId, {
         duration,
         success: false,
-        error: safeMessage,
+        error: safeMessage
       });
 
       this.emit('hook-error', {
         executionId,
         error: safeMessage,
-        duration,
+        duration
       });
 
       return {
@@ -331,7 +330,7 @@ export class HookSandbox {
         error: err.name === 'TimeoutError' ? 'EXECUTION_TIMEOUT' : 'EXECUTION_ERROR',
         message: safeMessage,
         duration,
-        sandboxed: true,
+        sandboxed: true
       };
     }
   }
@@ -351,7 +350,7 @@ export class HookSandbox {
       totalExecutions: this.executionLog.length,
       blockedAttempts: this.blockedAttempts.length,
       securityLevel: this.config.securityLevel,
-      averageExecutionTime: this.calculateAverageTime(),
+      averageExecutionTime: this.calculateAverageTime()
     };
   }
 
@@ -410,7 +409,7 @@ export class HookSandbox {
           )
         );
       }
-      return new Promise<void>((resolve) => {
+      return new Promise<void>(resolve => {
         // Use host setTimeout — but only internally within this closure.
         // The sandbox context itself never receives the host timer reference.
         setTimeout(resolve, ms);
@@ -433,8 +432,8 @@ export class HookSandbox {
       origin: 'bonklm:/hook-sandbox',
       codeGeneration: {
         strings: false, // Disable eval()
-        wasm: false, // Disable WebAssembly
-      },
+        wasm: false // Disable WebAssembly
+      }
     });
 
     return sandbox;
@@ -463,7 +462,7 @@ export class HookSandbox {
       warn: (...args: unknown[]) => logs.push({ level: 'warn', args: args.map(sanitize) }),
       error: (...args: unknown[]) => logs.push({ level: 'error', args: args.map(sanitize) }),
       debug: (...args: unknown[]) => logs.push({ level: 'debug', args: args.map(sanitize) }),
-      getLogs: () => [...logs],
+      getLogs: () => [...logs]
     };
   }
 
@@ -568,7 +567,7 @@ export class HookSandbox {
       [/\bclearTimeout\s*\(/, 'clearTimeout() call (host timer)'],
       [/\bclearInterval\s*\(/, 'clearInterval() call (host timer)'],
       [/\bclearImmediate\s*\(/, 'clearImmediate() call (host timer)'],
-      [/\bqueueMicrotask\s*\(/, 'queueMicrotask() call (host microtask — sandbox-escape vector)'],
+      [/\bqueueMicrotask\s*\(/, 'queueMicrotask() call (host microtask — sandbox-escape vector)']
     ];
 
     for (const [pattern, issue] of dangerousPatterns) {
@@ -590,7 +589,7 @@ export class HookSandbox {
 
     return {
       safe: issues.length === 0,
-      issues,
+      issues
     };
   }
 
@@ -604,11 +603,7 @@ export class HookSandbox {
     }
   }
 
-  private async executeInVm(
-    code: string,
-    context: Record<string, unknown>,
-    timeout: number
-  ): Promise<unknown> {
+  private async executeInVm(code: string, context: Record<string, unknown>, timeout: number): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         const error = new Error(`Hook execution timed out after ${timeout}ms`);
@@ -621,13 +616,13 @@ export class HookSandbox {
         // applies at runInContext time. The outer setTimeout above acts as a
         // belt-and-braces guard for misbehaving async work.
         const script = new vm.Script(code, {
-          filename: `hook-${randomUUID()}.js`,
+          filename: `hook-${randomUUID()}.js`
         });
 
         const result = script.runInContext(context, {
           timeout,
           displayErrors: true,
-          breakOnSigint: true,
+          breakOnSigint: true
         });
 
         clearTimeout(timer);
@@ -635,11 +630,11 @@ export class HookSandbox {
         // Handle promises
         if (result && typeof result === 'object' && 'then' in result && typeof result.then === 'function') {
           (result as Promise<unknown>)
-            .then((res) => {
+            .then(res => {
               clearTimeout(timer);
               resolve(res);
             })
-            .catch((err) => {
+            .catch(err => {
               clearTimeout(timer);
               // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
               reject(err);
@@ -704,7 +699,7 @@ export class HookSandbox {
     this.executionLog.push({
       executionId,
       timestamp: new Date().toISOString(),
-      ...details,
+      ...details
     });
 
     // Keep last 1000 executions
@@ -717,12 +712,12 @@ export class HookSandbox {
     this.blockedAttempts.push({
       executionId,
       timestamp: new Date().toISOString(),
-      issues,
+      issues
     });
 
     this.emit('hook-blocked', {
       executionId,
-      issues,
+      issues
     });
 
     // Keep last 100 blocked attempts
@@ -734,10 +729,7 @@ export class HookSandbox {
   private calculateAverageTime(): number {
     if (this.executionLog.length === 0) return 0;
 
-    const totalTime = this.executionLog.reduce(
-      (sum, log) => sum + (log.duration ?? 0),
-      0
-    );
+    const totalTime = this.executionLog.reduce((sum, log) => sum + (log.duration ?? 0), 0);
 
     return totalTime / this.executionLog.length;
   }

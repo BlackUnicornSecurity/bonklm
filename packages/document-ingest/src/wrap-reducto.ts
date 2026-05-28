@@ -7,10 +7,7 @@
  * embeddings + bbox metadata). We validate the concatenated chunk
  * text.
  */
-import {
-  assertNotWrapped,
-  markWrapped,
-} from '@blackunicorn/bonklm/core/connector-utils';
+import { assertNotWrapped, markWrapped } from '@blackunicorn/bonklm/core/connector-utils';
 import { validateExtractedText } from './validate-extracted-text.js';
 import type { DocumentIngestWrapOptions } from './types.js';
 
@@ -37,10 +34,7 @@ export interface ReductoParseResponse {
 
 const BONKLM_WIRED = Symbol.for('bonklm.reducto.wired');
 
-export function wrapReducto<C extends ReductoClientLike>(
-  client: C,
-  options: DocumentIngestWrapOptions
-): C {
+export function wrapReducto<C extends ReductoClientLike>(client: C, options: DocumentIngestWrapOptions): C {
   if (!client || typeof client !== 'object') {
     throw new TypeError('wrapReducto: client is required.');
   }
@@ -64,17 +58,17 @@ export function wrapReducto<C extends ReductoClientLike>(
       const chunks = response?.result?.chunks;
       if (!Array.isArray(chunks) || chunks.length === 0) return response;
       const joined = chunks
-        .map((c) => (typeof c?.content === 'string' ? c.content : ''))
-        .filter((t) => t.length > 0)
+        .map(c => (typeof c?.content === 'string' ? c.content : ''))
+        .filter(t => t.length > 0)
         .join('\n\n');
       if (joined.length === 0) return response;
       await validateExtractedText(joined, {
         ...options,
         phase: 'reducto',
-        documentId: response.job_id,
+        documentId: response.job_id
       });
       return response;
-    },
+    }
   } as unknown as C;
 
   markWrapped(wrapped, BONKLM_WIRED);

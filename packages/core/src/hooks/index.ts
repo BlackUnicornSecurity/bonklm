@@ -17,7 +17,7 @@ export {
   EdgeHookManager,
   type EdgeExecutionContext,
   type EdgeExecutionResult,
-  type EdgeHookStatistics,
+  type EdgeHookStatistics
 } from './EdgeHookManager.js';
 
 // Re-export the canonical surface vocabulary so consumers can import it
@@ -31,7 +31,7 @@ export enum HookPhase {
   BEFORE_VALIDATION = 'before_validation',
   AFTER_VALIDATION = 'after_validation',
   BEFORE_BLOCK = 'before_block',
-  AFTER_ALLOW = 'after_allow',
+  AFTER_ALLOW = 'after_allow'
 }
 
 /**
@@ -149,9 +149,9 @@ export class HookManager<TContext extends HookContext = HookContext> {
       this.surfaceDefaultWarned = true;
       this.logger.warn(
         `[deprecated] registerHook() called without an explicit \`surface\` — ` +
-        `defaulting to '${DEFAULT_HOOK_SURFACE}'. This default is REMOVED ` +
-        `in BonkLM 0.5 and \`surface\` becomes required. Update your ` +
-        `registerHook({phase, surface, handler}) callsites now.`
+          `defaulting to '${DEFAULT_HOOK_SURFACE}'. This default is REMOVED ` +
+          `in BonkLM 0.5 and \`surface\` becomes required. Update your ` +
+          `registerHook({phase, surface, handler}) callsites now.`
       );
     }
 
@@ -160,7 +160,7 @@ export class HookManager<TContext extends HookContext = HookContext> {
       id,
       surface,
       priority: definition.priority ?? 0,
-      enabled: definition.enabled !== false,
+      enabled: definition.enabled !== false
     };
 
     if (!this.hooks.has(hook.phase)) {
@@ -184,7 +184,7 @@ export class HookManager<TContext extends HookContext = HookContext> {
    */
   unregisterHook(hookId: string): boolean {
     for (const hooks of this.hooks.values()) {
-      const index = hooks.findIndex((h) => h.id === hookId);
+      const index = hooks.findIndex(h => h.id === hookId);
       if (index !== -1) {
         hooks.splice(index, 1);
         this.logger.info('Hook unregistered', { hookId });
@@ -197,18 +197,17 @@ export class HookManager<TContext extends HookContext = HookContext> {
   /**
    * Execute hooks for a specific phase
    */
-  async executeHooks(
-    phase: HookPhase,
-    context: TContext
-  ): Promise<HookResult[]> {
+  async executeHooks(phase: HookPhase, context: TContext): Promise<HookResult[]> {
     // S011-007: Check rate limit before executing hooks
     if (this.rateLimitConfig && !this.checkRateLimit(phase)) {
       this.logger.warn('Hook execution rate limit exceeded', { phase });
-      return [{
-        success: false,
-        shouldBlock: false,
-        message: `Rate limit exceeded for phase: ${phase}`,
-      }];
+      return [
+        {
+          success: false,
+          shouldBlock: false,
+          message: `Rate limit exceeded for phase: ${phase}`
+        }
+      ];
     }
 
     const hooks = this.hooks.get(phase) || [];
@@ -222,7 +221,7 @@ export class HookManager<TContext extends HookContext = HookContext> {
       const execution: HookExecution = {
         hookId: hook.id,
         timestamp: Date.now(),
-        attemptNumber: 1,
+        attemptNumber: 1
       };
 
       try {
@@ -243,7 +242,7 @@ export class HookManager<TContext extends HookContext = HookContext> {
         this.logger.error('Hook execution failed', {
           hookId: hook.id,
           name: sanitizeMeta(hook.name),
-          error: serializeError(error),
+          error: serializeError(error)
         });
         results.push({
           success: false,
@@ -259,7 +258,7 @@ export class HookManager<TContext extends HookContext = HookContext> {
           // with sanitizeMeta — double-encoding through the same codec
           // is a no-op in the happy path and a correctness hazard if
           // either function's encoding ever diverges.
-          message: `Hook ${sanitizeMeta(hook.name)} failed: ${serializeError(error).message}`,
+          message: `Hook ${sanitizeMeta(hook.name)} failed: ${serializeError(error).message}`
         });
       }
     }
@@ -294,7 +293,8 @@ export class HookManager<TContext extends HookContext = HookContext> {
     this.rateLimitTracking.set(key, timestamps);
 
     // Cleanup old entries periodically
-    if (Math.random() < 0.01) { // 1% chance to cleanup
+    if (Math.random() < 0.01) {
+      // 1% chance to cleanup
       this.cleanupRateLimitTracking(now, windowMs);
     }
 
@@ -326,7 +326,7 @@ export class HookManager<TContext extends HookContext = HookContext> {
   ): Promise<HookResult> {
     return Promise.race([
       hook.handler(context, execution),
-      new Promise<HookResult>((resolve) =>
+      new Promise<HookResult>(resolve =>
         setTimeout(
           () =>
             resolve({
@@ -334,11 +334,11 @@ export class HookManager<TContext extends HookContext = HookContext> {
               shouldBlock: false,
               // Sprint 46 cross-subsystem CWE-117 sweep: sister to
               // line ~239 — `hook.name` in caller-visible message.
-              message: `Hook ${sanitizeMeta(hook.name)} timed out after ${timeout}ms`,
+              message: `Hook ${sanitizeMeta(hook.name)} timed out after ${timeout}ms`
             }),
           timeout
         )
-      ),
+      )
     ]);
   }
 
@@ -373,14 +373,14 @@ export function createBlockingHook(
     phase,
     priority,
     enabled: true,
-    handler: async (context) => {
+    handler: async context => {
       const shouldBlock = await shouldBlockFn(context);
       return {
         success: true,
         shouldBlock,
-        message: shouldBlock ? `Blocked by hook: ${name}` : undefined,
+        message: shouldBlock ? `Blocked by hook: ${name}` : undefined
       };
-    },
+    }
   };
 }
 
@@ -399,12 +399,12 @@ export function createTransformHook(
     phase,
     priority,
     enabled: true,
-    handler: async (context) => {
+    handler: async context => {
       const transformed = await transformFn(context.content);
       return {
         success: true,
-        data: { transformed },
+        data: { transformed }
       };
-    },
+    }
   };
 }

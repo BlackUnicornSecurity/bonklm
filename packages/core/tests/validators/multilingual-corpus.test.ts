@@ -29,17 +29,11 @@ interface CorpusEntry {
   notes?: string;
 }
 
-const corpusDir = join(
-  dirname(fileURLToPath(import.meta.url)),
-  '..',
-  '..',
-  'benchmarks',
-  'multilingual-corpus'
-);
+const corpusDir = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'benchmarks', 'multilingual-corpus');
 
 function listLanguageDirs(): string[] {
   if (!existsSync(corpusDir)) return [];
-  return readdirSync(corpusDir).filter((entry) => {
+  return readdirSync(corpusDir).filter(entry => {
     const full = join(corpusDir, entry);
     return statSync(full).isDirectory();
   });
@@ -131,7 +125,7 @@ describe('Multilingual Corpus — recall + FPR baseline (Sprint 16 measurement; 
         recall: tp.length > 0 ? blockedTp / tp.length : 0,
         fpr: tn.length > 0 ? blockedTn / tn.length : 0,
         tp: tp.length,
-        tn: tn.length,
+        tn: tn.length
       };
     }
     // Sprint 16: surface but do not gate.

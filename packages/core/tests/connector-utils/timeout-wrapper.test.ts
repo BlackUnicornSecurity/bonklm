@@ -35,7 +35,7 @@ const makeLogger = (): {
   debug: vi.fn(),
   info: vi.fn(),
   warn: vi.fn(),
-  error: vi.fn(),
+  error: vi.fn()
 });
 
 interface Result {
@@ -49,7 +49,7 @@ describe('validateWithTimeoutSecure', () => {
       const result = await validateWithTimeoutSecure<Result>({
         operation: async () => ({ allowed: true, reason: 'ok' }),
         timeoutMs: 100,
-        timeoutSentinel: () => ({ allowed: false, reason: 'timeout' }),
+        timeoutSentinel: () => ({ allowed: false, reason: 'timeout' })
       });
       expect(result.allowed).toBe(true);
       expect(result.reason).toBe('ok');
@@ -60,7 +60,7 @@ describe('validateWithTimeoutSecure', () => {
       await validateWithTimeoutSecure<Result>({
         operation: async () => ({ allowed: true }),
         timeoutMs: 100,
-        timeoutSentinel: sentinelFactory,
+        timeoutSentinel: sentinelFactory
       });
       expect(sentinelFactory).not.toHaveBeenCalled();
     });
@@ -70,10 +70,13 @@ describe('validateWithTimeoutSecure', () => {
     it('resolves to the sentinel when operation exceeds budget', async () => {
       const logger = makeLogger();
       const result = await validateWithTimeoutSecure<Result>({
-        operation: () => new Promise(() => { /* never resolves */ }),
+        operation: () =>
+          new Promise(() => {
+            /* never resolves */
+          }),
         timeoutMs: 50,
         timeoutSentinel: () => ({ allowed: false, reason: 'Validation timeout' }),
-        logger,
+        logger
       });
       expect(result.allowed).toBe(false);
       expect(result.reason).toBe('Validation timeout');
@@ -91,7 +94,7 @@ describe('validateWithTimeoutSecure', () => {
       ['null', null],
       ['undefined', undefined],
       ['string', 'fast'],
-      ['object', {}],
+      ['object', {}]
     ];
     for (const [label, value] of badValues) {
       it(`throws TypeError for timeoutMs = ${label}`, async () => {
@@ -99,7 +102,7 @@ describe('validateWithTimeoutSecure', () => {
           validateWithTimeoutSecure<Result>({
             operation: async () => ({ allowed: true }),
             timeoutMs: value as number,
-            timeoutSentinel: () => ({ allowed: false }),
+            timeoutSentinel: () => ({ allowed: false })
           })
         ).rejects.toThrow(TypeError);
       });
@@ -116,12 +119,12 @@ describe('validateWithTimeoutSecure', () => {
           }),
         timeoutMs: 30,
         timeoutSentinel: () => ({ allowed: false, reason: 'timeout' }),
-        logger,
+        logger
       });
       expect(result.allowed).toBe(false);
       expect(result.reason).toBe('timeout');
       // Wait long enough for the rejection to fire and be absorbed.
-      await new Promise((r) => setTimeout(r, 150));
+      await new Promise(r => setTimeout(r, 150));
       // Sprint 30 audit security-MEDIUM closure: rejection logged at warn (not debug).
       expect(logger.warn).toHaveBeenCalledWith(
         '[Guardrails] Validator rejected post-timeout',
@@ -134,12 +137,15 @@ describe('validateWithTimeoutSecure', () => {
     it('returns hardcoded fallback when timeoutSentinel factory throws', async () => {
       const logger = makeLogger();
       const result = await validateWithTimeoutSecure({
-        operation: () => new Promise(() => { /* never */ }),
+        operation: () =>
+          new Promise(() => {
+            /* never */
+          }),
         timeoutMs: 30,
         timeoutSentinel: () => {
           throw new Error('factory-broken');
         },
-        logger,
+        logger
       });
       // Hardcoded fallback is allowed:false / blocked:true / severity CRITICAL
       expect(result.allowed).toBe(false);
@@ -162,10 +168,10 @@ describe('validateWithTimeoutSecure', () => {
           }),
         timeoutMs: 10,
         timeoutSentinel: sentinelFactory,
-        logger: makeLogger(),
+        logger: makeLogger()
       });
       // Wait for the post-timeout rejection to fire.
-      await new Promise((r) => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 100));
       expect(sentinelFactory).toHaveBeenCalledTimes(1);
     });
 
@@ -181,9 +187,9 @@ describe('validateWithTimeoutSecure', () => {
           }),
         timeoutMs: 10,
         timeoutSentinel: sentinelFactory,
-        logger: makeLogger(),
+        logger: makeLogger()
       });
-      await new Promise((r) => setTimeout(r, 100));
+      await new Promise(r => setTimeout(r, 100));
       expect(sentinelFactory).toHaveBeenCalledTimes(1);
     });
   });
@@ -194,16 +200,13 @@ describe('validateWithTimeoutSecure', () => {
       await validateWithTimeoutSecure<Result>({
         operation: () =>
           new Promise<Result>((_, reject) => {
-            setTimeout(
-              () => reject(new Error('evil\x00\x07message\nwith\rcontrol')),
-              30
-            );
+            setTimeout(() => reject(new Error('evil\x00\x07message\nwith\rcontrol')), 30);
           }),
         timeoutMs: 10,
         timeoutSentinel: () => ({ allowed: false }),
-        logger,
+        logger
       });
-      await new Promise((r) => setTimeout(r, 80));
+      await new Promise(r => setTimeout(r, 80));
       const call = logger.warn.mock.calls[0];
       expect(call).toBeDefined();
       const errStr = (call?.[1] as { error?: string })?.error;
@@ -227,9 +230,9 @@ describe('validateWithTimeoutSecure', () => {
           }),
         timeoutMs: 10,
         timeoutSentinel: () => ({ allowed: false }),
-        logger,
+        logger
       });
-      await new Promise((r) => setTimeout(r, 80));
+      await new Promise(r => setTimeout(r, 80));
       const call = logger.warn.mock.calls[0];
       const errStr = (call?.[1] as { error?: string })?.error ?? '';
       expect(errStr.length).toBeLessThanOrEqual(520);
@@ -247,9 +250,9 @@ describe('validateWithTimeoutSecure', () => {
           }),
         timeoutMs: 10,
         timeoutSentinel: () => ({ allowed: false }),
-        logger,
+        logger
       });
-      await new Promise((r) => setTimeout(r, 80));
+      await new Promise(r => setTimeout(r, 80));
       const call = logger.warn.mock.calls[0];
       const errStr = (call?.[1] as { error?: string })?.error;
       expect(errStr).toBe('plain-string-rejection');
@@ -259,9 +262,12 @@ describe('validateWithTimeoutSecure', () => {
   describe('logger is optional', () => {
     it('does not throw when logger is omitted entirely', async () => {
       const result = await validateWithTimeoutSecure<Result>({
-        operation: () => new Promise(() => { /* never */ }),
+        operation: () =>
+          new Promise(() => {
+            /* never */
+          }),
         timeoutMs: 20,
-        timeoutSentinel: () => ({ allowed: false }),
+        timeoutSentinel: () => ({ allowed: false })
       });
       expect(result.allowed).toBe(false);
     });
@@ -272,7 +278,7 @@ describe('validateWithTimeoutSecure', () => {
       const result = await validateWithTimeoutSecure<Result>({
         operation: () => ({ allowed: true }),
         timeoutMs: 50,
-        timeoutSentinel: () => ({ allowed: false }),
+        timeoutSentinel: () => ({ allowed: false })
       });
       expect(result.allowed).toBe(true);
     });

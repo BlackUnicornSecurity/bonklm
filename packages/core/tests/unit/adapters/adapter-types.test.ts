@@ -13,7 +13,7 @@ import {
   GuardrailAdapter,
   AdapterInput,
   AdapterOutput,
-  AdapterConfig,
+  AdapterConfig
 } from '../../../src/adapters/types.js';
 import { PromptInjectionValidator } from '../../../src/validators/prompt-injection.js';
 import { GuardrailEngine } from '../../../src/engine/GuardrailEngine.js';
@@ -28,7 +28,7 @@ class TestAdapter extends BaseAdapter {
     return {
       content: result.allowed ? 'Allowed' : 'Blocked',
       allowed: result.allowed,
-      result,
+      result
     };
   }
 }
@@ -38,7 +38,7 @@ describe('Adapter Types', () => {
     it('should create base adapter', () => {
       const adapter = new TestAdapter({
         name: 'test-adapter',
-        version: '1.0.0',
+        version: '1.0.0'
       });
 
       expect(adapter).toBeDefined();
@@ -51,11 +51,11 @@ describe('Adapter Types', () => {
     it('should initialize with GuardrailEngine', async () => {
       const adapter = new TestAdapter({
         name: 'test-adapter',
-        version: '1.0.0',
+        version: '1.0.0'
       });
 
       const engine = new GuardrailEngine({
-        validators: [new PromptInjectionValidator()],
+        validators: [new PromptInjectionValidator()]
       });
 
       await adapter.initialize({ engine, framework: 'test' });
@@ -69,11 +69,11 @@ describe('Adapter Types', () => {
     it('should validate via adapter', async () => {
       const adapter = new TestAdapter({
         name: 'test-adapter',
-        version: '1.0.0',
+        version: '1.0.0'
       });
 
       const engine = new GuardrailEngine({
-        validators: [new PromptInjectionValidator()],
+        validators: [new PromptInjectionValidator()]
       });
 
       await adapter.initialize({ engine });
@@ -86,11 +86,11 @@ describe('Adapter Types', () => {
     it('should block injections', async () => {
       const adapter = new TestAdapter({
         name: 'test-adapter',
-        version: '1.0.0',
+        version: '1.0.0'
       });
 
       const engine = new GuardrailEngine({
-        validators: [new PromptInjectionValidator()],
+        validators: [new PromptInjectionValidator()]
       });
 
       await adapter.initialize({ engine });
@@ -105,11 +105,11 @@ describe('Adapter Types', () => {
     it('should transform result', async () => {
       const adapter = new TestAdapter({
         name: 'test-adapter',
-        version: '1.0.0',
+        version: '1.0.0'
       });
 
       const engine = new GuardrailEngine({
-        validators: [new PromptInjectionValidator()],
+        validators: [new PromptInjectionValidator()]
       });
 
       await adapter.initialize({ engine });
@@ -128,7 +128,7 @@ describe('Adapter Types', () => {
     it('should error when not initialized', async () => {
       const adapter = new TestAdapter({
         name: 'test-adapter',
-        version: '1.0.0',
+        version: '1.0.0'
       });
 
       await expect(adapter.validate({ content: 'test' })).rejects.toThrow();
@@ -140,13 +140,13 @@ describe('Adapter Types', () => {
       const adapter1 = new TestAdapter({
         name: 'test-adapter',
         version: '1.0.0',
-        enabled: true,
+        enabled: true
       });
 
       const adapter2 = new TestAdapter({
         name: 'test-adapter',
         version: '1.0.0',
-        enabled: false,
+        enabled: false
       });
 
       expect(adapter1.isEnabled()).toBe(true);
@@ -159,7 +159,7 @@ describe('Adapter Types', () => {
       const config: AdapterConfig = {
         name: 'test-adapter',
         version: '1.0.0',
-        enabled: true,
+        enabled: true
       };
 
       const adapter = new TestAdapter(config);
@@ -176,7 +176,7 @@ describe('Adapter Types', () => {
       const builder = new AdapterBuilder(TestAdapter, 'test-adapter', '1.0.0');
 
       const engine = new GuardrailEngine({
-        validators: [new PromptInjectionValidator()],
+        validators: [new PromptInjectionValidator()]
       });
 
       builder.withEngine(engine);
@@ -197,7 +197,7 @@ describe('Adapter Types', () => {
       const builder = createAdapterBuilder(TestAdapter, 'test', '1.0.0');
 
       const engine = new GuardrailEngine({
-        validators: [new PromptInjectionValidator()],
+        validators: [new PromptInjectionValidator()]
       });
 
       builder.withEngine(engine);
@@ -216,7 +216,7 @@ describe('Adapter Types', () => {
       builder.withContext({
         framework: 'express',
         version: '4.x',
-        metadata: { route: '/api/chat' },
+        metadata: { route: '/api/chat' }
       });
 
       const adapter = await builder.build();
@@ -230,7 +230,7 @@ describe('Adapter Types', () => {
       const registry = new AdapterRegistry();
       const adapter = new TestAdapter({
         name: 'test-adapter',
-        version: '1.0.0',
+        version: '1.0.0'
       });
 
       registry.register(adapter);
@@ -247,7 +247,7 @@ describe('Adapter Types', () => {
       const registry = new AdapterRegistry();
       const adapter = new TestAdapter({
         name: 'test-adapter',
-        version: '1.0.0',
+        version: '1.0.0'
       });
 
       registry.register(adapter);
@@ -267,7 +267,7 @@ describe('Adapter Types', () => {
       const registry = new AdapterRegistry();
       const adapter = new TestAdapter({
         name: 'test-adapter',
-        version: '1.0.0',
+        version: '1.0.0'
       });
 
       expect(registry.has('test-adapter')).toBe(false);
@@ -328,7 +328,7 @@ describe('Adapter Types', () => {
     it('should destroy adapter', async () => {
       const adapter = new TestAdapter({
         name: 'test-adapter',
-        version: '1.0.0',
+        version: '1.0.0'
       });
 
       const engine = new GuardrailEngine({ allowEmptyForTesting: true });
@@ -344,7 +344,7 @@ describe('Adapter Types', () => {
   describe('Builder Methods', () => {
     it('should chain builder methods', async () => {
       const engine = new GuardrailEngine({
-        validators: [new PromptInjectionValidator()],
+        validators: [new PromptInjectionValidator()]
       });
 
       const adapter = await new AdapterBuilder(TestAdapter, 'test', '1.0.0')
@@ -365,7 +365,7 @@ describe('Adapter Types', () => {
     it('should handle empty input', async () => {
       const adapter = new TestAdapter({
         name: 'test-adapter',
-        version: '1.0.0',
+        version: '1.0.0'
       });
 
       const engine = new GuardrailEngine({ allowEmptyForTesting: true });
@@ -378,7 +378,7 @@ describe('Adapter Types', () => {
     it('should handle metadata in input', async () => {
       const adapter = new TestAdapter({
         name: 'test-adapter',
-        version: '1.0.0',
+        version: '1.0.0'
       });
 
       const engine = new GuardrailEngine({ allowEmptyForTesting: true });
@@ -386,7 +386,7 @@ describe('Adapter Types', () => {
 
       const input: AdapterInput<{ userId: string }> = {
         content: 'Hello',
-        metadata: { userId: '123' },
+        metadata: { userId: '123' }
       };
 
       const result = await adapter.validate(input);

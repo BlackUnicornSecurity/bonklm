@@ -194,18 +194,18 @@ export async function validateWithTimeoutSecure<R extends TimeoutSentinelShape>(
       {
         category: 'timeout',
         severity: Severity.CRITICAL,
-        description: 'Validation timeout (fallback sentinel — caller-supplied factory threw)',
-      },
+        description: 'Validation timeout (fallback sentinel — caller-supplied factory threw)'
+      }
     ],
     timestamp: Date.now(),
-    reason: 'Validation timeout',
+    reason: 'Validation timeout'
   } as unknown as R;
   const safeSentinel = (): R => {
     try {
       return timeoutSentinel();
     } catch (err) {
       logger?.error?.('[Guardrails] timeoutSentinel factory threw — using hardcoded fallback', {
-        error: sanitizeErrorMessage(err),
+        error: sanitizeErrorMessage(err)
       });
       return HARDCODED_FALLBACK;
     }
@@ -231,7 +231,7 @@ export async function validateWithTimeoutSecure<R extends TimeoutSentinelShape>(
     return memoizedSentinel;
   };
   // Lazy sentinel construction — only built if the timeout fires.
-  const timeoutPromise = new Promise<R>((resolve) => {
+  const timeoutPromise = new Promise<R>(resolve => {
     timeoutId = setTimeout(() => {
       logger?.error?.('[Guardrails] Validation timeout');
       resolve(getSentinel());
@@ -250,7 +250,7 @@ export async function validateWithTimeoutSecure<R extends TimeoutSentinelShape>(
     .then(operation)
     .catch((err: unknown) => {
       logger?.warn?.('[Guardrails] Validator rejected post-timeout', {
-        error: sanitizeErrorMessage(err),
+        error: sanitizeErrorMessage(err)
       });
       return getSentinel();
     });

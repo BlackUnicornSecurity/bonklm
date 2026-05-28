@@ -2,16 +2,14 @@
 
 > **Last updated:** 2026-05-25 · **Package version:** `1.0.0-rc.3`
 
-BonkLM does not set HTTP response headers — header policy belongs to
-your web framework. This guide shows the recommended `helmet`
-configuration for Express / Fastify in front of the guardrails
-middleware, plus how to use `XSSGuard` for content-level XSS detection
-when validating LLM input or output.
+BonkLM does not set HTTP response headers — header policy belongs to your web framework. This guide
+shows the recommended `helmet` configuration for Express / Fastify in front of the guardrails
+middleware, plus how to use `XSSGuard` for content-level XSS detection when validating LLM input or
+output.
 
-Server-level headers (CSP, HSTS, X-Frame-Options, etc.) and content-
-level XSS detection are complementary: headers protect the browser
-context; `XSSGuard` protects the LLM context (e.g., refusing to send
-a payload with a script tag through a model that will echo it back).
+Server-level headers (CSP, HSTS, X-Frame-Options, etc.) and content- level XSS detection are
+complementary: headers protect the browser context; `XSSGuard` protects the LLM context (e.g.,
+refusing to send a payload with a script tag through a model that will echo it back).
 
 ---
 
@@ -19,9 +17,8 @@ a payload with a script tag through a model that will echo it back).
 
 ### Content Security Policy (CSP)
 
-Restricts which resources the browser may load. For pure API endpoints
-that never serve HTML, the script / style directives can be locked
-down to `'none'`.
+Restricts which resources the browser may load. For pure API endpoints that never serve HTML, the
+script / style directives can be locked down to `'none'`.
 
 ```typescript
 import express from 'express';
@@ -42,23 +39,23 @@ app.use(
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
-      frameAncestors: ["'none'"],
-    },
+      frameAncestors: ["'none'"]
+    }
   })
 );
 ```
 
 ### HTTP Strict Transport Security (HSTS)
 
-Forces HTTPS for the configured `maxAge`. Set `preload: true` only
-after submitting your domain to the HSTS preload list.
+Forces HTTPS for the configured `maxAge`. Set `preload: true` only after submitting your domain to
+the HSTS preload list.
 
 ```typescript
 app.use(
   helmet.hsts({
     maxAge: 31_536_000, // 1 year
     includeSubDomains: true,
-    preload: true,
+    preload: true
   })
 );
 ```
@@ -77,8 +74,7 @@ app.use(helmet.noSniff());
 
 ### X-XSS-Protection (legacy)
 
-Modern browsers ignore this and use CSP — keep it set for older
-clients and crawlers.
+Modern browsers ignore this and use CSP — keep it set for older clients and crawlers.
 
 ```typescript
 app.use(helmet.xssFilter());
@@ -104,13 +100,13 @@ app.use(
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'"],
         styleSrc: ["'self'"],
-        imgSrc: ["'self'", 'data:', 'https:'],
-      },
+        imgSrc: ["'self'", 'data:', 'https:']
+      }
     },
     hsts: { maxAge: 31_536_000, includeSubDomains: true, preload: true },
     noSniff: true,
     xssFilter: true,
-    frameguard: { action: 'deny' },
+    frameguard: { action: 'deny' }
   })
 );
 
@@ -130,7 +126,7 @@ app.use(
   '/api/ai',
   createGuardrailsMiddleware({
     validators: [new PromptInjectionValidator()],
-    productionMode: process.env.NODE_ENV === 'production',
+    productionMode: process.env.NODE_ENV === 'production'
   })
 );
 ```
@@ -156,7 +152,7 @@ app.use(
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
-    maxAge: 600,
+    maxAge: 600
   })
 );
 ```
@@ -173,14 +169,14 @@ await fastify.register(fastifyHelmet, {
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
-      objectSrc: ["'none'"],
-    },
+      objectSrc: ["'none'"]
+    }
   },
   hsts: {
     maxAge: 31_536_000,
     includeSubDomains: true,
-    preload: true,
-  },
+    preload: true
+  }
 });
 ```
 
@@ -190,8 +186,7 @@ Register before `@blackunicorn/bonklm-fastify`.
 
 ## API-response headers
 
-For JSON-only endpoints, lock down content-type sniffing and disable
-caching of sensitive payloads:
+For JSON-only endpoints, lock down content-type sniffing and disable caching of sensitive payloads:
 
 ```typescript
 app.use('/api', (_req, res, next) => {
@@ -201,24 +196,23 @@ app.use('/api', (_req, res, next) => {
 });
 ```
 
-`X-Requested-With: XMLHttpRequest` is a deprecated marker — modern
-clients use CORS preflight; you do not need to set it on responses.
+`X-Requested-With: XMLHttpRequest` is a deprecated marker — modern clients use CORS preflight; you
+do not need to set it on responses.
 
 ---
 
 ## Content-level XSS — `XSSGuard`
 
-Browser headers protect the rendering surface. If your LLM is going to
-echo user input back into a context that may render as HTML (chat
-transcript, support ticket, etc.), pair the headers with content-level
-detection:
+Browser headers protect the rendering surface. If your LLM is going to echo user input back into a
+context that may render as HTML (chat transcript, support ticket, etc.), pair the headers with
+content-level detection:
 
 ```typescript
 import { XSSGuard, GuardrailEngine, PromptInjectionValidator } from '@blackunicorn/bonklm';
 
 const engine = new GuardrailEngine({
   validators: [new PromptInjectionValidator()],
-  guards: [new XSSGuard()],
+  guards: [new XSSGuard()]
 });
 
 const result = await engine.validate(userInput);
@@ -227,19 +221,17 @@ if (!result.allowed) {
 }
 ```
 
-`XSSGuard` (class) and `checkXSS` / `detectXSS` (function-form
-helpers) all ship from the root barrel. See
-[`packages/core/src/guards/xss-safety.ts`](../../../packages/core/src/guards/xss-safety.ts)
-for the configuration interface.
+`XSSGuard` (class) and `checkXSS` / `detectXSS` (function-form helpers) all ship from the root
+barrel. See
+[`packages/core/src/guards/xss-safety.ts`](../../../packages/core/src/guards/xss-safety.ts) for the
+configuration interface.
 
 ---
 
 ## Headers checklist
 
-- [ ] `Content-Security-Policy` configured (lock down `scriptSrc` for
-      API routes)
-- [ ] `Strict-Transport-Security` (HSTS) enabled with a 1-year
-      `max-age`
+- [ ] `Content-Security-Policy` configured (lock down `scriptSrc` for API routes)
+- [ ] `Strict-Transport-Security` (HSTS) enabled with a 1-year `max-age`
 - [ ] `X-Frame-Options: DENY` or `SAMEORIGIN`
 - [ ] `X-Content-Type-Options: nosniff`
 - [ ] `X-XSS-Protection: 1; mode=block` (legacy clients)
@@ -247,8 +239,7 @@ for the configuration interface.
 - [ ] `Permissions-Policy` set to deny unused powerful APIs
 - [ ] `Cache-Control: no-store, no-cache` on sensitive endpoints
 - [ ] CORS allowlist configured (no wildcard `*` in production)
-- [ ] `XSSGuard` wired into the engine when LLM output is rendered
-      as HTML downstream
+- [ ] `XSSGuard` wired into the engine when LLM output is rendered as HTML downstream
 
 ---
 

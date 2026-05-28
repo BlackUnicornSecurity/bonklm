@@ -12,7 +12,11 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "workspacePolicy": "tier-b-publishable",
   "publishJustification": "Consumed by downstream connector authors to lint their own edge-reachable code with the same rules BonkLM applies internally. Required so consumer monorepos can opt into the no-bare-process.env enforcement that defines edge-portability.",
   "scripts": {
@@ -22,7 +26,13 @@
     "clean": "rm -rf dist",
     "prepublishOnly": "git diff --quiet HEAD -- . || (echo 'prepublishOnly: dirty working tree in plugin dir — commit or stash before publish' && exit 1) && npm run clean && npm run build && npm test"
   },
-  "keywords": ["eslint", "eslint-plugin", "edge", "workerd", "bonklm"],
+  "keywords": [
+    "eslint",
+    "eslint-plugin",
+    "edge",
+    "workerd",
+    "bonklm"
+  ],
   "author": "Black Unicorn <info@blackunicorn.tech>",
   "license": "MIT",
   "peerDependencies": {

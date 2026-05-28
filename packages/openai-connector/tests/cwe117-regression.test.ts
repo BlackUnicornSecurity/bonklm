@@ -35,9 +35,7 @@ describe('openai-connector — Sprint 43 CWE-117 sanitization contract', () => {
 
   it('sanitizes a validator-extracted reason for the input-blocked path', () => {
     const reason = 'matched "ignore_previous"\nINJECTED:CRITICAL bypass';
-    expect(sanitizeMeta(reason)).toBe(
-      'matched "ignore_previous"\\nINJECTED:CRITICAL bypass'
-    );
+    expect(sanitizeMeta(reason)).toBe('matched "ignore_previous"\\nINJECTED:CRITICAL bypass');
   });
 
   it('sanitizes a validator-extracted reason for the output-filteredContent path', () => {
@@ -47,8 +45,6 @@ describe('openai-connector — Sprint 43 CWE-117 sanitization contract', () => {
     const reason = 'unsafe pattern matched\nINJECTED:fake_filtered=false';
     const filtered = `[Content filtered by guardrails: ${sanitizeMeta(reason)}]`;
     expect(filtered).not.toContain('\n');
-    expect(filtered).toBe(
-      '[Content filtered by guardrails: unsafe pattern matched\\nINJECTED:fake_filtered=false]'
-    );
+    expect(filtered).toBe('[Content filtered by guardrails: unsafe pattern matched\\nINJECTED:fake_filtered=false]');
   });
 });

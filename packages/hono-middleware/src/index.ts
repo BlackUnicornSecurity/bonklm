@@ -21,5 +21,5 @@ export type {
   HonoGuardrailsErrorResponse,
   HonoGuardrailsOptions,
   HonoMiddlewareHandler,
-  HonoNext,
+  HonoNext
 } from './types.js';

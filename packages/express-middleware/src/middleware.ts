@@ -39,14 +39,14 @@ import {
   Severity,
   updateSessionState,
   validateWithTimeoutSecure,
-  Validators,
+  Validators
 } from '@blackunicorn/bonklm';
 import type {
   BodyExtractor,
   ErrorHandler,
   GuardrailsMiddlewareConfig,
   GuardrailsRequest,
-  PathMatcher,
+  PathMatcher
 } from './types.js';
 
 // DEV-002: Use proper logger instead of raw console
@@ -96,28 +96,20 @@ function sanitizeBodyContent(content: string): string {
 }
 
 // SEC-007: Production mode error handler (generic, no info leakage)
-const PRODUCTION_ERROR_HANDLER: ErrorHandler = (
-  _result: GuardrailResult,
-  req: Request,
-  res: Response
-): void => {
+const PRODUCTION_ERROR_HANDLER: ErrorHandler = (_result: GuardrailResult, req: Request, res: Response): void => {
   res.status(400).json({
     error: 'Request blocked',
-    request_id: (req as any).id || req.ip,
+    request_id: (req as any).id || req.ip
   });
 };
 
 // Development mode error handler (verbose)
-const DEVELOPMENT_ERROR_HANDLER: ErrorHandler = (
-  result: GuardrailResult,
-  _req: Request,
-  res: Response
-): void => {
+const DEVELOPMENT_ERROR_HANDLER: ErrorHandler = (result: GuardrailResult, _req: Request, res: Response): void => {
   res.status(400).json({
     error: 'Request blocked by guardrails',
     reason: result.reason,
     severity: result.severity,
-    risk_level: result.risk_level,
+    risk_level: result.risk_level
   });
 };
 
@@ -168,7 +160,10 @@ function addSecurityHeaders(res: Response, logger?: Logger): void {
   // Content-Security-Policy: Restrict resource sources
   // Default policy allows same-origin scripts and styles
   if (!res.getHeader('Content-Security-Policy')) {
-    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'");
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'"
+    );
   }
 
   // X-Frame-Options: Prevent clickjacking
@@ -232,7 +227,7 @@ const EXPRESS_CONFIG_SCHEMA = new Schema({
   attackLogger: Validators.optional(Validators.attackLoggerInstance),
   // S013-005: Session tracking options
   enableSessionTracking: Validators.optional(Validators.boolean),
-  sessionIdExtractor: Validators.optional(Validators.function),
+  sessionIdExtractor: Validators.optional(Validators.function)
 });
 
 /**
@@ -288,20 +283,20 @@ export function createGuardrailsMiddleware(
     bodyExtractor = DEFAULT_BODY_EXTRACTOR,
     attackLogger, // S013-004: Optional AttackLogger instance
     enableSessionTracking = false, // S013-005: Session tracking disabled by default
-    sessionIdExtractor, // S013-005: Optional custom session ID extractor
+    sessionIdExtractor // S013-005: Optional custom session ID extractor
   } = config;
 
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   // S013-004: Register AttackLogger intercept callback if provided
   if (attackLogger) {
     // The AttackLogger type is defined in types.ts and used for config validation
     // We need to call getInterceptCallback() to register with the engine
-    engine.onIntercept((attackLogger).getInterceptCallback());
+    engine.onIntercept(attackLogger.getInterceptCallback());
   }
 
   // S013-005: Default session ID extractor
@@ -311,7 +306,7 @@ export function createGuardrailsMiddleware(
     if ((req as any).sessionID) return (req as any).sessionID;
     if ((req as any).sessionId) return (req as any).sessionId;
     // Fall back to IP-based session (not ideal for production with proxies)
-    return `ip-${(req.ip || req.socket.remoteAddress || 'unknown')}`;
+    return `ip-${req.ip || req.socket.remoteAddress || 'unknown'}`;
   };
 
   const getSessionId = sessionIdExtractor || defaultSessionIdExtractor;
@@ -325,13 +320,13 @@ export function createGuardrailsMiddleware(
     const normalizedPath = normalize(path).replace(/\\/g, '/');
 
     // Check exclusions first
-    if (excludeMatchers.some((matcher) => matcher(normalizedPath))) {
+    if (excludeMatchers.some(matcher => matcher(normalizedPath))) {
       return false;
     }
 
     // Check inclusions
     if (pathMatchers.length === 0) return true;
-    return pathMatchers.some((matcher) => matcher(normalizedPath));
+    return pathMatchers.some(matcher => matcher(normalizedPath));
   };
 
   // SEC-008: Create timeout wrapper for validation.
@@ -339,10 +334,7 @@ export function createGuardrailsMiddleware(
   // Sprint 30: routes through the canonical `validateWithTimeoutSecure`
   // primitive from core/connector-utils. Replaces the broken
   // AbortController pattern (signal never propagated to engine.validate).
-  const validateWithTimeout = async (
-    content: string,
-    context?: string
-  ): Promise<GuardrailResult[]> => {
+  const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult[]> => {
     // DEV-001: Use correct API signature (string context, not object)
     const result = await validateWithTimeoutSecure<GuardrailResult>({
       operation: async () => {
@@ -358,22 +350,17 @@ export function createGuardrailsMiddleware(
         risk_score: 100,
         findings: [],
         timestamp: Date.now(),
-        reason: 'Validation timeout',
+        reason: 'Validation timeout'
       }),
-      logger,
+      logger
     });
     return [result];
   };
 
   // Select error handler based on production mode (SEC-007)
-  const errorHandler =
-    onError ?? (productionMode ? PRODUCTION_ERROR_HANDLER : DEVELOPMENT_ERROR_HANDLER);
+  const errorHandler = onError ?? (productionMode ? PRODUCTION_ERROR_HANDLER : DEVELOPMENT_ERROR_HANDLER);
 
-  return function guardrailsMiddleware(
-    req: GuardrailsRequest,
-    res: Response,
-    next: NextFunction
-  ): void {
+  return function guardrailsMiddleware(req: GuardrailsRequest, res: Response, next: NextFunction): void {
     // S013-007: Add security headers
     addSecurityHeaders(res, logger);
 
@@ -396,16 +383,14 @@ export function createGuardrailsMiddleware(
           const extractedContent = bodyExtractor(req);
 
           // DEV-006: Normalize to string before validation
-          const content = Array.isArray(extractedContent)
-            ? extractedContent.join(' ')
-            : extractedContent;
+          const content = Array.isArray(extractedContent) ? extractedContent.join(' ') : extractedContent;
 
           // S013-008: Check content byte size (UTF-8) instead of character length
           const contentByteLength = Buffer.byteLength(content, 'utf8');
           if (contentByteLength > maxContentLength) {
             logger.warn('[Guardrails] Content too large', {
               byteLength: contentByteLength,
-              max: maxContentLength,
+              max: maxContentLength
             });
             return errorHandler(
               {
@@ -416,7 +401,7 @@ export function createGuardrailsMiddleware(
                 risk_score: 50,
                 findings: [],
                 timestamp: Date.now(),
-                reason: 'Content too large',
+                reason: 'Content too large'
               },
               req,
               res
@@ -430,7 +415,7 @@ export function createGuardrailsMiddleware(
             if (escalationCheck.escalated) {
               logger.warn('[Guardrails] Session escalated, blocking request', {
                 sessionId,
-                reason: escalationCheck.reason,
+                reason: escalationCheck.reason
               });
               return errorHandler(
                 {
@@ -441,7 +426,7 @@ export function createGuardrailsMiddleware(
                   risk_score: escalationCheck.riskScore,
                   findings: [],
                   timestamp: Date.now(),
-                  reason: `Session escalated: ${escalationCheck.reason}`,
+                  reason: `Session escalated: ${escalationCheck.reason}`
                 },
                 req,
                 res
@@ -463,9 +448,11 @@ export function createGuardrailsMiddleware(
               for (const finding of result.findings || []) {
                 findings.push({
                   category: finding.category,
-                  weight: finding.weight ?? (finding.severity === Severity.CRITICAL ? 5 : finding.severity === Severity.BLOCKED ? 3 : 1),
+                  weight:
+                    finding.weight ??
+                    (finding.severity === Severity.CRITICAL ? 5 : finding.severity === Severity.BLOCKED ? 3 : 1),
                   pattern_name: finding.pattern_name,
-                  timestamp: result.timestamp,
+                  timestamp: result.timestamp
                 });
               }
             }
@@ -474,7 +461,7 @@ export function createGuardrailsMiddleware(
               if (sessionResult.shouldEscalate) {
                 logger.warn('[Guardrails] Session escalated after validation', {
                   sessionId,
-                  reason: sessionResult.reason,
+                  reason: sessionResult.reason
                 });
                 // Escalate the risk score based on session state
                 const escalatedResult = {
@@ -483,20 +470,20 @@ export function createGuardrailsMiddleware(
                   severity: Severity.CRITICAL,
                   risk_level: RiskLevel.HIGH,
                   risk_score: sessionResult.riskScore,
-                  findings: results.flatMap((r) => r.findings || []),
+                  findings: results.flatMap(r => r.findings || []),
                   timestamp: Date.now(),
-                  reason: `Session escalation: ${sessionResult.reason}`,
+                  reason: `Session escalation: ${sessionResult.reason}`
                 };
                 return errorHandler(escalatedResult, req, res);
               }
             }
           }
 
-          const blocked = results.find((r) => !r.allowed);
+          const blocked = results.find(r => !r.allowed);
           if (blocked) {
             logger.warn('[Guardrails] Request blocked', {
               reason: blocked.reason,
-              path: req.path,
+              path: req.path
             });
             return errorHandler(blocked, req, res);
           }
@@ -518,7 +505,7 @@ export function createGuardrailsMiddleware(
               risk_score: 100,
               findings: [],
               timestamp: Date.now(),
-              reason: 'Validation error',
+              reason: 'Validation error'
             },
             req,
             res
@@ -553,12 +540,12 @@ export function createGuardrailsMiddleware(
 
         // Validate response before sending
         validateWithTimeout(content, 'output')
-          .then((results) => {
-            const blocked = results.find((r) => !r.allowed);
+          .then(results => {
+            const blocked = results.find(r => !r.allowed);
             if (blocked) {
               logger.warn('[Guardrails] Response blocked', {
                 reason: blocked.reason,
-                path: req.path,
+                path: req.path
               });
               // SEC-007: Don't leak original content in production
               if (productionMode) {
@@ -566,13 +553,13 @@ export function createGuardrailsMiddleware(
               }
               return res.status(500).json({
                 error: 'Response filtered by guardrails',
-                reason: blocked.reason,
+                reason: blocked.reason
               });
             }
             // Content is safe, send it
             return originalSend.call(this, data);
           })
-          .catch((error) => {
+          .catch(error => {
             logger.error('[Guardrails] Response validation error', { error });
             // Fail-closed: don't send response if validation fails
             return res.status(500).json({ error: 'Validation error' });

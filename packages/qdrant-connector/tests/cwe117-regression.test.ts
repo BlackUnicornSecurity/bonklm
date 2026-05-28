@@ -26,15 +26,11 @@ describe('qdrant-connector — Sprint 43 CWE-117 sanitization contract', () => {
 
   it('sanitizes validator-extracted reason for point-blocked + upsert-blocked', () => {
     const reason = 'matched payload-pattern\nINJECTED:fake_status=ok';
-    expect(sanitizeMeta(reason)).toBe(
-      'matched payload-pattern\\nINJECTED:fake_status=ok'
-    );
+    expect(sanitizeMeta(reason)).toBe('matched payload-pattern\\nINJECTED:fake_status=ok');
   });
 
   it('sanitizes caller-supplied point.id field', () => {
     const pointId = 'point-id-1234\nINJECTED:fake_audit=PASS';
-    expect(sanitizeMeta(pointId)).toBe(
-      'point-id-1234\\nINJECTED:fake_audit=PASS'
-    );
+    expect(sanitizeMeta(pointId)).toBe('point-id-1234\\nINJECTED:fake_audit=PASS');
   });
 });

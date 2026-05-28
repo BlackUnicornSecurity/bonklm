@@ -12,9 +12,7 @@ describe('plugin exports', () => {
   it('exposes the no-bare-process-env rule', () => {
     expect(plugin.rules).toBeDefined();
     expect(plugin.rules!['no-bare-process-env']).toBeDefined();
-    expect(plugin.rules!['no-bare-process-env'].meta?.docs?.description).toMatch(
-      /process\.env/
-    );
+    expect(plugin.rules!['no-bare-process-env'].meta?.docs?.description).toMatch(/process\.env/);
   });
 
   it('exposes a recommended config with uniform error severity', () => {

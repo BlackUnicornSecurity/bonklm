@@ -27,17 +27,17 @@ describe('connector command group', () => {
   });
 
   it('should have add subcommand', () => {
-    const addCmd = connectorCommand.commands.find((cmd) => cmd.name() === 'add');
+    const addCmd = connectorCommand.commands.find(cmd => cmd.name() === 'add');
     expect(addCmd).toBeDefined();
   });
 
   it('should have remove subcommand', () => {
-    const removeCmd = connectorCommand.commands.find((cmd) => cmd.name() === 'remove');
+    const removeCmd = connectorCommand.commands.find(cmd => cmd.name() === 'remove');
     expect(removeCmd).toBeDefined();
   });
 
   it('should have test subcommand', () => {
-    const testCmd = connectorCommand.commands.find((cmd) => cmd.name() === 'test');
+    const testCmd = connectorCommand.commands.find(cmd => cmd.name() === 'test');
     expect(testCmd).toBeDefined();
   });
 });

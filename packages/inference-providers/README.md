@@ -1,9 +1,8 @@
 # @blackunicorn/bonklm-inference-providers
 
-BonkLM wrappers for **Groq + Cerebras + Together** inference providers.
-All three ship OpenAI-compatible SDKs (`chat.completions.create`), so
-this package exposes one shared internal `wrapOpenAICompatibleClient`
-helper plus three thin per-provider entry points.
+BonkLM wrappers for **Groq + Cerebras + Together** inference providers. All three ship
+OpenAI-compatible SDKs (`chat.completions.create`), so this package exposes one shared internal
+`wrapOpenAICompatibleClient` helper plus three thin per-provider entry points.
 
 ## Install
 
@@ -20,10 +19,14 @@ pnpm add together-ai
 ```ts
 import Groq from 'groq-sdk';
 import { wrapGroq } from '@blackunicorn/bonklm-inference-providers';
-import { GuardrailEngine, PromptInjectionValidator, CodeInjectionValidator } from '@blackunicorn/bonklm';
+import {
+  GuardrailEngine,
+  PromptInjectionValidator,
+  CodeInjectionValidator
+} from '@blackunicorn/bonklm';
 
 const engine = new GuardrailEngine({
-  validators: [new PromptInjectionValidator(), new CodeInjectionValidator()],
+  validators: [new PromptInjectionValidator(), new CodeInjectionValidator()]
 });
 
 const groq = wrapGroq(new Groq({ apiKey: process.env.GROQ_API_KEY }), { engine });
@@ -32,7 +35,7 @@ const groq = wrapGroq(new Groq({ apiKey: process.env.GROQ_API_KEY }), { engine }
 // AND post-call on assistant content.
 const response = await groq.chat.completions.create({
   model: 'llama-3.3-70b-versatile',
-  messages: [{ role: 'user', content: 'Hello' }],
+  messages: [{ role: 'user', content: 'Hello' }]
 });
 ```
 
@@ -40,15 +43,14 @@ const response = await groq.chat.completions.create({
 
 ## Streaming
 
-Streaming responses are wrapped — `delta.content` is buffered and
-validated every ~500 characters. BLOCK throws
-`InferenceProviderBlockedError` mid-stream.
+Streaming responses are wrapped — `delta.content` is buffered and validated every ~500 characters.
+BLOCK throws `InferenceProviderBlockedError` mid-stream.
 
 ```ts
 const stream = await groq.chat.completions.create({
   model: 'llama-3.3-70b-versatile',
   messages: [{ role: 'user', content: 'Hi' }],
-  stream: true,
+  stream: true
 });
 for await (const chunk of stream) {
   process.stdout.write(chunk.choices[0]?.delta?.content ?? '');
@@ -60,13 +62,13 @@ for await (const chunk of stream) {
 ```ts
 const groq = wrapGroq(new Groq({ apiKey }), {
   engine,
-  onBlock: (event) => {
+  onBlock: event => {
     console.warn(`[${event.provider}] ${event.phase} BLOCKED: ${event.reason}`);
   },
-  onError: (err) => {
+  onError: err => {
     console.error('[bonklm] inference validator error:', err);
   },
-  skipOutputValidation: false, // default — output IS validated
+  skipOutputValidation: false // default — output IS validated
 });
 ```
 

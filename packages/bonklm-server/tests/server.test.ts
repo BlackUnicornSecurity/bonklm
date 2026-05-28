@@ -17,18 +17,13 @@
  * network listener required for unit tests.
  */
 import { describe, it, expect } from 'vitest';
-import {
-  PromptInjectionValidator,
-  RiskLevel,
-  Severity,
-  type GuardrailResult,
-} from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, RiskLevel, Severity, type GuardrailResult } from '@blackunicorn/bonklm';
 import {
   createBonklmGuardrailServer,
   signHmac,
   verifyHmacSignature,
   HMAC_SIGNATURE_HEADER,
-  HMAC_TIMESTAMP_HEADER,
+  HMAC_TIMESTAMP_HEADER
 } from '../src/index.js';
 
 const HMAC_SECRET = 'a'.repeat(64); // 64-char test secret (>= 32 byte min).
@@ -38,7 +33,7 @@ async function makeServer(opts?: { productionMode?: boolean }) {
   return createBonklmGuardrailServer({
     validators: [new PromptInjectionValidator()],
     hmacSecret: HMAC_SECRET,
-    productionMode: opts?.productionMode ?? false,
+    productionMode: opts?.productionMode ?? false
   });
 }
 
@@ -48,7 +43,7 @@ function signedHeaders(rawBody: string) {
   return {
     [HMAC_SIGNATURE_HEADER]: sig,
     [HMAC_TIMESTAMP_HEADER]: ts,
-    'content-type': 'application/json',
+    'content-type': 'application/json'
   };
 }
 
@@ -60,7 +55,7 @@ describe('Story 2.13 — bonklm-server', () => {
         method: 'POST',
         url: '/litellm',
         headers: { 'content-type': 'application/json' },
-        payload: JSON.stringify({ data: { messages: [] } }),
+        payload: JSON.stringify({ data: { messages: [] } })
       });
       expect(res.statusCode).toBe(401);
       await server.close();
@@ -74,9 +69,9 @@ describe('Story 2.13 — bonklm-server', () => {
         url: '/litellm',
         headers: {
           [HMAC_SIGNATURE_HEADER]: signHmac(body, Date.now(), HMAC_SECRET),
-          'content-type': 'application/json',
+          'content-type': 'application/json'
         },
-        payload: body,
+        payload: body
       });
       expect(res.statusCode).toBe(401);
       await server.close();
@@ -91,9 +86,9 @@ describe('Story 2.13 — bonklm-server', () => {
         headers: {
           [HMAC_SIGNATURE_HEADER]: 'not-a-valid-sig',
           [HMAC_TIMESTAMP_HEADER]: String(Date.now()),
-          'content-type': 'application/json',
+          'content-type': 'application/json'
         },
-        payload: body,
+        payload: body
       });
       expect(res.statusCode).toBe(401);
       await server.close();
@@ -109,9 +104,9 @@ describe('Story 2.13 — bonklm-server', () => {
         headers: {
           [HMAC_SIGNATURE_HEADER]: wrongSig,
           [HMAC_TIMESTAMP_HEADER]: String(Date.now()),
-          'content-type': 'application/json',
+          'content-type': 'application/json'
         },
-        payload: body,
+        payload: body
       });
       expect(res.statusCode).toBe(401);
       await server.close();
@@ -128,9 +123,9 @@ describe('Story 2.13 — bonklm-server', () => {
         headers: {
           [HMAC_SIGNATURE_HEADER]: signHmac(body, staleTs, HMAC_SECRET),
           [HMAC_TIMESTAMP_HEADER]: staleTs,
-          'content-type': 'application/json',
+          'content-type': 'application/json'
         },
-        payload: body,
+        payload: body
       });
       expect(res.statusCode).toBe(408);
       await server.close();
@@ -139,13 +134,13 @@ describe('Story 2.13 — bonklm-server', () => {
     it('accepts a valid signature within the replay window', async () => {
       const server = await makeServer();
       const body = JSON.stringify({
-        data: { messages: [{ role: 'user', content: 'hello world' }] },
+        data: { messages: [{ role: 'user', content: 'hello world' }] }
       });
       const res = await server.inject({
         method: 'POST',
         url: '/litellm',
         headers: signedHeaders(body),
-        payload: body,
+        payload: body
       });
       expect(res.statusCode).toBe(200);
       const decision = res.json() as { allowed: boolean };
@@ -160,15 +155,15 @@ describe('Story 2.13 — bonklm-server', () => {
       const body = JSON.stringify({
         data: {
           messages: [{ role: 'user', content: 'What is the weather today?' }],
-          model: 'gpt-4',
+          model: 'gpt-4'
         },
-        call_type: 'completion',
+        call_type: 'completion'
       });
       const res = await server.inject({
         method: 'POST',
         url: '/litellm',
         headers: signedHeaders(body),
-        payload: body,
+        payload: body
       });
       expect(res.statusCode).toBe(200);
       const decision = res.json() as { allowed: boolean; surface: string };
@@ -180,13 +175,13 @@ describe('Story 2.13 — bonklm-server', () => {
     it('blocks LiteLLM payload with prompt-injection attack', async () => {
       const server = await makeServer();
       const body = JSON.stringify({
-        data: { messages: [{ role: 'user', content: ATTACK_PROMPT }] },
+        data: { messages: [{ role: 'user', content: ATTACK_PROMPT }] }
       });
       const res = await server.inject({
         method: 'POST',
         url: '/litellm',
         headers: signedHeaders(body),
-        payload: body,
+        payload: body
       });
       expect(res.statusCode).toBe(200);
       const decision = res.json() as { allowed: boolean; blocked: boolean };
@@ -199,14 +194,14 @@ describe('Story 2.13 — bonklm-server', () => {
       const server = await makeServer();
       const body = JSON.stringify({
         request_data: {
-          messages: [{ role: 'user', content: ATTACK_PROMPT }],
-        },
+          messages: [{ role: 'user', content: ATTACK_PROMPT }]
+        }
       });
       const res = await server.inject({
         method: 'POST',
         url: '/litellm',
         headers: signedHeaders(body),
-        payload: body,
+        payload: body
       });
       const decision = res.json() as { blocked: boolean };
       expect(decision.blocked).toBe(true);
@@ -221,15 +216,15 @@ describe('Story 2.13 — bonklm-server', () => {
         request: {
           json: {
             messages: [{ role: 'user', content: 'benign question' }],
-            model: 'gpt-4',
-          },
-        },
+            model: 'gpt-4'
+          }
+        }
       });
       const res = await server.inject({
         method: 'POST',
         url: '/portkey',
         headers: signedHeaders(body),
-        payload: body,
+        payload: body
       });
       const decision = res.json() as { allowed: boolean; surface: string };
       expect(decision.allowed).toBe(true);
@@ -241,14 +236,14 @@ describe('Story 2.13 — bonklm-server', () => {
       const server = await makeServer();
       const body = JSON.stringify({
         request: {
-          json: { messages: [{ role: 'user', content: ATTACK_PROMPT }] },
-        },
+          json: { messages: [{ role: 'user', content: ATTACK_PROMPT }] }
+        }
       });
       const res = await server.inject({
         method: 'POST',
         url: '/portkey',
         headers: signedHeaders(body),
-        payload: body,
+        payload: body
       });
       const decision = res.json() as { blocked: boolean };
       expect(decision.blocked).toBe(true);
@@ -258,13 +253,13 @@ describe('Story 2.13 — bonklm-server', () => {
     it('handles flat top-level Portkey envelope', async () => {
       const server = await makeServer();
       const body = JSON.stringify({
-        messages: [{ role: 'user', content: ATTACK_PROMPT }],
+        messages: [{ role: 'user', content: ATTACK_PROMPT }]
       });
       const res = await server.inject({
         method: 'POST',
         url: '/portkey',
         headers: signedHeaders(body),
-        payload: body,
+        payload: body
       });
       const decision = res.json() as { blocked: boolean };
       expect(decision.blocked).toBe(true);
@@ -277,13 +272,13 @@ describe('Story 2.13 — bonklm-server', () => {
       const server = await makeServer();
       const body = JSON.stringify({
         model: 'gpt-4',
-        messages: [{ role: 'user', content: 'safe content' }],
+        messages: [{ role: 'user', content: 'safe content' }]
       });
       const res = await server.inject({
         method: 'POST',
         url: '/openai-compatible',
         headers: signedHeaders(body),
-        payload: body,
+        payload: body
       });
       const decision = res.json() as { allowed: boolean; surface: string };
       expect(decision.allowed).toBe(true);
@@ -295,13 +290,13 @@ describe('Story 2.13 — bonklm-server', () => {
       const server = await makeServer();
       const body = JSON.stringify({
         model: 'gpt-4',
-        messages: [{ role: 'user', content: ATTACK_PROMPT }],
+        messages: [{ role: 'user', content: ATTACK_PROMPT }]
       });
       const res = await server.inject({
         method: 'POST',
         url: '/openai-compatible',
         headers: signedHeaders(body),
-        payload: body,
+        payload: body
       });
       const decision = res.json() as { blocked: boolean };
       expect(decision.blocked).toBe(true);
@@ -315,7 +310,7 @@ describe('Story 2.13 — bonklm-server', () => {
         method: 'POST',
         url: '/openai-compatible',
         headers: signedHeaders(body),
-        payload: body,
+        payload: body
       });
       const decision = res.json() as { blocked: boolean };
       expect(decision.blocked).toBe(true);
@@ -331,16 +326,16 @@ describe('Story 2.13 — bonklm-server', () => {
             role: 'user',
             content: [
               { type: 'text', text: ATTACK_PROMPT },
-              { type: 'image_url', image_url: 'https://example.com/img.png' },
-            ],
-          },
-        ],
+              { type: 'image_url', image_url: 'https://example.com/img.png' }
+            ]
+          }
+        ]
       });
       const res = await server.inject({
         method: 'POST',
         url: '/openai-compatible',
         headers: signedHeaders(body),
-        payload: body,
+        payload: body
       });
       const decision = res.json() as { blocked: boolean };
       expect(decision.blocked).toBe(true);
@@ -362,13 +357,13 @@ describe('Story 2.13 — bonklm-server', () => {
     it('omits validator reason + findings in production mode', async () => {
       const server = await makeServer({ productionMode: true });
       const body = JSON.stringify({
-        data: { messages: [{ role: 'user', content: ATTACK_PROMPT }] },
+        data: { messages: [{ role: 'user', content: ATTACK_PROMPT }] }
       });
       const res = await server.inject({
         method: 'POST',
         url: '/litellm',
         headers: signedHeaders(body),
-        payload: body,
+        payload: body
       });
       const decision = res.json() as {
         blocked: boolean;
@@ -387,7 +382,7 @@ describe('Story 2.13 — bonklm-server', () => {
       await expect(
         createBonklmGuardrailServer({
           validators: [new PromptInjectionValidator()],
-          hmacSecret: 'short',
+          hmacSecret: 'short'
         })
       ).rejects.toThrow(/hmacSecret/);
     });
@@ -395,7 +390,7 @@ describe('Story 2.13 — bonklm-server', () => {
     it('throws when both validators and engine are missing', async () => {
       await expect(
         createBonklmGuardrailServer({
-          hmacSecret: HMAC_SECRET,
+          hmacSecret: HMAC_SECRET
         })
       ).rejects.toThrow(/validators.*engine/);
     });
@@ -410,7 +405,7 @@ describe('Story 2.13 — bonklm-server', () => {
         rawBody: body,
         signature: sig,
         timestamp: ts,
-        secret: HMAC_SECRET,
+        secret: HMAC_SECRET
       });
       expect(result.valid).toBe(true);
     });
@@ -423,7 +418,7 @@ describe('Story 2.13 — bonklm-server', () => {
         rawBody: body + 'TAMPERED',
         signature: sig,
         timestamp: ts,
-        secret: HMAC_SECRET,
+        secret: HMAC_SECRET
       });
       expect(result.valid).toBe(false);
       expect(result.valid === false && result.reason).toBe('signature_mismatch');
@@ -441,7 +436,7 @@ describe('Story 2.13 — bonklm-server', () => {
       it('accepts application/json; charset=utf-8 (Python httpx default)', async () => {
         const server = await makeServer();
         const body = JSON.stringify({
-          data: { messages: [{ role: 'user', content: 'safe' }] },
+          data: { messages: [{ role: 'user', content: 'safe' }] }
         });
         const ts = String(Date.now());
         const res = await server.inject({
@@ -450,9 +445,9 @@ describe('Story 2.13 — bonklm-server', () => {
           headers: {
             [HMAC_SIGNATURE_HEADER]: signHmac(body, ts, HMAC_SECRET),
             [HMAC_TIMESTAMP_HEADER]: ts,
-            'content-type': 'application/json; charset=utf-8',
+            'content-type': 'application/json; charset=utf-8'
           },
-          payload: body,
+          payload: body
         });
         expect(res.statusCode).toBe(200);
         await server.close();
@@ -461,7 +456,7 @@ describe('Story 2.13 — bonklm-server', () => {
       it('accepts vendor-suffix variants like application/vnd.api+json', async () => {
         const server = await makeServer();
         const body = JSON.stringify({
-          data: { messages: [{ role: 'user', content: 'safe' }] },
+          data: { messages: [{ role: 'user', content: 'safe' }] }
         });
         const ts = String(Date.now());
         const res = await server.inject({
@@ -470,9 +465,9 @@ describe('Story 2.13 — bonklm-server', () => {
           headers: {
             [HMAC_SIGNATURE_HEADER]: signHmac(body, ts, HMAC_SECRET),
             [HMAC_TIMESTAMP_HEADER]: ts,
-            'content-type': 'application/vnd.api+json',
+            'content-type': 'application/vnd.api+json'
           },
-          payload: body,
+          payload: body
         });
         expect(res.statusCode).toBe(200);
         await server.close();
@@ -492,9 +487,9 @@ describe('Story 2.13 — bonklm-server', () => {
           headers: {
             [HMAC_SIGNATURE_HEADER]: 'sha256=' + 'a'.repeat(63),
             [HMAC_TIMESTAMP_HEADER]: ts,
-            'content-type': 'application/json',
+            'content-type': 'application/json'
           },
-          payload: body,
+          payload: body
         });
         expect(res.statusCode).toBe(401);
         const error = res.json() as { error: string; reason?: string };
@@ -515,14 +510,14 @@ describe('Story 2.13 — bonklm-server', () => {
           // Attack content in the alternate envelope — previously
           // unread.
           request_data: {
-            messages: [{ role: 'user', content: ATTACK_PROMPT }],
-          },
+            messages: [{ role: 'user', content: ATTACK_PROMPT }]
+          }
         });
         const res = await server.inject({
           method: 'POST',
           url: '/litellm',
           headers: signedHeaders(body),
-          payload: body,
+          payload: body
         });
         const decision = res.json() as { blocked: boolean };
         expect(decision.blocked).toBe(true);
@@ -533,15 +528,15 @@ describe('Story 2.13 — bonklm-server', () => {
         const server = await makeServer();
         const body = JSON.stringify({
           request: {
-            json: { messages: [{ role: 'user', content: 'safe' }] },
+            json: { messages: [{ role: 'user', content: 'safe' }] }
           },
-          messages: [{ role: 'user', content: ATTACK_PROMPT }],
+          messages: [{ role: 'user', content: ATTACK_PROMPT }]
         });
         const res = await server.inject({
           method: 'POST',
           url: '/portkey',
           headers: signedHeaders(body),
-          payload: body,
+          payload: body
         });
         const decision = res.json() as { blocked: boolean };
         expect(decision.blocked).toBe(true);
@@ -555,13 +550,13 @@ describe('Story 2.13 — bonklm-server', () => {
         // 600KB payload.
         const large = 'x'.repeat(600 * 1024);
         const body = JSON.stringify({
-          data: { messages: [{ role: 'user', content: large }] },
+          data: { messages: [{ role: 'user', content: large }] }
         });
         const res = await server.inject({
           method: 'POST',
           url: '/litellm',
           headers: signedHeaders(body),
-          payload: body,
+          payload: body
         });
         // Fastify rejects with 413 Payload Too Large at the server
         // level; our error handler may also remap to 400.
@@ -575,17 +570,17 @@ describe('Story 2.13 — bonklm-server', () => {
           validators: [new PromptInjectionValidator()],
           hmacSecret: HMAC_SECRET,
           productionMode: false,
-          bodyLimit: 2 * 1024 * 1024, // 2MB
+          bodyLimit: 2 * 1024 * 1024 // 2MB
         });
         const large = 'safe content '.repeat(60 * 1024); // ~800KB
         const body = JSON.stringify({
-          data: { messages: [{ role: 'user', content: large }] },
+          data: { messages: [{ role: 'user', content: large }] }
         });
         const res = await server.inject({
           method: 'POST',
           url: '/litellm',
           headers: signedHeaders(body),
-          payload: body,
+          payload: body
         });
         expect(res.statusCode).toBe(200);
         await server.close();
@@ -596,17 +591,17 @@ describe('Story 2.13 — bonklm-server', () => {
       it('default response omits validator reason', async () => {
         const server = await createBonklmGuardrailServer({
           validators: [new PromptInjectionValidator()],
-          hmacSecret: HMAC_SECRET,
+          hmacSecret: HMAC_SECRET
           // No productionMode specified → should default to true.
         });
         const body = JSON.stringify({
-          data: { messages: [{ role: 'user', content: ATTACK_PROMPT }] },
+          data: { messages: [{ role: 'user', content: ATTACK_PROMPT }] }
         });
         const res = await server.inject({
           method: 'POST',
           url: '/litellm',
           headers: signedHeaders(body),
-          payload: body,
+          payload: body
         });
         const decision = res.json() as {
           blocked: boolean;
@@ -631,12 +626,12 @@ describe('Story 2.13 — bonklm-server', () => {
           trace: (msg: string) => logs.push(`trace:${msg}`),
           fatal: (msg: string) => logs.push(`fatal:${msg}`),
           child: () => customLogger,
-          level: 'info' as const,
+          level: 'info' as const
         };
         const server = await createBonklmGuardrailServer({
           validators: [new PromptInjectionValidator()],
           hmacSecret: HMAC_SECRET,
-          logger: customLogger as unknown as never,
+          logger: customLogger as unknown as never
         });
         // Confirm we can start without throwing — the logger is
         // accepted by Fastify's `loggerInstance` path. Detailed
@@ -656,11 +651,11 @@ describe('Story 2.13 — bonklm-server', () => {
           method: 'POST',
           url: '/litellm',
           headers: {
-            'content-type': 'application/json',
+            'content-type': 'application/json'
             // No signature → HMAC check fires FIRST, returns 401
             // before the JSON parser ever sees the malformed body.
           },
-          payload: body,
+          payload: body
         });
         expect(res.statusCode).toBe(401);
         await server.close();
@@ -695,10 +690,10 @@ describe('Story 2.13 — bonklm-server', () => {
                 category: 'attacker_category',
                 severity: Severity.BLOCKED,
                 description: `desc${ATTACKER_CONTROL_CHARS}LEAKED_DESC`,
-                weight: 10,
-              },
+                weight: 10
+              }
             ],
-            timestamp: Date.now(),
+            timestamp: Date.now()
           };
         }
       }
@@ -707,14 +702,14 @@ describe('Story 2.13 — bonklm-server', () => {
         const server = await createBonklmGuardrailServer({
           validators: [new AttackerControlledValidator()],
           hmacSecret: HMAC_SECRET,
-          productionMode: false,
+          productionMode: false
         });
         const body = JSON.stringify({ messages: [{ role: 'user', content: 'x' }] });
         const res = await server.inject({
           method: 'POST',
           url: '/openai-compatible',
           headers: signedHeaders(body),
-          payload: body,
+          payload: body
         });
         expect(res.statusCode).toBe(200);
         const decision = res.json() as {
@@ -739,14 +734,14 @@ describe('Story 2.13 — bonklm-server', () => {
         const server = await createBonklmGuardrailServer({
           validators: [new AttackerControlledValidator()],
           hmacSecret: HMAC_SECRET,
-          productionMode: true,
+          productionMode: true
         });
         const body = JSON.stringify({ messages: [{ role: 'user', content: 'x' }] });
         const res = await server.inject({
           method: 'POST',
           url: '/openai-compatible',
           headers: signedHeaders(body),
-          payload: body,
+          payload: body
         });
         expect(res.statusCode).toBe(200);
         const decision = res.json() as {
@@ -768,7 +763,7 @@ describe('Story 2.13 — bonklm-server', () => {
       it('constructs with internal logger (no caller-provided logger)', async () => {
         const server = await createBonklmGuardrailServer({
           validators: [new PromptInjectionValidator()],
-          hmacSecret: HMAC_SECRET,
+          hmacSecret: HMAC_SECRET
         });
         expect(server).toBeDefined();
         // Validate via a real round-trip — proves Fastify is healthy.
@@ -792,13 +787,13 @@ describe('Story 2.13 — bonklm-server', () => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           child: function (this: any) {
             return this;
-          },
+          }
         };
         const server = await createBonklmGuardrailServer({
           validators: [new PromptInjectionValidator()],
           hmacSecret: HMAC_SECRET,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          logger: customLogger as any,
+          logger: customLogger as any
         });
         expect(server).toBeDefined();
         const res = await server.inject({ method: 'GET', url: '/healthz' });

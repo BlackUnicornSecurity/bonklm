@@ -57,7 +57,7 @@ const COLORS = {
   red: '\x1b[31m',
   yellow: '\x1b[33m',
   dim: '\x1b[2m',
-  bold: '\x1b[1m',
+  bold: '\x1b[1m'
 } as const;
 
 /**
@@ -67,7 +67,7 @@ const SYMBOLS = {
   success: '✓',
   failure: '✗',
   warning: '⚠',
-  skipped: '⊘',
+  skipped: '⊘'
 } as const;
 
 /**
@@ -137,14 +137,10 @@ function getTestStatusSymbol(result: TestResult, supportsColor: boolean): string
   const isSuccess = result.connection === true && result.validation === true;
 
   if (isSuccess) {
-    return supportsColor
-      ? `${COLORS.green}${SYMBOLS.success}${COLORS.reset}`
-      : SYMBOLS.success;
+    return supportsColor ? `${COLORS.green}${SYMBOLS.success}${COLORS.reset}` : SYMBOLS.success;
   }
 
-  return supportsColor
-    ? `${COLORS.red}${SYMBOLS.failure}${COLORS.reset}`
-    : SYMBOLS.failure;
+  return supportsColor ? `${COLORS.red}${SYMBOLS.failure}${COLORS.reset}` : SYMBOLS.failure;
 }
 
 /**
@@ -228,19 +224,14 @@ export function displaySingleTestResult(
  */
 export function formatTestSummary(tests: TestDisplay[]): TestSummary {
   const total = tests.length;
-  const successful = tests.filter((t) => t.result.connection && t.result.validation).length;
+  const successful = tests.filter(t => t.result.connection && t.result.validation).length;
   const failed = total - successful;
 
-  const connectionFailures = tests.filter((t) => !t.result.connection).length;
-  const validationFailures = tests.filter(
-    (t) => t.result.connection && !t.result.validation
-  ).length;
+  const connectionFailures = tests.filter(t => !t.result.connection).length;
+  const validationFailures = tests.filter(t => t.result.connection && !t.result.validation).length;
 
-  const latencies = tests
-    .map((t) => t.result.latency)
-    .filter((l): l is number => l !== undefined);
-  const averageLatency =
-    latencies.length > 0 ? latencies.reduce((sum, l) => sum + l, 0) / latencies.length : 0;
+  const latencies = tests.map(t => t.result.latency).filter((l): l is number => l !== undefined);
+  const averageLatency = latencies.length > 0 ? latencies.reduce((sum, l) => sum + l, 0) / latencies.length : 0;
 
   const successRate = total > 0 ? (successful / total) * 100 : 0;
 
@@ -251,7 +242,7 @@ export function formatTestSummary(tests: TestDisplay[]): TestSummary {
     connectionFailures,
     validationFailures,
     averageLatency: Math.round(averageLatency),
-    successRate: Math.round(successRate),
+    successRate: Math.round(successRate)
   };
 }
 
@@ -286,9 +277,7 @@ export function displayTestSummary(summary: TestSummary): void {
   const resetColor = supportsColor ? COLORS.reset : '';
   const dimColor = supportsColor ? COLORS.dim : '';
 
-  console.log(
-    `  ${successColor}${SYMBOLS.success} ${summary.successful} successful${resetColor}`
-  );
+  console.log(`  ${successColor}${SYMBOLS.success} ${summary.successful} successful${resetColor}`);
   console.log(`  ${failureColor}${SYMBOLS.failure} ${summary.failed} failed${resetColor}`);
 
   if (summary.connectionFailures > 0) {
@@ -328,7 +317,7 @@ export function exportTestResultsJson(tests: TestDisplay[], pretty = true): void
     connection: result.connection,
     validation: result.validation,
     error: result.error,
-    latency: result.latency,
+    latency: result.latency
   }));
 
   console.log(JSON.stringify(output, null, pretty ? 2 : 0));
@@ -425,7 +414,7 @@ export function formatTestDetail(test: TestDisplay): string {
  * ```
  */
 export function getFailedTests(tests: TestDisplay[]): TestDisplay[] {
-  return tests.filter((t) => !t.result.connection || !t.result.validation);
+  return tests.filter(t => !t.result.connection || !t.result.validation);
 }
 
 /**
@@ -441,5 +430,5 @@ export function getFailedTests(tests: TestDisplay[]): TestDisplay[] {
  * ```
  */
 export function getSuccessfulTests(tests: TestDisplay[]): TestDisplay[] {
-  return tests.filter((t) => t.result.connection && t.result.validation);
+  return tests.filter(t => t.result.connection && t.result.validation);
 }

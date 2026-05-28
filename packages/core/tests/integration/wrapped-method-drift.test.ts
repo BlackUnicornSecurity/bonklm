@@ -38,9 +38,7 @@ function extractMethodNames(dtsContent: string, className: string): Set<string> 
   );
   const m = classRegex.exec(dtsContent);
   if (!m) {
-    throw new Error(
-      `wrapped-method-drift: could not find \`declare class ${className}\` in d.ts file`
-    );
+    throw new Error(`wrapped-method-drift: could not find \`declare class ${className}\` in d.ts file`);
   }
   const body = m[1];
   const methodRegex = /^\s*(?:abstract\s+)?(?:get\s+)?([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/gm;
@@ -75,18 +73,13 @@ describe('Sprint 14 deferred-closure item F — wrapped-method drift smoke', () 
       // bump the peer-dep ceiling in package.json.
       const connectorWrappedMethods = ['write', 'query', 'multiQuery', 'deleteAll'];
       for (const method of connectorWrappedMethods) {
-        expect(sdkMethods.has(method), `Turbopuffer Namespace.${method}() missing in SDK`).toBe(
-          true
-        );
+        expect(sdkMethods.has(method), `Turbopuffer Namespace.${method}() missing in SDK`).toBe(true);
       }
     });
   });
 
   describe('LanceDB Table', () => {
-    const sdkDts = resolve(
-      workspaceRoot,
-      'packages/lance-connector/node_modules/@lancedb/lancedb/dist/table.d.ts'
-    );
+    const sdkDts = resolve(workspaceRoot, 'packages/lance-connector/node_modules/@lancedb/lancedb/dist/table.d.ts');
 
     it('SDK declaration file is present (peer-dep installed)', () => {
       const content = readFileSync(sdkDts, 'utf-8');
@@ -96,18 +89,9 @@ describe('Sprint 14 deferred-closure item F — wrapped-method drift smoke', () 
     it('every wrapped method exists on the live SDK Table declaration', () => {
       const content = readFileSync(sdkDts, 'utf-8');
       const sdkMethods = extractMethodNames(content, 'Table');
-      const connectorWrappedMethods = [
-        'add',
-        'update',
-        'delete',
-        'search',
-        'query',
-        'mergeInsert',
-      ];
+      const connectorWrappedMethods = ['add', 'update', 'delete', 'search', 'query', 'mergeInsert'];
       for (const method of connectorWrappedMethods) {
-        expect(sdkMethods.has(method), `LanceDB Table.${method}() missing in SDK`).toBe(
-          true
-        );
+        expect(sdkMethods.has(method), `LanceDB Table.${method}() missing in SDK`).toBe(true);
       }
     });
   });
