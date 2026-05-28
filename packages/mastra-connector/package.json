@@ -21,6 +21,7 @@
     "build": "tsc",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
+    "test:types": "tsd",
     "type-check": "tsc --noEmit"
   },
   "keywords": [
