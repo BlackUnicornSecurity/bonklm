@@ -12,6 +12,7 @@ Sprint 52 Day 2 — Gate 2 unblocking + Gate 5.8 reproducibility:
 ### Changed
 
 - **`check-version-pin.sh` moved to the tracked `scripts/` directory so the pre-commit hook works in every checkout.** The version-pin check previously lived under the gitignored `team/` tree, so the `simple-git-hooks` `pre-commit` hook (`bash team/qa/scripts/check-version-pin.sh`) failed with "No such file or directory" in fresh clones and in any `git worktree` — the exact environments the worktree-per-PR workflow relies on. The script now lives at the tracked `scripts/check-version-pin.sh` (beside `quality-gate.sh`), and the hook invokes that tracked path. Contributor-tooling only — no runtime or library change.
+- **Pre-publish surface guard added (`scripts/verify-publish-surface.mjs`).** Defense-in-depth for D-010 (rc.4 once shipped a built core surface missing the B.5 re-exports because `dist/` is gitignored and the rc-cut packed a stale build). After `pnpm -r build`, the guard imports the built `packages/core/dist/index.js` and asserts a canary set of canonical public exports (incl. `createRateLimiter` / `CommonRateLimiters`) is present, exiting non-zero otherwise. Wired into the `publish` job of `.github/workflows/publish.yml` (after build, before `changeset publish`) and exposed as the root `verify:surface` script for the rc-cut RUNBOOK. Contributor / release-tooling only — no runtime or library change.
 
 ### Fixed
 

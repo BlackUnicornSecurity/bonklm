@@ -135,6 +135,9 @@ jobs:
       - name: Build packages
         run: pnpm run build
 
+      - name: Verify published surface (D-010 — guard against stale/missing dist exports)
+        run: node scripts/verify-publish-surface.mjs
+
       - name: Create npmrc
         run: |
           echo "//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}" > .npmrc
