@@ -79,7 +79,7 @@
     }
   },
   "simple-git-hooks": {
-    "pre-commit": "pnpm typecheck && bash scripts/check-version-pin.sh"
+    "pre-commit": "pnpm format:check && pnpm typecheck && bash scripts/check-version-pin.sh"
   },
   "repository": {
     "type": "git",

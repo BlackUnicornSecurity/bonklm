@@ -24,6 +24,11 @@ CHANGELOG.md
 # Local demo evidence (untracked run output / transcripts — not hand-authored)
 demo/
 
+# Prettier is non-idempotent on this file: proseWrap reflow of a blockquote that
+# contains a long inline [needs-info: …] annotation appends a stray '>' on every
+# run (never converges). Excluded until the annotation is resolved/restructured.
+docs/user/examples/usage-patterns.md
+
 # Package lock files
 package-lock.json
 pnpm-lock.yaml
