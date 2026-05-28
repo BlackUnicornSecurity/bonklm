@@ -6,8 +6,7 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-// Import from the built dist file to avoid SSR issues
-import { RegexCache, getRegexCache, setRegexCache, resetRegexCache } from '../../../dist/validators/pattern-engine.js';
+import { RegexCache, getRegexCache, setRegexCache, resetRegexCache } from '../../../src/validators/pattern-engine.js';
 
 describe('RegexCache (S016-001)', () => {
   let cache: RegexCache;

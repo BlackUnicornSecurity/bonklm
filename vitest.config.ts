@@ -13,15 +13,12 @@ export default defineConfig({
       '**/node_modules/**',
       'team/backups/**',
       // Reference directory — external openclaw reference, has missing peer deps
-      'reference/**',
+      'reference/**'
     ],
     coverage: {
       provider: 'istanbul',
       reporter: ['text', 'json', 'html', 'json-summary'],
-      include: [
-        'packages/core/src/**/*.ts',
-        'packages/*/src/**/*.ts',
-      ],
+      include: ['packages/core/src/**/*.ts', 'packages/*/src/**/*.ts'],
       exclude: [
         '**/*.d.ts',
         'node_modules/**',
@@ -30,7 +27,7 @@ export default defineConfig({
         'packages/*/examples/**',
         'packages/examples/**',
         'packages/core/uat/**',
-        'packages/core/benchmarks/**',
+        'packages/core/benchmarks/**'
         // Wizard package was deprecated and merged into core (see CHANGELOG v0.3.x).
       ],
       all: true,
@@ -46,12 +43,19 @@ export default defineConfig({
         functions: 60,
         branches: 50,
         statements: 60,
-        // Strict per-file thresholds for security-critical core code.
+        // Strict thresholds for security-critical core code. Ratchet floor —
+        // raise toward 100%, never lower (CLAUDE.md / CONTRIBUTING). Ratcheted
+        // 2026-05-28 (80/80/75/80 -> 82/86/76/82) after restoring coverage on
+        // three src files whose tests imported from dist/ and adding unit +
+        // regression suites for content-extractor / adapt-validator /
+        // wrap-sentinel / portable-emitter. Measured core/src aggregate at the
+        // ratchet: lines 83.29 / statements 82.98 / branches 76.18 /
+        // functions 87.54; floors sit ~1pp below to absorb normal churn.
         'packages/core/src/**/*.ts': {
-          lines: 80,
-          functions: 80,
-          branches: 75,
-          statements: 80,
+          lines: 82,
+          functions: 86,
+          branches: 76,
+          statements: 82
         },
         // Story 0.1 corrections D-H: the `/testing` subpath holds test-only
         // helpers (noOpValidator and future siblings), not security-critical
@@ -61,9 +65,9 @@ export default defineConfig({
           lines: 60,
           functions: 60,
           branches: 50,
-          statements: 60,
-        },
-      },
+          statements: 60
+        }
+      }
     },
     testTimeout: 30000,
     hookTimeout: 30000,
@@ -71,19 +75,19 @@ export default defineConfig({
     poolOptions: {
       forks: {
         singleFork: false,
-        execArgv: ['--max-old-space-size=8192', '--expose-gc'],
-      },
+        execArgv: ['--max-old-space-size=8192', '--expose-gc']
+      }
     },
     isolate: true,
     maxConcurrency: 1,
     minWorkers: 1,
     maxWorkers: 1,
     sequence: {
-      hooks: {},
-    },
+      hooks: {}
+    }
   },
   resolve: {
-    alias: {},
+    alias: {}
   },
   plugins: [
     {
@@ -106,11 +110,11 @@ export default defineConfig({
           return resolvedTsPath;
         }
         return null;
-      },
-    },
+      }
+    }
   ],
   esbuild: {
-    target: 'node20',
+    target: 'node20'
   },
-  failOnUnhandledErrors: false,
+  failOnUnhandledErrors: false
 });
