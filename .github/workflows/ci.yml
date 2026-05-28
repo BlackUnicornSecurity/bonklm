@@ -90,6 +90,34 @@ jobs:
       - name: Run type check
         run: pnpm exec tsc --noEmit
 
+  type-surface:
+    name: Type Surface (tsd)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Build first: tsd resolves each package's published `types` entry
+      # (dist/*.d.ts). Without a build the per-package suites cannot resolve
+      # the package-under-test or its built workspace siblings.
+      - name: Build packages
+        run: pnpm run build
+
+      - name: Run type-surface tests (tsd)
+        run: pnpm run test:types
+
   audit:
     name: Security Audit (informational)
     runs-on: ubuntu-latest
