@@ -25,6 +25,26 @@ writes a timestamped evidence log under `team/qa/<version>/evidence/`. Running i
 not sufficient** — the judgement clauses (context, audit-loop, docs, handover) are not automatable
 and remain mandatory.
 
+### Worktree isolation (HARDCODED — no exceptions)
+
+**All coding work happens in a dedicated git worktree — one worktree per PR/branch.** Never edit,
+commit, or run gates directly in the primary working tree; it stays on its base branch and clean so
+it is always a safe, known-good reference and parallel work never collides.
+
+- **One PR ⇄ one worktree ⇄ one branch.** Create the worktree before Phase 0, outside the repo (e.g.
+  a sibling directory): `git worktree add ../bonklm-<slug> -b <type>/<slug>` — the branch name
+  follows the commit-type convention (`feat/`, `fix/`, `refactor/`, `docs/`, `chore/`, etc.).
+- **Run the entire Definition-of-Done loop inside that worktree** — edits, `pnpm quality-gate`,
+  the audit-loop, commits, push, and PR.
+- **Clean up on merge.** Once the PR is merged, remove the worktree and prune its branch:
+  `git worktree remove ../bonklm-<slug>`, then `git branch -d <branch>` (and delete the remote
+  branch if it was not auto-deleted), then `git worktree prune` to clear stale metadata.
+- **Never leave orphaned worktrees.** If a PR is abandoned, remove its worktree too; do not let
+  stale trees accumulate.
+
+Hardcoded 2026-05-28 by maintainer: isolate every PR, keep the main checkout pristine, clean up on
+merge.
+
 ### Phase 0 — Context acquisition (before writing ANY code)
 
 Never touch code before you understand the task and its blast radius:
