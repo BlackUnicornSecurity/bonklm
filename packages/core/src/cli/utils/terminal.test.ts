@@ -10,6 +10,7 @@ import {
   getCursorControls,
   colorize,
   colors,
+  brand,
   type TerminalCapabilities,
   type DetailedTerminalCapabilities,
   type ColorLevel,
@@ -573,6 +574,63 @@ describe('terminal', () => {
       const caps = getDetailedTerminalCapabilities();
 
       expect([0, 1, 2, 3]).toContain(caps.colorLevel);
+    });
+  });
+
+  describe('brand palette', () => {
+    beforeEach(() => {
+      Object.defineProperty(process.stdout, 'isTTY', {
+        value: true,
+        writable: true,
+        configurable: true,
+      });
+    });
+
+    it('should emit truecolor escape for level 3 terminals', () => {
+      process.env.COLORTERM = 'truecolor';
+      expect(brand.cyan('x')).toBe('\x1b[38;2;28;245;245mx\x1b[0m');
+      expect(brand.yellow('x')).toBe('\x1b[38;2;245;245;28mx\x1b[0m');
+      expect(brand.amber('x')).toBe('\x1b[38;2;245;196;28mx\x1b[0m');
+      expect(brand.red('x')).toBe('\x1b[38;2;255;80;80mx\x1b[0m');
+      expect(brand.muted('x')).toBe('\x1b[38;2;107;133;144mx\x1b[0m');
+    });
+
+    it('should emit 256-color escape for level 2 terminals', () => {
+      delete process.env.COLORTERM;
+      process.env.TERM = 'xterm-256color';
+      expect(brand.cyan('x')).toBe('\x1b[38;5;51mx\x1b[0m');
+      expect(brand.yellow('x')).toBe('\x1b[38;5;226mx\x1b[0m');
+      expect(brand.red('x')).toBe('\x1b[38;5;203mx\x1b[0m');
+    });
+
+    it('should emit 16-color escape for level 1 terminals', () => {
+      delete process.env.COLORTERM;
+      process.env.TERM = 'xterm';
+      expect(brand.cyan('x')).toBe('\x1b[96mx\x1b[0m');
+      expect(brand.yellow('x')).toBe('\x1b[93mx\x1b[0m');
+      expect(brand.red('x')).toBe('\x1b[91mx\x1b[0m');
+    });
+
+    it('should return plain text when color is not supported', () => {
+      delete process.env.COLORTERM;
+      process.env.TERM = 'dumb';
+      process.env.FORCE_COLOR = '0';
+      expect(brand.cyan('x')).toBe('x');
+      expect(brand.block('x')).toBe('x');
+    });
+
+    it('should map semantic verdict aliases to brand colors', () => {
+      process.env.COLORTERM = 'truecolor';
+      expect(brand.ok('PASS')).toBe(brand.cyan('PASS'));
+      expect(brand.block('BLOCKED')).toBe(brand.yellow('BLOCKED'));
+      expect(brand.warn('warn')).toBe(brand.amber('warn'));
+      expect(brand.crit('CRITICAL')).toBe(brand.red('CRITICAL'));
+    });
+
+    it('should respect FORCE_COLOR=3 override', () => {
+      process.env.TERM = 'xterm';
+      process.env.FORCE_COLOR = '3';
+      expect(brand.cyan('x')).toBe('\x1b[38;2;28;245;245mx\x1b[0m');
     });
   });
 

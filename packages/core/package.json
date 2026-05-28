@@ -1,7 +1,7 @@
 {
   "name": "@blackunicorn/bonklm",
   "version": "1.0.0-rc.4",
-  "description": "BonkLM - LLM Security Guardrails with Interactive Setup Wizard",
+  "description": "BonkLM — the bat for LLM agents. Framework-agnostic security guardrails with interactive setup wizard.",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -74,6 +74,9 @@
     "prompt-injection",
     "jailbreak",
     "ai-safety",
+    "agent-security",
+    "llm-security",
+    "web3",
     "cli",
     "wizard"
   ],
@@ -86,7 +89,7 @@
   "bugs": {
     "url": "https://github.com/BlackUnicornSecurity/bonklm/issues"
   },
-  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "author": "Black Unicorn <info@blackunicorn.tech>",
   "license": "MIT",
   "dependencies": {
     "@clack/prompts": "^0.8.2",

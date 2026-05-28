@@ -23,7 +23,7 @@
     "prepublishOnly": "git diff --quiet HEAD -- . || (echo 'prepublishOnly: dirty working tree in plugin dir — commit or stash before publish' && exit 1) && npm run clean && npm run build && npm test"
   },
   "keywords": ["eslint", "eslint-plugin", "edge", "workerd", "bonklm"],
-  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "author": "Black Unicorn <info@blackunicorn.tech>",
   "license": "MIT",
   "peerDependencies": {
     "eslint": "^9.0.0 || ^10.0.0"

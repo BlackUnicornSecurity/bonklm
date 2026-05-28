@@ -37,7 +37,7 @@
     "attack-logger",
     "security-observability"
   ],
-  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "author": "Black Unicorn <info@blackunicorn.tech>",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^20.11.0",
