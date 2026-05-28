@@ -21,6 +21,7 @@
     "build": "tsc",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
+    "test:types": "tsd",
     "lint": "eslint src",
     "type-check": "tsc --noEmit"
   },
