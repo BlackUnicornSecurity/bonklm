@@ -208,7 +208,7 @@ export function createGuardedOpenAI(
     if (er.results !== undefined && er.results.length > 0) {
       return er.results;
     }
-    return [engineResult as GuardrailResult];
+    return [engineResult];
   };
 
   /**

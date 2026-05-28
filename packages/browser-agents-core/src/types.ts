@@ -148,7 +148,6 @@ export class BrowserAgentGuardrailBlockedError extends ConnectorValidationError 
       typeof reason !== 'string' || reason.length === 0
         ? undefined
         : (() => {
-            // eslint-disable-next-line no-control-regex
             const stripped = reason.replace(/[^\x20-\x7E]/g, '').slice(0, 200);
             return stripped.length > 0 ? stripped : undefined;
           })();

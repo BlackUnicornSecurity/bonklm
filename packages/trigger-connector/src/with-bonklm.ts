@@ -95,10 +95,10 @@
 import { locals } from '@trigger.dev/sdk/v3';
 import {
   cachedValidate,
+  type CachedValidateOptions,
   canonicalJSONStringify,
   createSaltedKeyFn,
   GuardrailEngine,
-  type CachedValidateOptions,
   type KeyFn,
   type Validator,
   type ValidatorInput,
@@ -185,7 +185,7 @@ export function getBonklmHandle(
   ctx?: { run: { id: string } }
 ): BonklmTriggerHandle {
   const raw = locals.get(bonklmHandleLocalsKey);
-  if (raw == null) {
+  if (raw === null || raw === undefined) {
     throw new Error(
       'getBonklmHandle(): no BonkLM handle in Trigger.dev locals. Ensure ' +
         '`withBonkLM(...)` is spread into your task({middleware, onFailure, ...}) ' +
@@ -500,7 +500,7 @@ function handleFromBundle(
     // observability consumers can correlate per-run.
     const contentForCallback =
       typeof (input as { content?: unknown }).content === 'string'
-        ? ((input as { content: string }).content as string)
+        ? ((input as { content: string }).content)
         : JSON.stringify(input);
     await engine.notifyCachedResult(
       results,
@@ -532,7 +532,7 @@ function handleFromBundle(
       } else if (
         typeof content === 'object' &&
         content !== null &&
-        typeof (content as ValidatorInput).kind === 'string'
+        typeof (content).kind === 'string'
       ) {
         // rev R3 (Story 2.9 audit) closure: assert the
         // discriminant-required field for the `kind: 'text'` branch.
@@ -550,7 +550,7 @@ function handleFromBundle(
             'validateInput: kind=text requires `content` to be a string'
           );
         }
-        input = content as ValidatorInput;
+        input = content;
         // B3 pre-flight: canonical-serialize the user-supplied
         // ValidatorInput so non-serializable values (Map / Set / Date
         // / class instances) BLOCK at the boundary instead of throwing

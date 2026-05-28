@@ -225,12 +225,11 @@ export interface IAgentRuntimeLike {
  * downstream code can still `runtime.bonklm.something` if a future
  * legitimate field is added; today nothing is stored here.
  */
-export interface BonklmRuntimeNamespace {
-  // Intentionally empty (Phase-2). Call-context lives in AsyncLocalStorage
-  // managed by `als-context.ts` — hostile plugin assignments to
-  // `runtime.bonklm.currentCallContext` are no-ops because no
-  // BonkLM code consults that path.
-}
+// Intentionally empty (Phase-2). Call-context lives in AsyncLocalStorage
+// managed by `als-context.ts` — hostile plugin assignments to
+// `runtime.bonklm.currentCallContext` are no-ops because no
+// BonkLM code consults that path.
+export type BonklmRuntimeNamespace = Record<string, never>;
 
 /** Duck-typed `Memory`. */
 export interface MemoryLike {

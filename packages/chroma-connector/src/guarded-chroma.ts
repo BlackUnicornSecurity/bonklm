@@ -146,7 +146,7 @@ export function createGuardedCollection(
       const blocked = arr.find((r) => r.blocked);
       return blocked ?? arr[0] ?? (result as GuardrailResult);
     }
-    return result as GuardrailResult;
+    return result;
   };
 
   /**

@@ -160,7 +160,7 @@ export function createGuardedInference(
     context?: string
   ): Promise<EngineResult> => {
     const result = await validateWithTimeoutSecure<EngineResult>({
-      operation: () => engine.validate(content, context) as Promise<EngineResult>,
+      operation: () => engine.validate(content, context),
       timeoutMs: validationTimeout,
       timeoutSentinel: () => ({
         allowed: false,

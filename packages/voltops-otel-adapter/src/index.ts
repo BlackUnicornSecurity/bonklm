@@ -21,8 +21,8 @@
  */
 import {
   bonklmTrace,
-  type BonklmTraceSurface,
   type BonklmTracer,
+  type BonklmTraceSurface,
 } from '@blackunicorn/bonklm';
 import type { GuardrailResult } from '@blackunicorn/bonklm';
 

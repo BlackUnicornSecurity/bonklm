@@ -41,8 +41,8 @@ import { installSealedWrapMemory } from './wrap-memory.js';
 import { applyProbeOutcome, runStartupProbe } from './probe.js';
 import { wrapSigningAction } from './tool-call-args-gate.js';
 import {
-  mapMessageReceivedToShadowLog,
   type ElizaMessageReceivedEvent,
+  mapMessageReceivedToShadowLog,
 } from './shadow-log-adapter.js';
 import { warnAcknowledgeClass4RiskDeprecated } from './shadow-log-integration.js';
 

@@ -29,7 +29,7 @@
  * fires unconditionally on `earlyBlock`.
  */
 import { voice } from '@livekit/agents';
-import { AudioStreamValidator, AUDIO_STREAM_SURFACE } from '@blackunicorn/bonklm/validators';
+import { AUDIO_STREAM_SURFACE, AudioStreamValidator } from '@blackunicorn/bonklm/validators';
 import { assertNotWrapped, markWrapped } from '@blackunicorn/bonklm/core/connector-utils';
 
 type AgentSession = voice.AgentSession;

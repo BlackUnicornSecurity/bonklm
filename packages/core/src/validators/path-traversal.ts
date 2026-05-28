@@ -17,15 +17,15 @@
  * filesystem chroot / jail is the true containment. This validator
  * cuts the volume of escaping paths that reach the sandbox.
  */
-import type { Validator, ValidatorInput, HookSurface } from '../engine/GuardrailEngine.types.js';
+import type { HookSurface, Validator, ValidatorInput } from '../engine/GuardrailEngine.types.js';
 import {
   createResult,
+  type Finding,
   type GuardrailResult,
   Severity,
-  type Finding,
 } from '../base/GuardrailResult.js';
-import { resolve as pathResolve, isAbsolute as pathIsAbsolute, sep as pathSep } from 'node:path';
-import { unwrapValidatorInput, scoreToRiskLevel } from './internal/unwrap-input.js';
+import { isAbsolute as pathIsAbsolute, resolve as pathResolve, sep as pathSep } from 'node:path';
+import { scoreToRiskLevel, unwrapValidatorInput } from './internal/unwrap-input.js';
 
 const SURFACE: HookSurface = 'text_input';
 

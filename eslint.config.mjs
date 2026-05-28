@@ -58,6 +58,13 @@ export default tseslint.config(
       // library build, follow their own conventions.
       'demo/',
       '.playwright-mcp/',
+      // Self-contained tooling sub-package with its own tsconfig / vitest /
+      // build — not in the root tsconfig project, so type-checked linting
+      // from here can't resolve it (parse error). Validated by its own toolchain.
+      'tools/eslint-plugin-bonklm-edge/**',
+      // Temporal test-workflow fixtures live under tests/ and are excluded
+      // from tsconfig.json, like the other tests/ support files above.
+      'packages/*/tests/test-workflows/**',
     ]
   },
 
@@ -297,6 +304,7 @@ export default tseslint.config(
       'packages/core/src/guards/xss-safety.ts',
       'packages/core/src/validators/jailbreak.ts',
       'packages/core/src/validators/text-normalizer.ts',
+      'packages/core/src/validators/code-injection.ts',
       'packages/core/src/cli/utils/error.ts',
       'packages/core/src/cli/utils/audit.ts',
       'packages/core/src/cli/commands/wizard.ts',

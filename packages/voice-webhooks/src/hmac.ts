@@ -61,7 +61,7 @@ export function verifyVapiHmac(options: VapiHmacOptions): HmacVerifyResult {
 
   const m = SHA256_PREFIXED_RE.exec(signature);
   if (!m) return { valid: false, reason: 'malformed_signature' };
-  const providedHex = m[1]!;
+  const providedHex = m[1];
 
   const tsMs = Number.parseInt(timestamp, 10);
   if (!Number.isFinite(tsMs) || tsMs <= 0 || String(tsMs) !== timestamp.trim()) {
@@ -99,7 +99,7 @@ export function verifyRetellHmac(options: RetellHmacOptions): HmacVerifyResult {
   if (!signature) return { valid: false, reason: 'missing_signature' };
 
   const m = SHA256_PREFIXED_RE.exec(signature);
-  const providedHex = m ? m[1]! : signature;
+  const providedHex = m ? m[1] : signature;
   if (!SHA256_HEX_RE.test(providedHex)) {
     return { valid: false, reason: 'malformed_signature' };
   }

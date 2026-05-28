@@ -50,8 +50,8 @@
 // to the import set; previously the reason text was interpolated raw
 // into ConnectorValidationError.message.
 import {
-  ConnectorValidationError,
   applyRetrievedDocValidatorToMatches,
+  ConnectorValidationError,
   sanitizeReasonText,
 } from '@blackunicorn/bonklm/core/connector-utils';
 // Type-only imports from the root barrel are erased at compile time
@@ -332,7 +332,7 @@ function makeWriteWrapper(
     params?: GuardedNamespaceWriteParams | null,
     options?: unknown
   ): Promise<unknown> {
-    if (params == null || typeof params !== 'object') {
+    if (params === null || typeof params !== 'object') {
       // rev R0 closure (Story 2.11 audit): SDK signature is
       // `write(params?: NamespaceWriteParams | null | undefined, ...)`.
       // Pass through; Turbopuffer SDK will throw its own typed error
@@ -361,13 +361,13 @@ function makeWriteWrapper(
           ? ' (call also contained upsert_rows / patch_rows; entire write rejected to keep validation coverage uniform — split into two calls or set columnarWriteMode=\'pass-through\')'
           : '';
         throw new ConnectorValidationError(
-          'turbopuffer: write() received columnar input ' +
-            '(upsert_columns / patch_columns) while memoryWriteValidator is ' +
-            "configured and columnarWriteMode='reject' (default). The connector " +
-            'does not transpose columnar→rows automatically. Either submit the ' +
-            "data as upsert_rows/patch_rows, or set columnarWriteMode='pass-through' " +
-            'to opt into unvalidated columnar writes.' +
-            mixedNote,
+          `turbopuffer: write() received columnar input ` +
+            `(upsert_columns / patch_columns) while memoryWriteValidator is ` +
+            `configured and columnarWriteMode='reject' (default). The connector ` +
+            `does not transpose columnar→rows automatically. Either submit the ` +
+            `data as upsert_rows/patch_rows, or set columnarWriteMode='pass-through' ` +
+            `to opt into unvalidated columnar writes.${ 
+            mixedNote}`,
           'validation_failed'
         );
       }
@@ -426,9 +426,9 @@ function makeQueryWrapper(
           o?: unknown
         ) => Promise<GuardedNamespaceQueryResponse>;
       }
-    ).query(params, options)) as GuardedNamespaceQueryResponse;
+    ).query(params, options));
 
-    if (response == null || typeof response !== 'object') {
+    if (response === null || typeof response !== 'object') {
       return response;
     }
 
@@ -573,7 +573,7 @@ function makeMultiQueryWrapper(
       [k: string]: unknown;
     };
 
-    if (response == null || typeof response !== 'object') return response;
+    if (response === null || typeof response !== 'object') return response;
     const results = response.results;
     if (!Array.isArray(results)) return response;
 
@@ -583,7 +583,7 @@ function makeMultiQueryWrapper(
     }> = [];
     for (let i = 0; i < results.length; i++) {
       const sub = results[i];
-      if (sub == null || typeof sub !== 'object') {
+      if (sub === null || typeof sub !== 'object') {
         validatedResults.push(sub);
         continue;
       }

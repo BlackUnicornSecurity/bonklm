@@ -40,14 +40,14 @@
  * a misuse signal; the indirection defeats the false-positive on
  * pattern-bearing source files.
  */
-import type { Validator, ValidatorInput, HookSurface } from '../engine/GuardrailEngine.types.js';
+import type { HookSurface, Validator, ValidatorInput } from '../engine/GuardrailEngine.types.js';
 import {
   createResult,
+  type Finding,
   type GuardrailResult,
   Severity,
-  type Finding,
 } from '../base/GuardrailResult.js';
-import { unwrapValidatorInput, scoreToRiskLevel } from './internal/unwrap-input.js';
+import { scoreToRiskLevel, unwrapValidatorInput } from './internal/unwrap-input.js';
 
 export enum CodeInjectionCategory {
   PYTHON_DYNAMIC_EXEC = 'python_dynamic_exec',
@@ -625,7 +625,7 @@ export class CodeInjectionValidator implements Validator {
     // match defeats `api.openai.com.evil.com` substring-poisoning. Either
     // exact host match OR `*.allowed-host` (dotted subdomain).
     for (const allowed of this.allowlistedHosts) {
-      if (host === allowed || host.endsWith('.' + allowed)) return true;
+      if (host === allowed || host.endsWith(`.${allowed}`)) return true;
     }
     return false;
   }

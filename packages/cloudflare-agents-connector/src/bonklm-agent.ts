@@ -35,17 +35,17 @@
  *   - Symbol-keyed mixin sentinel rejects double-wrap.
  *   - fail-safe onBlock + onError routing.
  */
-import type { GuardrailEngine, ValidatorInput, Validator } from '@blackunicorn/bonklm';
+import type { GuardrailEngine, Validator, ValidatorInput } from '@blackunicorn/bonklm';
 import {
   adaptValidatorToUniversalInput,
   assertNotWrapped,
   markWrapped,
 } from '@blackunicorn/bonklm/core/connector-utils';
 import {
-  CloudflareAgentBlockedError,
   type AgentLike,
   type BonklmAgentConfig,
   type BonklmAgentHookContext,
+  CloudflareAgentBlockedError,
   type CloudflareAgentBlockEvent,
   type SqlStorageLike,
   type WrappedSqlStorageLike,
@@ -140,7 +140,7 @@ export function withBonklmAgent<S, Base extends AgentClassLike<S>>(
     (v: Validator) => adaptValidatorToUniversalInput(v, 'withBonklmAgent.retrievedDocValidators')
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const Mixed = class BonklmAgent extends (BaseAgent as any) {
     // Cached wrapped sql tag — built lazily so the underlying Agent's
     // ctor finishes its own sql initialization first.
@@ -210,14 +210,14 @@ export function withBonklmAgent<S, Base extends AgentClassLike<S>>(
       // sync sql contract (no wrap, return raw).
       if (retrievedDocValidators.length === 0) {
         const passthrough: SqlStorageLike = (strings, ...values) =>
-          baseSql!(strings, ...values);
+          baseSql(strings, ...values);
         this._bonklmWrappedSql = passthrough;
         return passthrough;
       }
       // Validation-enabled path — returns Promise<rows[]>. See
       // WrappedSqlStorageLike JSDoc for the contract change.
       const wrapped: WrappedSqlStorageLike = async (strings, ...values) => {
-        const rows = baseSql!(strings, ...values);
+        const rows = baseSql(strings, ...values);
         const filtered: Array<Record<string, unknown>> = [];
         for (const row of rows) {
           const text = stringifyForValidation(row);

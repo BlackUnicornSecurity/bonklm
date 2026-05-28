@@ -253,7 +253,7 @@ export function createGuardedMCP(
     }
 
     // Single result returned
-    return [engineResult as GuardrailResult];
+    return [engineResult];
   };
 
   /**

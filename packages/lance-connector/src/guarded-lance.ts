@@ -57,8 +57,8 @@ import type {
 // HMAC); the subpath is statically verified edge-safe. Inherited from
 // Story 2.11 arch X3 closure.
 import {
-  ConnectorValidationError,
   applyRetrievedDocValidatorToMatches,
+  ConnectorValidationError,
   sanitizeReasonText,
 } from '@blackunicorn/bonklm/core/connector-utils';
 import type {

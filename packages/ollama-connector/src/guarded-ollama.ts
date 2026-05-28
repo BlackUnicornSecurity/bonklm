@@ -190,7 +190,7 @@ export function createGuardedOllama(
     }
 
     // Single result returned
-    return [engineResult as GuardrailResult];
+    return [engineResult];
   };
 
   /**

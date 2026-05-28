@@ -30,9 +30,9 @@ import { VERIFIED_PUBLISHER_ALLOWLIST } from './types.js';
 import { detectTypoSquat } from './typo-squat.js';
 import {
   applyProbeOutcome,
-  runStartupProbe,
-  type ProbeOutcome,
   type ProbeOptions,
+  type ProbeOutcome,
+  runStartupProbe,
 } from './probe.js';
 import { buildEolFindingV04 } from './shadow-log-integration.js';
 

@@ -26,8 +26,8 @@
  *
  * Wire into CI as `pnpm run check:workspace-policy` (root scripts).
  */
-import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
-import { join, resolve, dirname } from 'node:path';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -44,7 +44,7 @@ function readJson(path) {
   try {
     return JSON.parse(text);
   } catch (err) {
-    throw new Error(`Failed to parse ${path}: ${err.message}`);
+    throw new Error(`Failed to parse ${path}: ${err.message}`, { cause: err });
   }
 }
 

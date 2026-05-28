@@ -30,9 +30,9 @@
  * @package @blackunicorn/bonklm-mem0
  */
 import {
-  assertTenantIdSafe,
   type AdapterInvocation,
   type AdapterRoute,
+  assertTenantIdSafe,
   type GetTenantId,
   type MemoryAdapter,
 } from '@blackunicorn/bonklm-memory-utils';

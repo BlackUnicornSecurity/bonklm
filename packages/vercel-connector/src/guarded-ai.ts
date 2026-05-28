@@ -161,7 +161,7 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
     context?: string,
   ): Promise<EngineResult> => {
     const engineResult = await validateWithTimeoutSecure<EngineResult>({
-      operation: () => engine.validate(content, context) as Promise<EngineResult>,
+      operation: () => engine.validate(content, context),
       timeoutMs: validationTimeout,
       timeoutSentinel: () => ({
         allowed: false,
