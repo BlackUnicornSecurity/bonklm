@@ -21,7 +21,8 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:types": "tsd"
   },
   "peerDependencies": {
     "@blackunicorn/bonklm": "workspace:*",
