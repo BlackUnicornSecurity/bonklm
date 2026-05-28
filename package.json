@@ -18,6 +18,7 @@
     "clean": "pnpm -r --filter \"@blackunicorn/*\" run clean",
     "dev": "pnpm --filter ./packages/core run dev",
     "uat": "tsx packages/core/uat/run-uat.ts",
+    "quality-gate": "bash scripts/quality-gate.sh",
     "typecheck": "tsc --noEmit",
     "changeset": "changeset",
     "changeset:add": "changeset add",
