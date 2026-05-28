@@ -243,25 +243,19 @@ export const colors = {
 } as const;
 
 /**
- * BonkLM brand palette.
+ * BonkLM brand palette for CLI output.
  *
- * RECONSTRUCTED 2026-05-28: the original working-tree edit that introduced this
- * export was lost when the audit-loop-1 `git filter-repo` history rewrite reset
- * the working tree. This implementation is rebuilt to satisfy the
- * `brand palette` test contract in `terminal.test.ts`.
+ * Source of truth: the `ansi` block of the canonical design-system
+ * `tokens.json`, whose rule is "hex values map to nearest 256-color slot at
+ * terminal-render time". Truecolor (level 3) carries the locked brand hexes
+ * verbatim; the 256-color (level 2) and 16-color (level 1) fallbacks are each
+ * the nearest xterm cube slot / nearest ANSI-16 code for that hex. The
+ * nearest-cube method is pinned by the cyan/yellow/red assertions in
+ * `terminal.test.ts`.
  *
- * Confidence per code:
- * - Level-3 (truecolor) RGB triples for cyan/yellow/amber/red/muted: EXACT
- *   (pinned verbatim by the test assertions).
- * - Level-2 (256-color) + level-1 (16-color) fallbacks for cyan/yellow/red:
- *   EXACT (pinned by the test assertions).
- * - Level-2 + level-1 fallbacks for `amber` + `muted`: NOT asserted by any
- *   test — chosen here as nearest-palette approximations. VERIFY against the
- *   original brand spec if it is recoverable from another source.
- *
- * Brand axiom hexes (locked): cyan #1cf5f5 (28,245,245), yellow #f5f51c
- * (245,245,28). Amber #f5c41c (245,196,28), brand red (255,80,80), muted
- * slate (107,133,144).
+ * Brand hexes: cyan #1cf5f5 (28,245,245), yellow #f5f51c (245,245,28),
+ * amber #f5c41c (245,196,28), red #ff5050 (255,80,80), muted #6b8590
+ * (107,133,144).
  */
 interface BrandColorCodes {
   /** 24-bit truecolor SGR parameters (color level 3) */
@@ -294,11 +288,9 @@ function brandColorize(text: string, codes: BrandColorCodes): string {
 
 const BRAND_CYAN: BrandColorCodes = { truecolor: '38;2;28;245;245', ansi256: '38;5;51', ansi16: '96' };
 const BRAND_YELLOW: BrandColorCodes = { truecolor: '38;2;245;245;28', ansi256: '38;5;226', ansi16: '93' };
-// amber ansi256/ansi16 are reconstructed approximations (not test-pinned).
-const BRAND_AMBER: BrandColorCodes = { truecolor: '38;2;245;196;28', ansi256: '38;5;214', ansi16: '33' };
+const BRAND_AMBER: BrandColorCodes = { truecolor: '38;2;245;196;28', ansi256: '38;5;220', ansi16: '33' };
 const BRAND_RED: BrandColorCodes = { truecolor: '38;2;255;80;80', ansi256: '38;5;203', ansi16: '91' };
-// muted ansi256/ansi16 are reconstructed approximations (not test-pinned).
-const BRAND_MUTED: BrandColorCodes = { truecolor: '38;2;107;133;144', ansi256: '38;5;245', ansi16: '90' };
+const BRAND_MUTED: BrandColorCodes = { truecolor: '38;2;107;133;144', ansi256: '38;5;66', ansi16: '90' };
 
 /**
  * BonkLM brand-colored text helpers + semantic verdict aliases.
