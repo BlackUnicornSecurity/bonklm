@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-100 -100 200 200" role="img" aria-label="BonkLM">
+  <title>BonkLM</title>
+
+  
+  <g fill="none" stroke="#1cf5f5" stroke-width="1.6" stroke-linecap="round" vector-effect="non-scaling-stroke">
+    <g><path d="M0 -8 L0 -40 L-8 -48 L-8 -78"></path><circle cx="-8" cy="-78" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M4 -8 L4 -32 L12 -40 L12 -72"></path><circle cx="12" cy="-72" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M-4 -8 L-4 -28 L-16 -40 L-16 -64"></path><circle cx="-16" cy="-64" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M6 -6 L24 -24 L36 -24 L52 -40"></path><circle cx="52" cy="-40" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M8 -4 L32 -28 L48 -28 L62 -22"></path><circle cx="62" cy="-22" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M8 0 L36 0 L44 -8 L74 -8"></path><circle cx="74" cy="-8" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M8 4 L32 4 L40 12 L70 12"></path><circle cx="70" cy="12" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M6 6 L24 24 L36 24 L52 40"></path><circle cx="52" cy="40" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M4 8 L20 32 L36 32 L48 56"></path><circle cx="48" cy="56" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M0 8 L0 40 L-8 48 L-8 74"></path><circle cx="-8" cy="74" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M4 8 L4 32 L14 40 L14 68"></path><circle cx="14" cy="68" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M-6 6 L-24 24 L-36 24 L-50 38"></path><circle cx="-50" cy="38" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M-4 8 L-22 30 L-40 30 L-58 48"></path><circle cx="-58" cy="48" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M-8 0 L-36 0 L-44 -8 L-74 -8"></path><circle cx="-74" cy="-8" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M-8 4 L-32 4 L-40 12 L-66 12"></path><circle cx="-66" cy="12" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M-6 -6 L-24 -24 L-38 -24 L-54 -40"></path><circle cx="-54" cy="-40" r="2.4" fill="#0a0d10"></circle></g>
+    <g><path d="M-4 -8 L-18 -28 L-34 -28 L-46 -54"></path><circle cx="-46" cy="-54" r="2.4" fill="#0a0d10"></circle></g>
+  </g>
+  
+  <circle cx="0" cy="0" r="5" fill="#0a0d10" stroke="#1cf5f5" stroke-width="1.6" vector-effect="non-scaling-stroke"></circle>
+
+  
+  <g transform="rotate(35)">
+    
+    <g transform="translate(-25 -140) scale(0.5 0.7)">
+      
+      <path d="M50 4 C30 4 20 18 20 46 L20 232 C20 262 38 268 40 290 L40 374 C40 386 36 390 32 396 C42 398 58 398 68 396 C64 390 60 386 60 374 L60 290 C62 268 80 262 80 232 L80 46 C80 18 70 4 50 4 Z" fill="#0a0d10" stroke="#f5f51c" stroke-width="3.4" stroke-linejoin="round" vector-effect="non-scaling-stroke"></path>
+      
+      <g stroke="#1cf5f5" stroke-width="1.6" fill="none" stroke-linecap="round" opacity="0.75" vector-effect="non-scaling-stroke">
+        <path d="M50 22 L50 60 L38 72 L38 130"></path>
+        <circle cx="50" cy="22" r="2" fill="#1cf5f5"></circle>
+        <circle cx="38" cy="130" r="2" fill="#1cf5f5"></circle>
+        <path d="M62 50 L62 90 L52 100 L52 170"></path>
+        <circle cx="62" cy="50" r="2" fill="#1cf5f5"></circle>
+        <path d="M44 160 L44 200 L56 212 L56 248"></path>
+        <circle cx="56" cy="248" r="2" fill="#1cf5f5"></circle>
+      </g>
+      
+      <g stroke="#f5f51c" stroke-width="2" stroke-linecap="round" opacity="0.85" vector-effect="non-scaling-stroke">
+        <line x1="42" y1="310" x2="58" y2="310"></line>
+        <line x1="42" y1="324" x2="58" y2="324"></line>
+        <line x1="42" y1="338" x2="58" y2="338"></line>
+        <line x1="42" y1="352" x2="58" y2="352"></line>
+        <line x1="42" y1="366" x2="58" y2="366"></line>
+      </g>
+    </g>
+  </g>
+</svg>
