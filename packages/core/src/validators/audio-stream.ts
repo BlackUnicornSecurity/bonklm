@@ -67,15 +67,15 @@
  *    `ComposedContextValidator` at the composition layer.
  */
 import type {
+  HookSurface,
   Validator,
   ValidatorInput,
-  HookSurface,
 } from '../engine/GuardrailEngine.types.js';
 import {
   createResult,
+  type Finding,
   type GuardrailResult,
   Severity,
-  type Finding,
 } from '../base/GuardrailResult.js';
 import {
   BufferedReleaseGate,
@@ -300,7 +300,7 @@ class AhoCorasick {
   constructor(needlesLowercased: string[]) {
     let max = 0;
     for (let p = 0; p < needlesLowercased.length; p++) {
-      const needle = needlesLowercased[p]!;
+      const needle = needlesLowercased[p];
       if (needle.length > max) max = needle.length;
       let node = this.root;
       for (let i = 0; i < needle.length; i++) {
@@ -337,8 +337,8 @@ class AhoCorasick {
         // BFS-order transitive merge — see class-level proof.
         if (child.fail.outputs.length > 0) {
           for (let i = 0; i < child.fail.outputs.length; i++) {
-            child.outputs.push(child.fail.outputs[i]!);
-            child.outputLengths.push(child.fail.outputLengths[i]!);
+            child.outputs.push(child.fail.outputs[i]);
+            child.outputLengths.push(child.fail.outputLengths[i]);
           }
         }
         queue.push(child);
@@ -364,8 +364,8 @@ class AhoCorasick {
     this.state = state;
     if (state.outputs.length > 0) {
       for (let i = 0; i < state.outputs.length; i++) {
-        outBuffer.push(state.outputs[i]!);
-        outLengths.push(state.outputLengths[i]!);
+        outBuffer.push(state.outputs[i]);
+        outLengths.push(state.outputLengths[i]);
       }
     }
   }
@@ -533,12 +533,12 @@ export class AudioStreamValidator implements Validator {
       this.automaton.step(code, idxBuf, lenBuf);
       if (idxBuf.length > 0) {
         for (let j = 0; j < idxBuf.length; j++) {
-          const patternIdx = idxBuf[j]!;
-          const needleLen = lenBuf[j]!;
+          const patternIdx = idxBuf[j];
+          const needleLen = lenBuf[j];
           const dedupKey = `${patternIdx}@${i}`;
           if (dedup.has(dedupKey)) continue;
           dedup.add(dedupKey);
-          const pattern = this.patterns[patternIdx]!;
+          const pattern = this.patterns[patternIdx];
           const startIndex = i - needleLen + 1;
           matches.push({
             pattern,

@@ -26,7 +26,7 @@
  * Sprint 19 (Story 3.4) will explore an incremental-validate
  * tee-stream pattern; for now correctness over latency.
  */
-import { voice, llm } from '@livekit/agents';
+import { llm, voice } from '@livekit/agents';
 import type { AudioFrame } from '@livekit/rtc-node';
 import { ReadableStream } from 'node:stream/web';
 import { AUDIO_STREAM_SURFACE } from '@blackunicorn/bonklm/validators';

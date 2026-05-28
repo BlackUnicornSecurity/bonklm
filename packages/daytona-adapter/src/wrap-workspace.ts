@@ -22,11 +22,11 @@
  */
 import { validateCode, validatePath } from '@blackunicorn/bonklm-sandbox-utils';
 import type {
+  DaytonaFsLike,
+  DaytonaProcessLike,
+  DaytonaSurface,
   DaytonaWorkspaceLike,
   DaytonaWrapOptions,
-  DaytonaSurface,
-  DaytonaProcessLike,
-  DaytonaFsLike,
 } from './types.js';
 
 export class DaytonaGuardrailBlockedError extends Error {

@@ -22,10 +22,10 @@
  * @package @blackunicorn/bonklm-elizaos
  */
 import type {
+  Logger,
   ShadowLog,
   ShadowLogEntry,
   ShadowLogSourceTrust,
-  Logger,
 } from '@blackunicorn/bonklm';
 import { assertRoomAccess } from './shadow-log-adapter.js';
 

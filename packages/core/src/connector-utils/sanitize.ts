@@ -68,7 +68,6 @@ export function sanitizeReasonText(
   const hexEscaped = reason.replace(/[\x00-\x1f\x7f]/g, (c) =>
     `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`
   );
-  // eslint-disable-next-line no-control-regex
   const stripped = hexEscaped.replace(/[^\x20-\x7E]/g, '').slice(0, 200);
   return stripped.length > 0 ? stripped : undefined;
 }

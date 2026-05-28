@@ -54,10 +54,10 @@
 import { Middleware } from 'inngest';
 import {
   cachedValidate,
+  type CachedValidateOptions,
   canonicalJSONStringify,
   createSaltedKeyFn,
   GuardrailEngine,
-  type CachedValidateOptions,
   type Validator,
   type ValidatorInput,
 } from '@blackunicorn/bonklm';
@@ -248,7 +248,7 @@ function surfaceFromBundle(
       // function-run.
       const contentForCallback =
         typeof (input as { content?: unknown }).content === 'string'
-          ? ((input as { content: string }).content as string)
+          ? ((input as { content: string }).content)
           : JSON.stringify(input);
       await engine.notifyCachedResult(
         results,
@@ -278,9 +278,9 @@ function surfaceFromBundle(
       } else if (
         typeof content === 'object' &&
         content !== null &&
-        typeof (content as ValidatorInput).kind === 'string'
+        typeof (content).kind === 'string'
       ) {
-        input = content as ValidatorInput;
+        input = content;
         // B3 pre-flight: canonical-serialize the user-supplied
         // ValidatorInput so non-serializable values (Map / Set /
         // Date / class instances) BLOCK at the boundary instead

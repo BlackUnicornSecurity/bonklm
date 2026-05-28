@@ -19,7 +19,7 @@
  * sandbox call. Opt-out via `onSandboxError: 'allow'`.
  */
 import { validateCode, validatePath } from '@blackunicorn/bonklm-sandbox-utils';
-import type { E2BSandboxLike, E2BWrapOptions, E2BSurface } from './types.js';
+import type { E2BSandboxLike, E2BSurface, E2BWrapOptions } from './types.js';
 
 export class E2BGuardrailBlockedError extends Error {
   override readonly name = 'E2BGuardrailBlockedError';
@@ -171,7 +171,7 @@ export function wrapSandbox<S extends E2BSandboxLike>(
 
   // runCode is optional in the E2B SDK; only proxy if present.
   if (typeof sandbox.runCode === 'function') {
-    (wrapped as E2BSandboxLike).runCode = async (code: string, opts?: unknown) => {
+    (wrapped).runCode = async (code: string, opts?: unknown) => {
       const result = await validateCode(code, validatorOpts);
       if (result.blocked) {
         fireBlock(options, 'runCode', result, code);

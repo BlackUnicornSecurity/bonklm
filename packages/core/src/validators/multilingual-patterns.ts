@@ -11,9 +11,9 @@
 import { createResult, Severity as Sev, type Severity } from '../base/GuardrailResult.js';
 import { mergeConfig, type ValidatorConfig } from '../base/ValidatorConfig.js';
 import type {
+  HookSurface,
   Validator,
   ValidatorInput,
-  HookSurface,
 } from '../engine/GuardrailEngine.types.js';
 import { unwrapValidatorInput } from './internal/unwrap-input.js';
 import { stripBidiControls } from './internal/rtl-bidi-guard.js';

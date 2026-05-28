@@ -28,8 +28,8 @@
 import {
   assertAsyncLocalStorageHealthy,
   createComposedContextValidator,
-  createMemoryWriteValidator,
   createLogger,
+  createMemoryWriteValidator,
   type GuardrailEngine,
   type Logger,
   type Validator,

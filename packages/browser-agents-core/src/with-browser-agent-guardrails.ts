@@ -81,7 +81,7 @@ export function withBrowserAgentGuardrails<T extends object>(
     } else {
       // sec-audit T5 closure: no logger MUST NOT silence a CUA opt-in
       // warning. Force the warning to a visible channel.
-      // eslint-disable-next-line no-console
+       
       console.warn(msg);
     }
   }

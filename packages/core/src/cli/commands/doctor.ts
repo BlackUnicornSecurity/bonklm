@@ -97,7 +97,7 @@ export function resolveHooksPath(cwd: string): string | null {
   // / submodule). For now we honour the directory case and treat the
   // file case as "default hooks path" — worktree hook discovery is
   // out of scope for the M-2 check.
-  let isDir = false;
+  let isDir: boolean;
   try {
     isDir = statSync(gitDir).isDirectory();
   } catch {
@@ -426,13 +426,13 @@ export function checkPnpmAudit(
   if (
     parsed !== null &&
     typeof parsed === 'object' &&
-    'metadata' in (parsed as object)
+    'metadata' in (parsed)
   ) {
     const metadata = (parsed as Record<string, unknown>).metadata;
     if (
       metadata !== null &&
       typeof metadata === 'object' &&
-      'vulnerabilities' in (metadata as object)
+      'vulnerabilities' in (metadata)
     ) {
       const vulns = (metadata as Record<string, unknown>).vulnerabilities as Record<string, number>;
       const high = Number(vulns.high ?? 0);
@@ -643,7 +643,7 @@ export function runDoctor(
   // B.14 — validate cwd existence and directory-ness at the boundary.
   // Non-existent paths or regular files silently produced misleading reports
   // before Sprint 51. Now we short-circuit with a clear failure entry.
-  let cwdStat: ReturnType<typeof statSync> | null = null;
+  let cwdStat: ReturnType<typeof statSync> | null;
   try {
     cwdStat = statSync(cwd);
   } catch {

@@ -37,8 +37,8 @@ import {
   type GuardrailEngine,
   type Logger,
   sanitizeMeta,
-  type Validator,
   validateWithTimeoutSecure,
+  type Validator,
 } from '@blackunicorn/bonklm';
 import {
   ConnectorValidationError,

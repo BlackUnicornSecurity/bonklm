@@ -294,11 +294,11 @@ export function createGuardedAnthropic(
       const er = engineResult as unknown as { results?: GuardrailResult[] };
       if (er.results !== undefined) {
         // Multiple results returned (from EngineResult.results array)
-        return er.results.length > 0 ? er.results : [engineResult as GuardrailResult];
+        return er.results.length > 0 ? er.results : [engineResult];
       }
 
       // Single result returned
-      const result = [engineResult as GuardrailResult];
+      const result = [engineResult];
 
       // Record telemetry complete
       if (telemetry) {

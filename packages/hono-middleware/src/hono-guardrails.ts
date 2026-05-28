@@ -147,7 +147,7 @@ export function honoGuardrails(
     // Run the engine (or a per-middleware validator chain when an
     // override was supplied).
     let blockedReason: string | undefined;
-    let blockedCategory: string = 'validation_failed';
+    const blockedCategory: string = 'validation_failed';
     let severity: string | undefined;
 
     try {

@@ -247,7 +247,7 @@ export function wrapMistral<T extends MistralLike>(
       }
       return value;
     },
-  }) as T;
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────

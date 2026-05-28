@@ -43,12 +43,12 @@
  */
 import type { GuardrailEngine } from '@blackunicorn/bonklm';
 import {
-  BrowserAgentGuardrailBlockedError,
   assertNonCuaMode,
+  BrowserAgentGuardrailBlockedError,
+  type BrowserAgentValidateResult,
   isUnsafeBinaryResult,
   normaliseActArg,
   withBrowserAgentGuardrails,
-  type BrowserAgentValidateResult,
 } from '@blackunicorn/bonklm-browser-agents-core';
 import type { StagehandLike, WrapStagehandOptions } from './types.js';
 

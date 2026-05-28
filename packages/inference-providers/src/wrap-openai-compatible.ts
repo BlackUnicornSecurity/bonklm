@@ -13,12 +13,12 @@
  * Throws `InferenceProviderBlockedError` on BLOCK.
  */
 import type {
-  OpenAICompatibleClient,
+  InferenceProviderName,
   OpenAIChatRequest,
   OpenAIChatResponse,
+  OpenAICompatibleClient,
   OpenAIStreamChunk,
   WrapInferenceOptions,
-  InferenceProviderName,
 } from './types.js';
 import { InferenceProviderBlockedError } from './types.js';
 
@@ -218,7 +218,7 @@ async function safeValidate(
 }
 
 function isAsyncIterable<T>(x: unknown): x is AsyncIterable<T> {
-  return x !== null && typeof x === 'object' && Symbol.asyncIterator in (x as object);
+  return x !== null && typeof x === 'object' && Symbol.asyncIterator in (x);
 }
 
 function isChatResponse(x: unknown): x is OpenAIChatResponse {

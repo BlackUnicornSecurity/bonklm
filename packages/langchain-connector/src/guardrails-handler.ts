@@ -221,7 +221,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
       return multiResult.results || [engineResult as GuardrailResult];
     }
 
-    return [engineResult as GuardrailResult];
+    return [engineResult];
   }
 
   /**

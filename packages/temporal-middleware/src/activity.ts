@@ -52,7 +52,7 @@ let _experimentalWarned = false;
 function emitExperimentalWarnOnce(): void {
   if (_experimentalWarned) return;
   _experimentalWarned = true;
-  // eslint-disable-next-line no-console
+   
   console.warn(
     '[bonklm-temporal] EXPERIMENTAL: Story 4.4 Sprint 20 scaffold. ' +
       'Full SDK integration + worker integration tests land Sprint 21.'
