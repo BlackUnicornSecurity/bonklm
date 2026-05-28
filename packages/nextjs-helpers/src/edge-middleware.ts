@@ -30,7 +30,7 @@ import type { GuardrailEngine } from '@blackunicorn/bonklm';
 import {
   runRequestValidation,
   WebMiddlewareBlockedError,
-  type WebMiddlewareBlockEvent,
+  type WebMiddlewareBlockEvent
 } from '@blackunicorn/bonklm-web-middleware-utils';
 
 export interface BonklmEdgeMiddlewareOptions {
@@ -56,9 +56,7 @@ export interface BonklmEdgeMiddlewareOptions {
 
 const BODY_BEARING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
-export function bonklmEdgeMiddleware(
-  options: BonklmEdgeMiddlewareOptions
-): (req: Request) => Promise<Response> {
+export function bonklmEdgeMiddleware(options: BonklmEdgeMiddlewareOptions): (req: Request) => Promise<Response> {
   if (!options?.engine) {
     throw new TypeError('bonklmEdgeMiddleware: options.engine is required.');
   }
@@ -67,7 +65,7 @@ export function bonklmEdgeMiddleware(
       ? options.nextResponse()
       : new Response(null, {
           status: 200,
-          headers: { 'x-bonklm-passthrough': '1' },
+          headers: { 'x-bonklm-passthrough': '1' }
         });
 
   return async function middleware(req: Request): Promise<Response> {
@@ -89,7 +87,7 @@ export function bonklmEdgeMiddleware(
         {
           engine: options.engine,
           onBlock: options.onBlock,
-          onError: options.onError,
+          onError: options.onError
         },
         body
       );
@@ -101,18 +99,18 @@ export function bonklmEdgeMiddleware(
             phase: 'request',
             reason: err.message,
             category: err.category,
-            severity: err.severity,
+            severity: err.severity
           });
         }
         return new Response(
           JSON.stringify({
             error: 'request_blocked',
             reason: err.message,
-            category: err.category,
+            category: err.category
           }),
           {
             status: 403,
-            headers: { 'content-type': 'application/json' },
+            headers: { 'content-type': 'application/json' }
           }
         );
       }

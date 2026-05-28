@@ -44,7 +44,7 @@
 import {
   assertGetTenantIdValid,
   wrapMemoryClient,
-  type WrapMemoryClientOptions,
+  type WrapMemoryClientOptions
 } from '@blackunicorn/bonklm-memory-utils';
 import type { GuardrailEngine } from '@blackunicorn/bonklm';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
@@ -82,7 +82,7 @@ const ZEP_PASSTHROUGH_PROPS = new Set([
   'apiKey',
   'baseUrl',
   'options',
-  'config',
+  'config'
 ]);
 
 /**
@@ -124,7 +124,7 @@ export function wrapZepClient<TClient extends ZepClientLike>(
     wrapMemoryClient(raw, {
       ...options,
       adapter,
-      engine,
+      engine
     });
 
   return new Proxy(client, {
@@ -175,6 +175,6 @@ export function wrapZepClient<TClient extends ZepClientLike>(
       }
       // Non-callable unknown property — pass through (e.g. raw config getter).
       return raw;
-    },
+    }
   });
 }

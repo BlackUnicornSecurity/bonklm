@@ -26,34 +26,19 @@ import {
   type Logger,
   sanitizeMeta,
   Severity,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
 // S012-011: Use standard connector error classes from core
-import {
-  StreamValidationError as ConnectorStreamValidationError,
-} from '@blackunicorn/bonklm/core/connector-utils';
-import type {
-  GuardrailsCallbackHandlerOptions,
-  GuardrailsViolationError,
-  StreamValidationContext,
-} from './types.js';
-import {
-  DEFAULT_MAX_BUFFER_SIZE,
-  DEFAULT_VALIDATION_INTERVAL,
-  DEFAULT_VALIDATION_TIMEOUT,
-} from './types.js';
+import { StreamValidationError as ConnectorStreamValidationError } from '@blackunicorn/bonklm/core/connector-utils';
+import type { GuardrailsCallbackHandlerOptions, GuardrailsViolationError, StreamValidationContext } from './types.js';
+import { DEFAULT_MAX_BUFFER_SIZE, DEFAULT_VALIDATION_INTERVAL, DEFAULT_VALIDATION_TIMEOUT } from './types.js';
 
 // Type alias for the standard StreamValidationError
 type StreamValidationError = ConnectorStreamValidationError;
 
 // Message-extraction helpers live in ./message-utils.ts to keep this file under
 // the 800-line size cap. Imported below.
-import {
-  type BaseMessageLike,
-  extractLLMResultText,
-  type LLMResultLike,
-  messagesToText,
-} from './message-utils.js';
+import { type BaseMessageLike, extractLLMResultText, type LLMResultLike, messagesToText } from './message-utils.js';
 import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
@@ -163,7 +148,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
       streamingValidationInterval = DEFAULT_VALIDATION_INTERVAL,
       onBlocked,
       onStreamBlocked,
-      onValidationError,
+      onValidationError
     } = options;
 
     // Validate critical security options
@@ -176,7 +161,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
       engine: new GuardrailEngine({
         validators,
         guards,
-        logger,
+        logger
       }),
       logger,
       validateStreaming,
@@ -186,7 +171,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
       streamingValidationInterval,
       onBlocked,
       onStreamBlocked,
-      onValidationError,
+      onValidationError
     });
   }
 
@@ -195,10 +180,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
    *
    * @internal
    */
-  private async validateWithTimeout(
-    content: string,
-    context?: string,
-  ): Promise<GuardrailResult[]> {
+  private async validateWithTimeout(content: string, context?: string): Promise<GuardrailResult[]> {
     // DEV-001: Correct API signature - use string context, not object
     const engineResult = await validateWithTimeoutSecure({
       operation: () => this.engine.validate(content, context),
@@ -209,10 +191,10 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
             category: 'timeout',
             description: 'Validation timeout',
             severity: Severity.CRITICAL,
-            weight: 30,
-          },
+            weight: 30
+          }
         ]),
-      logger: this.logger,
+      logger: this.logger
     });
 
     // Convert EngineResult to GuardrailResult[]
@@ -229,13 +211,9 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
    *
    * @internal
    */
-  private async validateAndThrow(
-    content: string,
-    context: string,
-    runId?: string,
-  ): Promise<void> {
+  private async validateAndThrow(content: string, context: string, runId?: string): Promise<void> {
     const results = await this.validateWithTimeout(content, context);
-    const blocked = results.find((r) => !r.allowed);
+    const blocked = results.find(r => !r.allowed);
 
     if (blocked) {
       // Sprint 40 security audit S40-2 closure: `blocked.reason` is
@@ -246,7 +224,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
       this.logger.warn('[Guardrails] Content blocked', {
         context,
         reason: sanitizeMeta(blocked.reason),
-        runId: sanitizeMeta(runId),
+        runId: sanitizeMeta(runId)
       });
 
       if (this.onBlocked) {
@@ -256,9 +234,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
       // SEC-007: Production mode - generic error message only
       // In production, don't expose sensitive details via error object properties
       const violationError = new Error(
-        this.productionMode
-          ? 'Content blocked'
-          : `Content blocked: ${blocked.reason}`,
+        this.productionMode ? 'Content blocked' : `Content blocked: ${blocked.reason}`
       ) as GuardrailsViolationError;
 
       // Only attach detailed properties in development mode to prevent data leakage
@@ -267,12 +243,12 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
           name: 'GuardrailsViolationError',
           reason: blocked.reason || 'Unknown reason',
           findings: blocked.findings || [],
-          riskScore: blocked.risk_score || 0,
+          riskScore: blocked.risk_score || 0
         });
       } else {
         // In production, only set the name - no sensitive details
         Object.assign(violationError, {
-          name: 'GuardrailsViolationError',
+          name: 'GuardrailsViolationError'
         });
       }
 
@@ -294,16 +270,16 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
     _llm: unknown,
     prompts: string[],
     runId: string,
-     
+
     _parentRunId?: string,
-     
+
     _extraParams?: Record<string, unknown>,
-     
+
     _tags?: string[],
-     
+
     _metadata?: Record<string, unknown>,
-     
-    _runName?: string,
+
+    _runName?: string
   ): Promise<void> {
     try {
       for (let i = 0; i < prompts.length; i++) {
@@ -313,7 +289,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
         if (typeof prompt !== 'string') {
           this.logger.warn('[Guardrails] Skipping non-string prompt', {
             index: i,
-            type: typeof prompt,
+            type: typeof prompt
           });
           continue;
         }
@@ -343,16 +319,16 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
     _llm: unknown,
     messages: unknown[][],
     runId: string,
-     
+
     _parentRunId?: string,
-     
+
     _extraParams?: Record<string, unknown>,
-     
+
     _tags?: string[],
-     
+
     _metadata?: Record<string, unknown>,
-     
-    _runName?: string,
+
+    _runName?: string
   ): Promise<void> {
     try {
       for (const messageList of messages) {
@@ -364,7 +340,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
             '_getType' in m &&
             typeof (m as { _getType: () => string })._getType === 'function' &&
             ((m as { _getType: () => string })._getType() === 'human' ||
-              (m as { _getType: () => string })._getType() === 'user'),
+              (m as { _getType: () => string })._getType() === 'user')
         );
 
         if (humanMessages.length > 0) {
@@ -399,7 +375,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
     _idx: NewTokenIndices,
     runId: string,
     _parentRunId?: string,
-    _tags?: string[],
+    _tags?: string[]
   ): void | Promise<void> {
     if (!this.validateStreaming) {
       return;
@@ -413,7 +389,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
         accumulatedText: '',
         tokenCount: 0,
         validationCounter: 0,
-        startTime: Date.now(),
+        startTime: Date.now()
       };
       this.streamContexts.set(runId, context);
     }
@@ -427,7 +403,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
       this.logger.warn('[Guardrails] Stream buffer exceeded', {
         runId: sanitizeMeta(runId),
         size: context.accumulatedText.length + token.length,
-        limit: this.maxStreamBufferSize,
+        limit: this.maxStreamBufferSize
       });
 
       // S012-011: Use standard connector error class
@@ -470,31 +446,26 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
 
       if (streamContext && streamContext.accumulatedText.length > 0) {
         // Final validation for accumulated stream content
-        const results = await this.validateWithTimeout(
-          streamContext.accumulatedText,
-          'llm-output',
-        );
+        const results = await this.validateWithTimeout(streamContext.accumulatedText, 'llm-output');
 
-        if (results.some((r) => !r.allowed)) {
+        if (results.some(r => !r.allowed)) {
           // Sprint 44 architect LOW #9 closure: same runId parity
           // as line ~424.
           this.logger.warn('[Guardrails] Stream blocked at final validation', {
             runId: sanitizeMeta(runId),
-            tokenCount: streamContext.tokenCount,
+            tokenCount: streamContext.tokenCount
           });
 
           if (this.onStreamBlocked) {
             this.onStreamBlocked(streamContext.accumulatedText);
           }
 
-          const blocked = results.find((r) => !r.allowed);
+          const blocked = results.find(r => !r.allowed);
 
           // SEC-007: Production mode - generic error message only
           // In production, don't expose sensitive details via error object properties
           const violationError = new Error(
-            this.productionMode
-              ? 'Content blocked'
-              : `Content blocked: ${blocked?.reason || 'validation failed'}`,
+            this.productionMode ? 'Content blocked' : `Content blocked: ${blocked?.reason || 'validation failed'}`
           ) as GuardrailsViolationError;
 
           // Only attach detailed properties in development mode to prevent data leakage
@@ -503,12 +474,12 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
               name: 'GuardrailsViolationError',
               reason: blocked?.reason || 'validation failed',
               findings: blocked?.findings || [],
-              riskScore: blocked?.risk_score || 0,
+              riskScore: blocked?.risk_score || 0
             });
           } else {
             // In production, only set the name - no sensitive details
             Object.assign(violationError, {
-              name: 'GuardrailsViolationError',
+              name: 'GuardrailsViolationError'
             });
           }
 
@@ -553,10 +524,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
     this.streamContexts.delete(runId);
 
     // Re-throw the error unless it's a validation error we've already handled
-    if (
-      err instanceof Error &&
-      (err.name === 'GuardrailsViolationError' || err.name === 'StreamValidationError')
-    ) {
+    if (err instanceof Error && (err.name === 'GuardrailsViolationError' || err.name === 'StreamValidationError')) {
       // Already logged in other handlers
       throw err;
     }
@@ -576,30 +544,30 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
     _chain: unknown,
     inputs: Record<string, unknown>,
     runId: string,
-     
+
     _parentRunId?: string,
-     
+
     _tags?: string[],
-     
+
     _metadata?: Record<string, unknown>,
-     
+
     _runType?: string,
-     
-    _runName?: string,
+
+    _runName?: string
   ): Promise<void> {
     try {
       // Extract text from inputs for validation
       const inputText = Object.values(inputs)
-        .map((v) => {
+        .map(v => {
           if (typeof v === 'string') {
             return v;
           }
-          if (Array.isArray(v) && v.every((item) => typeof item === 'string')) {
+          if (Array.isArray(v) && v.every(item => typeof item === 'string')) {
             return v.join('\n');
           }
           return '';
         })
-        .filter((s) => s.length > 0)
+        .filter(s => s.length > 0)
         .join('\n');
 
       if (inputText) {
@@ -625,26 +593,26 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
   async handleChainEnd(
     outputs: Record<string, unknown>,
     runId: string,
-     
+
     _parentRunId?: string,
-     
+
     _tags?: string[],
-     
-    _kwargs?: { inputs?: Record<string, unknown> },
+
+    _kwargs?: { inputs?: Record<string, unknown> }
   ): Promise<void> {
     try {
       // Extract text from outputs for validation
       const outputText = Object.values(outputs)
-        .map((v) => {
+        .map(v => {
           if (typeof v === 'string') {
             return v;
           }
-          if (Array.isArray(v) && v.every((item) => typeof item === 'string')) {
+          if (Array.isArray(v) && v.every(item => typeof item === 'string')) {
             return v.join('\n');
           }
           return '';
         })
-        .filter((s) => s.length > 0)
+        .filter(s => s.length > 0)
         .join('\n');
 
       if (outputText) {
@@ -672,14 +640,14 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
     _tool: unknown,
     input: string,
     runId: string,
-     
+
     _parentRunId?: string,
-     
+
     _tags?: string[],
-     
+
     _metadata?: Record<string, unknown>,
-     
-    _runName?: string,
+
+    _runName?: string
   ): Promise<void> {
     try {
       if (input && typeof input === 'string') {
@@ -705,10 +673,10 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
   async handleToolEnd(
     output: string,
     runId: string,
-     
+
     _parentRunId?: string,
-     
-    _tags?: string[],
+
+    _tags?: string[]
   ): Promise<void> {
     try {
       if (output && typeof output === 'string') {
@@ -729,10 +697,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
  * @internal
  */
 export function isGuardrailsViolationError(error: unknown): error is GuardrailsViolationError {
-  return (
-    error instanceof Error &&
-    error.name === 'GuardrailsViolationError'
-  );
+  return error instanceof Error && error.name === 'GuardrailsViolationError';
 }
 
 /**
@@ -741,17 +706,11 @@ export function isGuardrailsViolationError(error: unknown): error is GuardrailsV
  * @internal
  */
 export function isStreamValidationError(error: unknown): error is StreamValidationError {
-  return (
-    error instanceof Error &&
-    error.name === 'StreamValidationError'
-  );
+  return error instanceof Error && error.name === 'StreamValidationError';
 }
 
 // Re-export types for convenience
-export type {
-  GuardrailsCallbackHandlerOptions,
-  StreamValidationContext,
-};
+export type { GuardrailsCallbackHandlerOptions, StreamValidationContext };
 
 // Re-export custom error class
 export { GuardrailsViolationError } from './types.js';

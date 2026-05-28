@@ -21,21 +21,15 @@ import {
   type Logger,
   RiskLevel,
   Severity,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
 import {
   ConnectorValidationError,
   extractContentFromResponse,
-  logValidationFailure,
+  logValidationFailure
 } from '@blackunicorn/bonklm/core/connector-utils';
-import type {
-  GuardedHuggingFaceOptions,
-  TextGenerationOptions,
-} from './types.js';
-import {
-  DEFAULT_MAX_INPUT_LENGTH,
-  DEFAULT_VALIDATION_TIMEOUT,
-} from './types.js';
+import type { GuardedHuggingFaceOptions, TextGenerationOptions } from './types.js';
+import { DEFAULT_MAX_INPUT_LENGTH, DEFAULT_VALIDATION_TIMEOUT } from './types.js';
 
 /**
  * Default logger instance.
@@ -68,7 +62,7 @@ const GUARDED_METHODS = [
   'tokenClassification',
   'sentenceSimilarity',
   'documentQuestionAnswering',
-  'tableQuestionAnswering',
+  'tableQuestionAnswering'
 ] as const;
 
 /**
@@ -96,7 +90,7 @@ const OUTPUT_FIELD_MAP: Record<string, string[]> = {
   objectDetection: ['label'],
   featureExtraction: [],
   textToImage: [],
-  textToSpeech: [],
+  textToSpeech: []
 };
 
 /**
@@ -126,10 +120,7 @@ const OUTPUT_FIELD_MAP: Record<string, string[]> = {
  * });
  * ```
  */
-export function createGuardedInference(
-  hfClient: any,
-  options: GuardedHuggingFaceOptions = {}
-): any {
+export function createGuardedInference(hfClient: any, options: GuardedHuggingFaceOptions = {}): any {
   const {
     validators = [],
     guards = [],
@@ -140,13 +131,13 @@ export function createGuardedInference(
     allowedModels,
     onInputBlocked,
     onOutputBlocked,
-    onModelNotAllowed,
+    onModelNotAllowed
   } = options;
 
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   /**
@@ -155,10 +146,7 @@ export function createGuardedInference(
    *
    * @internal
    */
-  const validateWithTimeout = async (
-    content: string,
-    context?: string
-  ): Promise<EngineResult> => {
+  const validateWithTimeout = async (content: string, context?: string): Promise<EngineResult> => {
     const result = await validateWithTimeoutSecure<EngineResult>({
       operation: () => engine.validate(content, context),
       timeoutMs: validationTimeout,
@@ -169,19 +157,21 @@ export function createGuardedInference(
         risk_level: RiskLevel.HIGH,
         risk_score: 30,
         reason: 'Validation timeout',
-        findings: [{
-          category: 'timeout',
-          severity: Severity.CRITICAL,
-          description: 'Validation timeout',
-          weight: 30,
-        }],
+        findings: [
+          {
+            category: 'timeout',
+            severity: Severity.CRITICAL,
+            description: 'Validation timeout',
+            weight: 30
+          }
+        ],
         results: [],
         validatorCount: validators.length,
         guardCount: guards.length,
         executionTime: validationTimeout,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       }),
-      logger,
+      logger
     });
     return result;
   };
@@ -196,12 +186,10 @@ export function createGuardedInference(
       return true;
     }
 
-    return allowedModels.some((pattern) => {
+    return allowedModels.some(pattern => {
       // Convert wildcard pattern to regex, escaping special regex characters first
       const escapedPattern = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-      const regexPattern = escapedPattern
-        .replace(/\*/g, '.*')
-        .replace(/\?/g, '.');
+      const regexPattern = escapedPattern.replace(/\*/g, '.*').replace(/\?/g, '.');
       const regex = new RegExp(`^${regexPattern}$`, 'i');
       return regex.test(model);
     });
@@ -222,7 +210,7 @@ export function createGuardedInference(
       if (onModelNotAllowed) onModelNotAllowed(model);
       throw new ConnectorValidationError(
         productionMode ? 'Model not allowed' : `Model '${model}' is not in the allowed list`,
-        'model_not_allowed',
+        'model_not_allowed'
       );
     }
   };
@@ -237,13 +225,11 @@ export function createGuardedInference(
     if (inputs.length > maxInputLength) {
       logger.warn('[Guardrails] Input too long', {
         length: inputs.length,
-        max: maxInputLength,
+        max: maxInputLength
       });
       throw new ConnectorValidationError(
-        productionMode
-          ? 'Input too long'
-          : `Input exceeds maximum length of ${maxInputLength} characters`,
-        'input_too_long',
+        productionMode ? 'Input too long' : `Input exceeds maximum length of ${maxInputLength} characters`,
+        'input_too_long'
       );
     }
 
@@ -257,7 +243,7 @@ export function createGuardedInference(
 
       throw new ConnectorValidationError(
         productionMode ? 'Input blocked' : `Input blocked: ${result.reason}`,
-        'validation_failed',
+        'validation_failed'
       );
     }
   };
@@ -277,13 +263,13 @@ export function createGuardedInference(
 
       return {
         output: '[Content filtered by guardrails]',
-        filtered: true,
+        filtered: true
       };
     }
 
     return {
       output,
-      filtered: false,
+      filtered: false
     };
   };
 
@@ -301,25 +287,23 @@ export function createGuardedInference(
             validateModel(model);
 
             // Extract and validate input from messages
-            const inputText = messages
-              .map((m: any) => `${m.role}: ${m.content || ''}`)
-              .join('\n');
+            const inputText = messages.map((m: any) => `${m.role}: ${m.content || ''}`).join('\n');
             await validateInput(inputText);
 
             // Call the original method
-            const rawResult = await (target)[prop](model, messages, options);
+            const rawResult = await target[prop](model, messages, options);
 
             // Extract output using content extractor
             const outputText = extractContentFromResponse(rawResult, {
               fields: ['choices[0].message.content', 'choices[0].text', 'text'],
-              defaultValue: '',
+              defaultValue: ''
             });
 
             if (outputText) {
               const validationResult = await validateOutput(outputText);
               return {
                 ...validationResult,
-                raw: rawResult,
+                raw: rawResult
               };
             }
 
@@ -338,20 +322,20 @@ export function createGuardedInference(
           await validateInput(inputs);
 
           // Call the original method
-          const rawResult = await (target)[prop](options);
+          const rawResult = await target[prop](options);
 
           // Extract output using content extractor with method-specific fields
           const fields = OUTPUT_FIELD_MAP[propStr] || ['generated_text', 'text', 'output'];
           const outputText = extractContentFromResponse(rawResult, {
             fields,
-            defaultValue: '',
+            defaultValue: ''
           });
 
           if (outputText) {
             const validationResult = await validateOutput(outputText);
             return {
               ...validationResult,
-              raw: rawResult,
+              raw: rawResult
             };
           }
 
@@ -361,17 +345,13 @@ export function createGuardedInference(
       }
 
       // For all other methods, pass through without validation
-      const value = (target)[prop];
+      const value = target[prop];
       return typeof value === 'function' ? value.bind(target) : value;
-    },
+    }
   });
 }
 
 /**
  * Re-exports types for convenience.
  */
-export type {
-  GuardedHuggingFaceOptions,
-  TextGenerationOptions,
-  GuardedInferenceResult,
-} from './types.js';
+export type { GuardedHuggingFaceOptions, TextGenerationOptions, GuardedInferenceResult } from './types.js';

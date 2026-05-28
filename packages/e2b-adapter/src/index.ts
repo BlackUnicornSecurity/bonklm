@@ -16,9 +16,4 @@
  * `onSandboxError: 'block' | 'allow'` semantics.
  */
 export { wrapSandbox, E2BGuardrailBlockedError } from './wrap-sandbox.js';
-export type {
-  E2BSandboxLike,
-  E2BWrapOptions,
-  E2BSurface,
-  E2BBlockEvent,
-} from './types.js';
+export type { E2BSandboxLike, E2BWrapOptions, E2BSurface, E2BBlockEvent } from './types.js';

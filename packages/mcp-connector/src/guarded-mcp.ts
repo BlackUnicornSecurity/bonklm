@@ -24,24 +24,19 @@ import {
   sanitizeMeta,
   serializeError,
   Severity,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
 import {
   ConnectorValidationError,
   extractContentFromResponse,
-  logValidationFailure,
+  logValidationFailure
 } from '@blackunicorn/bonklm/core/connector-utils';
-import type {
-  GuardedMCPOptions,
-  ToolCallOptions,
-  ToolCallResult,
-  ToolInfo,
-} from './types.js';
+import type { GuardedMCPOptions, ToolCallOptions, ToolCallResult, ToolInfo } from './types.js';
 import {
   DEFAULT_MAX_ARGUMENT_SIZE,
   DEFAULT_VALIDATION_TIMEOUT,
   MAX_TOOL_NAME_LENGTH,
-  VALID_TOOL_NAME_PATTERN,
+  VALID_TOOL_NAME_PATTERN
 } from './types.js';
 import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-utils';
 
@@ -70,7 +65,6 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  * @throws {TypeError} If value is not a positive finite number
  */
 
-
 /**
  * SEC-005: Validates and sanitizes a tool name.
  *
@@ -83,17 +77,11 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  *
  * @throws {ConnectorValidationError} If tool name is invalid or not in allowlist
  */
-function validateToolName(
-  name: string,
-  allowedTools?: string[],
-): string {
+function validateToolName(name: string, allowedTools?: string[]): string {
   // Check allowlist first
   if (allowedTools && allowedTools.length > 0) {
     if (!allowedTools.includes(name)) {
-      throw new ConnectorValidationError(
-        `Tool '${name}' is not in the allowed tools list`,
-        'allowlist_violation',
-      );
+      throw new ConnectorValidationError(`Tool '${name}' is not in the allowed tools list`, 'allowlist_violation');
     }
   }
 
@@ -101,7 +89,7 @@ function validateToolName(
   if (!VALID_TOOL_NAME_PATTERN.test(name)) {
     throw new ConnectorValidationError(
       `Tool name '${name}' contains invalid characters. Only alphanumeric, underscore, and hyphen are allowed.`,
-      'invalid_format',
+      'invalid_format'
     );
   }
 
@@ -109,7 +97,7 @@ function validateToolName(
   if (name.length > MAX_TOOL_NAME_LENGTH) {
     throw new ConnectorValidationError(
       `Tool name '${name}' exceeds maximum length of ${MAX_TOOL_NAME_LENGTH}`,
-      'size_limit_exceeded',
+      'size_limit_exceeded'
     );
   }
 
@@ -138,10 +126,7 @@ function sanitizeToolName(name: string): string {
  *
  * @throws {ConnectorValidationError} If arguments exceed maximum size or contain circular references
  */
-function validateArgumentSize(
-  args: Record<string, unknown>,
-  maxSize: number,
-): string {
+function validateArgumentSize(args: Record<string, unknown>, maxSize: number): string {
   let argsStr: string;
   try {
     argsStr = JSON.stringify(args);
@@ -150,7 +135,7 @@ function validateArgumentSize(
     if (error instanceof Error && error.message.includes('circular')) {
       throw new ConnectorValidationError(
         'Tool arguments contain circular references or unstringifiable content',
-        'serialization_error',
+        'serialization_error'
       );
     }
     throw error;
@@ -159,7 +144,7 @@ function validateArgumentSize(
   if (argsStr.length > maxSize) {
     throw new ConnectorValidationError(
       `Tool arguments exceed maximum size of ${maxSize} bytes (got ${argsStr.length} bytes)`,
-      'size_limit_exceeded',
+      'size_limit_exceeded'
     );
   }
   return argsStr;
@@ -192,10 +177,7 @@ function validateArgumentSize(
  * });
  * ```
  */
-export function createGuardedMCP(
-  client: Client,
-  options: GuardedMCPOptions = {},
-): GuardedMCPClient {
+export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}): GuardedMCPClient {
   const {
     validators = [],
     guards = [],
@@ -207,7 +189,7 @@ export function createGuardedMCP(
     productionMode = process.env.NODE_ENV === 'production', // SEC-007
     validationTimeout = DEFAULT_VALIDATION_TIMEOUT, // SEC-008: Default 5s
     onToolCallBlocked,
-    onToolResultBlocked,
+    onToolResultBlocked
   } = options;
 
   // Validate critical security options
@@ -217,7 +199,7 @@ export function createGuardedMCP(
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   /**
@@ -225,10 +207,7 @@ export function createGuardedMCP(
    *
    * @internal
    */
-  const validateWithTimeout = async (
-    content: string,
-    context?: string,
-  ): Promise<GuardrailResult[]> => {
+  const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult[]> => {
     // DEV-001: Correct API signature - use string context, not object
     const engineResult = await validateWithTimeoutSecure({
       operation: () => engine.validate(content, context),
@@ -239,10 +218,10 @@ export function createGuardedMCP(
             category: 'timeout',
             description: 'Validation timeout',
             severity: Severity.CRITICAL,
-            weight: 30,
-          },
+            weight: 30
+          }
         ]),
-      logger,
+      logger
     });
 
     // Convert EngineResult to GuardrailResult[]
@@ -261,17 +240,14 @@ export function createGuardedMCP(
    *
    * @internal
    */
-  const validateToolCall = async (
-    toolName: string,
-    args: string,
-  ): Promise<void> => {
+  const validateToolCall = async (toolName: string, args: string): Promise<void> => {
     // Create validation string with sanitized tool name
     const sanitizedName = sanitizeToolName(toolName);
     const validationContent = `Tool: ${sanitizedName}, Args: ${args}`;
 
     const results = await validateWithTimeout(validationContent, 'input');
 
-    const blocked = results.find((r) => !r.allowed);
+    const blocked = results.find(r => !r.allowed);
     if (blocked) {
       // S012-001: Use connector-utils validation failure logging
       logValidationFailure(logger, blocked.reason || 'Content blocked', { tool: toolName });
@@ -301,13 +277,10 @@ export function createGuardedMCP(
    *
    * @internal
    */
-  const validateToolResult = async (
-    toolName: string,
-    resultContent: string,
-  ): Promise<ToolCallResult | null> => {
+  const validateToolResult = async (toolName: string, resultContent: string): Promise<ToolCallResult | null> => {
     const results = await validateWithTimeout(resultContent, 'output');
 
-    const blocked = results.find((r) => !r.allowed);
+    const blocked = results.find(r => !r.allowed);
     if (blocked) {
       // S012-001: Use connector-utils validation failure logging
       logValidationFailure(logger, blocked.reason || 'Content blocked', { tool: toolName });
@@ -335,10 +308,10 @@ export function createGuardedMCP(
         content: [
           {
             type: 'text',
-            text: filteredText,
-          },
+            text: filteredText
+          }
         ],
-        filtered: true,
+        filtered: true
       };
     }
 
@@ -375,16 +348,18 @@ export function createGuardedMCP(
         // Execute the tool call
         const result = await client.callTool({
           name,
-          arguments: args,
+          arguments: args
         });
 
         // Validate tool result if enabled
         if (validateToolResults) {
           // Extract text content from result for validation
-          const resultText = extractResultText(result) || extractContentFromResponse(result, {
-            fields: ['content[0].text', 'content[*].text'],
-            defaultValue: '',
-          });
+          const resultText =
+            extractResultText(result) ||
+            extractContentFromResponse(result, {
+              fields: ['content[0].text', 'content[*].text'],
+              defaultValue: ''
+            });
 
           if (resultText.length > 0) {
             try {
@@ -393,7 +368,7 @@ export function createGuardedMCP(
               if (filteredResult) {
                 return {
                   ...filteredResult,
-                  raw: result,
+                  raw: result
                 };
               }
             } catch (error) {
@@ -405,7 +380,7 @@ export function createGuardedMCP(
               // instead of inline `instanceof Error` extraction.
               logger.error('[Guardrails] Tool result validation error', {
                 tool: sanitizeMeta(name),
-                error: serializeError(error),
+                error: serializeError(error)
               });
               // Fail-closed: return filtered result on validation error.
               // Sprint 40 code-reviewer MEDIUM closure: in non-production
@@ -417,18 +392,16 @@ export function createGuardedMCP(
               // interpolated value at the boundary.
               const filteredText = productionMode
                 ? 'Tool result validation error'
-                : `Tool result validation error: ${sanitizeMeta(
-                    error instanceof Error ? error.message : error
-                  )}`;
+                : `Tool result validation error: ${sanitizeMeta(error instanceof Error ? error.message : error)}`;
 
               return {
                 content: [
                   {
                     type: 'text',
-                    text: filteredText,
-                  },
+                    text: filteredText
+                  }
                 ],
-                filtered: true,
+                filtered: true
               };
             }
           }
@@ -449,9 +422,7 @@ export function createGuardedMCP(
         // SEC-005: Filter by allowlist if specified
         if (allowedTools && allowedTools.length > 0) {
           return {
-            tools: toolsResult.tools.filter((tool: ToolInfo) =>
-              allowedTools.includes(tool.name),
-            ),
+            tools: toolsResult.tools.filter((tool: ToolInfo) => allowedTools.includes(tool.name))
           };
         }
 
@@ -463,7 +434,7 @@ export function createGuardedMCP(
        */
       async close(): Promise<void> {
         return client.close();
-      },
+      }
     };
   };
 
@@ -489,8 +460,8 @@ function extractResultText(result: unknown): string {
   // MCP-specific format: content array with text items
   if (Array.isArray(resultObj.content)) {
     const textItems = resultObj.content
-      .filter((item) => item.type === 'text' && typeof item.text === 'string')
-      .map((item) => item.text!);
+      .filter(item => item.type === 'text' && typeof item.text === 'string')
+      .map(item => item.text!);
     if (textItems.length > 0) {
       return textItems.join('\n');
     }
@@ -503,9 +474,4 @@ function extractResultText(result: unknown): string {
 /**
  * Re-exports types for convenience.
  */
-export type {
-  GuardedMCPOptions,
-  ToolCallOptions,
-  ToolCallResult,
-  ToolInfo,
-};
+export type { GuardedMCPOptions, ToolCallOptions, ToolCallResult, ToolInfo };

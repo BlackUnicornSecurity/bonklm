@@ -9,12 +9,7 @@
  * @package @blackunicorn/bonklm-inngest
  */
 import type { GuardrailEngine } from '@blackunicorn/bonklm';
-import type {
-  CachedValidateOptions,
-  CachedValidatorResult,
-  Validator,
-  ValidatorInput,
-} from '@blackunicorn/bonklm';
+import type { CachedValidateOptions, CachedValidatorResult, Validator, ValidatorInput } from '@blackunicorn/bonklm';
 
 /**
  * Aggregated outcome of a single validate-* helper call. Designed for
@@ -44,9 +39,7 @@ export interface BonklmInngestContextSurface {
   /**
    * Validate text input (user prompt, retrieved doc, etc).
    */
-  validateInput(
-    content: string | ValidatorInput
-  ): Promise<BonklmInngestValidateResult>;
+  validateInput(content: string | ValidatorInput): Promise<BonklmInngestValidateResult>;
 
   /**
    * Validate model output / generated text.
@@ -56,10 +49,7 @@ export interface BonklmInngestContextSurface {
   /**
    * Validate a tool-call arguments object before dispatch.
    */
-  validateToolArgs(
-    toolName: string,
-    args: unknown
-  ): Promise<BonklmInngestValidateResult>;
+  validateToolArgs(toolName: string, args: unknown): Promise<BonklmInngestValidateResult>;
 }
 
 /**

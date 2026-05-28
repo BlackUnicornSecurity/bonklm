@@ -23,17 +23,10 @@ import {
   type Logger,
   sanitizeMeta,
   Severity,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
-import type {
-  ChromaQueryOptions,
-  GuardedChromaOptions,
-  GuardedChromaQueryResult,
-} from './types.js';
-import {
-  DEFAULT_MAX_N_RESULTS,
-  DEFAULT_VALIDATION_TIMEOUT,
-} from './types.js';
+import type { ChromaQueryOptions, GuardedChromaOptions, GuardedChromaQueryResult } from './types.js';
+import { DEFAULT_MAX_N_RESULTS, DEFAULT_VALIDATION_TIMEOUT } from './types.js';
 
 /**
  * Default logger instance.
@@ -96,7 +89,7 @@ export function createGuardedCollection(
     sanitizeFilters = true,
     onQueryBlocked,
     onDocumentBlocked,
-    retrievedDocValidator, // Story 1.2 opt-in batch validator
+    retrievedDocValidator // Story 1.2 opt-in batch validator
   } = options;
 
   // Default onBlockedDocument to 'filter' if not provided (fixes issue where function parameter was overridden)
@@ -105,7 +98,7 @@ export function createGuardedCollection(
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   /**
@@ -119,10 +112,7 @@ export function createGuardedCollection(
    *
    * @internal
    */
-  const validateWithTimeout = async (
-    content: string,
-    context?: string
-  ): Promise<GuardrailResult> => {
+  const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult> => {
     const result = await validateWithTimeoutSecure({
       operation: () => engine.validate(content, context),
       timeoutMs: validationTimeout,
@@ -132,10 +122,10 @@ export function createGuardedCollection(
             category: 'timeout',
             description: 'Validation timeout',
             severity: Severity.CRITICAL,
-            weight: 30,
-          },
+            weight: 30
+          }
         ]),
-      logger,
+      logger
     });
     // engine.validate may return an EngineResult union; chroma callers
     // expect a single GuardrailResult. If the result contains multiple
@@ -143,7 +133,7 @@ export function createGuardedCollection(
     // none are blocked).
     if ('results' in result && Array.isArray((result as { results?: unknown[] }).results)) {
       const arr = (result as { results: GuardrailResult[] }).results;
-      const blocked = arr.find((r) => r.blocked);
+      const blocked = arr.find(r => r.blocked);
       return blocked ?? arr[0] ?? (result as GuardrailResult);
     }
     return result;
@@ -166,18 +156,18 @@ export function createGuardedCollection(
 
     // S012-007: Check for dangerous patterns including case-insensitive variants
     const dangerousPatterns = [
-      /\$\.\./,  // Path traversal
-      /\beval\b/i,  // eval usage
-      /\bconstructor\b/i,  // Constructor access
-      /\b__proto__\b/i,  // Prototype pollution
-      /\$where/i,  // MongoDB-style injection
-      /\\u0024/i,  // Unicode escape for $ (\u0024where)
-      /\\u005f/i,  // Unicode escape for _ (__proto__ variants)
+      /\$\.\./, // Path traversal
+      /\beval\b/i, // eval usage
+      /\bconstructor\b/i, // Constructor access
+      /\b__proto__\b/i, // Prototype pollution
+      /\$where/i, // MongoDB-style injection
+      /\\u0024/i, // Unicode escape for $ (\u0024where)
+      /\\u005f/i, // Unicode escape for _ (__proto__ variants)
       // S012-007: Case-insensitive regex operators
-      /\$regex\b/i,  // Now case-insensitive
+      /\$regex\b/i, // Now case-insensitive
       /\$RegEx\b/i,
       /\$REGEX\b/i,
-      /\$ne\b/i,  // Not equal operator
+      /\$ne\b/i // Not equal operator
     ];
 
     for (const pattern of dangerousPatterns) {
@@ -185,7 +175,7 @@ export function createGuardedCollection(
         logger.warn('[Guardrails] Dangerous filter pattern detected');
         throw new ConnectorValidationError(
           productionMode ? 'Filter contains dangerous patterns' : 'Filter contains dangerous patterns',
-          'dangerous_pattern',
+          'dangerous_pattern'
         );
       }
     }
@@ -195,7 +185,7 @@ export function createGuardedCollection(
       if (depth > 10) {
         throw new ConnectorValidationError(
           productionMode ? 'Invalid filter' : 'Filter depth exceeded maximum',
-          'depth_exceeded',
+          'depth_exceeded'
         );
       }
 
@@ -215,7 +205,7 @@ export function createGuardedCollection(
             '$elemMatch',
             '$size',
             '$exists',
-            '$type',
+            '$type'
           ];
 
           // Check exact matches first
@@ -223,7 +213,7 @@ export function createGuardedCollection(
             logger.warn('[Guardrails] Dangerous filter key detected', { key });
             throw new ConnectorValidationError(
               productionMode ? 'Invalid filter' : `Filter contains dangerous key: ${key}`,
-              'dangerous_key',
+              'dangerous_key'
             );
           }
 
@@ -243,7 +233,7 @@ export function createGuardedCollection(
       }
       throw new ConnectorValidationError(
         productionMode ? 'Invalid filter' : 'Filter validation failed',
-        'validation_failed',
+        'validation_failed'
       );
     }
 
@@ -305,7 +295,7 @@ export function createGuardedCollection(
       if (seen.has(doc)) {
         throw new ConnectorValidationError(
           productionMode ? 'Invalid document' : 'Document contains circular reference',
-          'circular_reference',
+          'circular_reference'
         );
       }
       seen.add(doc);
@@ -315,7 +305,7 @@ export function createGuardedCollection(
     if (depth > 10) {
       throw new ConnectorValidationError(
         productionMode ? 'Invalid document' : 'Document structure exceeds maximum depth',
-        'depth_exceeded',
+        'depth_exceeded'
       );
     }
 
@@ -326,11 +316,13 @@ export function createGuardedCollection(
     if (typeof doc === 'string') {
       // S012-007: Depth-based string length limit
       // Deeper nesting = shorter strings allowed to prevent DoS
-      const maxStringLength = Math.max(1000, 100000 - (depth * 10000));
+      const maxStringLength = Math.max(1000, 100000 - depth * 10000);
       if (doc.length > maxStringLength) {
         throw new ConnectorValidationError(
-          productionMode ? 'Invalid document' : `Document field exceeds maximum length of ${maxStringLength} characters at depth ${depth}`,
-          'field_too_long',
+          productionMode
+            ? 'Invalid document'
+            : `Document field exceeds maximum length of ${maxStringLength} characters at depth ${depth}`,
+          'field_too_long'
         );
       }
       return;
@@ -340,7 +332,7 @@ export function createGuardedCollection(
       if (!Number.isFinite(doc)) {
         throw new ConnectorValidationError(
           productionMode ? 'Invalid document' : 'Document contains non-finite number',
-          'invalid_number',
+          'invalid_number'
         );
       }
       return;
@@ -349,11 +341,13 @@ export function createGuardedCollection(
     if (Array.isArray(doc)) {
       // S012-007: Depth-based array length limit
       // Deeper nesting = smaller arrays allowed
-      const maxArrayLength = Math.max(10, 10000 - (depth * 1000));
+      const maxArrayLength = Math.max(10, 10000 - depth * 1000);
       if (doc.length > maxArrayLength) {
         throw new ConnectorValidationError(
-          productionMode ? 'Invalid document' : `Document array exceeds maximum length of ${maxArrayLength} at depth ${depth}`,
-          'array_too_large',
+          productionMode
+            ? 'Invalid document'
+            : `Document array exceeds maximum length of ${maxArrayLength} at depth ${depth}`,
+          'array_too_large'
         );
       }
       for (const item of doc) {
@@ -364,12 +358,14 @@ export function createGuardedCollection(
 
     if (typeof doc === 'object') {
       // S012-007: Depth-based object key limit
-      const maxKeys = Math.max(10, 1000 - (depth * 100));
+      const maxKeys = Math.max(10, 1000 - depth * 100);
       const keys = Object.keys(doc);
       if (keys.length > maxKeys) {
         throw new ConnectorValidationError(
-          productionMode ? 'Invalid document' : `Document object exceeds maximum key count of ${maxKeys} at depth ${depth}`,
-          'object_too_large',
+          productionMode
+            ? 'Invalid document'
+            : `Document object exceeds maximum key count of ${maxKeys} at depth ${depth}`,
+          'object_too_large'
         );
       }
 
@@ -379,7 +375,7 @@ export function createGuardedCollection(
         if (dangerousKeys.includes(key)) {
           throw new ConnectorValidationError(
             productionMode ? 'Invalid document' : 'Document contains dangerous key',
-            'dangerous_key',
+            'dangerous_key'
           );
         }
         validateDocumentStructure(doc[key], depth + 1, seen);
@@ -406,7 +402,7 @@ export function createGuardedCollection(
   }> => {
     if (!validateRetrievedDocs) {
       // Return all indices as valid when validation is disabled
-      const validIndices = documents.map((docArray) => docArray.map((_, idx) => idx));
+      const validIndices = documents.map(docArray => docArray.map((_, idx) => idx));
       return { validDocuments: documents, validMetadatas: metadatas, validIds: ids, blocked: 0, validIndices };
     }
 
@@ -428,16 +424,16 @@ export function createGuardedCollection(
         const queryDocs = documents[q].map((content, j) => ({
           id: `__pos_${j}`,
           content: content ?? '',
-          metadata: metadatas[q]?.[j],
+          metadata: metadatas[q]?.[j]
         }));
         const batch = await retrievedDocValidator.validateBatch(queryDocs);
         if (batch.result.blocked) {
           throw new ConnectorValidationError(
             productionMode ? 'Document batch blocked' : `Document batch blocked: ${batch.result.reason}`,
-            'validation_failed',
+            'validation_failed'
           );
         }
-        const survivorContentByPos = new Map(batch.docs.map((d) => [d.id, d.content]));
+        const survivorContentByPos = new Map(batch.docs.map(d => [d.id, d.content]));
         const qDocs: string[] = [];
         const qMeta: Record<string, any>[] = [];
         const qIds: string[] = [];
@@ -488,7 +484,7 @@ export function createGuardedCollection(
             blocked++;
             logger.warn('[Guardrails] Document structure validation failed', {
               id,
-              reason: e.message,
+              reason: e.message
             });
             if (onDocumentBlocked) {
               onDocumentBlocked(doc?.substring(0, 200) || '', e as any);
@@ -505,10 +501,10 @@ export function createGuardedCollection(
         // Build content to validate (document + metadata + id)
         let contentToValidate = doc || '';
         if (metadata) {
-          contentToValidate += ` ${  JSON.stringify(metadata)}`;
+          contentToValidate += ` ${JSON.stringify(metadata)}`;
         }
         if (id) {
-          contentToValidate += ` ${  id}`;
+          contentToValidate += ` ${id}`;
         }
 
         const result = await validateWithTimeout(contentToValidate, 'chroma_document');
@@ -522,7 +518,7 @@ export function createGuardedCollection(
           blocked++;
           logger.warn('[Guardrails] Document blocked', {
             id,
-            reason: result.reason,
+            reason: result.reason
           });
           if (onDocumentBlocked) {
             onDocumentBlocked(doc.substring(0, 200), result);
@@ -531,7 +527,7 @@ export function createGuardedCollection(
           if (blockedDocumentHandling === 'abort') {
             throw new ConnectorValidationError(
               productionMode ? 'Document blocked' : `Document blocked: ${result.reason}`,
-              'validation_failed',
+              'validation_failed'
             );
           }
         }
@@ -562,7 +558,7 @@ export function createGuardedCollection(
         ...options,
         nResults: Math.min(options.nResults || 10, maxNResults),
         where: sanitizeFilter(options.where),
-        whereDocument: sanitizeFilter(options.whereDocument),
+        whereDocument: sanitizeFilter(options.whereDocument)
       };
 
       // Step 3: Execute the query
@@ -586,7 +582,7 @@ export function createGuardedCollection(
         ids: validIds,
         documentsBlocked: blocked,
         filtered: blocked > 0,
-        raw: rawResult,
+        raw: rawResult
       };
 
       // Add optional fields if they were in original result
@@ -599,7 +595,7 @@ export function createGuardedCollection(
           const indices = validIndices[idx] || [];
           if (indices.length < distArray.length) {
             // Filter distances to only include valid document indices
-            return indices.map((i) => distArray[i]);
+            return indices.map(i => distArray[i]);
           }
           return distArray;
         });
@@ -653,7 +649,7 @@ export function createGuardedCollection(
       }
 
       return chromaCollection.delete(sanitizedOptions);
-    },
+    }
   };
 }
 
@@ -664,5 +660,5 @@ export type {
   GuardedChromaOptions,
   GuardedChromaQueryResult,
   ChromaQueryOptions,
-  BlockedDocumentHandling,
+  BlockedDocumentHandling
 } from './types.js';

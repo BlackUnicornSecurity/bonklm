@@ -25,7 +25,7 @@ import {
   type Logger,
   sanitizeMeta,
   Severity,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
 import type {
   GuardedChatOptions,
@@ -33,13 +33,13 @@ import type {
   GuardedGenerateOptions,
   GuardedGenerateResult,
   GuardedOllamaOptions,
-  OllamaMessage,
+  OllamaMessage
 } from './types.js';
 import {
   DEFAULT_MAX_BUFFER_SIZE,
   DEFAULT_VALIDATION_TIMEOUT,
   StreamValidationError,
-  VALIDATION_INTERVAL,
+  VALIDATION_INTERVAL
 } from './types.js';
 import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-utils';
 
@@ -75,7 +75,7 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  */
 export function messagesToText(messages: OllamaMessage[]): string {
   return messages
-    .map((m) => {
+    .map(m => {
       // Handle messages without content
       if (!m.content) {
         return '';
@@ -89,7 +89,7 @@ export function messagesToText(messages: OllamaMessage[]): string {
       // Handle other types (convert to string)
       return String(m.content);
     })
-    .filter((c) => c.length > 0)
+    .filter(c => c.length > 0)
     .join('\n');
 }
 
@@ -99,7 +99,6 @@ export function messagesToText(messages: OllamaMessage[]): string {
  * @internal
  * @throws {TypeError} If value is not a positive finite number
  */
-
 
 /**
  * Creates a guarded Ollama wrapper that intercepts and validates all API calls.
@@ -129,7 +128,7 @@ export function messagesToText(messages: OllamaMessage[]): string {
  */
 export function createGuardedOllama(
   client: Ollama,
-  options: GuardedOllamaOptions = {},
+  options: GuardedOllamaOptions = {}
 ): Omit<Ollama, 'chat' | 'generate'> & {
   chat: (opts: GuardedChatOptions) => Promise<any>;
   generate: (opts: GuardedGenerateOptions) => Promise<any>;
@@ -144,7 +143,7 @@ export function createGuardedOllama(
     productionMode = process.env.NODE_ENV === 'production', // SEC-007
     validationTimeout = DEFAULT_VALIDATION_TIMEOUT, // SEC-008: Default 30s
     onBlocked,
-    onStreamBlocked,
+    onStreamBlocked
   } = options;
 
   // Validate critical security options
@@ -154,7 +153,7 @@ export function createGuardedOllama(
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   /**
@@ -162,10 +161,7 @@ export function createGuardedOllama(
    *
    * @internal
    */
-  const validateWithTimeout = async (
-    content: string,
-    context?: string,
-  ): Promise<GuardrailResult[]> => {
+  const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult[]> => {
     // DEV-001: Correct API signature - use string context, not object
     const engineResult = await validateWithTimeoutSecure({
       operation: () => engine.validate(content, context),
@@ -176,10 +172,10 @@ export function createGuardedOllama(
             category: 'timeout',
             description: 'Validation timeout',
             severity: Severity.CRITICAL,
-            weight: 30,
-          },
+            weight: 30
+          }
         ]),
-      logger,
+      logger
     });
 
     // Convert EngineResult to GuardrailResult[]
@@ -201,7 +197,7 @@ export function createGuardedOllama(
   const validateInput = async (prompt: string): Promise<void> => {
     const inputResults = await validateWithTimeout(prompt, 'input');
 
-    const blocked = inputResults.find((r) => !r.allowed);
+    const blocked = inputResults.find(r => !r.allowed);
     if (blocked) {
       // Sprint 43 cross-connector CWE-117 sweep (security HIGH #1
       // closure): sanitize at log + dev-mode throw boundaries.
@@ -223,7 +219,7 @@ export function createGuardedOllama(
    * @internal
    */
   const createValidatedChatStream = (
-    stream: AsyncIterable<ChatResponse> | AsyncIterable<unknown>,
+    stream: AsyncIterable<ChatResponse> | AsyncIterable<unknown>
   ): AsyncIterable<ChatResponse> | AsyncIterable<unknown> => {
     if (validateStreaming && streamingMode === 'incremental') {
       // SEC-002: Incremental stream validation with early termination
@@ -234,7 +230,7 @@ export function createGuardedOllama(
         maxStreamBufferSize,
         logger,
         onStreamBlocked,
-        productionMode,
+        productionMode
       );
     }
 
@@ -248,7 +244,7 @@ export function createGuardedOllama(
    * @internal
    */
   const createValidatedGenerateStream = (
-    stream: AsyncIterable<GenerateResponse> | AsyncIterable<unknown>,
+    stream: AsyncIterable<GenerateResponse> | AsyncIterable<unknown>
   ): AsyncIterable<GenerateResponse> | AsyncIterable<unknown> => {
     if (validateStreaming && streamingMode === 'incremental') {
       // SEC-002: Incremental stream validation with early termination
@@ -259,7 +255,7 @@ export function createGuardedOllama(
         maxStreamBufferSize,
         logger,
         onStreamBlocked,
-        productionMode,
+        productionMode
       );
     }
 
@@ -271,9 +267,7 @@ export function createGuardedOllama(
   const guardedClient = Object.create(client);
 
   // Wrap chat method
-  guardedClient.chat = async (
-    opts: GuardedChatOptions,
-  ): Promise<any> => {
+  guardedClient.chat = async (opts: GuardedChatOptions): Promise<any> => {
     // Validate input first
     const prompt = messagesToText(opts.messages);
     await validateInput(prompt);
@@ -293,7 +287,7 @@ export function createGuardedOllama(
         think: opts.think,
         logprobs: opts.logprobs,
         top_logprobs: opts.top_logprobs,
-        options: opts.options,
+        options: opts.options
       };
 
       const stream = await client.chat(chatRequest);
@@ -312,7 +306,7 @@ export function createGuardedOllama(
       think: opts.think,
       logprobs: opts.logprobs,
       top_logprobs: opts.top_logprobs,
-      options: opts.options,
+      options: opts.options
     };
 
     const response = await client.chat(chatRequest);
@@ -321,14 +315,14 @@ export function createGuardedOllama(
     const content = response.message?.content || '';
     if (content) {
       const outputResults = await validateWithTimeout(content, 'output');
-      const outputBlocked = outputResults.find((r) => !r.allowed);
+      const outputBlocked = outputResults.find(r => !r.allowed);
 
       if (outputBlocked) {
         // Sprint 43 CWE-117 sweep: filteredContent lands in
         // `response.message.content` returned to caller. Sanitize.
         const safeReason = sanitizeMeta(outputBlocked.reason);
         logger.warn('[Guardrails] Output blocked', {
-          reason: safeReason,
+          reason: safeReason
         });
         if (onBlocked) onBlocked(outputBlocked);
 
@@ -340,10 +334,10 @@ export function createGuardedOllama(
         return {
           message: {
             ...response.message,
-            content: filteredContent,
+            content: filteredContent
           },
           filtered: true,
-          raw: response,
+          raw: response
         } as GuardedChatResult;
       }
     }
@@ -352,9 +346,7 @@ export function createGuardedOllama(
   };
 
   // Wrap generate method
-  guardedClient.generate = async (
-    opts: GuardedGenerateOptions,
-  ): Promise<any> => {
+  guardedClient.generate = async (opts: GuardedGenerateOptions): Promise<any> => {
     // Validate input first
     await validateInput(opts.prompt);
 
@@ -378,7 +370,7 @@ export function createGuardedOllama(
         think: opts.think,
         logprobs: opts.logprobs,
         top_logprobs: opts.top_logprobs,
-        options: opts.options,
+        options: opts.options
       };
 
       const stream = await client.generate(generateRequest);
@@ -402,7 +394,7 @@ export function createGuardedOllama(
       think: opts.think,
       logprobs: opts.logprobs,
       top_logprobs: opts.top_logprobs,
-      options: opts.options,
+      options: opts.options
     };
 
     const response = await client.generate(generateRequest);
@@ -411,14 +403,14 @@ export function createGuardedOllama(
     const content = response.response || '';
     if (content) {
       const outputResults = await validateWithTimeout(content, 'output');
-      const outputBlocked = outputResults.find((r) => !r.allowed);
+      const outputBlocked = outputResults.find(r => !r.allowed);
 
       if (outputBlocked) {
         // Sprint 43 CWE-117 sweep: generate-path sister of chat-path
         // output-blocked filteredContent.
         const safeReason = sanitizeMeta(outputBlocked.reason);
         logger.warn('[Guardrails] Output blocked', {
-          reason: safeReason,
+          reason: safeReason
         });
         if (onBlocked) onBlocked(outputBlocked);
 
@@ -429,7 +421,7 @@ export function createGuardedOllama(
 
         return {
           ...response,
-          response: filteredContent,
+          response: filteredContent
         } as GenerateResponse;
       }
     }
@@ -457,7 +449,7 @@ async function* createIncrementalValidatedChatStream(
   maxStreamBufferSize: number,
   logger: Logger,
   onStreamBlocked: ((accumulated: string) => void) | undefined,
-  productionMode: boolean,
+  productionMode: boolean
 ): AsyncGenerator<ChatResponse> {
   let accumulatedText = '';
   let validationCounter = 0;
@@ -477,14 +469,10 @@ async function* createIncrementalValidatedChatStream(
       if (accumulatedText.length + content.length > maxStreamBufferSize) {
         logger.warn('[Guardrails] Stream buffer exceeded', {
           size: accumulatedText.length + content.length,
-          limit: maxStreamBufferSize,
+          limit: maxStreamBufferSize
         });
         // Throw StreamValidationError for proper error handling
-        throw new StreamValidationError(
-          'Stream buffer exceeded maximum size',
-          'buffer_exceeded',
-          true,
-        );
+        throw new StreamValidationError('Stream buffer exceeded maximum size', 'buffer_exceeded', true);
       }
 
       // Accumulate content
@@ -494,9 +482,9 @@ async function* createIncrementalValidatedChatStream(
       // SEC-002: Incremental validation every N chunks
       if (validationCounter % VALIDATION_INTERVAL === 0) {
         const results = await validateWithTimeout(accumulatedText, 'output');
-        if (results.some((r) => !r.allowed)) {
+        if (results.some(r => !r.allowed)) {
           logger.warn('[Guardrails] Stream blocked during incremental validation', {
-            chunkCount: validationCounter,
+            chunkCount: validationCounter
           });
           if (onStreamBlocked) onStreamBlocked(accumulatedText);
 
@@ -506,12 +494,10 @@ async function* createIncrementalValidatedChatStream(
             created_at: createdAt,
             message: {
               role: 'assistant',
-              content: productionMode
-                ? '[Content filtered by guardrails]'
-                : '[Stream blocked by guardrails]',
+              content: productionMode ? '[Content filtered by guardrails]' : '[Stream blocked by guardrails]'
             },
             done: true,
-            done_reason: 'guardrail_blocked',
+            done_reason: 'guardrail_blocked'
           } as ChatResponse;
           return;
         }
@@ -524,7 +510,7 @@ async function* createIncrementalValidatedChatStream(
     // Final validation on stream completion
     if (accumulatedText.length > 0) {
       const results = await validateWithTimeout(accumulatedText, 'output');
-      if (results.some((r) => !r.allowed)) {
+      if (results.some(r => !r.allowed)) {
         logger.warn('[Guardrails] Stream blocked at final validation');
         if (onStreamBlocked) onStreamBlocked(accumulatedText);
 
@@ -536,10 +522,10 @@ async function* createIncrementalValidatedChatStream(
             role: 'assistant',
             content: productionMode
               ? '\n\n[Content filtered by guardrails - post-stream validation]'
-              : `\n\n[Content filtered by guardrails: ${results.find((r) => !r.allowed)?.reason || 'validation failed'}]`,
+              : `\n\n[Content filtered by guardrails: ${results.find(r => !r.allowed)?.reason || 'validation failed'}]`
           },
           done: true,
-          done_reason: 'guardrail_blocked',
+          done_reason: 'guardrail_blocked'
         } as ChatResponse;
       }
     }
@@ -567,7 +553,7 @@ async function* createIncrementalValidatedGenerateStream(
   maxStreamBufferSize: number,
   logger: Logger,
   onStreamBlocked: ((accumulated: string) => void) | undefined,
-  productionMode: boolean,
+  productionMode: boolean
 ): AsyncGenerator<GenerateResponse> {
   let accumulatedText = '';
   let validationCounter = 0;
@@ -587,14 +573,10 @@ async function* createIncrementalValidatedGenerateStream(
       if (accumulatedText.length + content.length > maxStreamBufferSize) {
         logger.warn('[Guardrails] Stream buffer exceeded', {
           size: accumulatedText.length + content.length,
-          limit: maxStreamBufferSize,
+          limit: maxStreamBufferSize
         });
         // Throw StreamValidationError for proper error handling
-        throw new StreamValidationError(
-          'Stream buffer exceeded maximum size',
-          'buffer_exceeded',
-          true,
-        );
+        throw new StreamValidationError('Stream buffer exceeded maximum size', 'buffer_exceeded', true);
       }
 
       // Accumulate content
@@ -604,9 +586,9 @@ async function* createIncrementalValidatedGenerateStream(
       // SEC-002: Incremental validation every N chunks
       if (validationCounter % VALIDATION_INTERVAL === 0) {
         const results = await validateWithTimeout(accumulatedText, 'output');
-        if (results.some((r) => !r.allowed)) {
+        if (results.some(r => !r.allowed)) {
           logger.warn('[Guardrails] Stream blocked during incremental validation', {
-            chunkCount: validationCounter,
+            chunkCount: validationCounter
           });
           if (onStreamBlocked) onStreamBlocked(accumulatedText);
 
@@ -614,11 +596,9 @@ async function* createIncrementalValidatedGenerateStream(
           yield {
             model,
             created_at: createdAt,
-            response: productionMode
-              ? '[Content filtered by guardrails]'
-              : '[Stream blocked by guardrails]',
+            response: productionMode ? '[Content filtered by guardrails]' : '[Stream blocked by guardrails]',
             done: true,
-            done_reason: 'guardrail_blocked',
+            done_reason: 'guardrail_blocked'
           } as GenerateResponse;
           return;
         }
@@ -631,7 +611,7 @@ async function* createIncrementalValidatedGenerateStream(
     // Final validation on stream completion
     if (accumulatedText.length > 0) {
       const results = await validateWithTimeout(accumulatedText, 'output');
-      if (results.some((r) => !r.allowed)) {
+      if (results.some(r => !r.allowed)) {
         logger.warn('[Guardrails] Stream blocked at final validation');
         if (onStreamBlocked) onStreamBlocked(accumulatedText);
 
@@ -641,9 +621,9 @@ async function* createIncrementalValidatedGenerateStream(
           created_at: createdAt,
           response: productionMode
             ? '\n\n[Content filtered by guardrails - post-stream validation]'
-            : `\n\n[Content filtered by guardrails: ${results.find((r) => !r.allowed)?.reason || 'validation failed'}]`,
+            : `\n\n[Content filtered by guardrails: ${results.find(r => !r.allowed)?.reason || 'validation failed'}]`,
           done: true,
-          done_reason: 'guardrail_blocked',
+          done_reason: 'guardrail_blocked'
         } as GenerateResponse;
       }
     }
@@ -665,5 +645,5 @@ export type {
   GuardedChatOptions,
   GuardedGenerateOptions,
   GuardedChatResult,
-  GuardedGenerateResult,
+  GuardedGenerateResult
 };

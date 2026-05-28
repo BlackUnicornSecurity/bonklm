@@ -16,25 +16,11 @@
  *   - console.warn fallback when no logger.
  */
 import { describe, it, expect, vi } from 'vitest';
-import {
-  GuardrailEngine,
-  Severity,
-  RiskLevel,
-} from '@blackunicorn/bonklm';
+import { GuardrailEngine, Severity, RiskLevel } from '@blackunicorn/bonklm';
 import type { GuardrailResult, Validator } from '@blackunicorn/bonklm';
 import { BrowserAgentGuardrailBlockedError } from '@blackunicorn/bonklm-browser-agents-core';
-import {
-  wrapEko,
-  wrapEkoBrowserAgent,
-  wrapEkoFileAgent,
-  EkoGuardrailBlockedError,
-} from '../src/index.js';
-import type {
-  EkoBrowserAgentLike,
-  EkoFileAgentLike,
-  EkoLike,
-  EkoMcpClientLike,
-} from '../src/types.js';
+import { wrapEko, wrapEkoBrowserAgent, wrapEkoFileAgent, EkoGuardrailBlockedError } from '../src/index.js';
+import type { EkoBrowserAgentLike, EkoFileAgentLike, EkoLike, EkoMcpClientLike } from '../src/types.js';
 
 const okResult = (note: string): GuardrailResult => ({
   allowed: true,
@@ -44,7 +30,7 @@ const okResult = (note: string): GuardrailResult => ({
   risk_level: RiskLevel.LOW,
   risk_score: 0,
   findings: [],
-  timestamp: Date.now(),
+  timestamp: Date.now()
 });
 
 const blockResult = (note: string): GuardrailResult => ({
@@ -55,7 +41,7 @@ const blockResult = (note: string): GuardrailResult => ({
   risk_level: RiskLevel.HIGH,
   risk_score: 0.95,
   findings: [],
-  timestamp: Date.now(),
+  timestamp: Date.now()
 });
 
 function makeValidator(name: string, fn: () => GuardrailResult): Validator {
@@ -84,17 +70,17 @@ function makeMockEko(): EkoLike & {
       browser: {
         act: vi.fn().mockResolvedValue({ ok: true }),
         extract: vi.fn().mockResolvedValue({ title: 'page' }),
-        observe: vi.fn().mockResolvedValue([{ element: '#submit' }]),
+        observe: vi.fn().mockResolvedValue([{ element: '#submit' }])
       },
       file: {
         read: vi.fn().mockResolvedValue('file-content'),
         write: vi.fn().mockResolvedValue(undefined),
-        delete: vi.fn().mockResolvedValue(undefined),
-      },
+        delete: vi.fn().mockResolvedValue(undefined)
+      }
     },
     mcp: {
-      callTool: vi.fn().mockResolvedValue({ result: 'tool-output' }),
-    },
+      callTool: vi.fn().mockResolvedValue({ result: 'tool-output' })
+    }
   };
 }
 
@@ -102,7 +88,7 @@ describe('Story 2.4 — wrapEko', () => {
   describe('Construction', () => {
     it('throws when client is null', () => {
       const engine = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('cold'))],
+        validators: [makeValidator('V', () => okResult('cold'))]
       });
       // @ts-expect-error — invalid input under test.
       expect(() => wrapEko(null, engine)).toThrow(/non-null object/);
@@ -117,25 +103,23 @@ describe('Story 2.4 — wrapEko', () => {
   describe('CUA-mode refusal (audit closure parity with wrapStagehand)', () => {
     it('refuses construction when ekoConfig.mode === "cua"', () => {
       const engine = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('cold'))],
+        validators: [makeValidator('V', () => okResult('cold'))]
       });
-      expect(() =>
-        wrapEko(makeMockEko(), engine, { ekoConfig: { mode: 'cua' } })
-      ).toThrow(/refused by default/);
+      expect(() => wrapEko(makeMockEko(), engine, { ekoConfig: { mode: 'cua' } })).toThrow(/refused by default/);
     });
 
     it('matches computer-use synonym', () => {
       const engine = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('cold'))],
+        validators: [makeValidator('V', () => okResult('cold'))]
       });
-      expect(() =>
-        wrapEko(makeMockEko(), engine, { ekoConfig: { mode: 'computer-use' } })
-      ).toThrow(/refused by default/);
+      expect(() => wrapEko(makeMockEko(), engine, { ekoConfig: { mode: 'computer-use' } })).toThrow(
+        /refused by default/
+      );
     });
 
     it('reads mode from client.mode (fail-closed)', () => {
       const engine = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('cold'))],
+        validators: [makeValidator('V', () => okResult('cold'))]
       });
       const client = makeMockEko();
       (client as unknown as { mode: string }).mode = 'computer_use';
@@ -144,14 +128,14 @@ describe('Story 2.4 — wrapEko', () => {
 
     it('accepts CUA opt-in', () => {
       const engine = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('cold'))],
+        validators: [makeValidator('V', () => okResult('cold'))]
       });
       const warn = vi.fn();
       expect(() =>
         wrapEko(makeMockEko(), engine, {
           ekoConfig: { mode: 'cua' },
           allowCuaMode: true,
-          logger: { warn },
+          logger: { warn }
         })
       ).not.toThrow();
       expect(warn).toHaveBeenCalledWith(expect.stringMatching(/CUA mode opted in/));
@@ -168,7 +152,7 @@ describe('Story 2.4 — wrapEko', () => {
       await guarded.run({ task: 'Book a flight to NYC' });
       expect(validate).toHaveBeenCalledWith({
         kind: 'composed_context',
-        entries: ['Book a flight to NYC'],
+        entries: ['Book a flight to NYC']
       });
       expect(originalRun).toHaveBeenCalled();
     });
@@ -181,26 +165,24 @@ describe('Story 2.4 — wrapEko', () => {
       await guarded.run('do the thing');
       expect(validate).toHaveBeenCalledWith({
         kind: 'composed_context',
-        entries: ['do the thing'],
+        entries: ['do the thing']
       });
     });
 
     it('throws EkoGuardrailBlockedError on BLOCK; original run NOT called', async () => {
       const engine = new GuardrailEngine({
-        validators: [makeValidator('V', () => blockResult('malicious task'))],
+        validators: [makeValidator('V', () => blockResult('malicious task'))]
       });
       const client = makeMockEko();
       const originalRun = client.run;
       const guarded = wrapEko(client, engine);
-      await expect(guarded.run('delete production')).rejects.toBeInstanceOf(
-        EkoGuardrailBlockedError
-      );
+      await expect(guarded.run('delete production')).rejects.toBeInstanceOf(EkoGuardrailBlockedError);
       expect(originalRun).not.toHaveBeenCalled();
     });
 
     it('blocks empty task string up front', async () => {
       const engine = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('cold'))],
+        validators: [makeValidator('V', () => okResult('cold'))]
       });
       const guarded = wrapEko(makeMockEko(), engine);
       await expect(guarded.run('')).rejects.toBeInstanceOf(EkoGuardrailBlockedError);
@@ -220,7 +202,7 @@ describe('Story 2.4 — wrapEko', () => {
       expect(validate).toHaveBeenCalledWith({
         kind: 'tool_call',
         toolName: 'click submit',
-        args: {},
+        args: {}
       });
       expect(originalAct).toHaveBeenCalled();
     });
@@ -236,7 +218,7 @@ describe('Story 2.4 — wrapEko', () => {
       expect(validate).toHaveBeenCalledWith({
         kind: 'tool_call',
         toolName: 'file.read',
-        args: { path: '/etc/passwd' },
+        args: { path: '/etc/passwd' }
       });
       expect(originalRead).toHaveBeenCalled();
     });
@@ -251,20 +233,18 @@ describe('Story 2.4 — wrapEko', () => {
       expect(validate).toHaveBeenCalledWith({
         kind: 'tool_call',
         toolName: 'file.write',
-        args: { path: '/tmp/out.txt', content: 'hello world' },
+        args: { path: '/tmp/out.txt', content: 'hello world' }
       });
     });
 
     it('FileAgent.delete validates path; BLOCK refuses delete', async () => {
       const engine = new GuardrailEngine({
-        validators: [makeValidator('V', () => blockResult('path-traversal'))],
+        validators: [makeValidator('V', () => blockResult('path-traversal'))]
       });
       const client = makeMockEko();
       const originalDelete = client.agents.file.delete;
       wrapEko(client, engine);
-      await expect(client.agents.file.delete('/../etc/passwd')).rejects.toBeInstanceOf(
-        EkoGuardrailBlockedError
-      );
+      await expect(client.agents.file.delete('/../etc/passwd')).rejects.toBeInstanceOf(EkoGuardrailBlockedError);
       expect(originalDelete).not.toHaveBeenCalled();
     });
 
@@ -298,30 +278,30 @@ describe('Story 2.4 — wrapEko', () => {
       expect(validate).toHaveBeenNthCalledWith(1, {
         kind: 'tool_call',
         toolName: 'fs-server/list',
-        args: { dir: '/tmp' },
+        args: { dir: '/tmp' }
       });
       expect(validate).toHaveBeenNthCalledWith(2, {
         kind: 'retrieved_docs',
         docs: [
           {
             content: JSON.stringify({ data: 'tool-result' }),
-            metadata: { schemaPresent: true },
-          },
-        ],
+            metadata: { schemaPresent: true }
+          }
+        ]
       });
       expect(originalCallTool).toHaveBeenCalled();
     });
 
     it('blocked args refuse dispatch', async () => {
       const engine = new GuardrailEngine({
-        validators: [makeValidator('V', () => blockResult('malicious args'))],
+        validators: [makeValidator('V', () => blockResult('malicious args'))]
       });
       const client = makeMockEko();
       const originalCallTool = client.mcp.callTool;
       wrapEko(client, engine);
-      await expect(
-        client.mcp.callTool!('fs-server', 'list', { dir: '/etc/passwd' })
-      ).rejects.toBeInstanceOf(EkoGuardrailBlockedError);
+      await expect(client.mcp.callTool!('fs-server', 'list', { dir: '/etc/passwd' })).rejects.toBeInstanceOf(
+        EkoGuardrailBlockedError
+      );
       expect(originalCallTool).not.toHaveBeenCalled();
     });
 
@@ -336,9 +316,9 @@ describe('Story 2.4 — wrapEko', () => {
       const client = makeMockEko();
       const originalCallTool = client.mcp.callTool; // capture BEFORE wrap.
       wrapEko(client, engine);
-      await expect(
-        client.mcp.callTool!('fs-server', 'list', { dir: '/tmp' })
-      ).rejects.toBeInstanceOf(EkoGuardrailBlockedError);
+      await expect(client.mcp.callTool!('fs-server', 'list', { dir: '/tmp' })).rejects.toBeInstanceOf(
+        EkoGuardrailBlockedError
+      );
       expect(originalCallTool).toHaveBeenCalled();
     });
   });
@@ -346,7 +326,7 @@ describe('Story 2.4 — wrapEko', () => {
   describe('Cross-connector base class', () => {
     it('EkoGuardrailBlockedError instanceof BrowserAgentGuardrailBlockedError', async () => {
       const engine = new GuardrailEngine({
-        validators: [makeValidator('V', () => blockResult('block'))],
+        validators: [makeValidator('V', () => blockResult('block'))]
       });
       const guarded = wrapEko(makeMockEko(), engine);
       try {
@@ -367,8 +347,8 @@ describe('Story 2.4 — wrapEko', () => {
           makeValidator('V', () =>
             // eslint-disable-next-line no-control-regex
             blockResult('attacker\x00\x07payload')
-          ),
-        ],
+          )
+        ]
       });
       const guarded = wrapEko(makeMockEko(), engine);
       try {
@@ -386,14 +366,14 @@ describe('Story 2.4 — wrapEko', () => {
       const validate = vi.fn().mockReturnValue(okResult('cold'));
       const engine = new GuardrailEngine({ validators: [{ name: 'V', validate }] });
       const agent: EkoBrowserAgentLike = {
-        act: vi.fn().mockResolvedValue({ ok: true }),
+        act: vi.fn().mockResolvedValue({ ok: true })
       };
       wrapEkoBrowserAgent(agent, engine);
       await agent.act!('click');
       expect(validate).toHaveBeenCalledWith({
         kind: 'tool_call',
         toolName: 'click',
-        args: {},
+        args: {}
       });
     });
 
@@ -403,7 +383,7 @@ describe('Story 2.4 — wrapEko', () => {
       const agent: EkoFileAgentLike = {
         read: vi.fn().mockResolvedValue('x'),
         write: vi.fn().mockResolvedValue(undefined),
-        delete: vi.fn().mockResolvedValue(undefined),
+        delete: vi.fn().mockResolvedValue(undefined)
       };
       wrapEkoFileAgent(agent, engine);
       await agent.read!('/tmp/in');
@@ -420,11 +400,11 @@ describe('Story 2.4 — wrapEko', () => {
         const engine = new GuardrailEngine({ validators: [{ name: 'V', validate }] });
         const hybridAgent = {
           act: vi.fn().mockResolvedValue({ ok: true }),
-          read: vi.fn().mockResolvedValue('content'),
+          read: vi.fn().mockResolvedValue('content')
         };
         const client: EkoLike & { agents: { hybrid: typeof hybridAgent } } = {
           run: vi.fn().mockResolvedValue(undefined),
-          agents: { hybrid: hybridAgent },
+          agents: { hybrid: hybridAgent }
         };
         wrapEko(client, engine);
         // Both methods now validated.
@@ -434,12 +414,12 @@ describe('Story 2.4 — wrapEko', () => {
         expect(validate).toHaveBeenCalledWith({
           kind: 'tool_call',
           toolName: 'click',
-          args: {},
+          args: {}
         });
         expect(validate).toHaveBeenCalledWith({
           kind: 'tool_call',
           toolName: 'file.read',
-          args: { path: '/etc/passwd' },
+          args: { path: '/etc/passwd' }
         });
       });
     });
@@ -447,7 +427,7 @@ describe('Story 2.4 — wrapEko', () => {
     describe('rev B2: detectEkoMode no longer reads modelName', () => {
       it('does NOT refuse construction when modelName contains a CUA-like substring', () => {
         const engine = new GuardrailEngine({
-          validators: [makeValidator('V', () => okResult('cold'))],
+          validators: [makeValidator('V', () => okResult('cold'))]
         });
         const client = makeMockEko();
         // A model name happens to contain "computer-use"; should NOT trigger refusal.
@@ -459,66 +439,60 @@ describe('Story 2.4 — wrapEko', () => {
     describe('sec B3: MCP server/tool slash injection blocked', () => {
       it('rejects server containing slash with structured error', async () => {
         const engine = new GuardrailEngine({
-          validators: [makeValidator('V', () => okResult('cold'))],
+          validators: [makeValidator('V', () => okResult('cold'))]
         });
         const client = makeMockEko();
         wrapEko(client, engine);
-        await expect(
-          client.mcp.callTool!('admin/rm-rf', 'innocuous', {})
-        ).rejects.toBeInstanceOf(EkoGuardrailBlockedError);
+        await expect(client.mcp.callTool!('admin/rm-rf', 'innocuous', {})).rejects.toBeInstanceOf(
+          EkoGuardrailBlockedError
+        );
       });
 
       it('rejects tool containing slash', async () => {
         const engine = new GuardrailEngine({
-          validators: [makeValidator('V', () => okResult('cold'))],
+          validators: [makeValidator('V', () => okResult('cold'))]
         });
         const client = makeMockEko();
         wrapEko(client, engine);
-        await expect(
-          client.mcp.callTool!('admin', 'rm-rf/escape', {})
-        ).rejects.toBeInstanceOf(EkoGuardrailBlockedError);
+        await expect(client.mcp.callTool!('admin', 'rm-rf/escape', {})).rejects.toBeInstanceOf(
+          EkoGuardrailBlockedError
+        );
       });
 
       it('rejects empty server/tool strings', async () => {
         const engine = new GuardrailEngine({
-          validators: [makeValidator('V', () => okResult('cold'))],
+          validators: [makeValidator('V', () => okResult('cold'))]
         });
         const client = makeMockEko();
         wrapEko(client, engine);
-        await expect(client.mcp.callTool!('', 'tool', {})).rejects.toBeInstanceOf(
-          EkoGuardrailBlockedError
-        );
+        await expect(client.mcp.callTool!('', 'tool', {})).rejects.toBeInstanceOf(EkoGuardrailBlockedError);
       });
     });
 
     describe('sec B2: binary / async-iterable MCP results blocked', () => {
       it('blocks Buffer results', async () => {
         const engine = new GuardrailEngine({
-          validators: [makeValidator('V', () => okResult('cold'))],
+          validators: [makeValidator('V', () => okResult('cold'))]
         });
         const client = makeMockEko();
         client.mcp.callTool.mockResolvedValueOnce(Buffer.from('binary'));
         wrapEko(client, engine);
-        await expect(
-          client.mcp.callTool!('server', 'tool', {})
-        ).rejects.toBeInstanceOf(EkoGuardrailBlockedError);
+        await expect(client.mcp.callTool!('server', 'tool', {})).rejects.toBeInstanceOf(EkoGuardrailBlockedError);
       });
 
       it('blocks Uint8Array results', async () => {
         const engine = new GuardrailEngine({
-          validators: [makeValidator('V', () => okResult('cold'))],
+          validators: [makeValidator('V', () => okResult('cold'))]
         });
         const client = makeMockEko();
         client.mcp.callTool.mockResolvedValueOnce(new Uint8Array([1, 2, 3]));
         wrapEko(client, engine);
-        await expect(
-          client.mcp.callTool!('server', 'tool', {})
-        ).rejects.toBeInstanceOf(EkoGuardrailBlockedError);
+        await expect(client.mcp.callTool!('server', 'tool', {})).rejects.toBeInstanceOf(EkoGuardrailBlockedError);
       });
 
       it('blocks async-iterable results', async () => {
         const engine = new GuardrailEngine({
-          validators: [makeValidator('V', () => okResult('cold'))],
+          validators: [makeValidator('V', () => okResult('cold'))]
         });
         const client = makeMockEko();
         async function* stream(): AsyncIterableIterator<string> {
@@ -526,9 +500,7 @@ describe('Story 2.4 — wrapEko', () => {
         }
         client.mcp.callTool.mockResolvedValueOnce(stream());
         wrapEko(client, engine);
-        await expect(
-          client.mcp.callTool!('server', 'tool', {})
-        ).rejects.toBeInstanceOf(EkoGuardrailBlockedError);
+        await expect(client.mcp.callTool!('server', 'tool', {})).rejects.toBeInstanceOf(EkoGuardrailBlockedError);
       });
 
       it('plain object results still flow through validators', async () => {
@@ -547,32 +519,28 @@ describe('Story 2.4 — wrapEko', () => {
       it('warns when skipAgents covers ALL agents', () => {
         const warn = vi.fn();
         const engine = new GuardrailEngine({
-          validators: [makeValidator('V', () => okResult('cold'))],
+          validators: [makeValidator('V', () => okResult('cold'))]
         });
         const client = makeMockEko();
         wrapEko(client, engine, {
           skipAgents: ['browser', 'file'],
-          logger: { warn },
+          logger: { warn }
         });
-        expect(warn).toHaveBeenCalledWith(
-          expect.stringMatching(/covers ALL registered agents/)
-        );
+        expect(warn).toHaveBeenCalledWith(expect.stringMatching(/covers ALL registered agents/));
       });
 
       it('does NOT warn when skipAgents covers only some agents', () => {
         const warn = vi.fn();
         const engine = new GuardrailEngine({
-          validators: [makeValidator('V', () => okResult('cold'))],
+          validators: [makeValidator('V', () => okResult('cold'))]
         });
         const client = makeMockEko();
         wrapEko(client, engine, {
           skipAgents: ['browser'],
-          logger: { warn },
+          logger: { warn }
         });
         // No total-bypass warning (file is still wrapped).
-        const calls = warn.mock.calls.filter((c) =>
-          /covers ALL/.test(String(c[0]))
-        );
+        const calls = warn.mock.calls.filter(c => /covers ALL/.test(String(c[0])));
         expect(calls).toHaveLength(0);
       });
     });
@@ -587,7 +555,7 @@ describe('Story 2.4 — wrapEko', () => {
         expect(validate).toHaveBeenCalledWith({
           kind: 'tool_call',
           toolName: 'file.read',
-          args: { path: '/tmp/file.txt' },
+          args: { path: '/tmp/file.txt' }
         });
       });
 
@@ -600,7 +568,7 @@ describe('Story 2.4 — wrapEko', () => {
         expect(validate).toHaveBeenCalledWith({
           kind: 'tool_call',
           toolName: 'file.read',
-          args: { path: '/tmp/file.txt' },
+          args: { path: '/tmp/file.txt' }
         });
       });
 
@@ -636,10 +604,10 @@ describe('Story 2.4 — wrapEko', () => {
   describe('Missing optional methods', () => {
     it('agent without `extract` does not break the wrapper', () => {
       const engine = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('cold'))],
+        validators: [makeValidator('V', () => okResult('cold'))]
       });
       const agent: EkoBrowserAgentLike = {
-        act: vi.fn().mockResolvedValue({ ok: true }),
+        act: vi.fn().mockResolvedValue({ ok: true })
         // no extract / observe
       };
       expect(() => wrapEkoBrowserAgent(agent, engine)).not.toThrow();
@@ -647,20 +615,20 @@ describe('Story 2.4 — wrapEko', () => {
 
     it('client without `mcp` does not break the wrapper', () => {
       const engine = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('cold'))],
+        validators: [makeValidator('V', () => okResult('cold'))]
       });
       const client: EkoLike = {
-        run: vi.fn().mockResolvedValue(undefined),
+        run: vi.fn().mockResolvedValue(undefined)
       };
       expect(() => wrapEko(client, engine)).not.toThrow();
     });
 
     it('client without `agents` does not break the wrapper', () => {
       const engine = new GuardrailEngine({
-        validators: [makeValidator('V', () => okResult('cold'))],
+        validators: [makeValidator('V', () => okResult('cold'))]
       });
       const client: EkoLike = {
-        run: vi.fn().mockResolvedValue(undefined),
+        run: vi.fn().mockResolvedValue(undefined)
       };
       expect(() => wrapEko(client, engine)).not.toThrow();
     });

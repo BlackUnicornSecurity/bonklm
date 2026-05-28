@@ -67,18 +67,30 @@ const XSS_PATTERNS: Record<string, XSSPatternDefinition[]> = {
     { name: 'img_onerror', pattern: /<img[^>]+onerror[^>]*>/gi, severity: Sev.CRITICAL },
     { name: 'img_onload', pattern: /<img[^>]+onload[^>]*>/gi, severity: Sev.CRITICAL },
     { name: 'iframe_javascript', pattern: /<iframe[^>]*src\s*=\s*['"]\s*javascript:/gi, severity: Sev.CRITICAL },
-    { name: 'meta_refresh_javascript', pattern: /<meta[^>]*http-equiv\s*=\s*['"]\s*refresh['"][^>]*url\s*=\s*javascript:/gi, severity: Sev.CRITICAL },
-    { name: 'form_action_javascript', pattern: /<form[^>]*action\s*=\s*javascript:/gi, severity: Sev.CRITICAL },
+    {
+      name: 'meta_refresh_javascript',
+      pattern: /<meta[^>]*http-equiv\s*=\s*['"]\s*refresh['"][^>]*url\s*=\s*javascript:/gi,
+      severity: Sev.CRITICAL
+    },
+    { name: 'form_action_javascript', pattern: /<form[^>]*action\s*=\s*javascript:/gi, severity: Sev.CRITICAL }
   ],
 
   /**
    * A03-202: Stored XSS patterns
    */
   stored: [
-    { name: 'script_with_alert', pattern: /<script[^>]*>[^<]*(?:alert|confirm|prompt|eval|Function)[^<]*<\/script>/gi, severity: Sev.CRITICAL },
-    { name: 'event_handler_div', pattern: /<(?:div|span|a|img|body|html)[^>]*\s+on(?:click|load|error|mouseover|focus)\s*=/gi, severity: Sev.CRITICAL },
+    {
+      name: 'script_with_alert',
+      pattern: /<script[^>]*>[^<]*(?:alert|confirm|prompt|eval|Function)[^<]*<\/script>/gi,
+      severity: Sev.CRITICAL
+    },
+    {
+      name: 'event_handler_div',
+      pattern: /<(?:div|span|a|img|body|html)[^>]*\s+on(?:click|load|error|mouseover|focus)\s*=/gi,
+      severity: Sev.CRITICAL
+    },
     { name: 'data_url_html', pattern: /<[^>]+src\s*=\s*['"]\s*data:text\/html/gi, severity: Sev.CRITICAL },
-    { name: 'data_url_href', pattern: /<[^>]+href\s*=\s*['"]\s*data:text\/html/gi, severity: Sev.CRITICAL },
+    { name: 'data_url_href', pattern: /<[^>]+href\s*=\s*['"]\s*data:text\/html/gi, severity: Sev.CRITICAL }
   ],
 
   /**
@@ -93,15 +105,20 @@ const XSS_PATTERNS: Record<string, XSSPatternDefinition[]> = {
     { name: 'eval', pattern: /\beval\s*\(/gi, severity: Sev.CRITICAL },
     { name: 'new_function', pattern: /new\s+Function\s*\(/gi, severity: Sev.CRITICAL },
     { name: 'settimeout_string', pattern: /setTimeout\s*\(\s*['"][^'"]*['"]\s*,/gi, severity: Sev.WARNING },
-    { name: 'setinterval_string', pattern: /setInterval\s*\(\s*['"][^'"]*['"]\s*,/gi, severity: Sev.WARNING },
+    { name: 'setinterval_string', pattern: /setInterval\s*\(\s*['"][^'"]*['"]\s*,/gi, severity: Sev.WARNING }
   ],
 
   /**
    * A03-204: Event handler XSS patterns
    */
   eventHandlers: [
-    { name: 'html_event_handler', pattern: /\bon(?:abort|blur|change|click|dblclick|error|focus|keydown|keyup|load|mousedown|mouseenter|mouseleave|mousemove|mouseout|mouseover|mouseup|reset|resize|select|submit|unload)\s*=/gi, severity: Sev.CRITICAL },
-    { name: 'svg_event_handler', pattern: /\son(?:begin|end|repeat|load)\s*=/gi, severity: Sev.CRITICAL },
+    {
+      name: 'html_event_handler',
+      pattern:
+        /\bon(?:abort|blur|change|click|dblclick|error|focus|keydown|keyup|load|mousedown|mouseenter|mouseleave|mousemove|mouseout|mouseover|mouseup|reset|resize|select|submit|unload)\s*=/gi,
+      severity: Sev.CRITICAL
+    },
+    { name: 'svg_event_handler', pattern: /\son(?:begin|end|repeat|load)\s*=/gi, severity: Sev.CRITICAL }
   ],
 
   /**
@@ -113,7 +130,7 @@ const XSS_PATTERNS: Record<string, XSSPatternDefinition[]> = {
     // Original pattern /<script>[^<]{0,500}<\/script>.*?>.*</ could hang on certain inputs
     { name: 'polyglot_script', pattern: /<script>[^<]{0,500}<\/script>/gi, severity: Sev.CRITICAL },
     { name: 'javascript_uri', pattern: /javascript:\s*[\w\u007f-\uffff]{1,100}/gi, severity: Sev.CRITICAL },
-    { name: 'hex_encoded_script', pattern: /%3[Cc]%2[Ff]%73%63%72%69%70%74/gi, severity: Sev.WARNING },
+    { name: 'hex_encoded_script', pattern: /%3[Cc]%2[Ff]%73%63%72%69%70%74/gi, severity: Sev.WARNING }
   ],
 
   /**
@@ -122,18 +139,30 @@ const XSS_PATTERNS: Record<string, XSSPatternDefinition[]> = {
   cssExpression: [
     { name: 'css_expression', pattern: /expression\s*\(\s*[\w\u007f-\uffff]*\)/gi, severity: Sev.WARNING },
     { name: 'css_javascript', pattern: /javascript:\s*[\w\u007f-\uffff]+/gi, severity: Sev.WARNING },
-    { name: 'css_behavior_url', pattern: /behavior\s*:\s*url\s*\(\s*['"]?javascript:/gi, severity: Sev.WARNING },
+    { name: 'css_behavior_url', pattern: /behavior\s*:\s*url\s*\(\s*['"]?javascript:/gi, severity: Sev.WARNING }
   ],
 
   /**
    * A03-207: SVG XSS patterns
    */
   svg: [
-    { name: 'svg_script', pattern: /<svg[^>]*>[^<]*<script[\s\S]*?<\/script>[\s\S]*?<\/svg>/gi, severity: Sev.CRITICAL },
+    {
+      name: 'svg_script',
+      pattern: /<svg[^>]*>[^<]*<script[\s\S]*?<\/script>[\s\S]*?<\/svg>/gi,
+      severity: Sev.CRITICAL
+    },
     { name: 'svg_onload', pattern: /<svg[^>]+onload[^>]*>/gi, severity: Sev.CRITICAL },
     { name: 'svg_onerror', pattern: /<svg[^>]+onerror[^>]*>/gi, severity: Sev.CRITICAL },
-    { name: 'svg_animate', pattern: /<svg[^>]+<animate[^>]*>[\s\S]*?<\/animate>[\s\S]*?<\/svg>/gi, severity: Sev.CRITICAL },
-    { name: 'foreignobject_script', pattern: /<foreignObject[^>]*>[\s\S]*?<script[\s\S]*?<\/script>[\s\S]*?<\/foreignObject>/gi, severity: Sev.CRITICAL },
+    {
+      name: 'svg_animate',
+      pattern: /<svg[^>]+<animate[^>]*>[\s\S]*?<\/animate>[\s\S]*?<\/svg>/gi,
+      severity: Sev.CRITICAL
+    },
+    {
+      name: 'foreignobject_script',
+      pattern: /<foreignObject[^>]*>[\s\S]*?<script[\s\S]*?<\/script>[\s\S]*?<\/foreignObject>/gi,
+      severity: Sev.CRITICAL
+    }
   ],
 
   /**
@@ -143,8 +172,8 @@ const XSS_PATTERNS: Record<string, XSSPatternDefinition[]> = {
     { name: 'a_href_javascript', pattern: /<a\s+[^>]*href\s*=\s*['"]\s*javascript:/gi, severity: Sev.CRITICAL },
     { name: 'img_src_javascript', pattern: /<img\s+[^>]*src\s*=\s*['"]\s*javascript:/gi, severity: Sev.CRITICAL },
     { name: 'iframe_src_javascript', pattern: /<iframe\s+[^>]*src\s*=\s*['"]\s*javascript:/gi, severity: Sev.CRITICAL },
-    { name: 'link_href_javascript', pattern: /<link\s+[^>]*href\s*=\s*['"]\s*javascript:/gi, severity: Sev.CRITICAL },
-  ],
+    { name: 'link_href_javascript', pattern: /<link\s+[^>]*href\s*=\s*['"]\s*javascript:/gi, severity: Sev.CRITICAL }
+  ]
 };
 
 /**
@@ -159,7 +188,7 @@ function getTestIdForCategory(category: string): string {
     polyglot: 'A03-205',
     cssExpression: 'A03-206',
     svg: 'A03-207',
-    javascriptUri: 'A03-208',
+    javascriptUri: 'A03-208'
   };
   return testIds[category] || 'A03-GENERIC';
 }
@@ -192,7 +221,7 @@ export function detectXSS(content: string, context?: string): XSSDetectionResult
       hasXSS: false,
       severity: Sev.INFO,
       patterns: [],
-      message: 'No content to check',
+      message: 'No content to check'
     };
   }
 
@@ -216,7 +245,7 @@ export function detectXSS(content: string, context?: string): XSSDetectionResult
             pattern: patternDef.pattern.source,
             category,
             testId: getTestIdForCategory(category),
-            line: i + 1,
+            line: i + 1
           });
         }
       }
@@ -228,13 +257,14 @@ export function detectXSS(content: string, context?: string): XSSDetectionResult
       hasXSS: false,
       severity: Sev.INFO,
       patterns: [],
-      message: 'No XSS patterns detected',
+      message: 'No XSS patterns detected'
     };
   }
 
-  const hasCritical = detected.some((d) =>
-    ['script', 'javascript:', 'eval', 'data:text/html', 'onerror', 'onload']
-      .some((p) => d.pattern.toLowerCase().includes(p.toLowerCase()))
+  const hasCritical = detected.some(d =>
+    ['script', 'javascript:', 'eval', 'data:text/html', 'onerror', 'onload'].some(p =>
+      d.pattern.toLowerCase().includes(p.toLowerCase())
+    )
   );
 
   const severity: Sev = hasCritical ? Sev.CRITICAL : Sev.WARNING;
@@ -243,7 +273,7 @@ export function detectXSS(content: string, context?: string): XSSDetectionResult
     hasXSS: true,
     severity,
     patterns: detected,
-    message: `XSS patterns detected: ${detected.map((d) => d.testId).join(', ')}`,
+    message: `XSS patterns detected: ${detected.map(d => d.testId).join(', ')}`
   };
 }
 
@@ -261,7 +291,7 @@ export class XSSGuard {
     this.config = {
       ...mergeConfig(config),
       context: config?.context,
-      mode: config?.mode ?? 'strict',
+      mode: config?.mode ?? 'strict'
     } as Required<Omit<XSSGuardConfig, 'context'>> & { context?: string };
   }
 
@@ -282,24 +312,19 @@ export class XSSGuard {
       return createResult(true, Sev.INFO, []);
     }
 
-    const findings = result.patterns.map((p) => ({
+    const findings = result.patterns.map(p => ({
       category: `xss_${p.category}`,
       pattern_name: p.testId,
       severity: result.severity,
       match: p.pattern.substring(0, 60),
       description: `[${p.testId}] ${p.category} XSS pattern at line ${p.line ?? '?'}`,
-      weight: result.severity === Sev.CRITICAL ? 20 : 10,
+      weight: result.severity === Sev.CRITICAL ? 20 : 10
     }));
 
     const shouldBlock =
-      this.config.action === 'block' &&
-      (this.config.mode === 'strict' || result.severity === Sev.CRITICAL);
+      this.config.action === 'block' && (this.config.mode === 'strict' || result.severity === Sev.CRITICAL);
 
-    return createResult(
-      !shouldBlock,
-      result.severity,
-      findings
-    );
+    return createResult(!shouldBlock, result.severity, findings);
   }
 
   /**
@@ -346,10 +371,7 @@ export class XSSGuard {
  * @param context - Optional context (filename, content type)
  * @returns Validation result
  */
-export function checkXSS(
-  content: string,
-  context?: string
-): import('../base/GuardrailResult.js').GuardrailResult {
+export function checkXSS(content: string, context?: string): import('../base/GuardrailResult.js').GuardrailResult {
   const guard = new XSSGuard({ context });
   return guard.validate(content);
 }

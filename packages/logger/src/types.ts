@@ -12,12 +12,7 @@
  * Injection type classification for detected attacks.
  * Derived from finding categories in GuardrailResult.
  */
-export type InjectionType =
-  | 'prompt-injection'
-  | 'jailbreak'
-  | 'reformulation'
-  | 'secret-exposure'
-  | 'unknown';
+export type InjectionType = 'prompt-injection' | 'jailbreak' | 'reformulation' | 'secret-exposure' | 'unknown';
 
 /**
  * Attack vector classification for how the attack was delivered.

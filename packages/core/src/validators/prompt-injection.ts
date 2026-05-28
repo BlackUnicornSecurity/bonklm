@@ -21,11 +21,16 @@ import { detectPatterns, type PatternFinding } from './pattern-engine.js';
 // Deno, and Bun via the `@blackunicorn/bonklm/edge` subpath.
 import { base64DecodeToUtf8, hexDecodeToUtf8 } from '../common/edge-codec.js';
 
-const DEFAULT_CONFIG: Required<Pick<PromptInjectionConfig, 'detectMultiLayerEncoding' | 'detectBase64Payloads' | 'detectHtmlComments' | 'maxDecodeDepth'>> = {
+const DEFAULT_CONFIG: Required<
+  Pick<
+    PromptInjectionConfig,
+    'detectMultiLayerEncoding' | 'detectBase64Payloads' | 'detectHtmlComments' | 'maxDecodeDepth'
+  >
+> = {
   detectMultiLayerEncoding: true,
   detectBase64Payloads: true,
   detectHtmlComments: true,
-  maxDecodeDepth: 3, // Reduced from 5 to prevent potential infinite loops
+  maxDecodeDepth: 3 // Reduced from 5 to prevent potential infinite loops
 };
 
 /**
@@ -131,7 +136,7 @@ function detectMultiLayerEncoding(content: string, maxDepth: number = MAX_DECODE
     { name: 'url_encoded', pattern: /%[0-9A-Fa-f]{2}(?:%[0-9A-Fa-f]{2}){10,}/g },
     { name: 'hex_encoded', pattern: /(?:0x)?[0-9A-Fa-f]{40,}/g },
     { name: 'unicode_escape', pattern: /(?:\\u[0-9A-Fa-f]{4}){10,}/g },
-    { name: 'javascript_escape', pattern: /(?:\\x[0-9A-Fa-f]{2}|\\n|\\r|\\t|\\0){10,}/g },
+    { name: 'javascript_escape', pattern: /(?:\\x[0-9A-Fa-f]{2}|\\n|\\r|\\t|\\0){10,}/g }
   ];
 
   // B.1 time-budget: shared across all patterns in this call.
@@ -173,7 +178,7 @@ function detectMultiLayerEncoding(content: string, maxDepth: number = MAX_DECODE
         // multi-layer finding to CRITICAL on benign content.
         const decodedFindings = detectPatterns(result.finalDecoded);
         const containsInjection = decodedFindings.some(
-          (f) => f.severity === Severity.WARNING || f.severity === Severity.CRITICAL
+          f => f.severity === Severity.WARNING || f.severity === Severity.CRITICAL
         );
 
         findings.push({
@@ -184,7 +189,7 @@ function detectMultiLayerEncoding(content: string, maxDepth: number = MAX_DECODE
           final_decoded: result.finalDecoded.slice(0, 100) + (result.finalDecoded.length > 100 ? '...' : ''),
           description: `Multi-layer encoded content detected (${result.decodeLayers.length} layers: ${result.decodeLayers.join(' → ')})`,
           contains_injection: containsInjection,
-          decode_depth: result.decodeLayers.length,
+          decode_depth: result.decodeLayers.length
         });
       }
     }
@@ -208,7 +213,7 @@ function iterativeDecode(
   let currentContent = input;
   let depth = 0;
   let iterations = 0;
-  const MAX_ITERATIONS = (maxDepth * 2) + 5; // Hard limit to prevent crafted encoding loops
+  const MAX_ITERATIONS = maxDepth * 2 + 5; // Hard limit to prevent crafted encoding loops
 
   while (depth < maxDepth && iterations < MAX_ITERATIONS) {
     iterations++;
@@ -236,7 +241,7 @@ function iterativeDecode(
 
   return {
     decodeLayers,
-    finalDecoded: currentContent,
+    finalDecoded: currentContent
   };
 }
 
@@ -274,9 +279,7 @@ function attemptDecode(content: string): { method: string; result: string } | nu
 
   if (/\\u[0-9A-Fa-f]{4}/.test(content)) {
     try {
-      const decoded = content.replace(/\\u([0-9A-Fa-f]{4})/g, (_, hex) =>
-        String.fromCharCode(parseInt(hex, 16))
-      );
+      const decoded = content.replace(/\\u([0-9A-Fa-f]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
       if (decoded !== content) {
         return { method: 'unicode_escape', result: decoded };
       }
@@ -290,14 +293,9 @@ function attemptDecode(content: string): { method: string; result: string } | nu
     try {
       let decoded = content;
       // Decode \xHH sequences
-      decoded = decoded.replace(/\\x([0-9A-Fa-f]{2})/g, (_, hex) =>
-        String.fromCharCode(parseInt(hex, 16))
-      );
+      decoded = decoded.replace(/\\x([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
       // Decode common escapes
-      decoded = decoded.replace(/\\n/g, '\n')
-                      .replace(/\\r/g, '\r')
-                      .replace(/\\t/g, '\t')
-                      .replace(/\\0/g, '\0');
+      decoded = decoded.replace(/\\n/g, '\n').replace(/\\r/g, '\r').replace(/\\t/g, '\t').replace(/\\0/g, '\0');
       if (decoded !== content) {
         return { method: 'javascript_escape', result: decoded };
       }
@@ -343,7 +341,7 @@ function detectBase64Payloads(text: string): Base64Finding[] {
       // so low-signal INFO patterns don't escalate the base64 finding to CRITICAL.
       const decodedFindings = detectPatterns(decoded);
       const containsInjection = decodedFindings.some(
-        (f) => f.severity === Severity.WARNING || f.severity === Severity.CRITICAL
+        f => f.severity === Severity.WARNING || f.severity === Severity.CRITICAL
       );
 
       findings.push({
@@ -354,7 +352,7 @@ function detectBase64Payloads(text: string): Base64Finding[] {
         description: containsInjection
           ? 'Base64 encoded content contains injection patterns'
           : 'Base64 encoded content detected',
-        contains_injection: containsInjection,
+        contains_injection: containsInjection
       });
     } catch {
       // Not valid base64, ignore
@@ -395,7 +393,7 @@ function detectHtmlCommentInjection(text: string): HtmlCommentFinding[] {
         category: 'html_comment_injection',
         severity: Severity.WARNING,
         comment_preview: commentContent.slice(0, 50) + (commentContent.length > 50 ? '...' : ''),
-        description: 'HTML comment contains injection patterns',
+        description: 'HTML comment contains injection patterns'
       });
       break; // First hit is sufficient
     }
@@ -426,7 +424,8 @@ export class PromptInjectionValidator {
   private readonly logger: Logger;
 
   constructor(config: PromptInjectionConfig = {}) {
-    this.config = { ...DEFAULT_CONFIG, includeFindings: true, ...config } as Required<PromptInjectionConfig> & ValidatorConfig;
+    this.config = { ...DEFAULT_CONFIG, includeFindings: true, ...config } as Required<PromptInjectionConfig> &
+      ValidatorConfig;
     this.logger = this.config.logger ?? createLogger('console', this.config.logLevel);
   }
 
@@ -442,27 +441,29 @@ export class PromptInjectionValidator {
         html_findings: [],
         multi_layer_findings: [],
         highest_severity: Severity.INFO,
-        should_block: false,
+        should_block: false
       };
     }
 
     // Prevent DoS attacks with extremely large inputs
     if (content.length > MAX_INPUT_LENGTH) {
       return {
-        findings: [{
-          category: 'input_too_large',
-          pattern_name: 'size_limit_exceeded',
-          severity: Severity.WARNING,
-          match: `Input length ${content.length} exceeds maximum ${MAX_INPUT_LENGTH}`,
-          description: 'Input too large to process safely',
-          line_number: 1,
-        }],
+        findings: [
+          {
+            category: 'input_too_large',
+            pattern_name: 'size_limit_exceeded',
+            severity: Severity.WARNING,
+            match: `Input length ${content.length} exceeds maximum ${MAX_INPUT_LENGTH}`,
+            description: 'Input too large to process safely',
+            line_number: 1
+          }
+        ],
         unicode_findings: [],
         base64_findings: [],
         html_findings: [],
         multi_layer_findings: [],
         highest_severity: Severity.WARNING,
-        should_block: false,
+        should_block: false
       };
     }
 
@@ -473,7 +474,7 @@ export class PromptInjectionValidator {
 
     if (obfuscationDetected) {
       const originalFindings = detectPatterns(content);
-      const existingNames = new Set(findings.map((f) => f.pattern_name));
+      const existingNames = new Set(findings.map(f => f.pattern_name));
       for (const finding of originalFindings) {
         if (!existingNames.has(finding.pattern_name)) {
           findings.push(finding);
@@ -486,28 +487,30 @@ export class PromptInjectionValidator {
         severity: Severity.WARNING,
         match: 'Heavy Unicode obfuscation detected',
         description: 'Heavy Unicode obfuscation detected - text was significantly altered during normalization',
-        line_number: 1,
+        line_number: 1
       });
     }
 
     const unicodeFindings = detectHiddenUnicode(content);
     const base64Findings = this.config.detectBase64Payloads ? detectBase64Payloads(content) : [];
     const htmlFindings = this.config.detectHtmlComments ? detectHtmlCommentInjection(content) : [];
-    const multiLayerFindings = this.config.detectMultiLayerEncoding ? detectMultiLayerEncoding(content, this.config.maxDecodeDepth) : [];
+    const multiLayerFindings = this.config.detectMultiLayerEncoding
+      ? detectMultiLayerEncoding(content, this.config.maxDecodeDepth)
+      : [];
 
     const allSeverities: Severity[] = [
-      ...findings.map((f) => f.severity),
-      ...unicodeFindings.map((f) => f.severity),
-      ...base64Findings.map((f) => f.severity),
-      ...htmlFindings.map((f) => f.severity),
-      ...multiLayerFindings.map((f) => f.severity),
+      ...findings.map(f => f.severity),
+      ...unicodeFindings.map(f => f.severity),
+      ...base64Findings.map(f => f.severity),
+      ...htmlFindings.map(f => f.severity),
+      ...multiLayerFindings.map(f => f.severity)
     ];
 
     const severityOrder: Record<Severity, number> = {
       [Severity.INFO]: 0,
       [Severity.WARNING]: 1,
       [Severity.BLOCKED]: 2,
-      [Severity.CRITICAL]: 3,
+      [Severity.CRITICAL]: 3
     };
 
     let highestSeverity: Severity = Severity.INFO;
@@ -530,11 +533,11 @@ export class PromptInjectionValidator {
     // (`f.category !== 'web3_preference_setting'`). Generalised so
     // future categories opt in without modifying this file.
     const blockEligibleSeverities: Severity[] = [
-      ...findings.filter((f) => f.blockEligible !== false).map((f) => f.severity),
-      ...unicodeFindings.map((f) => f.severity),
-      ...base64Findings.map((f) => f.severity),
-      ...htmlFindings.map((f) => f.severity),
-      ...multiLayerFindings.map((f) => f.severity),
+      ...findings.filter(f => f.blockEligible !== false).map(f => f.severity),
+      ...unicodeFindings.map(f => f.severity),
+      ...base64Findings.map(f => f.severity),
+      ...htmlFindings.map(f => f.severity),
+      ...multiLayerFindings.map(f => f.severity)
     ];
     let blockEligibleSeverity: Severity = Severity.INFO;
     for (const s of blockEligibleSeverities) {
@@ -551,7 +554,7 @@ export class PromptInjectionValidator {
       html_findings: htmlFindings,
       multi_layer_findings: multiLayerFindings,
       highest_severity: highestSeverity,
-      should_block: shouldBlock,
+      should_block: shouldBlock
     };
   }
 
@@ -562,39 +565,39 @@ export class PromptInjectionValidator {
     const result = this.analyze(content);
 
     const allFindings: Finding[] = [
-      ...result.findings.map((f) => ({
+      ...result.findings.map(f => ({
         category: f.category,
         pattern_name: f.pattern_name,
         severity: f.severity,
         match: f.match,
         description: f.description,
         line_number: f.line_number,
-        weight: f.severity === Severity.CRITICAL ? 10 : f.severity === Severity.WARNING ? 5 : 1,
+        weight: f.severity === Severity.CRITICAL ? 10 : f.severity === Severity.WARNING ? 5 : 1
       })),
-      ...result.unicode_findings.map((f) => ({
+      ...result.unicode_findings.map(f => ({
         category: f.category,
         severity: f.severity,
         description: f.description,
-        weight: f.severity === Severity.CRITICAL ? 10 : 5,
+        weight: f.severity === Severity.CRITICAL ? 10 : 5
       })),
-      ...result.base64_findings.map((f) => ({
+      ...result.base64_findings.map(f => ({
         category: f.category,
         severity: f.severity,
         description: f.description,
-        weight: f.contains_injection ? 10 : 3,
+        weight: f.contains_injection ? 10 : 3
       })),
-      ...result.html_findings.map((f) => ({
+      ...result.html_findings.map(f => ({
         category: f.category,
         severity: f.severity,
         description: f.description,
-        weight: 5,
+        weight: 5
       })),
-      ...result.multi_layer_findings.map((f) => ({
+      ...result.multi_layer_findings.map(f => ({
         category: f.category,
         severity: f.severity,
         description: f.description,
-        weight: f.contains_injection ? 10 : 5,
-      })),
+        weight: f.contains_injection ? 10 : 5
+      }))
     ];
 
     const riskScore = allFindings.reduce((sum, f) => sum + (f.weight ?? 1), 0);
@@ -614,7 +617,7 @@ export class PromptInjectionValidator {
         highest_severity: result.highest_severity,
         risk_score: riskScore,
         risk_level: riskLevel,
-        blocked: !allowed,
+        blocked: !allowed
       });
     }
 

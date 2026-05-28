@@ -17,7 +17,7 @@
 
 import type {
   ChatCompletionCreateParamsNonStreaming,
-  ChatCompletionCreateParamsStreaming,
+  ChatCompletionCreateParamsStreaming
 } from 'openai/resources/chat/completions';
 import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
 
@@ -128,9 +128,7 @@ export interface GuardedOpenAIOptions {
  * @remarks
  * Extends the standard OpenAI params to support both streaming and non-streaming modes.
  */
-export type GuardedChatCompletionOptions =
-  | ChatCompletionCreateParamsNonStreaming
-  | ChatCompletionCreateParamsStreaming;
+export type GuardedChatCompletionOptions = ChatCompletionCreateParamsNonStreaming | ChatCompletionCreateParamsStreaming;
 
 /**
  * Result type for non-streaming chat completions that may be filtered.

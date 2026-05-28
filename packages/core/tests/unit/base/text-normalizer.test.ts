@@ -12,7 +12,7 @@ import {
   ZERO_WIDTH_CHARS,
   COMBINING_MARK_PATTERN,
   BRAILLE_PATTERN,
-  MONGOLIAN_FVS_PATTERN,
+  MONGOLIAN_FVS_PATTERN
 } from '../../../src/validators/text-normalizer.js';
 
 describe('TextNormalizer', () => {
@@ -64,16 +64,14 @@ describe('TextNormalizer', () => {
       // for these codepoints, so they survive normalisation unless explicitly
       // mapped via CONFUSABLE_MAP. The 4th audit-loop bypass was this exact
       // string returning zero findings.
-      expect(normalizeText('\u026A\u0262\u0274\u1D0F\u0280\u1D07'))
-        .toBe('ignore');
-      expect(normalizeText('\u026A\u0262\u0274\u1D0F\u0280\u1D07 \u1D00\u029F\u029F'))
-        .toBe('ignore all');
+      expect(normalizeText('\u026A\u0262\u0274\u1D0F\u0280\u1D07')).toBe('ignore');
+      expect(normalizeText('\u026A\u0262\u0274\u1D0F\u0280\u1D07 \u1D00\u029F\u029F')).toBe('ignore all');
     });
 
     it('should fold Cherokee and Armenian Latin-glyph lookalikes', () => {
-      expect(normalizeText('\u13AAttack')).toBe('Attack');     // U+13AA \u13AA \u2192 A
-      expect(normalizeText('\u054Fip')).toBe('Sip');           // U+054F \u054F \u2192 S
-      expect(normalizeText('\u0540ello')).toBe('Zello');       // U+0540 \u0540 \u2192 Z
+      expect(normalizeText('\u13AAttack')).toBe('Attack'); // U+13AA \u13AA \u2192 A
+      expect(normalizeText('\u054Fip')).toBe('Sip'); // U+054F \u054F \u2192 S
+      expect(normalizeText('\u0540ello')).toBe('Zello'); // U+0540 \u0540 \u2192 Z
     });
 
     it('should remove zero-width characters', () => {
@@ -102,7 +100,7 @@ describe('TextNormalizer', () => {
         { input: '1gn0r3', expected: '1gn0r3' }, // no 1→i or 3→e mapping
         { input: 'byp4ss', expected: 'byp4ss' }, // no 4→a mapping
         { input: 'h4ck', expected: 'h4ck' },
-        { input: 'pr0gr4m', expected: 'pr0gr4m' },
+        { input: 'pr0gr4m', expected: 'pr0gr4m' }
       ];
 
       for (const { input, expected } of cases) {

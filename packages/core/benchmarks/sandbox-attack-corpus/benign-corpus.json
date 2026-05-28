@@ -22,7 +22,11 @@
   { "id": "bn-021", "category": "benign", "payload": "df.groupby('category').mean()" },
   { "id": "bn-022", "category": "benign", "payload": "for (let i = 0; i < array.length; i++) { ... }" },
   { "id": "bn-023", "category": "benign", "payload": "useEffect(() => { fetchData() }, [])" },
-  { "id": "bn-024", "category": "benign", "payload": "type Result<T> = { ok: true; value: T } | { ok: false; error: string }" },
+  {
+    "id": "bn-024",
+    "category": "benign",
+    "payload": "type Result<T> = { ok: true; value: T } | { ok: false; error: string }"
+  },
   { "id": "bn-025", "category": "benign", "payload": "interface User { id: number; name: string; email: string }" },
   { "id": "bn-026", "category": "benign", "payload": "git checkout -b feature/new-thing" },
   { "id": "bn-027", "category": "benign", "payload": "ssh user@server 'ls /tmp'" },
@@ -43,7 +47,11 @@
   { "id": "bn-042", "category": "benign", "payload": "const { data, error } = useSWR('/api/data', fetcher)" },
   { "id": "bn-043", "category": "benign", "payload": "export default function Page() { return <div>Hello</div> }" },
   { "id": "bn-044", "category": "benign", "payload": "Math.max(...numbers)" },
-  { "id": "bn-045", "category": "benign", "payload": "const sorted = users.sort((a, b) => a.name.localeCompare(b.name))" },
+  {
+    "id": "bn-045",
+    "category": "benign",
+    "payload": "const sorted = users.sort((a, b) => a.name.localeCompare(b.name))"
+  },
   { "id": "bn-046", "category": "benign", "payload": "console.log(`Processed ${count} items`)" },
   { "id": "bn-047", "category": "benign", "payload": "await Promise.all(tasks.map(t => process(t)))" },
   { "id": "bn-048", "category": "benign", "payload": "if (!data) throw new Error('No data')" },

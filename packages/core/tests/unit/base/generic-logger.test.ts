@@ -5,13 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  LogLevel,
-  Logger,
-  ConsoleLogger,
-  NullLogger,
-  createLogger,
-} from '../../../src/base/GenericLogger.js';
+import { LogLevel, Logger, ConsoleLogger, NullLogger, createLogger } from '../../../src/base/GenericLogger.js';
 
 describe('LogLevel', () => {
   it('should have correct values', () => {
@@ -39,7 +33,7 @@ describe('ConsoleLogger', () => {
       debug: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
-      error: vi.fn(),
+      error: vi.fn()
     };
     originalConsoleDebug = console.debug;
     originalConsoleInfo = console.info;
@@ -218,7 +212,7 @@ describe('createLogger', () => {
       debug: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
-      error: vi.fn(),
+      error: vi.fn()
     };
     const logger = createLogger('custom', LogLevel.INFO, customLogger);
     expect(logger).toBe(customLogger);

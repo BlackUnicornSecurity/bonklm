@@ -18,7 +18,7 @@ import {
   ConnectorConfigurationError,
   ConnectorTimeoutError,
   ConnectorValidationError,
-  StreamValidationError,
+  StreamValidationError
 } from '@blackunicorn/bonklm';
 
 /**
@@ -209,9 +209,4 @@ export const VALID_TOOL_NAME_PATTERN = /^[a-zA-Z0-9_-]+$/;
 export const MAX_TOOL_NAME_LENGTH = 128;
 
 // Re-export error classes from core for connector use
-export {
-  StreamValidationError,
-  ConnectorValidationError,
-  ConnectorConfigurationError,
-  ConnectorTimeoutError,
-};
+export { StreamValidationError, ConnectorValidationError, ConnectorConfigurationError, ConnectorTimeoutError };

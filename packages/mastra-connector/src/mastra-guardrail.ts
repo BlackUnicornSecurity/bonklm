@@ -27,7 +27,7 @@ import {
   type Logger,
   RiskLevel,
   Severity,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
 import {
   ConnectorValidationError,
@@ -35,20 +35,20 @@ import {
   logValidationFailure,
   StreamValidationError,
   updateStreamValidatorState,
-  validateBufferBeforeAccumulation,
+  validateBufferBeforeAccumulation
 } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
   AgentHookResult,
   GuardedMastraOptions,
   MastraAgentContext,
   MastraMessage,
-  MastraToolCall,
+  MastraToolCall
 } from './types.js';
 import {
   DEFAULT_MAX_BUFFER_SIZE,
   DEFAULT_MAX_CONTENT_LENGTH,
   DEFAULT_VALIDATION_TIMEOUT,
-  VALIDATION_INTERVAL,
+  VALIDATION_INTERVAL
 } from './types.js';
 import { messagesToText, toolCallsToText } from './messages-to-text.js';
 import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-utils';
@@ -67,7 +67,6 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  * @throws {TypeError} If value is not a positive finite number
  */
 
-
 /**
  * Circuit breaker states for retry logic.
  *
@@ -76,7 +75,7 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
 enum CircuitBreakerState {
   CLOSED = 'closed',
   OPEN = 'open',
-  HALF_OPEN = 'half_open',
+  HALF_OPEN = 'half_open'
 }
 
 /**
@@ -127,26 +126,15 @@ interface CircuitBreakerStateTracker {
  * ```
  */
 export function createGuardedMastra(options: GuardedMastraOptions = {}): {
-  beforeAgentExecution: (
-    messages: MastraMessage[],
-    context?: MastraAgentContext,
-  ) => Promise<AgentHookResult>;
-  afterAgentExecution: (
-    response: string | MastraMessage,
-    context?: MastraAgentContext,
-  ) => Promise<AgentHookResult>;
-  validateToolCall: (
-    toolCall: MastraToolCall,
-    context?: MastraAgentContext,
-  ) => Promise<AgentHookResult>;
+  beforeAgentExecution: (messages: MastraMessage[], context?: MastraAgentContext) => Promise<AgentHookResult>;
+  afterAgentExecution: (response: string | MastraMessage, context?: MastraAgentContext) => Promise<AgentHookResult>;
+  validateToolCall: (toolCall: MastraToolCall, context?: MastraAgentContext) => Promise<AgentHookResult>;
   validateToolResult: (
     toolResult: string | MastraMessage,
     toolCall: MastraToolCall,
-    context?: MastraAgentContext,
+    context?: MastraAgentContext
   ) => Promise<AgentHookResult>;
-  createStreamValidator: (
-    context?: MastraAgentContext,
-  ) => (chunk: string) => Promise<string | null>;
+  createStreamValidator: (context?: MastraAgentContext) => (chunk: string) => Promise<string | null>;
 } {
   const {
     validators = [],
@@ -165,7 +153,7 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
     onBlocked,
     onStreamBlocked,
     onToolCallBlocked,
-    retryConfig, // S012-004: Retry configuration
+    retryConfig // S012-004: Retry configuration
   } = options;
 
   // Validate critical security options
@@ -178,21 +166,22 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
     state: CircuitBreakerState.CLOSED,
     failureCount: 0,
     lastFailureTime: 0,
-    halfOpenCallCount: 0,
+    halfOpenCallCount: 0
   };
 
-  const cbConfig: CircuitBreakerConfig = retryConfig?.threshold && retryConfig?.timeoutMs && retryConfig?.halfOpenMaxCalls
-    ? retryConfig as CircuitBreakerConfig
-    : {
-        threshold: 5, // Open after 5 consecutive failures
-        timeoutMs: 60000, // Reset after 60 seconds
-        halfOpenMaxCalls: 3, // Allow 3 calls in half-open state
-      };
+  const cbConfig: CircuitBreakerConfig =
+    retryConfig?.threshold && retryConfig?.timeoutMs && retryConfig?.halfOpenMaxCalls
+      ? (retryConfig as CircuitBreakerConfig)
+      : {
+          threshold: 5, // Open after 5 consecutive failures
+          timeoutMs: 60000, // Reset after 60 seconds
+          halfOpenMaxCalls: 3 // Allow 3 calls in half-open state
+        };
 
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   /**
@@ -230,7 +219,7 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
     if (circuitBreaker.failureCount >= cbConfig.threshold) {
       circuitBreaker.state = CircuitBreakerState.OPEN;
       logger.error('[Mastra Guardrails] Circuit breaker opened due to repeated failures', {
-        failureCount: circuitBreaker.failureCount,
+        failureCount: circuitBreaker.failureCount
       });
     }
   };
@@ -259,10 +248,7 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
    *
    * @internal
    */
-  const validateWithTimeout = async (
-    content: string,
-    context?: string,
-  ): Promise<EngineResult> => {
+  const validateWithTimeout = async (content: string, context?: string): Promise<EngineResult> => {
     const engineResult = await validateWithTimeoutSecure<EngineResult>({
       operation: () => engine.validate(content, context),
       timeoutMs: validationTimeout,
@@ -273,19 +259,21 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
         risk_level: RiskLevel.HIGH,
         risk_score: 30,
         reason: 'Validation timeout',
-        findings: [{
-          category: 'timeout',
-          severity: Severity.CRITICAL,
-          description: 'Validation timeout',
-          weight: 30,
-        }],
+        findings: [
+          {
+            category: 'timeout',
+            severity: Severity.CRITICAL,
+            description: 'Validation timeout',
+            weight: 30
+          }
+        ],
         results: [],
         validatorCount: validators.length,
         guardCount: guards.length,
         executionTime: validationTimeout,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       }),
-      logger,
+      logger
     });
     return engineResult;
   };
@@ -298,14 +286,14 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
   const validateBefore = async (
     content: string,
     context: string,
-    executionContext?: MastraAgentContext,
+    executionContext?: MastraAgentContext
   ): Promise<AgentHookResult> => {
     // S012-004: Check circuit breaker first
     if (isCircuitBreakerOpen()) {
       logger.warn('[Mastra Guardrails] Circuit breaker is open - blocking request');
       return {
         allowed: false,
-        blockedReason: 'Circuit breaker is open due to repeated validation failures',
+        blockedReason: 'Circuit breaker is open due to repeated validation failures'
       };
     }
 
@@ -315,14 +303,16 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
         {
           category: 'size-limit',
           severity: Severity.WARNING,
-          description: `Content exceeds maximum length of ${maxContentLength}`,
-        },
+          description: `Content exceeds maximum length of ${maxContentLength}`
+        }
       ]);
       onBlocked?.(errorResult, executionContext);
       logger.warn('[Mastra Guardrails] Content too large');
       return {
         allowed: false,
-        blockedReason: productionMode ? 'Content blocked by security policy' : `Content blocked: Content exceeds maximum length`,
+        blockedReason: productionMode
+          ? 'Content blocked by security policy'
+          : `Content blocked: Content exceeds maximum length`
       };
     }
 
@@ -337,7 +327,7 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
       recordFailure();
       return {
         allowed: false,
-        blockedReason: productionMode ? 'Content blocked by security policy' : `Content blocked: ${result.reason}`,
+        blockedReason: productionMode ? 'Content blocked by security policy' : `Content blocked: ${result.reason}`
       };
     }
 
@@ -351,10 +341,7 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
    *
    * @internal
    */
-  const validateAfter = async (
-    content: string,
-    executionContext?: MastraAgentContext,
-  ): Promise<AgentHookResult> => {
+  const validateAfter = async (content: string, executionContext?: MastraAgentContext): Promise<AgentHookResult> => {
     // S012-004: Use EngineResult from validateWithTimeout
     const result = await validateWithTimeout(content, 'output');
 
@@ -364,7 +351,7 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
       logValidationFailure(logger, result.reason || 'Output blocked', { context: 'output' });
       return {
         allowed: false,
-        blockedReason: productionMode ? 'Content blocked by security policy' : `Content blocked: ${result.reason}`,
+        blockedReason: productionMode ? 'Content blocked by security policy' : `Content blocked: ${result.reason}`
       };
     }
 
@@ -381,7 +368,7 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
    * @internal
    */
   const createStreamValidator = (
-    executionContext?: MastraAgentContext,
+    executionContext?: MastraAgentContext
   ): ((chunk: string) => Promise<string | null>) => {
     // S012-004: Use connector-utils stream state for consistent behavior
     const streamState = createStreamValidatorState();
@@ -390,7 +377,7 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
       // S012-004: Use connector-utils buffer validation (proper UTF-8 byte size calculation)
       validateBufferBeforeAccumulation(streamState, chunk, {
         maxBufferSize: maxStreamBufferSize,
-        logger,
+        logger
       });
 
       updateStreamValidatorState(streamState, chunk);
@@ -401,11 +388,7 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
           const result = await validateAfter(streamState.accumulated, executionContext);
           if (!result.allowed) {
             onStreamBlocked?.(streamState.accumulated, executionContext);
-            throw new StreamValidationError(
-              result.blockedReason || 'Stream blocked',
-              'Content policy violation',
-              true,
-            );
+            throw new StreamValidationError(result.blockedReason || 'Stream blocked', 'Content policy violation', true);
           }
         }
       }
@@ -419,20 +402,13 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
    *
    * @internal
    */
-  const finalizeStream = async (
-    accumulatedText: string,
-    executionContext?: MastraAgentContext,
-  ): Promise<string> => {
+  const finalizeStream = async (accumulatedText: string, executionContext?: MastraAgentContext): Promise<string> => {
     if (streamingMode === 'buffer' || !validateStreaming) {
       // Validate full buffer
       const result = await validateAfter(accumulatedText, executionContext);
       if (!result.allowed) {
         onStreamBlocked?.(accumulatedText, executionContext);
-        throw new StreamValidationError(
-          result.blockedReason || 'Stream blocked',
-          'Content policy violation',
-          true,
-        );
+        throw new StreamValidationError(result.blockedReason || 'Stream blocked', 'Content policy violation', true);
       }
     }
     return accumulatedText;
@@ -445,7 +421,7 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
      */
     beforeAgentExecution: async (
       messages: MastraMessage[],
-      executionContext?: MastraAgentContext,
+      executionContext?: MastraAgentContext
     ): Promise<AgentHookResult> => {
       if (!validateAgentInput) {
         return { allowed: true };
@@ -461,16 +437,13 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
      */
     afterAgentExecution: async (
       response: string | MastraMessage,
-      executionContext?: MastraAgentContext,
+      executionContext?: MastraAgentContext
     ): Promise<AgentHookResult> => {
       if (!validateAgentOutput) {
         return { allowed: true };
       }
 
-      const text =
-        typeof response === 'string'
-          ? response
-          : messagesToText([response]);
+      const text = typeof response === 'string' ? response : messagesToText([response]);
       return validateAfter(text, executionContext);
     },
 
@@ -480,7 +453,7 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
      */
     validateToolCall: async (
       toolCall: MastraToolCall,
-      executionContext?: MastraAgentContext,
+      executionContext?: MastraAgentContext
     ): Promise<AgentHookResult> => {
       if (!validateToolCalls) {
         return { allowed: true };
@@ -497,10 +470,10 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
             {
               category: 'tool-call-blocked',
               severity: Severity.CRITICAL,
-              description: result.blockedReason || 'Tool call blocked',
-            },
+              description: result.blockedReason || 'Tool call blocked'
+            }
           ]),
-          executionContext,
+          executionContext
         );
       }
 
@@ -513,16 +486,13 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
     validateToolResult: async (
       toolResult: string | MastraMessage,
       _toolCall: MastraToolCall,
-      executionContext?: MastraAgentContext,
+      executionContext?: MastraAgentContext
     ): Promise<AgentHookResult> => {
       if (!validateToolResults) {
         return { allowed: true };
       }
 
-      const text =
-        typeof toolResult === 'string'
-          ? toolResult
-          : messagesToText([toolResult]);
+      const text = typeof toolResult === 'string' ? toolResult : messagesToText([toolResult]);
       return validateAfter(text, executionContext);
     },
 
@@ -538,14 +508,12 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
      * }
      * ```
      */
-    createStreamValidator: (
-      executionContext?: MastraAgentContext,
-    ): ((chunk: string) => Promise<string | null>) => {
+    createStreamValidator: (executionContext?: MastraAgentContext): ((chunk: string) => Promise<string | null>) => {
       return createStreamValidator(executionContext);
     },
 
     // Internal: Expose finalizeStream for complete validation
-    _finalizeStream: finalizeStream,
+    _finalizeStream: finalizeStream
   } as any;
 }
 
@@ -573,22 +541,16 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
  * const result = await guardedAgent.execute('Hello');
  * ```
  */
-export function wrapAgent<TAgent extends {
-  execute: (input: string | MastraMessage[]) => Promise<string | MastraMessage>;
-}>(
-  agent: TAgent,
-  options: GuardedMastraOptions = {},
-): TAgent {
+export function wrapAgent<
+  TAgent extends {
+    execute: (input: string | MastraMessage[]) => Promise<string | MastraMessage>;
+  }
+>(agent: TAgent, options: GuardedMastraOptions = {}): TAgent {
   const guardrails = createGuardedMastra(options);
 
-  const wrappedExecute = async (
-    input: string | MastraMessage[],
-  ): Promise<string | MastraMessage> => {
+  const wrappedExecute = async (input: string | MastraMessage[]): Promise<string | MastraMessage> => {
     // Normalize input to messages array
-    const messages: MastraMessage[] =
-      typeof input === 'string'
-        ? [{ role: 'user', content: input }]
-        : input;
+    const messages: MastraMessage[] = typeof input === 'string' ? [{ role: 'user', content: input }] : input;
 
     // Validate input
     const beforeResult = await guardrails.beforeAgentExecution(messages);
@@ -598,10 +560,7 @@ export function wrapAgent<TAgent extends {
       // (same throw type). Callers catching `ConnectorValidationError`
       // to distinguish guardrail blocks from network errors will now
       // see input-blocked events too.
-      throw new ConnectorValidationError(
-        beforeResult.blockedReason || 'Input blocked',
-        'validation_failed',
-      );
+      throw new ConnectorValidationError(beforeResult.blockedReason || 'Input blocked', 'validation_failed');
     }
 
     // Execute agent
@@ -613,7 +572,7 @@ export function wrapAgent<TAgent extends {
       // S012-004: Throw error instead of returning filtered content
       throw new ConnectorValidationError(
         afterResult.blockedReason || 'Output blocked by security policy',
-        'validation_failed',
+        'validation_failed'
       );
     }
 
@@ -622,7 +581,7 @@ export function wrapAgent<TAgent extends {
 
   return {
     ...agent,
-    execute: wrappedExecute,
+    execute: wrappedExecute
   };
 }
 
@@ -632,5 +591,5 @@ export type {
   MastraMessage,
   MastraToolCall,
   MastraAgentContext,
-  AgentHookResult,
+  AgentHookResult
 } from './types.js';

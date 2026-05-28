@@ -19,7 +19,7 @@ import {
   Validator,
   GuardrailEngine,
   createLogger,
-  LogLevel,
+  LogLevel
 } from '@blackunicorn/bonklm';
 
 /**
@@ -58,15 +58,11 @@ class ProfanityFilter implements Validator {
     this.action = config.action ?? 'block';
 
     // Default blocklist (demonstration purposes)
-    const defaultBlocked = new Set([
-      'badword',
-      'offensive',
-      'inappropriate',
-    ]);
+    const defaultBlocked = new Set(['badword', 'offensive', 'inappropriate']);
 
     this.blockedWords = new Set([
       ...(config.useDefaults !== false ? Array.from(defaultBlocked) : []),
-      ...(config.blockedWords ?? []),
+      ...(config.blockedWords ?? [])
     ]);
 
     const logger = createLogger('console', LogLevel.INFO);
@@ -89,7 +85,7 @@ class ProfanityFilter implements Validator {
           weight: 5,
           match: word,
           description: `Blocked word detected: "${word}"`,
-          confidence: 'high',
+          confidence: 'high'
         });
       }
     }
@@ -112,7 +108,7 @@ class ProfanityFilter implements Validator {
       risk_level: riskLevel,
       risk_score: riskScore,
       findings,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     };
   }
 
@@ -144,7 +140,7 @@ class PIIDetector implements Validator {
     phone: /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g,
     ssn: /\b\d{3}-\d{2}-\d{4}\b/g,
     creditCard: /\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/g,
-    ipAddress: /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g,
+    ipAddress: /\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g
   };
 
   validate(content: string): GuardrailResult {
@@ -158,7 +154,7 @@ class PIIDetector implements Validator {
         severity: Severity.WARNING,
         weight: 3,
         description: `Email address detected: ${emails.length} found`,
-        confidence: 'high',
+        confidence: 'high'
       });
     }
 
@@ -170,7 +166,7 @@ class PIIDetector implements Validator {
         severity: Severity.WARNING,
         weight: 3,
         description: `Phone number detected: ${phones.length} found`,
-        confidence: 'medium',
+        confidence: 'medium'
       });
     }
 
@@ -182,7 +178,7 @@ class PIIDetector implements Validator {
         severity: Severity.CRITICAL,
         weight: 10,
         description: `Social Security Number detected: ${ssns.length} found`,
-        confidence: 'high',
+        confidence: 'high'
       });
     }
 
@@ -194,7 +190,7 @@ class PIIDetector implements Validator {
         severity: Severity.CRITICAL,
         weight: 10,
         description: `Credit card number detected: ${cards.length} found`,
-        confidence: 'medium',
+        confidence: 'medium'
       });
     }
 
@@ -206,11 +202,11 @@ class PIIDetector implements Validator {
         severity: Severity.INFO,
         weight: 2,
         description: `IP address detected: ${ips.length} found`,
-        confidence: 'medium',
+        confidence: 'medium'
       });
     }
 
-    const blocked = findings.some((f) => f.severity === Severity.CRITICAL);
+    const blocked = findings.some(f => f.severity === Severity.CRITICAL);
     const riskScore = findings.reduce((sum, f) => sum + (f.weight ?? 1), 0);
 
     let riskLevel: RiskLevel = RiskLevel.LOW;
@@ -227,7 +223,7 @@ class PIIDetector implements Validator {
       risk_level: riskLevel,
       risk_score: riskScore,
       findings,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     };
   }
 }
@@ -246,13 +242,13 @@ async function main() {
 
   const profanityFilter = new ProfanityFilter({
     useDefaults: true,
-    action: 'block',
+    action: 'block'
   });
 
   const testMessages = [
     'Hello, how are you today?',
     'This message contains a badword',
-    'Multiple offensive and inappropriate words here',
+    'Multiple offensive and inappropriate words here'
   ];
 
   for (const msg of testMessages) {
@@ -260,7 +256,7 @@ async function main() {
     console.log(`\nMessage: "${msg}"`);
     console.log(`Allowed: ${result.allowed ? '✅' : '❌'}`);
     if (result.findings.length > 0) {
-      console.log(`Findings: ${result.findings.map((f) => f.description).join(', ')}`);
+      console.log(`Findings: ${result.findings.map(f => f.description).join(', ')}`);
     }
   }
 
@@ -281,7 +277,7 @@ async function main() {
 
   const engine = new GuardrailEngine({
     validators: [profanityFilter, new PIIDetector()],
-    shortCircuit: false,
+    shortCircuit: false
   });
 
   const complexMessage = 'Contact me at john@example.com or call 555-123-4567. This is badword!';
@@ -299,7 +295,7 @@ async function main() {
       console.log(`\n  ${result.validatorName}:`);
       console.log(`    Blocked: ${result.blocked ? '❌' : '✅'}`);
       console.log(`    Findings: ${result.findings.length}`);
-      result.findings.forEach((f) => {
+      result.findings.forEach(f => {
         console.log(`      - ${f.description} [${f.severity}]`);
       });
     }
@@ -312,7 +308,7 @@ async function main() {
   const customFilter = new ProfanityFilter({
     blockedWords: new Set(['custom', 'blocked', 'word']),
     useDefaults: false,
-    action: 'block',
+    action: 'block'
   });
 
   const customResult = customFilter.validate('This contains a custom blocked word');

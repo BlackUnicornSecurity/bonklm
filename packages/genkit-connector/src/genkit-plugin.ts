@@ -27,21 +27,21 @@ import {
   type Logger,
   sanitizeMeta,
   Severity,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
 import type {
   FlowHookResult,
   GenkitFlowContext,
   GenkitMessage,
   GenkitToolCall,
-  GuardedGenkitOptions,
+  GuardedGenkitOptions
 } from './types.js';
 import {
   DEFAULT_MAX_BUFFER_SIZE,
   DEFAULT_MAX_CONTENT_LENGTH,
   DEFAULT_VALIDATION_TIMEOUT,
   StreamValidationError,
-  VALIDATION_INTERVAL,
+  VALIDATION_INTERVAL
 } from './types.js';
 import { messagesToText, toolCallsToText } from './messages-to-text.js';
 import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-utils';
@@ -59,7 +59,6 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  * @internal
  * @throws {TypeError} If value is not a positive finite number
  */
-
 
 /**
  * Creates a Genkit plugin that wraps flows with guardrail validation.
@@ -85,25 +84,11 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  * ```
  */
 export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {}): {
-  beforeFlow: (
-    input: string | GenkitMessage[],
-    context?: GenkitFlowContext,
-  ) => Promise<FlowHookResult>;
-  afterFlow: (
-    response: string | GenkitMessage,
-    context?: GenkitFlowContext,
-  ) => Promise<FlowHookResult>;
-  validateToolCall: (
-    toolCall: GenkitToolCall,
-    context?: GenkitFlowContext,
-  ) => Promise<FlowHookResult>;
-  validateToolResponse: (
-    toolResponse: string | GenkitMessage,
-    context?: GenkitFlowContext,
-  ) => Promise<FlowHookResult>;
-  createStreamValidator: (
-    context?: GenkitFlowContext,
-  ) => (chunk: string) => Promise<string | null>;
+  beforeFlow: (input: string | GenkitMessage[], context?: GenkitFlowContext) => Promise<FlowHookResult>;
+  afterFlow: (response: string | GenkitMessage, context?: GenkitFlowContext) => Promise<FlowHookResult>;
+  validateToolCall: (toolCall: GenkitToolCall, context?: GenkitFlowContext) => Promise<FlowHookResult>;
+  validateToolResponse: (toolResponse: string | GenkitMessage, context?: GenkitFlowContext) => Promise<FlowHookResult>;
+  createStreamValidator: (context?: GenkitFlowContext) => (chunk: string) => Promise<string | null>;
 } {
   const {
     validators = [],
@@ -121,7 +106,7 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
     validationTimeout = DEFAULT_VALIDATION_TIMEOUT, // SEC-008: Default 30s
     onBlocked,
     onStreamBlocked,
-    onToolCallBlocked,
+    onToolCallBlocked
   } = options;
 
   // Validate critical security options
@@ -132,7 +117,7 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   /**
@@ -140,10 +125,7 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
    *
    * @internal
    */
-  const validateWithTimeout = async (
-    content: string,
-    context?: string,
-  ): Promise<GuardrailResult[]> => {
+  const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult[]> => {
     // DEV-001: Correct API signature - use string context, not object
     // DEV-003: AWAIT the validation
     // Sprint 31 cumulative audit fix (architect CRITICAL-1): sentinel
@@ -155,19 +137,18 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
         {
           category: 'timeout',
           severity: Severity.CRITICAL,
-          description: 'Validation timeout',
-        },
+          description: 'Validation timeout'
+        }
       ]);
     type GenkitWrappedResult = GuardrailResult & { results: GuardrailResult[] };
     const engineResult = await validateWithTimeoutSecure<GenkitWrappedResult>({
-      operation: () =>
-        engine.validate(content, context) as Promise<GenkitWrappedResult>,
+      operation: () => engine.validate(content, context) as Promise<GenkitWrappedResult>,
       timeoutMs: validationTimeout,
       timeoutSentinel: () => {
         const top = sentinelGuardrail();
         return { ...top, results: [top] };
       },
-      logger,
+      logger
     });
     return engineResult.results;
   };
@@ -192,7 +173,7 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
   const validateBefore = async (
     content: string,
     context: string,
-    executionContext?: GenkitFlowContext,
+    executionContext?: GenkitFlowContext
   ): Promise<FlowHookResult> => {
     // SEC-010: Check content length
     if (content.length > maxContentLength) {
@@ -200,28 +181,28 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
         {
           category: 'size-limit',
           severity: Severity.WARNING,
-          description: `Content exceeds maximum length of ${maxContentLength}`,
-        },
+          description: `Content exceeds maximum length of ${maxContentLength}`
+        }
       ]);
       onBlocked?.(errorResult, executionContext);
       logger.warn('[Genkit Guardrails] Content too large');
       return {
         allowed: false,
-        blockedReason: createErrorMessage(errorResult),
+        blockedReason: createErrorMessage(errorResult)
       };
     }
 
     // DEV-003: AWAIT the validation
     const results = await validateWithTimeout(content, context);
 
-    const blocked = results.find((r) => !r.allowed);
+    const blocked = results.find(r => !r.allowed);
     if (blocked) {
       onBlocked?.(blocked, executionContext);
       // Sprint 43 cross-connector CWE-117 sweep.
       logger.warn('[Genkit Guardrails] Input blocked', { reason: sanitizeMeta(blocked.reason) });
       return {
         allowed: false,
-        blockedReason: createErrorMessage(blocked),
+        blockedReason: createErrorMessage(blocked)
       };
     }
 
@@ -233,21 +214,18 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
    *
    * @internal
    */
-  const validateAfter = async (
-    content: string,
-    executionContext?: GenkitFlowContext,
-  ): Promise<FlowHookResult> => {
+  const validateAfter = async (content: string, executionContext?: GenkitFlowContext): Promise<FlowHookResult> => {
     // DEV-003: AWAIT the validation
     const results = await validateWithTimeout(content, 'output');
 
-    const blocked = results.find((r) => !r.allowed);
+    const blocked = results.find(r => !r.allowed);
     if (blocked) {
       onBlocked?.(blocked, executionContext);
       // Sprint 43 CWE-117 sweep (sister to input-blocked above).
       logger.warn('[Genkit Guardrails] Output blocked', { reason: sanitizeMeta(blocked.reason) });
       return {
         allowed: false,
-        blockedReason: createErrorMessage(blocked),
+        blockedReason: createErrorMessage(blocked)
       };
     }
 
@@ -263,9 +241,7 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
    *
    * @internal
    */
-  const createStreamValidator = (
-    executionContext?: GenkitFlowContext,
-  ): ((chunk: string) => Promise<string | null>) => {
+  const createStreamValidator = (executionContext?: GenkitFlowContext): ((chunk: string) => Promise<string | null>) => {
     let accumulatedText = '';
     let chunkCount = 0;
 
@@ -287,11 +263,7 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
           const result = await validateAfter(accumulatedText, executionContext);
           if (!result.allowed) {
             onStreamBlocked?.(accumulatedText, executionContext);
-            throw new StreamValidationError(
-              result.blockedReason || 'Stream blocked',
-              'Content policy violation',
-              true,
-            );
+            throw new StreamValidationError(result.blockedReason || 'Stream blocked', 'Content policy violation', true);
           }
         }
       }
@@ -307,16 +279,13 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
      */
     beforeFlow: async (
       input: string | GenkitMessage[],
-      executionContext?: GenkitFlowContext,
+      executionContext?: GenkitFlowContext
     ): Promise<FlowHookResult> => {
       if (!validateFlowInput) {
         return { allowed: true };
       }
 
-      const messages: GenkitMessage[] =
-        typeof input === 'string'
-          ? [{ role: 'user', content: input }]
-          : input;
+      const messages: GenkitMessage[] = typeof input === 'string' ? [{ role: 'user', content: input }] : input;
       const text = messagesToText(messages);
       return validateBefore(text, 'input', executionContext);
     },
@@ -327,16 +296,13 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
      */
     afterFlow: async (
       response: string | GenkitMessage,
-      executionContext?: GenkitFlowContext,
+      executionContext?: GenkitFlowContext
     ): Promise<FlowHookResult> => {
       if (!validateFlowOutput) {
         return { allowed: true };
       }
 
-      const text =
-        typeof response === 'string'
-          ? response
-          : messagesToText([response]);
+      const text = typeof response === 'string' ? response : messagesToText([response]);
       return validateAfter(text, executionContext);
     },
 
@@ -346,7 +312,7 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
      */
     validateToolCall: async (
       toolCall: GenkitToolCall,
-      executionContext?: GenkitFlowContext,
+      executionContext?: GenkitFlowContext
     ): Promise<FlowHookResult> => {
       if (!validateToolCalls) {
         return { allowed: true };
@@ -363,10 +329,10 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
             {
               category: 'tool-call-blocked',
               severity: Severity.CRITICAL,
-              description: result.blockedReason || 'Tool call blocked',
-            },
+              description: result.blockedReason || 'Tool call blocked'
+            }
           ]),
-          executionContext,
+          executionContext
         );
       }
 
@@ -378,47 +344,35 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
      */
     validateToolResponse: async (
       toolResponse: string | GenkitMessage,
-      executionContext?: GenkitFlowContext,
+      executionContext?: GenkitFlowContext
     ): Promise<FlowHookResult> => {
       if (!validateToolResponses) {
         return { allowed: true };
       }
 
-      const text =
-        typeof toolResponse === 'string'
-          ? toolResponse
-          : messagesToText([toolResponse]);
+      const text = typeof toolResponse === 'string' ? toolResponse : messagesToText([toolResponse]);
       return validateAfter(text, executionContext);
     },
 
     /**
      * Creates a stream validator for streaming responses.
      */
-    createStreamValidator: (
-      executionContext?: GenkitFlowContext,
-    ): ((chunk: string) => Promise<string | null>) => {
+    createStreamValidator: (executionContext?: GenkitFlowContext): ((chunk: string) => Promise<string | null>) => {
       return createStreamValidator(executionContext);
     },
 
     // Internal: Expose finalizeStream for complete validation
-    _finalizeStream: async (
-      accumulatedText: string,
-      executionContext?: GenkitFlowContext,
-    ): Promise<string> => {
+    _finalizeStream: async (accumulatedText: string, executionContext?: GenkitFlowContext): Promise<string> => {
       if (streamingMode === 'buffer' || !validateStreaming) {
         // Validate full buffer
         const result = await validateAfter(accumulatedText, executionContext);
         if (!result.allowed) {
           onStreamBlocked?.(accumulatedText, executionContext);
-          throw new StreamValidationError(
-            result.blockedReason || 'Stream blocked',
-            'Content policy violation',
-            true,
-          );
+          throw new StreamValidationError(result.blockedReason || 'Stream blocked', 'Content policy violation', true);
         }
       }
       return accumulatedText;
-    },
+    }
   } as any;
 }
 
@@ -448,7 +402,7 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
  */
 export function wrapFlow<TInput = string | GenkitMessage[], TOutput = string | GenkitMessage>(
   flow: (input: TInput) => Promise<TOutput>,
-  options: GuardedGenkitOptions = {},
+  options: GuardedGenkitOptions = {}
 ): (input: TInput) => Promise<TOutput> {
   const guardrails = createGenkitGuardrailsPlugin(options);
 
@@ -468,9 +422,10 @@ export function wrapFlow<TInput = string | GenkitMessage[], TOutput = string | G
     const afterResult = await guardrails.afterFlow(responseForValidation);
     if (!afterResult.allowed) {
       // Return a safe fallback instead of throwing
-      const fallback = typeof response === 'string'
-        ? '[Content filtered by security policy]'
-        : { role: 'model' as const, content: '[Content filtered by security policy]' };
+      const fallback =
+        typeof response === 'string'
+          ? '[Content filtered by security policy]'
+          : { role: 'model' as const, content: '[Content filtered by security policy]' };
       return fallback as TOutput;
     }
 
@@ -484,5 +439,5 @@ export type {
   GenkitMessage,
   GenkitToolCall,
   GenkitFlowContext,
-  FlowHookResult,
+  FlowHookResult
 } from './types.js';

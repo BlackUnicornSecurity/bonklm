@@ -64,7 +64,7 @@ export default tseslint.config(
       'tools/eslint-plugin-bonklm-edge/**',
       // Temporal test-workflow fixtures live under tests/ and are excluded
       // from tsconfig.json, like the other tests/ support files above.
-      'packages/*/tests/test-workflows/**',
+      'packages/*/tests/test-workflows/**'
     ]
   },
 
@@ -102,7 +102,7 @@ export default tseslint.config(
         require: 'readonly',
         module: 'writable',
         exports: 'writable',
-        global: 'readonly',
+        global: 'readonly'
       }
     },
     rules: {
@@ -113,7 +113,7 @@ export default tseslint.config(
       'no-script-url': 'error',
 
       // ── Best Practices ──────────────────────────────────────────────
-      'eqeqeq': 'error',
+      eqeqeq: 'error',
       'no-var': 'error',
       'prefer-const': 'error',
       'prefer-arrow-callback': 'error',
@@ -127,16 +127,19 @@ export default tseslint.config(
       // Enforced via code review, not lint.
       'max-lines-per-function': 'off',
       'max-lines': 'off',
-      'complexity': 'off',
+      complexity: 'off',
       'max-depth': ['error', 6],
       'max-params': 'off',
       'max-nested-callbacks': ['error', 5],
 
       // ── Import/Export ───────────────────────────────────────────────
-      'sort-imports': ['error', {
-        ignoreCase: true,
-        ignoreDeclarationSort: true
-      }],
+      'sort-imports': [
+        'error',
+        {
+          ignoreCase: true,
+          ignoreDeclarationSort: true
+        }
+      ],
       // Connector packages routinely split type-only and value imports across two
       // statements from the same module. That's an idiomatic TS pattern, not a real
       // duplicate.
@@ -176,7 +179,7 @@ export default tseslint.config(
         afterAll: 'readonly',
         beforeEach: 'readonly',
         afterEach: 'readonly',
-        vi: 'readonly',
+        vi: 'readonly'
       }
     },
     rules: {
@@ -196,7 +199,7 @@ export default tseslint.config(
       '@typescript-eslint/no-unsafe-return': 'off',
       '@typescript-eslint/require-await': 'off',
       '@typescript-eslint/strict-boolean-expressions': 'off',
-      '@typescript-eslint/strict-null-checks': 'off',
+      '@typescript-eslint/strict-null-checks': 'off'
     }
   },
 
@@ -290,7 +293,7 @@ export default tseslint.config(
   {
     files: ['packages/core/src/guards/xss-safety.ts'],
     rules: {
-      'no-script-url': 'off',
+      'no-script-url': 'off'
     }
   },
 
@@ -317,13 +320,13 @@ export default tseslint.config(
       'packages/genkit-connector/src/messages-to-text.ts',
       'packages/weaviate-connector/src/guarded-weaviate.ts',
       'packages/wizard/src/utils/audit.ts',
-      'packages/wizard/src/utils/error.ts',
+      'packages/wizard/src/utils/error.ts'
     ],
     rules: {
       'no-useless-escape': 'off',
       'no-misleading-character-class': 'off',
       'no-control-regex': 'off',
-      'no-irregular-whitespace': 'off',
+      'no-irregular-whitespace': 'off'
     }
   },
 

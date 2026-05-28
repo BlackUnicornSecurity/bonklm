@@ -21,13 +21,7 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  HookManager,
-  HookPhase,
-  sanitizeLogString,
-  sanitizeMeta,
-  serializeError,
-} from '@blackunicorn/bonklm';
+import { HookManager, HookPhase, sanitizeLogString, sanitizeMeta, serializeError } from '@blackunicorn/bonklm';
 
 describe('hooks subsystem — Sprint 46 CWE-117 sanitization contract', () => {
   function makeSpyLogger() {
@@ -35,7 +29,7 @@ describe('hooks subsystem — Sprint 46 CWE-117 sanitization contract', () => {
       debug: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
-      error: vi.fn(),
+      error: vi.fn()
     };
   }
 
@@ -54,12 +48,10 @@ describe('hooks subsystem — Sprint 46 CWE-117 sanitization contract', () => {
       name: hostileName,
       phase: HookPhase.BEFORE_VALIDATION,
       surface: 'text_input',
-      handler: () => ({ success: true, shouldBlock: false }),
+      handler: () => ({ success: true, shouldBlock: false })
     });
 
-    const registrationCall = logger.info.mock.calls.find(
-      (call) => call[0] === 'Hook registered'
-    );
+    const registrationCall = logger.info.mock.calls.find(call => call[0] === 'Hook registered');
     expect(registrationCall).toBeDefined();
     const meta = registrationCall![1] as { name?: string };
     expect(meta.name).toBeDefined();
@@ -78,18 +70,13 @@ describe('hooks subsystem — Sprint 46 CWE-117 sanitization contract', () => {
       surface: 'text_input',
       handler: () => {
         throw new Error('handler boom\nINJECTED:fake_error');
-      },
+      }
     });
 
-    const results = await manager.executeHooks(
-      HookPhase.BEFORE_VALIDATION,
-      {} as never
-    );
+    const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {} as never);
 
     // The error log fired with sanitized fields.
-    const errorCall = logger.error.mock.calls.find(
-      (call) => call[0] === 'Hook execution failed'
-    );
+    const errorCall = logger.error.mock.calls.find(call => call[0] === 'Hook execution failed');
     expect(errorCall).toBeDefined();
     const meta = errorCall![1] as {
       name?: string;
@@ -106,7 +93,7 @@ describe('hooks subsystem — Sprint 46 CWE-117 sanitization contract', () => {
     // 44 lesson: variable-binding-site sanitization). Sprint 46
     // CR SHOULD-FIX: `serializeError(error).message` sanitizes
     // internally — no double-wrap needed at the construction site.
-    const failureResult = results.find((r) => !r.success);
+    const failureResult = results.find(r => !r.success);
     expect(failureResult).toBeDefined();
     expect(failureResult!.message).toBeDefined();
     expect(failureResult!.message).not.toContain('\n');
@@ -122,14 +109,12 @@ describe('hooks subsystem — Sprint 46 CWE-117 sanitization contract', () => {
       name: hostileName,
       phase: HookPhase.BEFORE_VALIDATION,
       surface: 'text_input',
-      handler: () => ({ success: true, shouldBlock: true }),
+      handler: () => ({ success: true, shouldBlock: true })
     });
 
     await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {} as never);
 
-    const blockedCall = logger.warn.mock.calls.find(
-      (call) => call[0] === 'Hook blocked execution'
-    );
+    const blockedCall = logger.warn.mock.calls.find(call => call[0] === 'Hook blocked execution');
     expect(blockedCall).toBeDefined();
     const meta = blockedCall![1] as { name?: string };
     expect(meta.name).not.toContain('\n');
@@ -146,20 +131,12 @@ describe('hooks subsystem — Sprint 46 CWE-117 sanitization contract', () => {
       phase: HookPhase.BEFORE_VALIDATION,
       surface: 'text_input',
       timeout: 10,
-      handler: () =>
-        new Promise((resolve) =>
-          setTimeout(() => resolve({ success: true, shouldBlock: false }), 100)
-        ),
+      handler: () => new Promise(resolve => setTimeout(() => resolve({ success: true, shouldBlock: false }), 100))
     });
 
-    const results = await manager.executeHooks(
-      HookPhase.BEFORE_VALIDATION,
-      {} as never
-    );
+    const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {} as never);
 
-    const timeoutResult = results.find(
-      (r) => r.message?.includes('timed out')
-    );
+    const timeoutResult = results.find(r => r.message?.includes('timed out'));
     expect(timeoutResult).toBeDefined();
     expect(timeoutResult!.message).not.toContain('\n');
     expect(timeoutResult!.message).toContain('INJECTED');

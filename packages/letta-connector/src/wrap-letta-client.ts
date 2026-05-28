@@ -44,7 +44,7 @@
 import {
   assertGetTenantIdValid,
   wrapMemoryClient,
-  type WrapMemoryClientOptions,
+  type WrapMemoryClientOptions
 } from '@blackunicorn/bonklm-memory-utils';
 import type { GuardrailEngine } from '@blackunicorn/bonklm';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
@@ -59,7 +59,7 @@ const LETTA_AGENTS_SUB_NAMESPACES = new Set([
   'archival_memory',
   'archivalMemory',
   'core_memory',
-  'coreMemory',
+  'coreMemory'
 ]);
 
 /** Known-safe top-level properties that pass through unwrapped. */
@@ -74,7 +74,7 @@ const LETTA_PASSTHROUGH_PROPS = new Set([
   'apiKey',
   'baseUrl',
   'options',
-  'config',
+  'config'
 ]);
 
 /**
@@ -101,7 +101,7 @@ export function wrapLettaClient<TClient extends object>(
     wrapMemoryClient(raw, {
       ...options,
       adapter,
-      engine,
+      engine
     });
 
   /**
@@ -145,7 +145,7 @@ export function wrapLettaClient<TClient extends object>(
           );
         }
         return raw;
-      },
+      }
     });
 
   // Outer proxy — intercept `.agents` accesses.
@@ -182,6 +182,6 @@ export function wrapLettaClient<TClient extends object>(
         );
       }
       return raw;
-    },
+    }
   });
 }

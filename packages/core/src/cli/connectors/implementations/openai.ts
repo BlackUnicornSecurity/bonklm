@@ -15,7 +15,7 @@ export const openaiConnector: ConnectorDefinition = {
   category: 'llm',
   detection: {
     envVars: ['OPENAI_API_KEY'],
-    packageJson: ['openai'],
+    packageJson: ['openai']
   },
 
   test: async (config, _signal) => {
@@ -24,7 +24,7 @@ export const openaiConnector: ConnectorDefinition = {
       return {
         connection: false,
         validation: false,
-        error: 'API key is required',
+        error: 'API key is required'
       };
     }
 
@@ -34,24 +34,25 @@ export const openaiConnector: ConnectorDefinition = {
         sendInHeader: true,
         testEndpoint: 'https://api.openai.com/v1/models',
         timeout: DEFAULT_API_TIMEOUT,
-        logLevel: 'none',
+        logLevel: 'none'
       });
 
       return {
         connection: result,
-        validation: result,
+        validation: result
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       return {
         connection: false,
         validation: false,
-        error: message,
+        error: message
       };
     }
   },
 
-  generateSnippet: (_config) => `
+  generateSnippet: _config =>
+    `
 import { GuardrailEngine } from '@blackunicorn/bonklm';
 import { openaiConnector } from '@blackunicorn/bonklm/openai-connector';
 
@@ -65,6 +66,6 @@ const engine = new GuardrailEngine({
   `.trim(),
 
   configSchema: z.object({
-    apiKey: z.string().startsWith('sk-', 'OpenAI API key must start with "sk-"'),
-  }),
+    apiKey: z.string().startsWith('sk-', 'OpenAI API key must start with "sk-"')
+  })
 };

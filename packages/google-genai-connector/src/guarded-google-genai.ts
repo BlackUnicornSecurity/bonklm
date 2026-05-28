@@ -44,12 +44,12 @@ import {
   type Logger,
   sanitizeMeta,
   Severity,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
 import {
   ConnectorValidationError,
   logValidationFailure,
-  StreamValidator,
+  StreamValidator
 } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
   GoogleChatSessionLike,
@@ -61,13 +61,9 @@ import type {
   GoogleGenerateContentResponse,
   GoogleLiveServerMessage,
   GoogleLiveSessionLike,
-  GuardedGoogleGenAIOptions,
+  GuardedGoogleGenAIOptions
 } from './types.js';
-import {
-  DEFAULT_MAX_BUFFER_SIZE,
-  DEFAULT_VALIDATION_INTERVAL,
-  DEFAULT_VALIDATION_TIMEOUT,
-} from './types.js';
+import { DEFAULT_MAX_BUFFER_SIZE, DEFAULT_VALIDATION_INTERVAL, DEFAULT_VALIDATION_TIMEOUT } from './types.js';
 
 const DEFAULT_LOGGER: Logger = createLogger('console');
 
@@ -75,11 +71,7 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  * Internal: validator with timeout — surface engine-level abort as a
  * deny-CRITICAL result so the caller fails closed.
  */
-function makeTimeoutValidator(
-  engine: GuardrailEngine,
-  timeoutMs: number,
-  logger: Logger
-) {
+function makeTimeoutValidator(engine: GuardrailEngine, timeoutMs: number, logger: Logger) {
   return async (content: string, context?: string): Promise<GuardrailResult> => {
     const r = await validateWithTimeoutSecure<GuardrailResult>({
       operation: () => engine.validate(content, context) as Promise<GuardrailResult>,
@@ -90,10 +82,10 @@ function makeTimeoutValidator(
             category: 'timeout',
             severity: Severity.CRITICAL,
             description: 'Validation timeout',
-            weight: 30,
-          },
+            weight: 30
+          }
         ]),
-      logger,
+      logger
     });
     return r;
   };
@@ -204,7 +196,7 @@ export function wrapGenerateContent(
     logger = DEFAULT_LOGGER,
     productionMode = process.env.NODE_ENV === 'production',
     validationTimeout = DEFAULT_VALIDATION_TIMEOUT,
-    onInputBlocked,
+    onInputBlocked
   } = options;
 
   const engine = new GuardrailEngine({ validators, guards, logger });
@@ -280,7 +272,7 @@ export function wrapGenerateContentStream(
     validationInterval = DEFAULT_VALIDATION_INTERVAL,
     onInputBlocked,
     onStreamBlocked,
-    onFunctionCallBlocked,
+    onFunctionCallBlocked
   } = options;
 
   const engine = new GuardrailEngine({ validators, guards, logger });
@@ -313,7 +305,7 @@ export function wrapGenerateContentStream(
             logger,
             maxBufferSize,
             validationInterval,
-            onBlocked: (accumulated, reason) => onStreamBlocked?.(accumulated, reason),
+            onBlocked: (accumulated, reason) => onStreamBlocked?.(accumulated, reason)
           }
         )
       : null;
@@ -430,7 +422,7 @@ export function wrapChat(
     maxBufferSize = DEFAULT_MAX_BUFFER_SIZE,
     validationInterval = DEFAULT_VALIDATION_INTERVAL,
     onInputBlocked,
-    onStreamBlocked,
+    onStreamBlocked
   } = options;
 
   const engine = new GuardrailEngine({ validators, guards, logger });
@@ -439,16 +431,16 @@ export function wrapChat(
   return (params: { model: string; history?: GoogleContentLike[] }): GoogleChatSessionLike => {
     const session = chats.create(params);
 
-    const sendMessage = async (
-      payload: { message: string | GoogleContentLike }
-    ): Promise<GoogleGenerateContentResponse> => {
-      const inputText = typeof payload.message === 'string'
-        ? payload.message
-        : contentsToText([payload.message]);
+    const sendMessage = async (payload: {
+      message: string | GoogleContentLike;
+    }): Promise<GoogleGenerateContentResponse> => {
+      const inputText = typeof payload.message === 'string' ? payload.message : contentsToText([payload.message]);
       if (inputText.length > 0) {
         const inputResult = await validate(inputText, 'google_genai_chat_input');
         if (!inputResult.allowed) {
-          logValidationFailure(logger, inputResult.reason ?? 'Chat input blocked', { context: 'google_genai_chat_input' });
+          logValidationFailure(logger, inputResult.reason ?? 'Chat input blocked', {
+            context: 'google_genai_chat_input'
+          });
           onInputBlocked?.(inputResult);
           throw new ConnectorValidationError(
             productionMode ? 'Input blocked' : `Input blocked: ${sanitizeMeta(inputResult.reason)}`,
@@ -461,7 +453,9 @@ export function wrapChat(
       if (outputText.length > 0) {
         const outputResult = await validate(outputText, 'google_genai_chat_output');
         if (!outputResult.allowed) {
-          logValidationFailure(logger, outputResult.reason ?? 'Chat output blocked', { context: 'google_genai_chat_output' });
+          logValidationFailure(logger, outputResult.reason ?? 'Chat output blocked', {
+            context: 'google_genai_chat_output'
+          });
           throw new ConnectorValidationError(
             productionMode ? 'Output blocked' : `Output blocked: ${sanitizeMeta(outputResult.reason)}`,
             'validation_failed'
@@ -474,16 +468,16 @@ export function wrapChat(
     // Audit-loop BLOCK fix: outer async function returns the async-generator.
     // Matches the SDK's `Promise<AsyncIterable<T>>` shape and ensures
     // pre-call validation throws at `await session.sendMessageStream(...)` time.
-    const sendMessageStream = async (
-      payload: { message: string | GoogleContentLike }
-    ): Promise<AsyncIterable<GoogleGenerateContentResponse>> => {
-      const inputText = typeof payload.message === 'string'
-        ? payload.message
-        : contentsToText([payload.message]);
+    const sendMessageStream = async (payload: {
+      message: string | GoogleContentLike;
+    }): Promise<AsyncIterable<GoogleGenerateContentResponse>> => {
+      const inputText = typeof payload.message === 'string' ? payload.message : contentsToText([payload.message]);
       if (inputText.length > 0) {
         const inputResult = await validate(inputText, 'google_genai_chat_stream_input');
         if (!inputResult.allowed) {
-          logValidationFailure(logger, inputResult.reason ?? 'Chat stream input blocked', { context: 'google_genai_chat_stream_input' });
+          logValidationFailure(logger, inputResult.reason ?? 'Chat stream input blocked', {
+            context: 'google_genai_chat_stream_input'
+          });
           onInputBlocked?.(inputResult);
           throw new ConnectorValidationError(
             productionMode ? 'Input blocked' : `Input blocked: ${sanitizeMeta(inputResult.reason)}`,
@@ -499,7 +493,7 @@ export function wrapChat(
               logger,
               maxBufferSize,
               validationInterval,
-              onBlocked: (accumulated, reason) => onStreamBlocked?.(accumulated, reason),
+              onBlocked: (accumulated, reason) => onStreamBlocked?.(accumulated, reason)
             }
           )
         : null;
@@ -548,7 +542,7 @@ export function wrapChat(
     return {
       ...session,
       sendMessage,
-      sendMessageStream,
+      sendMessageStream
     };
   };
 }
@@ -579,7 +573,7 @@ export function wrapLive(
     productionMode = process.env.NODE_ENV === 'production',
     validationTimeout = DEFAULT_VALIDATION_TIMEOUT,
     onFunctionCallBlocked,
-    onStreamBlocked,
+    onStreamBlocked
   } = options;
 
   const engine = new GuardrailEngine({ validators, guards, logger });
@@ -640,8 +634,8 @@ export function wrapLive(
       ...params,
       callbacks: {
         ...params.callbacks,
-        onmessage: guardedOnMessage,
-      },
+        onmessage: guardedOnMessage
+      }
     });
 
     // Wrap outbound `sendRealtimeInput` so text the caller sends to the
@@ -660,11 +654,13 @@ export function wrapLive(
     const guardedSession: GoogleLiveSessionLike = {
       ...session,
       sendRealtimeInput: hasSendRealtimeInput
-        ? async (payload) => {
+        ? async payload => {
             if (payload.text && payload.text.length > 0) {
               const r = await validate(payload.text, 'google_genai_live_send_text');
               if (!r.allowed) {
-                logValidationFailure(logger, r.reason ?? 'Live send blocked', { context: 'google_genai_live_send_text' });
+                logValidationFailure(logger, r.reason ?? 'Live send blocked', {
+                  context: 'google_genai_live_send_text'
+                });
                 onStreamBlocked?.(payload.text, r.reason ?? 'live_send_blocked');
                 throw new ConnectorValidationError(
                   productionMode ? 'Live send blocked' : `Live send blocked: ${sanitizeMeta(r.reason)}`,
@@ -676,12 +672,14 @@ export function wrapLive(
           }
         : undefined,
       sendClientContent: hasSendClientContent
-        ? async (payload) => {
-            const combined = payload.turns.map((t) => contentsToText([t])).join('\n');
+        ? async payload => {
+            const combined = payload.turns.map(t => contentsToText([t])).join('\n');
             if (combined.length > 0) {
               const r = await validate(combined, 'google_genai_live_send_content');
               if (!r.allowed) {
-                logValidationFailure(logger, r.reason ?? 'Live send blocked', { context: 'google_genai_live_send_content' });
+                logValidationFailure(logger, r.reason ?? 'Live send blocked', {
+                  context: 'google_genai_live_send_content'
+                });
                 onStreamBlocked?.(combined, r.reason ?? 'live_send_blocked');
                 throw new ConnectorValidationError(
                   productionMode ? 'Live send blocked' : `Live send blocked: ${sanitizeMeta(r.reason)}`,
@@ -693,7 +691,7 @@ export function wrapLive(
           }
         : undefined,
       sendToolResponse: hasSendToolResponse
-        ? async (payload) => {
+        ? async payload => {
             // Audit-loop fix: tool responses sent back to the model
             // carry attacker-influenced content. Validate each
             // `functionResponses[i].response` (JSON-serialised) AND
@@ -712,7 +710,7 @@ export function wrapLive(
             }
             return session.sendToolResponse!(payload);
           }
-        : undefined,
+        : undefined
     };
 
     return guardedSession;
@@ -751,9 +749,9 @@ export function createGuardedGoogleGenAI(
   return {
     models: {
       generateContent: wrapGenerateContent(client.models, options),
-      generateContentStream: wrapGenerateContentStream(client.models, options),
+      generateContentStream: wrapGenerateContentStream(client.models, options)
     },
     chats: { create: wrapChat(client.chats, options) },
-    live: { connect: wrapLive(client.live, options) },
+    live: { connect: wrapLive(client.live, options) }
   };
 }

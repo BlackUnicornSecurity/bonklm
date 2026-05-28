@@ -57,7 +57,7 @@ export function redactPIIValue(value: string, patternName?: string): string {
       }
       return redactGeneric(value);
     },
-    IP_Address: () => '*.***.***.***',
+    IP_Address: () => '*.***.***.***'
   };
 
   if (patternName && patternRedactions[patternName]) {
@@ -111,7 +111,7 @@ export async function redactPIIInString(content: string): Promise<string> {
 
   for (const { regex, name, redactionMask } of patterns) {
     regex.lastIndex = 0;
-    redacted = redacted.replace(regex, (match) => {
+    redacted = redacted.replace(regex, match => {
       return redactionMask || redactPIIValue(match, name);
     });
   }
@@ -144,7 +144,7 @@ async function getRedactionPatterns(): Promise<Array<{ regex: RegExp; name: stri
     cachedRedactionPatterns = ALL_PATTERNS.map((p: any) => ({
       regex: new RegExp(p.regex.source, p.regex.flags),
       name: p.name,
-      redactionMask: p.redactionMask,
+      redactionMask: p.redactionMask
     }));
 
     return cachedRedactionPatterns;
@@ -172,7 +172,7 @@ export function redactPIIInStringSync(content: string): string {
 
   for (const { regex, name, redactionMask } of cachedRedactionPatterns) {
     regex.lastIndex = 0;
-    redacted = redacted.replace(regex, (match) => {
+    redacted = redacted.replace(regex, match => {
       return redactionMask || redactPIIValue(match, name);
     });
   }
@@ -202,10 +202,12 @@ export function redactPIIInObject(obj: Record<string, unknown>): Record<string, 
       redacted[key] = redactPIIInStringSync(value);
     } else if (Array.isArray(value)) {
       // Recursively redact array elements
-      redacted[key] = value.map((item) =>
-        typeof item === 'string' ? redactPIIInStringSync(item) :
-        typeof item === 'object' && item !== null ? redactPIIInObject(item as Record<string, unknown>) :
-        item
+      redacted[key] = value.map(item =>
+        typeof item === 'string'
+          ? redactPIIInStringSync(item)
+          : typeof item === 'object' && item !== null
+            ? redactPIIInObject(item as Record<string, unknown>)
+            : item
       );
     } else if (typeof value === 'object' && value !== null) {
       // Recursively redact nested objects

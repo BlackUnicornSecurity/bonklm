@@ -179,7 +179,7 @@ describe('SecureCredential', () => {
   describe('use', () => {
     it('should execute callback with credential value', async () => {
       const credential = new SecureCredential('test-api-key');
-      const result = await credential.use(async (key) => {
+      const result = await credential.use(async key => {
         return `processed: ${key}`;
       });
 
@@ -190,7 +190,7 @@ describe('SecureCredential', () => {
       const credential = new SecureCredential('secret');
       let extractedKey: string | undefined;
 
-      await credential.use(async (key) => {
+      await credential.use(async key => {
         extractedKey = key;
         return 'done';
       });
@@ -215,7 +215,7 @@ describe('SecureCredential', () => {
     it('should return callback result', async () => {
       const credential = new SecureCredential('key');
 
-      const result = await credential.use(async (key) => {
+      const result = await credential.use(async key => {
         return key.toUpperCase();
       });
 
@@ -230,7 +230,7 @@ describe('SecureCredential', () => {
         data: string;
       }
 
-      const result = await credential.use(async (k) => {
+      const result = await credential.use(async k => {
         return { status: 200, data: k };
       });
 
@@ -240,7 +240,7 @@ describe('SecureCredential', () => {
     it('should handle sequential use calls', async () => {
       const credential = new SecureCredential('original');
 
-      const firstResult = await credential.use(async (k) => {
+      const firstResult = await credential.use(async k => {
         return `first: ${k}`;
       });
 
@@ -249,7 +249,7 @@ describe('SecureCredential', () => {
 
       // Create new credential for second use
       const credential2 = new SecureCredential('second');
-      const secondResult = await credential2.use(async (k) => {
+      const secondResult = await credential2.use(async k => {
         return `second: ${k}`;
       });
 
@@ -271,8 +271,8 @@ describe('SecureCredential', () => {
       const outer = new SecureCredential('outer-key');
       const inner = new SecureCredential('inner-key');
 
-      const result = await outer.use(async (outerKey) => {
-        return await inner.use(async (innerKey) => {
+      const result = await outer.use(async outerKey => {
+        return await inner.use(async innerKey => {
           return `${outerKey}:${innerKey}`;
         });
       });
@@ -286,7 +286,7 @@ describe('SecureCredential', () => {
   describe('useSync', () => {
     it('should execute synchronous callback with credential value', () => {
       const credential = new SecureCredential('test-api-key');
-      const result = credential.useSync((key) => {
+      const result = credential.useSync(key => {
         return `processed: ${key}`;
       });
 
@@ -296,7 +296,7 @@ describe('SecureCredential', () => {
     it('should dispose after successful callback', () => {
       const credential = new SecureCredential('secret');
 
-      const result = credential.useSync((key) => {
+      const result = credential.useSync(key => {
         return key.toUpperCase();
       });
 
@@ -325,7 +325,7 @@ describe('SecureCredential', () => {
         value: string;
       }
 
-      const result = credential.useSync((k) => {
+      const result = credential.useSync(k => {
         return { valid: true, value: k };
       });
 
@@ -489,7 +489,7 @@ describe('SecureCredential', () => {
       const apiKey = 'sk-test1234567890abcdef';
       const credential = new SecureCredential(apiKey);
 
-      const isValid = await credential.use(async (key) => {
+      const isValid = await credential.use(async key => {
         // Simulate API validation
         return key.startsWith('sk-') && key.length > 20;
       });
@@ -502,7 +502,7 @@ describe('SecureCredential', () => {
       const originalKey = 'base64-encoded-key';
       const credential = new SecureCredential(originalKey);
 
-      const transformed = await credential.use(async (key) => {
+      const transformed = await credential.use(async key => {
         return Buffer.from(key).toString('base64');
       });
 
@@ -513,7 +513,7 @@ describe('SecureCredential', () => {
     it('should support conditional credential usage', async () => {
       const credential = new SecureCredential('conditional-key');
 
-      const result = await credential.use(async (key) => {
+      const result = await credential.use(async key => {
         if (key.includes('conditional')) {
           return 'matched';
         }
@@ -538,8 +538,16 @@ describe('SecureCredential', () => {
 
       // All values should be correct (not contaminated by previous allocations)
       expect(values).toEqual([
-        'test-0', 'test-1', 'test-2', 'test-3', 'test-4',
-        'test-5', 'test-6', 'test-7', 'test-8', 'test-9',
+        'test-0',
+        'test-1',
+        'test-2',
+        'test-3',
+        'test-4',
+        'test-5',
+        'test-6',
+        'test-7',
+        'test-8',
+        'test-9'
       ]);
     });
 

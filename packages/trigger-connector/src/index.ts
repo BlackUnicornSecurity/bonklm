@@ -40,7 +40,7 @@ export {
   withBonkLM,
   createBonklmTriggerHandle,
   getBonklmHandle,
-  type CreateBonklmTriggerHandleOptions,
+  type CreateBonklmTriggerHandleOptions
 } from './with-bonklm.js';
 export type {
   BonklmTriggerBindings,
@@ -49,5 +49,5 @@ export type {
   BonklmTriggerMiddlewareParams,
   BonklmTriggerOptions,
   BonklmTriggerRunContext,
-  BonklmTriggerValidateResult,
+  BonklmTriggerValidateResult
 } from './types.js';

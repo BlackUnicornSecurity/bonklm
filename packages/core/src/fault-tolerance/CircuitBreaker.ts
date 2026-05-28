@@ -18,7 +18,7 @@ export enum CircuitState {
   /** Circuit is tripped, all requests fail fast */
   OPEN = 'open',
   /** Testing if service has recovered */
-  HALF_OPEN = 'half_open',
+  HALF_OPEN = 'half_open'
 }
 
 /**
@@ -50,7 +50,7 @@ const DEFAULT_CONFIG: Required<Omit<CircuitBreakerConfig, 'logger'>> = {
   recoveryTimeout: 60000, // 1 minute
   halfOpenMaxRequests: 10,
   timeout: 30000, // 30 seconds
-  enabled: true,
+  enabled: true
 };
 
 /**
@@ -110,7 +110,7 @@ export class CircuitBreaker {
     totalRequests: 0,
     successfulRequests: 0,
     failedRequests: 0,
-    errorPercentage: 0,
+    errorPercentage: 0
   };
   private halfOpenRequestCount = 0;
   private openedAt?: Date;
@@ -120,10 +120,7 @@ export class CircuitBreaker {
   private readonly logger: Logger;
   private readonly listeners: CircuitBreakerListeners;
 
-  constructor(
-    config: CircuitBreakerConfig = {},
-    listeners: CircuitBreakerListeners = {}
-  ) {
+  constructor(config: CircuitBreakerConfig = {}, listeners: CircuitBreakerListeners = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config, logger: config.logger || console };
     this.logger = this.config.logger;
     this.listeners = listeners;
@@ -195,7 +192,7 @@ export class CircuitBreaker {
       totalRequests: 0,
       successfulRequests: 0,
       failedRequests: 0,
-      errorPercentage: 0,
+      errorPercentage: 0
     };
     this.halfOpenRequestCount = 0;
     this.openedAt = undefined;
@@ -279,9 +276,7 @@ export class CircuitBreaker {
     if (newState === CircuitState.OPEN) {
       this.openedAt = new Date();
       this.stats.openedAt = this.openedAt;
-      this.stats.nextAttemptTime = new Date(
-        Date.now() + this.config.recoveryTimeout
-      );
+      this.stats.nextAttemptTime = new Date(Date.now() + this.config.recoveryTimeout);
 
       this.logger.warn(
         `[CircuitBreaker] Circuit opened due to ${this.stats.errorPercentage}% error rate (${this.stats.failedRequests}/${this.stats.totalRequests} requests failed)`
@@ -312,11 +307,7 @@ export class CircuitBreaker {
    * Check if recovery timeout has elapsed
    */
   private checkRecoveryTimeout(): void {
-    if (
-      this.state === CircuitState.OPEN &&
-      this.stats.nextAttemptTime &&
-      new Date() >= this.stats.nextAttemptTime
-    ) {
+    if (this.state === CircuitState.OPEN && this.stats.nextAttemptTime && new Date() >= this.stats.nextAttemptTime) {
       this.transitionTo(CircuitState.HALF_OPEN);
     }
   }
@@ -330,9 +321,7 @@ export class CircuitBreaker {
       return;
     }
 
-    this.stats.errorPercentage = Math.round(
-      (this.stats.failedRequests / this.stats.totalRequests) * 100
-    );
+    this.stats.errorPercentage = Math.round((this.stats.failedRequests / this.stats.totalRequests) * 100);
   }
 
   /**
@@ -348,10 +337,7 @@ export class CircuitBreaker {
   /**
    * Wrap a function with timeout
    */
-  private async withTimeout<T>(
-    fn: () => Promise<T> | T,
-    timeoutMs: number
-  ): Promise<T> {
+  private async withTimeout<T>(fn: () => Promise<T> | T, timeoutMs: number): Promise<T> {
     return Promise.race([
       fn(),
       new Promise<never>((_, reject) => {
@@ -360,7 +346,7 @@ export class CircuitBreaker {
           (error as any).code = 'ETIMEDOUT';
           reject(error);
         }, timeoutMs);
-      }),
+      })
     ]);
   }
 

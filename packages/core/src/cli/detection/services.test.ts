@@ -16,11 +16,11 @@ import { DETECTION_TIMEOUTS } from './timeout.js';
 
 // Mock dependencies first
 vi.mock('net', () => ({
-  createConnection: vi.fn(),
+  createConnection: vi.fn()
 }));
 
 vi.mock('which', () => ({
-  default: vi.fn(),
+  default: vi.fn()
 }));
 
 // Note: We use dependency injection for detectDockerContainers in tests
@@ -31,7 +31,7 @@ import {
   isOllamaAvailable,
   getVectorDbContainers,
   detectDockerContainers,
-  type DetectedService,
+  type DetectedService
 } from './services.js';
 
 // Create a typed reference to the mocked functions
@@ -42,7 +42,7 @@ describe('Service Detection', () => {
     on: vi.fn(),
     destroy: vi.fn(),
     setTimeout: vi.fn(),
-    destroyed: false,
+    destroyed: false
   };
 
   beforeEach(() => {
@@ -88,7 +88,7 @@ describe('Service Detection', () => {
         name: 'ollama',
         type: 'port',
         available: false,
-        address: 'localhost:11434',
+        address: 'localhost:11434'
       });
       // Verify the injected Docker function was called
       expect(mockDockerFn).toHaveBeenCalled();
@@ -114,7 +114,7 @@ describe('Service Detection', () => {
         name: 'ollama',
         type: 'port',
         available: true,
-        address: 'localhost:11434',
+        address: 'localhost:11434'
       });
     });
 
@@ -141,7 +141,7 @@ describe('Service Detection', () => {
           expect.objectContaining({ name: 'ollama', type: 'port', available: false }),
           expect.objectContaining({ name: 'chroma-db', type: 'docker', available: true }),
           expect.objectContaining({ name: 'weaviate-instance', type: 'docker', available: true }),
-          expect.objectContaining({ name: 'qdrant-storage', type: 'docker', available: true }),
+          expect.objectContaining({ name: 'qdrant-storage', type: 'docker', available: true })
         ])
       );
     });
@@ -166,7 +166,7 @@ describe('Service Detection', () => {
       expect(result).toHaveLength(1);
       expect(result[0].name).toBe('ollama');
       expect(result[0].available).toBe(false);
-      const dockerResults = result.filter((s) => s.type === 'docker');
+      const dockerResults = result.filter(s => s.type === 'docker');
       expect(dockerResults).toEqual([]);
     });
 
@@ -189,9 +189,9 @@ describe('Service Detection', () => {
       // "weaviate-instance" -> "weaviate-instance" (stays same)
       // "$(evil command)" -> "evilcommand" (sanitized)
       // "qdrant_storage" -> "qdrant_storage" (stays same)
-      const mockDockerFn = vi.fn().mockResolvedValue(
-        ['chroma-db', 'chromarm', 'weaviate-instance', 'evilcommand', 'qdrant_storage']
-      );
+      const mockDockerFn = vi
+        .fn()
+        .mockResolvedValue(['chroma-db', 'chromarm', 'weaviate-instance', 'evilcommand', 'qdrant_storage']);
       const result = await detectServices(mockDockerFn);
 
       // Verify we get the sanitized containers
@@ -200,11 +200,11 @@ describe('Service Detection', () => {
         expect.arrayContaining([
           expect.objectContaining({ name: 'chroma-db' }),
           expect.objectContaining({ name: 'weaviate-instance' }),
-          expect.objectContaining({ name: 'qdrant_storage' }),
+          expect.objectContaining({ name: 'qdrant_storage' })
         ])
       );
       // Sanitized names should not contain malicious characters
-      result.forEach((service) => {
+      result.forEach(service => {
         expect(service.name).toMatch(/^[a-zA-Z0-9_.-]+$/);
       });
     });
@@ -290,18 +290,11 @@ describe('Service Detection', () => {
       });
 
       // Use dependency injection to test the filtering logic
-      const mockDockerFn = vi.fn().mockResolvedValue([
-        'chroma-local',
-        'weaviate-prod',
-        'postgres',
-        'redis'
-      ]);
+      const mockDockerFn = vi.fn().mockResolvedValue(['chroma-local', 'weaviate-prod', 'postgres', 'redis']);
 
       // Call detectServices with injected function, then filter the results
       const services = await detectServices(mockDockerFn);
-      const result = services
-        .filter((s) => s.type === 'docker' && s.available)
-        .map((s) => s.name);
+      const result = services.filter(s => s.type === 'docker' && s.available).map(s => s.name);
 
       expect(result).toEqual(['chroma-local', 'weaviate-prod']);
       expect(result).not.toContain('postgres');
@@ -321,16 +314,10 @@ describe('Service Detection', () => {
       });
 
       // Use dependency injection with non-vector DB containers
-      const mockDockerFn = vi.fn().mockResolvedValue([
-        'postgres',
-        'redis',
-        'nginx'
-      ]);
+      const mockDockerFn = vi.fn().mockResolvedValue(['postgres', 'redis', 'nginx']);
 
       const services = await detectServices(mockDockerFn);
-      const result = services
-        .filter((s) => s.type === 'docker' && s.available)
-        .map((s) => s.name);
+      const result = services.filter(s => s.type === 'docker' && s.available).map(s => s.name);
 
       expect(result).toEqual([]);
     });
@@ -432,7 +419,7 @@ describe('Service Detection', () => {
       let timeoutSet = 0;
 
       createConnectionMock.mockReturnValue(mockSocket as any);
-      mockSocket.setTimeout.mockImplementation((timeout) => {
+      mockSocket.setTimeout.mockImplementation(timeout => {
         timeoutSet = timeout;
         return mockSocket;
       });
@@ -531,13 +518,13 @@ describe('Service Detection', () => {
 
       // All case variations should be detected - the sanitization happens at Docker level
       // detectDockerContainers returns already-sanitized names
-      const mockDockerFn = vi.fn().mockResolvedValue(
-        ['ChromaDB', 'WEAVIATE', 'Qdrant', 'chroma', 'weaviate', 'qdrant']
-      );
+      const mockDockerFn = vi
+        .fn()
+        .mockResolvedValue(['ChromaDB', 'WEAVIATE', 'Qdrant', 'chroma', 'weaviate', 'qdrant']);
       const result = await detectServices(mockDockerFn);
 
       // All case variations should be detected
-      const dockerServices = result.filter((s) => s.type === 'docker');
+      const dockerServices = result.filter(s => s.type === 'docker');
       expect(dockerServices).toHaveLength(6);
     });
   });
@@ -564,7 +551,7 @@ describe('Service Detection', () => {
         expect.arrayContaining([
           expect.objectContaining({ name: 'ollama', type: 'port' }),
           expect.objectContaining({ name: 'chroma-local', type: 'docker' }),
-          expect.objectContaining({ name: 'weaviate-prod', type: 'docker' }),
+          expect.objectContaining({ name: 'weaviate-prod', type: 'docker' })
         ])
       );
     });

@@ -234,11 +234,7 @@ export interface GuardedMastraOptions {
    * @param result - The validation result.
    * @param context - The Mastra execution context.
    */
-  onToolCallBlocked?: (
-    toolCall: MastraToolCall,
-    result: GuardrailResult,
-    context?: MastraAgentContext,
-  ) => void;
+  onToolCallBlocked?: (toolCall: MastraToolCall, result: GuardrailResult, context?: MastraAgentContext) => void;
 
   /**
    * S012-004: Circuit breaker and retry configuration.

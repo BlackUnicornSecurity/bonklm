@@ -9,7 +9,7 @@ import {
   SecureCredential,
   SecureCredentialError,
   type CredentialCallback,
-  type CredentialCallbackSync,
+  type CredentialCallbackSync
 } from '../../../src/base/index.js';
 
 describe('SecureCredential (S011-004a)', () => {
@@ -20,12 +20,12 @@ describe('SecureCredential (S011-004a)', () => {
     });
 
     it('should export CredentialCallback type', () => {
-      const callback: CredentialCallback<string> = async (cred) => cred;
+      const callback: CredentialCallback<string> = async cred => cred;
       expect(typeof callback).toBe('function');
     });
 
     it('should export CredentialCallbackSync type', () => {
-      const callback: CredentialCallbackSync<string> = (cred) => cred;
+      const callback: CredentialCallbackSync<string> = cred => cred;
       expect(typeof callback).toBe('function');
     });
 
@@ -77,7 +77,7 @@ describe('SecureCredential (S011-004a)', () => {
       const credential = new SecureCredential('api-key-123');
       let capturedKey: string | undefined;
 
-      const result = await credential.use(async (key) => {
+      const result = await credential.use(async key => {
         capturedKey = key;
         return 'success';
       });
@@ -90,9 +90,11 @@ describe('SecureCredential (S011-004a)', () => {
     it('should cleanup even when callback throws', async () => {
       const credential = new SecureCredential('api-key-123');
 
-      await expect(credential.use(async () => {
-        throw new Error('Test error');
-      })).rejects.toThrow('Test error');
+      await expect(
+        credential.use(async () => {
+          throw new Error('Test error');
+        })
+      ).rejects.toThrow('Test error');
 
       expect(credential.isDisposed).toBe(true);
     });
@@ -110,9 +112,9 @@ describe('SecureCredential (S011-004a)', () => {
       // Create a scenario where use() is called again while in progress
       let nestedCall: Promise<string> | null = null;
 
-      const result = await credential.use(async (key) => {
+      const result = await credential.use(async key => {
         // Try to call use() again from within the callback
-        nestedCall = credential.use(async (k) => `nested: ${k}`);
+        nestedCall = credential.use(async k => `nested: ${k}`);
         return `first: ${key}`;
       });
 
@@ -126,7 +128,7 @@ describe('SecureCredential (S011-004a)', () => {
       const credential = new SecureCredential('api-key-123');
       let capturedKey: string | undefined;
 
-      const result = credential.useSync((key) => {
+      const result = credential.useSync(key => {
         capturedKey = key;
         return 'success';
       });
@@ -160,10 +162,10 @@ describe('SecureCredential (S011-004a)', () => {
     it('should reject re-entry during useSync', () => {
       const credential = new SecureCredential('api-key-123');
 
-      const result = credential.useSync((key) => {
+      const result = credential.useSync(key => {
         // Try to call useSync() again from within the callback
         expect(() => {
-          credential.useSync((k) => `nested: ${k}`);
+          credential.useSync(k => `nested: ${k}`);
         }).toThrow('while already');
         return `first: ${key}`;
       });

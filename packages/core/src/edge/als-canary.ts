@@ -72,9 +72,8 @@ export class AsyncLocalStorageCanaryError extends Error {
  * @throws {AsyncLocalStorageCanaryError} when ALS is absent or non-functional.
  */
 export function assertAsyncLocalStorageHealthy(
-  AlsCtor: (new () => AsyncLocalStorageLike) | undefined = (globalThis as { AsyncLocalStorage?: unknown }).AsyncLocalStorage as
-    | (new () => AsyncLocalStorageLike)
-    | undefined
+  AlsCtor: (new () => AsyncLocalStorageLike) | undefined = (globalThis as { AsyncLocalStorage?: unknown })
+    .AsyncLocalStorage as (new () => AsyncLocalStorageLike) | undefined
 ): void {
   // Layer 1 — presence guard.
 
@@ -93,7 +92,7 @@ export function assertAsyncLocalStorageHealthy(
   // observed prior canaries cannot pre-compute the expected value.
   const canary = {
     token: portableRandomUUID(),
-    sourceTrust: 'canary-sentinel' as const,
+    sourceTrust: 'canary-sentinel' as const
   };
 
   let observed: unknown;
@@ -102,9 +101,7 @@ export function assertAsyncLocalStorageHealthy(
     als = new AlsCtor();
   } catch (e) {
     throw new AsyncLocalStorageCanaryError(
-      `AsyncLocalStorage construction failed: ${
-        e instanceof Error ? e.message : String(e)
-      }`
+      `AsyncLocalStorage construction failed: ${e instanceof Error ? e.message : String(e)}`
     );
   }
 
@@ -114,9 +111,7 @@ export function assertAsyncLocalStorageHealthy(
     });
   } catch (e) {
     throw new AsyncLocalStorageCanaryError(
-      `AsyncLocalStorage.run/getStore threw: ${
-        e instanceof Error ? e.message : String(e)
-      }`
+      `AsyncLocalStorage.run/getStore threw: ${e instanceof Error ? e.message : String(e)}`
     );
   }
 
@@ -135,12 +130,7 @@ export function assertAsyncLocalStorageHealthy(
   // return the canary reference but lie about its content (e.g. spoof
   // sourceTrust to "authenticated").
   const obs = observed as { token?: unknown; sourceTrust?: unknown } | null;
-  if (
-    obs === null ||
-    typeof obs !== 'object' ||
-    obs.token !== canary.token ||
-    obs.sourceTrust !== canary.sourceTrust
-  ) {
+  if (obs === null || typeof obs !== 'object' || obs.token !== canary.token || obs.sourceTrust !== canary.sourceTrust) {
     throw new AsyncLocalStorageCanaryError(
       'AsyncLocalStorage canary failed: getStore() returned an object ' +
         'whose token/sourceTrust fields did not match the canary. Likely ' +

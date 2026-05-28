@@ -34,9 +34,7 @@ describe('elizaos-connector — Sprint 40 CWE-117 sanitization contract', () => 
     // message. Pre-Sprint-40, the embedded `\n` forged a second
     // log line. Sprint 40 wraps the variable with sanitizeLogString.
     const hostile = '@elizaos/plugin-soIana\nINJECTED:CRITICAL bypass';
-    expect(sanitizeLogString(hostile)).toBe(
-      '@elizaos/plugin-soIana\\nINJECTED:CRITICAL bypass'
-    );
+    expect(sanitizeLogString(hostile)).toBe('@elizaos/plugin-soIana\\nINJECTED:CRITICAL bypass');
   });
 
   it('sanitizes a probe-outcome reason carrying a network error message', () => {
@@ -47,9 +45,7 @@ describe('elizaos-connector — Sprint 40 CWE-117 sanitization contract', () => 
     // pipeline taking caller input could surface attacker-controlled
     // host names here.
     const reason = 'connect ECONNREFUSED 127.0.0.1:1024\tINJECTED:fake_metric';
-    expect(sanitizeLogString(reason)).toBe(
-      'connect ECONNREFUSED 127.0.0.1:1024\\x09INJECTED:fake_metric'
-    );
+    expect(sanitizeLogString(reason)).toBe('connect ECONNREFUSED 127.0.0.1:1024\\x09INJECTED:fake_metric');
   });
 });
 
@@ -65,7 +61,7 @@ describe('elizaos-connector — Sprint 41 typo-squat CRITICAL log integration', 
     return {
       agentId: 'test-agent',
       createMemory: vi.fn(async () => 'created'),
-      actions: [],
+      actions: []
     } as unknown as IAgentRuntimeLike;
   }
 
@@ -74,7 +70,7 @@ describe('elizaos-connector — Sprint 41 typo-squat CRITICAL log integration', 
       debug: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
-      error: vi.fn(),
+      error: vi.fn()
     };
   }
 
@@ -101,20 +97,16 @@ describe('elizaos-connector — Sprint 41 typo-squat CRITICAL log integration', 
     let thrown: unknown = null;
     // sourceTrust: 'authenticated' bypasses the non-auth refusal check
     // so the typo-squat assertion path can fire on the messages-write.
-    await withCallContext(
-      runtime,
-      { sourceTrust: 'authenticated', pluginName: hostileName },
-      async () => {
-        try {
-          await runtime.createMemory({
-            tableName: 'messages',
-            content: { text: 'hello' },
-          } as MemoryLike);
-        } catch (err) {
-          thrown = err;
-        }
+    await withCallContext(runtime, { sourceTrust: 'authenticated', pluginName: hostileName }, async () => {
+      try {
+        await runtime.createMemory({
+          tableName: 'messages',
+          content: { text: 'hello' }
+        } as MemoryLike);
+      } catch (err) {
+        thrown = err;
       }
-    );
+    });
 
     // The typo-squat path throws ConnectorValidationError and logs
     // a CRITICAL line. Verify the throw fired (path was exercised).
@@ -129,9 +121,7 @@ describe('elizaos-connector — Sprint 41 typo-squat CRITICAL log integration', 
     // wrap fires regardless of which refuse branch ran.
     expect(logger.warn).toHaveBeenCalled();
     const warnCalls = logger.warn.mock.calls;
-    const refuseLog = warnCalls.find((call) =>
-      typeof call[0] === 'string' && call[0].includes('Refusing')
-    );
+    const refuseLog = warnCalls.find(call => typeof call[0] === 'string' && call[0].includes('Refusing'));
     expect(refuseLog).toBeDefined();
 
     // Inspect both the message AND the meta-field `caller` —

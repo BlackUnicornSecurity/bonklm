@@ -22,7 +22,7 @@ export interface ExitOptions {
  */
 function log(message: string, useStderr = false): void {
   const stream = useStderr ? process.stderr : process.stdout;
-  stream.write(`${message  }\n`);
+  stream.write(`${message}\n`);
 }
 
 /**
@@ -35,10 +35,7 @@ function log(message: string, useStderr = false): void {
  * @param options - Optional exit options
  * @returns Never returns (always exits)
  */
-export function exit(
-  code: ExitCodeType = 'SUCCESS',
-  options?: ExitOptions
-): never {
+export function exit(code: ExitCodeType = 'SUCCESS', options?: ExitOptions): never {
   const exitCodeValue = ExitCode[code];
 
   if (options?.message) {
@@ -73,16 +70,11 @@ function exitCodeValueToType(code: 0 | 1 | 2): ExitCodeType {
  * @param defaultExitCode - Default exit code if not specified in error
  * @returns Never returns (always exits)
  */
-export function exitWithError(
-  error: unknown,
-  defaultExitCode: ExitCodeType = 'ERROR'
-): never {
+export function exitWithError(error: unknown, defaultExitCode: ExitCodeType = 'ERROR'): never {
   if (error instanceof WizardError) {
     // Use the WizardError's formatted output
     log(error.toString(), true);
-    const exitCode = error.exitCode !== undefined
-      ? exitCodeValueToType(error.exitCode)
-      : defaultExitCode;
+    const exitCode = error.exitCode !== undefined ? exitCodeValueToType(error.exitCode) : defaultExitCode;
     exit(exitCode);
   }
 
@@ -127,13 +119,11 @@ export function exitSuccess(message?: string): never {
  * });
  * ```
  */
-export function registerShutdownHandlers(
-  cleanupFn?: () => void | Promise<void>
-): () => void {
+export function registerShutdownHandlers(cleanupFn?: () => void | Promise<void>): () => void {
   const handlers = [
-    'SIGINT',   // Ctrl+C
-    'SIGTERM',  // kill command
-    'SIGHUP',   // Terminal closed
+    'SIGINT', // Ctrl+C
+    'SIGTERM', // kill command
+    'SIGHUP' // Terminal closed
   ];
 
   const handler = async () => {

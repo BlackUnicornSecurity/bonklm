@@ -49,25 +49,25 @@ import { noBareProcessEnvRule } from './no-bare-process-env.js';
 const plugin: ESLint.Plugin = {
   meta: {
     name: '@blackunicorn/eslint-plugin-edge',
-    version: '0.4.0',
+    version: '0.4.0'
   },
   rules: {
-    'no-bare-process-env': noBareProcessEnvRule,
+    'no-bare-process-env': noBareProcessEnvRule
   },
   configs: {
     /**
      * Recommended config — uniform `'error'` severity.
      * Wire as: `[bonklmEdge.configs.recommended]`.
      */
-    recommended: {} as Linter.Config,
-  },
+    recommended: {} as Linter.Config
+  }
 };
 
 plugin.configs!.recommended = {
   plugins: { 'bonklm-edge': plugin },
   rules: {
-    'bonklm-edge/no-bare-process-env': 'error',
-  },
+    'bonklm-edge/no-bare-process-env': 'error'
+  }
 } as Linter.Config;
 
 export default plugin;

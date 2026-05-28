@@ -16,7 +16,7 @@ export const performancePayloads = {
   medium: generatePayload(10000), // 10KB
   large: generatePayload(100000), // 100KB
   xlarge: generatePayload(1000000), // 1MB
-  xxlarge: generatePayload(10000000), // 10MB
+  xxlarge: generatePayload(10000000) // 10MB
 };
 
 export function generateChunks(count: number, size: number = 50): string[] {
@@ -49,14 +49,14 @@ export const chunkSets = {
   small: generateChunks(10),
   medium: generateChunks(100),
   large: generateChunks(1000),
-  xlarge: generateChunks(10000),
+  xlarge: generateChunks(10000)
 };
 
 export const encodedPayloads = {
   layer1: generateEncodedPayload(1),
   layer3: generateEncodedPayload(3),
   layer5: generateEncodedPayload(5),
-  layer10: generateEncodedPayload(10),
+  layer10: generateEncodedPayload(10)
 };
 
 export function createMemoryTestContent(iterations: number, size: number = 100): string[] {
@@ -64,7 +64,7 @@ export function createMemoryTestContent(iterations: number, size: number = 100):
   const variations = [
     'This is safe content for testing memory usage.',
     'More safe content to validate.',
-    'Testing memory stability over many validations.',
+    'Testing memory stability over many validations.'
   ];
   for (let i = 0; i < iterations; i++) {
     contents.push(variations[i % variations.length]);

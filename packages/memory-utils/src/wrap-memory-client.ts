@@ -32,7 +32,7 @@ import {
   createMemoryWriteValidator,
   type GuardrailEngine,
   type Logger,
-  type Validator,
+  type Validator
 } from '@blackunicorn/bonklm';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
@@ -41,7 +41,7 @@ import type {
   MemoryAdapter,
   MemorySessionContext,
   WrapMemoryClientFullOptions,
-  WrapMemoryClientOptions,
+  WrapMemoryClientOptions
 } from './types.js';
 
 /**
@@ -160,16 +160,13 @@ export function wrapMemoryClient<TClient extends object>(
 
       // Wrapped method — return an async function that routes through
       // the adapter on every invocation.
-      return async function bonklmWrappedMemoryMethod(
-        this: unknown,
-        ...args: unknown[]
-      ): Promise<unknown> {
+      return async function bonklmWrappedMemoryMethod(this: unknown, ...args: unknown[]): Promise<unknown> {
         const ctx: MemorySessionContext = getSessionContext();
 
         const invocation: AdapterInvocation = {
           method: propKey,
           args,
-          ctx,
+          ctx
         };
 
         let route;
@@ -192,7 +189,7 @@ export function wrapMemoryClient<TClient extends object>(
           // trips the validator chain.
           const result = await memoryWriteValidator.validate({
             kind: 'memory_write',
-            payload: { content: route.writeContent },
+            payload: { content: route.writeContent }
           });
           if (!result.allowed) {
             const reason = result.reason ?? `${adapter.vendor} ${propKey} blocked`;
@@ -204,7 +201,7 @@ export function wrapMemoryClient<TClient extends object>(
           // (rare — most recall paths validate post-result).
           const result = await composedContextValidator.validate({
             kind: 'composed_context',
-            entries: route.composedEntries,
+            entries: route.composedEntries
           });
           if (!result.allowed) {
             const reason = result.reason ?? `${adapter.vendor} ${propKey} blocked`;
@@ -214,10 +211,7 @@ export function wrapMemoryClient<TClient extends object>(
         }
 
         // Invoke the underlying method with effective args.
-        const callResult = await (original as (...a: unknown[]) => unknown).apply(
-          target,
-          effectiveArgs as unknown[]
-        );
+        const callResult = await (original as (...a: unknown[]) => unknown).apply(target, effectiveArgs as unknown[]);
 
         // POST-call validation hook — adapters use this to walk
         // the recall result and fire composed-context validation
@@ -228,22 +222,22 @@ export function wrapMemoryClient<TClient extends object>(
               if (entries.length === 0) return;
               const result = await composedContextValidator.validate({
                 kind: 'composed_context',
-                entries,
+                entries
               });
               if (!result.allowed) {
                 const reason = result.reason ?? `${adapter.vendor} ${propKey} recall blocked`;
                 logger.warn(`[bonklm-${adapter.vendor}] ${propKey} recall blocked`, {
-                  reason,
+                  reason
                 });
                 throw new ConnectorValidationError(reason, 'validation_failed');
               }
-            },
+            }
           });
         }
 
         return callResult;
       };
-    },
+    }
   });
 }
 
@@ -256,10 +250,7 @@ export function wrapMemoryClient<TClient extends object>(
  * just `wrapMemoryClient`. Calling this is OPTIONAL — `wrapMemoryClient`
  * itself enforces the same check.
  */
-export function assertGetTenantIdValid(
-  getTenantId: unknown,
-  vendorName: string
-): asserts getTenantId is GetTenantId {
+export function assertGetTenantIdValid(getTenantId: unknown, vendorName: string): asserts getTenantId is GetTenantId {
   if (typeof getTenantId !== 'function') {
     throw new ConnectorValidationError(
       `wrap${vendorName}Client: \`getTenantId\` must be a function (ctx) => string, not ${typeof getTenantId}. ` +
@@ -288,10 +279,7 @@ export function assertGetTenantIdValid(
 const TENANT_ID_SAFE_PATTERN = /^[\w\-.@]+$/;
 const TENANT_ID_MAX_LENGTH = 256;
 
-export function assertTenantIdSafe(
-  tenantId: unknown,
-  vendorName: string
-): asserts tenantId is string {
+export function assertTenantIdSafe(tenantId: unknown, vendorName: string): asserts tenantId is string {
   if (typeof tenantId !== 'string' || tenantId.length === 0) {
     throw new ConnectorValidationError(
       `${vendorName} adapter: getTenantId(ctx) returned ${typeof tenantId}; must be a non-empty string`,

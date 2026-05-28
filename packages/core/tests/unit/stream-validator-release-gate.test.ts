@@ -31,7 +31,7 @@ describe('StreamValidator — processForClient (release gate)', () => {
     const engine = makeEngine(() => ({ allowed: true }));
     const v = StreamValidator.create(engine, {
       minBufferBeforeRelease: 8,
-      validationInterval: 1,
+      validationInterval: 1
     });
 
     const r1 = await v.processForClient('hello ');
@@ -44,13 +44,13 @@ describe('StreamValidator — processForClient (release gate)', () => {
   });
 
   it('drops the buffer when validation blocks during the buffered period', async () => {
-    const engine = makeEngine((content) => ({
+    const engine = makeEngine(content => ({
       allowed: !containsSecret(content),
-      reason: 'secret_in_stream',
+      reason: 'secret_in_stream'
     }));
     const v = StreamValidator.create(engine, {
       minBufferBeforeRelease: 16,
-      validationInterval: 1,
+      validationInterval: 1
     });
 
     const r = await v.processForClient(SECRET_LITERAL);
@@ -68,7 +68,7 @@ describe('StreamValidator — processForClient (release gate)', () => {
     const engine = makeEngine(() => ({ allowed: true }));
     const v = StreamValidator.create(engine, {
       minBufferBeforeRelease: 1024,
-      validationInterval: 1,
+      validationInterval: 1
     });
 
     await v.processForClient('partial');
@@ -78,13 +78,13 @@ describe('StreamValidator — processForClient (release gate)', () => {
   });
 
   it('finalizeForClient drops the buffer when the tail fails validation', async () => {
-    const engine = makeEngine((content) => ({
+    const engine = makeEngine(content => ({
       allowed: !containsSecret(content),
-      reason: 'secret_at_end',
+      reason: 'secret_at_end'
     }));
     const v = StreamValidator.create(engine, {
       minBufferBeforeRelease: 1024,
-      validationInterval: 1,
+      validationInterval: 1
     });
 
     await v.processForClient('safe-prefix ');
@@ -99,7 +99,7 @@ describe('StreamValidator — processForClient (release gate)', () => {
     const engine = makeEngine(() => ({ allowed: true }));
     const v = StreamValidator.create(engine, {
       minBufferBeforeRelease: 1024,
-      validationInterval: 1,
+      validationInterval: 1
     });
     await v.processForClient('content');
     const first = await v.finalizeForClient();
@@ -112,20 +112,20 @@ describe('StreamValidator — processForClient (release gate)', () => {
 
 describe('StreamValidator — release gate AC fixtures (Story 1.1b)', () => {
   it('AC-1: 100-char stream with secret in chars 50-80 — NO client receives any chars', async () => {
-    const engine = makeEngine((content) => ({
+    const engine = makeEngine(content => ({
       allowed: !containsSecret(content),
-      reason: 'leak_blocked',
+      reason: 'leak_blocked'
     }));
     const v = StreamValidator.create(engine, {
       minBufferBeforeRelease: 256,
-      validationInterval: 1,
+      validationInterval: 1
     });
 
     const released: string[] = [];
     const chunks = [
-      'A'.repeat(40),                                  // chars 1-40
-      'B'.repeat(10) + SECRET_LITERAL.slice(0, 25),    // chars 41-75
-      SECRET_LITERAL.slice(25, 60) + 'C'.repeat(5),    // chars 76-115 (still under 256)
+      'A'.repeat(40), // chars 1-40
+      'B'.repeat(10) + SECRET_LITERAL.slice(0, 25), // chars 41-75
+      SECRET_LITERAL.slice(25, 60) + 'C'.repeat(5) // chars 76-115 (still under 256)
     ];
 
     for (const c of chunks) {
@@ -144,23 +144,23 @@ describe('StreamValidator — release gate AC fixtures (Story 1.1b)', () => {
   });
 
   it('AC-2: 500-char stream with secret at chars 300+ — chars 1-256 released; chars 257-500 not sent', async () => {
-    const engine = makeEngine((content) => ({
+    const engine = makeEngine(content => ({
       allowed: !containsSecret(content),
-      reason: 'leak_blocked',
+      reason: 'leak_blocked'
     }));
     const v = StreamValidator.create(engine, {
       minBufferBeforeRelease: 256,
-      validationInterval: 1,
+      validationInterval: 1
     });
 
     const released: string[] = [];
     // Stream 5 chunks of 100 chars; place secret starting at char 300.
     const chunks = [
-      'A'.repeat(100),                                 // 1-100
-      'B'.repeat(100),                                 // 101-200
-      'C'.repeat(99) + 'D',                            // 201-300
-      SECRET_LITERAL.slice(0, 100),                    // 301-400 (secret region)
-      'E'.repeat(100),                                 // 401-500
+      'A'.repeat(100), // 1-100
+      'B'.repeat(100), // 101-200
+      'C'.repeat(99) + 'D', // 201-300
+      SECRET_LITERAL.slice(0, 100), // 301-400 (secret region)
+      'E'.repeat(100) // 401-500
     ];
 
     for (const c of chunks) {
@@ -181,7 +181,7 @@ describe('StreamValidator — release gate AC fixtures (Story 1.1b)', () => {
     const engine = makeEngine(() => ({ allowed: true }));
     const v = StreamValidator.create(engine, {
       minBufferBeforeRelease: Infinity,
-      validationInterval: 1,
+      validationInterval: 1
     });
     for (let i = 0; i < 50; i++) {
       const r = await v.processForClient('chunk');
@@ -193,13 +193,13 @@ describe('StreamValidator — release gate AC fixtures (Story 1.1b)', () => {
   });
 
   it('AC-3b: full-response mode blocks the entire response when validator catches', async () => {
-    const engine = makeEngine((content) => ({
+    const engine = makeEngine(content => ({
       allowed: !containsSecret(content),
-      reason: 'full_response_blocked',
+      reason: 'full_response_blocked'
     }));
     const v = StreamValidator.create(engine, {
       minBufferBeforeRelease: Infinity,
-      validationInterval: 1,
+      validationInterval: 1
     });
     await v.processForClient('benign prefix ');
     await v.processForClient(SECRET_LITERAL);
@@ -212,7 +212,7 @@ describe('StreamValidator — release gate AC fixtures (Story 1.1b)', () => {
     const engine = makeEngine(() => ({ allowed: true }));
     const v = StreamValidator.create(engine, {
       chainHasSecretOrPii: true,
-      validationInterval: 1,
+      validationInterval: 1
     });
     // No explicit minBufferBeforeRelease — default flips to Infinity.
     for (let i = 0; i < 20; i++) {
@@ -228,7 +228,7 @@ describe('StreamValidator — release gate AC fixtures (Story 1.1b)', () => {
     const v = StreamValidator.create(engine, {
       chainHasSecretOrPii: true,
       minBufferBeforeRelease: 0,
-      validationInterval: 1,
+      validationInterval: 1
     });
     const r = await v.processForClient('immediate');
     expect(r.released).toBe('immediate');
@@ -253,7 +253,7 @@ describe('StreamValidator — release gate + existing API coexistence', () => {
     const engine = makeEngine(() => ({ allowed: true }));
     const v = StreamValidator.create(engine, {
       minBufferBeforeRelease: 16,
-      validationInterval: 2,
+      validationInterval: 2
     });
     await v.process('a');
     const result = await v.process('b'); // boundary
@@ -283,7 +283,7 @@ describe('StreamValidator — release gate + existing API coexistence', () => {
     });
     const v = StreamValidator.create(engine, {
       minBufferBeforeRelease: 1024,
-      validationInterval: 1,
+      validationInterval: 1
     });
     await v.processForClient('content');
     // Manual finalize() in gated mode is a no-op — finalizeForClient is the right API.
@@ -300,11 +300,11 @@ describe('StreamValidator — release gate + existing API coexistence', () => {
       validate(): { allowed: boolean } {
         calls++;
         throw new Error('upstream-timeout');
-      },
+      }
     };
     const v = StreamValidator.create(engine, {
       minBufferBeforeRelease: 4,
-      validationInterval: 1,
+      validationInterval: 1
     });
     const r = await v.processForClient('hello');
     expect(r.allowed).toBe(false);
@@ -319,11 +319,11 @@ describe('StreamValidator — release gate + existing API coexistence', () => {
     const engine: StreamValidatorEngine = {
       validate(): { allowed: boolean } {
         throw new Error('finalize-fail');
-      },
+      }
     };
     const v = StreamValidator.create(engine, {
       minBufferBeforeRelease: 1024,
-      validationInterval: 1,
+      validationInterval: 1
     });
     await v.processForClient('partial');
     const tail = await v.finalizeForClient();
@@ -333,13 +333,13 @@ describe('StreamValidator — release gate + existing API coexistence', () => {
   });
 
   it('finalizeForClient idempotent second-call surfaces stream_already_blocked reason', async () => {
-    const engine = makeEngine((content) => ({
+    const engine = makeEngine(content => ({
       allowed: !containsSecret(content),
-      reason: 'leak',
+      reason: 'leak'
     }));
     const v = StreamValidator.create(engine, {
       minBufferBeforeRelease: 1024,
-      validationInterval: 1,
+      validationInterval: 1
     });
     await v.processForClient(SECRET_LITERAL);
     const first = await v.finalizeForClient();

@@ -67,7 +67,7 @@ describe('BufferedReleaseGate — sentence boundary', () => {
     const gate = new BufferedReleaseGate({
       minCharsBeforeRelease: 1024,
       detectSentenceBoundary: true,
-      minSentenceLength: 16,
+      minSentenceLength: 16
     });
     gate.push('Hi there friend.');
     expect(gate.shouldRelease()).toBe(true);
@@ -77,7 +77,7 @@ describe('BufferedReleaseGate — sentence boundary', () => {
     const gate = new BufferedReleaseGate({
       minCharsBeforeRelease: 1024,
       detectSentenceBoundary: true,
-      minSentenceLength: 32,
+      minSentenceLength: 32
     });
     gate.push('Mr.');
     expect(gate.shouldRelease()).toBe(false);
@@ -87,7 +87,7 @@ describe('BufferedReleaseGate — sentence boundary', () => {
     const gate = new BufferedReleaseGate({
       minCharsBeforeRelease: 1024,
       detectSentenceBoundary: false,
-      minSentenceLength: 0,
+      minSentenceLength: 0
     });
     gate.push('A long enough sentence ending here.');
     expect(gate.shouldRelease()).toBe(false);
@@ -97,7 +97,7 @@ describe('BufferedReleaseGate — sentence boundary', () => {
     const gate = new BufferedReleaseGate({
       minCharsBeforeRelease: 1024,
       detectSentenceBoundary: true,
-      minSentenceLength: 16,
+      minSentenceLength: 16
     });
     gate.push('A sentence in progress without a terminator yet');
     expect(gate.shouldRelease()).toBe(false);

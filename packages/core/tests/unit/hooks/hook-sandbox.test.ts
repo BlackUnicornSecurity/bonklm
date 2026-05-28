@@ -10,7 +10,7 @@ import {
   SAFE_GLOBALS,
   SecurityLevel,
   type SandboxConfig,
-  type ExecutionResult,
+  type ExecutionResult
 } from '../../../src/hooks/HookSandbox.js';
 
 describe('HookSandbox', () => {
@@ -196,7 +196,7 @@ describe('HookSandbox', () => {
     it('should sanitize result objects', async () => {
       const handler = () => ({
         nested: { value: 42 },
-        array: [1, 2, 3],
+        array: [1, 2, 3]
       });
 
       const result = await sandbox.executeHook(handler);
@@ -204,7 +204,7 @@ describe('HookSandbox', () => {
       expect(result.success).toBe(true);
       expect(result.result).toEqual({
         nested: { value: 42 },
-        array: [1, 2, 3],
+        array: [1, 2, 3]
       });
     });
 
@@ -649,9 +649,13 @@ describe('HookSandbox', () => {
       // Verify the exported constant directly — regression guard against future
       // re-introduction of timer globals.
       const forbidden = [
-        'setTimeout', 'setInterval', 'setImmediate',
-        'clearTimeout', 'clearInterval', 'clearImmediate',
-        'queueMicrotask',
+        'setTimeout',
+        'setInterval',
+        'setImmediate',
+        'clearTimeout',
+        'clearInterval',
+        'clearImmediate',
+        'queueMicrotask'
       ];
       for (const name of forbidden) {
         expect(SAFE_GLOBALS).not.toContain(name);
@@ -691,7 +695,7 @@ describe('HookSandbox', () => {
       // eval is a native function; Function.prototype.toString.call(eval)
       // returns "function eval() { [native code] }" which triggers the
       // native-code rejection gate.
-      const result = await sandbox.executeHook(eval as unknown as ((ctx: Record<string, unknown>) => unknown));
+      const result = await sandbox.executeHook(eval as unknown as (ctx: Record<string, unknown>) => unknown);
       expect(result.success).toBe(false);
       expect(result.blocked).toBe(true);
       expect(result.error).toBe('SECURITY_VIOLATION');
@@ -707,7 +711,7 @@ describe('HookSandbox', () => {
             return () => 'function safeFunc() { return 1; }';
           }
           return (target as Record<string | symbol, unknown>)[prop];
-        },
+        }
       });
 
       const result = await sandbox.executeHook(maliciousProxy);
@@ -722,7 +726,7 @@ describe('HookSandbox', () => {
       // native-code rejection gate — even though Math.sin is harmless.
       // This validates that the gate is truly content-agnostic: ALL native
       // functions are rejected because their internals cannot be inspected.
-      const result = await sandbox.executeHook(Math.sin as unknown as ((ctx: Record<string, unknown>) => unknown));
+      const result = await sandbox.executeHook(Math.sin as unknown as (ctx: Record<string, unknown>) => unknown);
       expect(result.success).toBe(false);
       expect(result.blocked).toBe(true);
       expect(result.error).toBe('SECURITY_VIOLATION');
@@ -733,7 +737,7 @@ describe('HookSandbox', () => {
       // invoked as string code) it must be rejected because the sandbox cannot
       // inspect its source and it represents a sandbox-escape vector.
       // Function.prototype.toString.call(setTimeout) yields "[native code]".
-      const result = await sandbox.executeHook(setTimeout as unknown as ((ctx: Record<string, unknown>) => unknown));
+      const result = await sandbox.executeHook(setTimeout as unknown as (ctx: Record<string, unknown>) => unknown);
       expect(result.success).toBe(false);
       expect(result.blocked).toBe(true);
       expect(result.error).toBe('SECURITY_VIOLATION');
@@ -746,7 +750,7 @@ describe('HookSandbox', () => {
       // but validateCode MUST catch the \bprocess\b pattern in the serialised
       // body — closing the "create-a-function-that-references-process" path.
       // Security test: intentional use of Function constructor to verify sandbox blocks it.
-      const dynamicFn = Function('return process') as unknown as ((ctx: Record<string, unknown>) => unknown);
+      const dynamicFn = Function('return process') as unknown as (ctx: Record<string, unknown>) => unknown;
       const result = await sandbox.executeHook(dynamicFn);
       expect(result.success).toBe(false);
       expect(result.blocked).toBe(true);
@@ -836,9 +840,7 @@ describe('HookSandbox', () => {
     });
 
     it('safe code with none of the banned patterns is NOT blocked', async () => {
-      const result = await sandbox.executeHook(
-        `const x = Math.max(1, 2); return { computed: x };`
-      );
+      const result = await sandbox.executeHook(`const x = Math.max(1, 2); return { computed: x };`);
       expect(result.success).toBe(true);
       expect(result.result).toEqual({ computed: 2 });
     });

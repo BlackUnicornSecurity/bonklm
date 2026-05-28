@@ -26,7 +26,7 @@ import type {
   DaytonaProcessLike,
   DaytonaSurface,
   DaytonaWorkspaceLike,
-  DaytonaWrapOptions,
+  DaytonaWrapOptions
 } from './types.js';
 
 export class DaytonaGuardrailBlockedError extends Error {
@@ -47,10 +47,7 @@ export class DaytonaGuardrailBlockedError extends Error {
 const EXEC_METHOD = 'ex' + 'ec';
 const RUN_METHOD = 'r' + 'un';
 
-export function wrapWorkspace<W extends DaytonaWorkspaceLike>(
-  workspace: W,
-  options: DaytonaWrapOptions = {}
-): W {
+export function wrapWorkspace<W extends DaytonaWorkspaceLike>(workspace: W, options: DaytonaWrapOptions = {}): W {
   if (!workspace || typeof workspace !== 'object') {
     throw new TypeError('wrapWorkspace: workspace is required.');
   }
@@ -62,7 +59,7 @@ export function wrapWorkspace<W extends DaytonaWorkspaceLike>(
     timeoutMs: options.timeoutMs,
     nodeEnv: options.nodeEnv,
     warn: options.warn,
-    wrapperKey,
+    wrapperKey
   };
 
   async function blockIfCode(surface: DaytonaSurface, code: string): Promise<void> {
@@ -93,7 +90,7 @@ export function wrapWorkspace<W extends DaytonaWorkspaceLike>(
     [EXEC_METHOD]: async (command: string, opts?: unknown) => {
       await blockIfCode('process.exec', command);
       return workspace.process[EXEC_METHOD as 'exec'](command, opts);
-    },
+    }
   } as unknown as DaytonaProcessLike;
 
   if (typeof workspace.process[RUN_METHOD as 'run'] === 'function') {
@@ -123,17 +120,10 @@ export function wrapWorkspace<W extends DaytonaWorkspaceLike>(
       await blockIfPath('fs.listFiles', path);
       return workspace.fs.listFiles?.(path, opts);
     },
-    replaceInFiles: async (
-      filePaths: string[],
-      search: string,
-      replace: string,
-      opts?: unknown
-    ) => {
+    replaceInFiles: async (filePaths: string[], search: string, replace: string, opts?: unknown) => {
       // Story 3.5 AC: replaceInFiles path + value double-validated.
       if (!Array.isArray(filePaths)) {
-        throw new TypeError(
-          'wrapWorkspace: fs.replaceInFiles filePaths must be an array'
-        );
+        throw new TypeError('wrapWorkspace: fs.replaceInFiles filePaths must be an array');
       }
       for (const p of filePaths) {
         await blockIfPath('fs.replaceInFiles', p);
@@ -141,12 +131,12 @@ export function wrapWorkspace<W extends DaytonaWorkspaceLike>(
       await blockIfCode('fs.replaceInFiles', search);
       await blockIfCode('fs.replaceInFiles', replace);
       return workspace.fs.replaceInFiles?.(filePaths, search, replace, opts);
-    },
+    }
   };
 
   return {
     process: wrappedProcess,
-    fs: wrappedFs,
+    fs: wrappedFs
   } as W;
 }
 
@@ -162,7 +152,7 @@ function fireBlock(
       surface,
       reason: result.reason ?? 'unknown',
       category: result.category,
-      payload: typeof payload === 'string' ? payload : '[binary]',
+      payload: typeof payload === 'string' ? payload : '[binary]'
     });
   } catch (err) {
     if (options.onError) {

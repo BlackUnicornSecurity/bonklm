@@ -17,7 +17,7 @@ if (typeof process !== 'undefined' && typeof process.emitWarning === 'function')
     '@blackunicorn/bonklm-openclaw is deprecated at v0.4.0-rc1 and will be removed in v0.6.0 (Sprint 16). See https://github.com/BlackUnicornSecurity/bonklm/issues (label: dep:openclaw) to surface your use case or migrate to a provider-specific connector before 2026-07-01.',
     {
       type: 'DeprecationWarning',
-      code: 'BONKLM_OPENCLAW_DEPRECATED',
+      code: 'BONKLM_OPENCLAW_DEPRECATED'
     }
   );
 }

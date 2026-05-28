@@ -3,13 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  withSpinner,
-  createProgressBar,
-  withTimeout,
-  createStepTracker,
-  runTaskGroup,
-} from './progress.js';
+import { withSpinner, createProgressBar, withTimeout, createStepTracker, runTaskGroup } from './progress.js';
 
 describe('progress utilities', () => {
   describe('withSpinner', () => {
@@ -173,7 +167,7 @@ describe('progress utilities', () => {
       const tasks = [
         { name: 'Task 1', fn: vi.fn(async () => 'result1') },
         { name: 'Task 2', fn: vi.fn(async () => 'result2') },
-        { name: 'Task 3', fn: vi.fn(async () => 'result3') },
+        { name: 'Task 3', fn: vi.fn(async () => 'result3') }
       ];
 
       const results = await runTaskGroup(tasks);
@@ -190,8 +184,13 @@ describe('progress utilities', () => {
     it('should handle mixed success and error', async () => {
       const tasks = [
         { name: 'Task 1', fn: vi.fn(async () => 'result1') },
-        { name: 'Task 2', fn: vi.fn(async () => { throw new Error('Failed'); }) },
-        { name: 'Task 3', fn: vi.fn(async () => 'result3') },
+        {
+          name: 'Task 2',
+          fn: vi.fn(async () => {
+            throw new Error('Failed');
+          })
+        },
+        { name: 'Task 3', fn: vi.fn(async () => 'result3') }
       ];
 
       const results = await runTaskGroup(tasks);
@@ -212,8 +211,18 @@ describe('progress utilities', () => {
 
     it('should handle all tasks failing', async () => {
       const tasks = [
-        { name: 'Task 1', fn: vi.fn(async () => { throw new Error('Error 1'); }) },
-        { name: 'Task 2', fn: vi.fn(async () => { throw new Error('Error 2'); }) },
+        {
+          name: 'Task 1',
+          fn: vi.fn(async () => {
+            throw new Error('Error 1');
+          })
+        },
+        {
+          name: 'Task 2',
+          fn: vi.fn(async () => {
+            throw new Error('Error 2');
+          })
+        }
       ];
 
       const results = await runTaskGroup(tasks);

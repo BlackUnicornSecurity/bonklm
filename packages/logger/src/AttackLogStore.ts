@@ -59,7 +59,7 @@ export class AttackLogStore {
       // Optional disposal callback
       dispose: (_value, _key, _reason) => {
         // Entry evicted - no cleanup needed for in-memory objects
-      },
+      }
     });
   }
 
@@ -194,7 +194,7 @@ export class AttackLogStore {
       max: this.maxLogs,
       ttl: this.ttl,
       isAtCapacity: this.isAtCapacity,
-      calculatedSize: this.cache.calculatedSize,
+      calculatedSize: this.cache.calculatedSize
     };
   }
 }

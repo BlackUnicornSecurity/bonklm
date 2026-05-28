@@ -24,5 +24,5 @@ export type {
   DaytonaFsLike,
   DaytonaWrapOptions,
   DaytonaSurface,
-  DaytonaBlockEvent,
+  DaytonaBlockEvent
 } from './types.js';

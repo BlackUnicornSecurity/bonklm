@@ -39,7 +39,7 @@ import {
   emitWarning,
   isUnsafeBinaryResult,
   normaliseActArg,
-  withBrowserAgentGuardrails,
+  withBrowserAgentGuardrails
 } from '@blackunicorn/bonklm-browser-agents-core';
 import type {
   EkoBrowserAgentLike,
@@ -47,7 +47,7 @@ import type {
   EkoLike,
   EkoMcpClientLike,
   EkoRunTask,
-  WrapEkoOptions,
+  WrapEkoOptions
 } from './types.js';
 
 /**
@@ -56,11 +56,7 @@ import type {
  * OR catch the base for cross-connector handling.
  */
 export class EkoGuardrailBlockedError extends BrowserAgentGuardrailBlockedError {
-  constructor(
-    action: string,
-    surface: BrowserAgentValidateResult['surface'],
-    reason: string | undefined
-  ) {
+  constructor(action: string, surface: BrowserAgentValidateResult['surface'], reason: string | undefined) {
     super('eko', action, surface, reason);
     this.name = 'EkoGuardrailBlockedError';
     Object.setPrototypeOf(this, new.target.prototype);
@@ -93,11 +89,7 @@ export class EkoGuardrailBlockedError extends BrowserAgentGuardrailBlockedError 
  * }
  * ```
  */
-export function wrapEko<T extends EkoLike>(
-  client: T,
-  engine: GuardrailEngine,
-  options: WrapEkoOptions = {}
-): T {
+export function wrapEko<T extends EkoLike>(client: T, engine: GuardrailEngine, options: WrapEkoOptions = {}): T {
   if (client === null || typeof client !== 'object') {
     throw new Error('wrapEko: client must be a non-null object.');
   }
@@ -111,13 +103,13 @@ export function wrapEko<T extends EkoLike>(
   // truth in browser-agents-core/shared-helpers.ts).
   assertNonCuaMode('wrapEko', client as object, {
     allowCuaMode,
-    configOverride: ekoConfig,
+    configOverride: ekoConfig
   });
 
   const guarded = withBrowserAgentGuardrails(client as object, {
     engine,
     allowCuaMode,
-    logger,
+    logger
   });
 
   // ── Intercept eko.run — composed_context at task-creation boundary.
@@ -125,11 +117,7 @@ export function wrapEko<T extends EkoLike>(
   const validatedRun = async (task: EkoRunTask): Promise<unknown> => {
     const taskString = typeof task === 'string' ? task : task.task;
     if (typeof taskString !== 'string' || taskString.length === 0) {
-      throw new EkoGuardrailBlockedError(
-        'run',
-        'composed_context',
-        'eko.run: task MUST be a non-empty string'
-      );
+      throw new EkoGuardrailBlockedError('run', 'composed_context', 'eko.run: task MUST be a non-empty string');
     }
     const r = await (
       guarded as { bonklm: { validateEvent: typeof guarded.bonklm.validateEvent } }
@@ -169,7 +157,7 @@ export function wrapEko<T extends EkoLike>(
 
     // sec B4 closure: warn if skipAgents covers ALL discovered
     // agents — silent total bypass.
-    if (allNames.length > 0 && allNames.every((n) => skipSet.has(n))) {
+    if (allNames.length > 0 && allNames.every(n => skipSet.has(n))) {
       emitWarning(
         logger,
         '[bonklm-eko] skipAgents covers ALL registered agents — sub-action ' +
@@ -186,11 +174,7 @@ export function wrapEko<T extends EkoLike>(
         wrapBrowserAgentInPlace(agent, guarded as unknown as { bonklm: typeof guarded.bonklm });
       }
       // FileAgent shape: has read / write / delete on path.
-      if (
-        typeof agent.read === 'function' ||
-        typeof agent.write === 'function' ||
-        typeof agent.delete === 'function'
-      ) {
+      if (typeof agent.read === 'function' || typeof agent.write === 'function' || typeof agent.delete === 'function') {
         wrapFileAgentInPlace(agent, guarded as unknown as { bonklm: typeof guarded.bonklm });
       }
     }
@@ -199,10 +183,7 @@ export function wrapEko<T extends EkoLike>(
   // ── Intercept eko.mcp.callTool — validates args BEFORE dispatch +
   // ── validates the tool RESULT as a retrieved_doc.
   if (client.mcp !== undefined && typeof client.mcp.callTool === 'function') {
-    wrapMcpInPlace(
-      client.mcp,
-      guarded as unknown as { bonklm: typeof guarded.bonklm }
-    );
+    wrapMcpInPlace(client.mcp, guarded as unknown as { bonklm: typeof guarded.bonklm });
   }
 
   return guarded as unknown as T;
@@ -220,12 +201,12 @@ export function wrapEkoBrowserAgent<A extends EkoBrowserAgentLike>(
   options: WrapEkoOptions = {}
 ): A {
   const stub: EkoLike = {
-    run: async () => undefined,
+    run: async () => undefined
   };
   const guardedStub = withBrowserAgentGuardrails(stub as object, {
     engine,
     allowCuaMode: options.allowCuaMode ?? false,
-    logger: options.logger,
+    logger: options.logger
   });
   wrapBrowserAgentInPlace(agent, guardedStub as unknown as { bonklm: typeof guardedStub.bonklm });
   return agent;
@@ -241,12 +222,12 @@ export function wrapEkoFileAgent<A extends EkoFileAgentLike>(
   options: WrapEkoOptions = {}
 ): A {
   const stub: EkoLike = {
-    run: async () => undefined,
+    run: async () => undefined
   };
   const guardedStub = withBrowserAgentGuardrails(stub as object, {
     engine,
     allowCuaMode: options.allowCuaMode ?? false,
-    logger: options.logger,
+    logger: options.logger
   });
   wrapFileAgentInPlace(agent, guardedStub as unknown as { bonklm: typeof guardedStub.bonklm });
   return agent;
@@ -258,18 +239,22 @@ export function wrapEkoFileAgent<A extends EkoFileAgentLike>(
 
 function wrapBrowserAgentInPlace(
   agent: EkoBrowserAgentLike,
-  guarded: { bonklm: { validateEvent: (event: import('@blackunicorn/bonklm-browser-agents-core').BrowserAgentEvent) => Promise<BrowserAgentValidateResult> } }
+  guarded: {
+    bonklm: {
+      validateEvent: (
+        event: import('@blackunicorn/bonklm-browser-agents-core').BrowserAgentEvent
+      ) => Promise<BrowserAgentValidateResult>;
+    };
+  }
 ): void {
   if (typeof agent.act === 'function') {
     const originalAct = agent.act.bind(agent);
-    agent.act = async (
-      actionArg: string | { action: string; [k: string]: unknown }
-    ): Promise<unknown> => {
+    agent.act = async (actionArg: string | { action: string; [k: string]: unknown }): Promise<unknown> => {
       const { actionString, args } = normaliseActArg(actionArg);
       const r = await guarded.bonklm.validateEvent({
         kind: 'act',
         action: actionString,
-        args,
+        args
       });
       if (r.blocked) throw new EkoGuardrailBlockedError('act', r.surface, r.reason);
       return originalAct(actionArg);
@@ -293,7 +278,7 @@ function wrapBrowserAgentInPlace(
           const r = await guarded.bonklm.validateEvent({
             kind: 'extract',
             schema,
-            result: errText,
+            result: errText
           });
           if (r.blocked) {
             throw new EkoGuardrailBlockedError('extract', r.surface, r.reason);
@@ -306,7 +291,7 @@ function wrapBrowserAgentInPlace(
       const r = await guarded.bonklm.validateEvent({
         kind: 'extract',
         schema,
-        result,
+        result
       });
       if (r.blocked) {
         throw new EkoGuardrailBlockedError('extract', r.surface, r.reason);
@@ -316,9 +301,7 @@ function wrapBrowserAgentInPlace(
   }
   if (typeof agent.observe === 'function') {
     const originalObserve = agent.observe.bind(agent);
-    agent.observe = async (
-      opts: string | { instruction: string; [k: string]: unknown }
-    ): Promise<unknown> => {
+    agent.observe = async (opts: string | { instruction: string; [k: string]: unknown }): Promise<unknown> => {
       const prompt = typeof opts === 'string' ? opts : opts.instruction;
       const r = await guarded.bonklm.validateEvent({ kind: 'observe', prompt });
       if (r.blocked) {
@@ -331,7 +314,13 @@ function wrapBrowserAgentInPlace(
 
 function wrapFileAgentInPlace(
   agent: EkoFileAgentLike,
-  guarded: { bonklm: { validateEvent: (event: import('@blackunicorn/bonklm-browser-agents-core').BrowserAgentEvent) => Promise<BrowserAgentValidateResult> } }
+  guarded: {
+    bonklm: {
+      validateEvent: (
+        event: import('@blackunicorn/bonklm-browser-agents-core').BrowserAgentEvent
+      ) => Promise<BrowserAgentValidateResult>;
+    };
+  }
 ): void {
   // file.read — validate the PATH before dispatch (path traversal /
   // tool_call surface). Result validation OPTIONAL — many file
@@ -344,7 +333,7 @@ function wrapFileAgentInPlace(
       const r = await guarded.bonklm.validateEvent({
         kind: 'file',
         op: 'read',
-        path: normalised,
+        path: normalised
       });
       if (r.blocked) throw new EkoGuardrailBlockedError('file.read', r.surface, r.reason);
       return originalRead(path);
@@ -358,7 +347,7 @@ function wrapFileAgentInPlace(
         kind: 'file',
         op: 'write',
         path: normalised,
-        content,
+        content
       });
       if (r.blocked) throw new EkoGuardrailBlockedError('file.write', r.surface, r.reason);
       return originalWrite(path, content);
@@ -371,7 +360,7 @@ function wrapFileAgentInPlace(
       const r = await guarded.bonklm.validateEvent({
         kind: 'file',
         op: 'delete',
-        path: normalised,
+        path: normalised
       });
       if (r.blocked) throw new EkoGuardrailBlockedError('file.delete', r.surface, r.reason);
       return originalDelete(path);
@@ -424,15 +413,17 @@ function canonicalisePath(p: unknown): string {
 
 function wrapMcpInPlace(
   mcp: EkoMcpClientLike,
-  guarded: { bonklm: { validateEvent: (event: import('@blackunicorn/bonklm-browser-agents-core').BrowserAgentEvent) => Promise<BrowserAgentValidateResult> } }
+  guarded: {
+    bonklm: {
+      validateEvent: (
+        event: import('@blackunicorn/bonklm-browser-agents-core').BrowserAgentEvent
+      ) => Promise<BrowserAgentValidateResult>;
+    };
+  }
 ): void {
   if (typeof mcp.callTool !== 'function') return;
   const originalCallTool = mcp.callTool.bind(mcp);
-  mcp.callTool = async (
-    server: string,
-    tool: string,
-    args?: Record<string, unknown>
-  ): Promise<unknown> => {
+  mcp.callTool = async (server: string, tool: string, args?: Record<string, unknown>): Promise<unknown> => {
     // ── B3-sec closure: reject server/tool names that would corrupt
     // the canonical `toolName` key. `${server}/${tool}` is used by
     // validator allow-list / deny-list rules; if either contains a
@@ -458,14 +449,10 @@ function wrapMcpInPlace(
       kind: 'mcp.tool',
       server,
       tool,
-      args,
+      args
     });
     if (preCall.blocked) {
-      throw new EkoGuardrailBlockedError(
-        `mcp.tool:${server}/${tool}`,
-        preCall.surface,
-        preCall.reason
-      );
+      throw new EkoGuardrailBlockedError(`mcp.tool:${server}/${tool}`, preCall.surface, preCall.reason);
     }
     // Dispatch.
     const result = await originalCallTool(server, tool, args);
@@ -490,14 +477,10 @@ function wrapMcpInPlace(
     const postCall = await guarded.bonklm.validateEvent({
       kind: 'extract',
       schema: { server, tool },
-      result,
+      result
     });
     if (postCall.blocked) {
-      throw new EkoGuardrailBlockedError(
-        `mcp.tool:${server}/${tool}/result`,
-        postCall.surface,
-        postCall.reason
-      );
+      throw new EkoGuardrailBlockedError(`mcp.tool:${server}/${tool}/result`, postCall.surface, postCall.reason);
     }
     return result;
   };

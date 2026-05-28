@@ -1,6 +1,7 @@
 # @blackunicorn/bonklm-langchain
 
-LangChain connector for BonkLM. Provides security guardrails for LangChain operations including input validation, output validation, and streaming validation.
+LangChain connector for BonkLM. Provides security guardrails for LangChain operations including
+input validation, output validation, and streaming validation.
 
 ## Features
 
@@ -32,14 +33,14 @@ import { PromptTemplate } from '@langchain/core/prompts';
 const handler = new GuardrailsCallbackHandler({
   validators: [new PromptInjectionValidator()],
   validateStreaming: true,
-  streamingValidationInterval: 10,
+  streamingValidationInterval: 10
 });
 
 // Create your LangChain components
 const llm = new ChatOpenAI({
   model: 'gpt-4',
   callbacks: [handler],
-  temperature: 0.7,
+  temperature: 0.7
 });
 
 const prompt = PromptTemplate.fromTemplate('Tell me a joke about {topic}');
@@ -56,20 +57,20 @@ console.log(response);
 
 ### GuardrailsCallbackHandlerOptions
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `validators` | `Validator[]` | `[]` | Validators to apply to inputs and outputs |
-| `guards` | `Guard[]` | `[]` | Guards to apply to inputs and outputs |
-| `logger` | `Logger` | `console` | Logger instance for validation events |
-| `validateStreaming` | `boolean` | `false` | Whether to validate streaming responses incrementally |
-| `streamingMode` | `'incremental' \| 'buffer'` | `'incremental'` | Stream validation mode |
-| `maxStreamBufferSize` | `number` | `1048576` (1MB) | Maximum buffer size for stream accumulation |
-| `productionMode` | `boolean` | `process.env.NODE_ENV === 'production'` | Production mode flag for generic errors |
-| `validationTimeout` | `number` | `30000` (30s) | Validation timeout in milliseconds |
-| `streamingValidationInterval` | `number` | `10` | Tokens between streaming validations |
-| `onBlocked` | `(result) => void` | `undefined` | Callback when content is blocked |
-| `onStreamBlocked` | `(accumulated) => void` | `undefined` | Callback when stream is blocked |
-| `onValidationError` | `(error, runId) => void` | `undefined` | Callback on validation error |
+| Option                        | Type                        | Default                                 | Description                                           |
+| ----------------------------- | --------------------------- | --------------------------------------- | ----------------------------------------------------- |
+| `validators`                  | `Validator[]`               | `[]`                                    | Validators to apply to inputs and outputs             |
+| `guards`                      | `Guard[]`                   | `[]`                                    | Guards to apply to inputs and outputs                 |
+| `logger`                      | `Logger`                    | `console`                               | Logger instance for validation events                 |
+| `validateStreaming`           | `boolean`                   | `false`                                 | Whether to validate streaming responses incrementally |
+| `streamingMode`               | `'incremental' \| 'buffer'` | `'incremental'`                         | Stream validation mode                                |
+| `maxStreamBufferSize`         | `number`                    | `1048576` (1MB)                         | Maximum buffer size for stream accumulation           |
+| `productionMode`              | `boolean`                   | `process.env.NODE_ENV === 'production'` | Production mode flag for generic errors               |
+| `validationTimeout`           | `number`                    | `30000` (30s)                           | Validation timeout in milliseconds                    |
+| `streamingValidationInterval` | `number`                    | `10`                                    | Tokens between streaming validations                  |
+| `onBlocked`                   | `(result) => void`          | `undefined`                             | Callback when content is blocked                      |
+| `onStreamBlocked`             | `(accumulated) => void`     | `undefined`                             | Callback when stream is blocked                       |
+| `onValidationError`           | `(error, runId) => void`    | `undefined`                             | Callback on validation error                          |
 
 ## Usage Examples
 
@@ -80,10 +81,7 @@ import { GuardrailsCallbackHandler } from '@blackunicorn/bonklm-langchain';
 import { PromptInjectionValidator, JailbreakValidator } from '@blackunicorn/bonklm';
 
 const handler = new GuardrailsCallbackHandler({
-  validators: [
-    new PromptInjectionValidator(),
-    new JailbreakValidator(),
-  ],
+  validators: [new PromptInjectionValidator(), new JailbreakValidator()]
 });
 
 // Use with any LangChain component
@@ -99,9 +97,9 @@ const handler = new GuardrailsCallbackHandler({
   streamingMode: 'incremental',
   streamingValidationInterval: 10, // Validate every 10 tokens
   maxStreamBufferSize: 1024 * 1024, // 1MB limit
-  onStreamBlocked: (accumulated) => {
+  onStreamBlocked: accumulated => {
     console.warn('Stream blocked:', accumulated);
-  },
+  }
 });
 
 const stream = await chain.stream(input, { callbacks: [handler] });
@@ -117,10 +115,10 @@ for await (const chunk of stream) {
 const handler = new GuardrailsCallbackHandler({
   validators: [new PromptInjectionValidator()],
   productionMode: true, // Generic error messages
-  onBlocked: (result) => {
+  onBlocked: result => {
     // Log the detailed reason internally
     logger.warn('Content blocked', { reason: result.reason });
-  },
+  }
 });
 ```
 
@@ -129,7 +127,7 @@ const handler = new GuardrailsCallbackHandler({
 ```typescript
 const handler = new GuardrailsCallbackHandler({
   validators: [new PromptInjectionValidator()],
-  validationTimeout: 5000, // 5 second timeout
+  validationTimeout: 5000 // 5 second timeout
 });
 ```
 
@@ -142,7 +140,10 @@ The handler throws two types of errors:
 Thrown when input or output validation fails:
 
 ```typescript
-import { GuardrailsViolationError, isGuardrailsViolationError } from '@blackunicorn/bonklm-langchain';
+import {
+  GuardrailsViolationError,
+  isGuardrailsViolationError
+} from '@blackunicorn/bonklm-langchain';
 
 try {
   await chain.invoke(input, { callbacks: [handler] });
@@ -177,7 +178,8 @@ try {
 
 The GuardrailsCallbackHandler integrates with LangChain's callback system:
 
-1. **handleLLMStart/handleChatModelStart**: Validates input prompts/messages before they are sent to the LLM
+1. **handleLLMStart/handleChatModelStart**: Validates input prompts/messages before they are sent to
+   the LLM
 2. **handleLLMNewToken**: Accumulates streaming tokens for incremental validation
 3. **handleLLMEnd**: Validates LLM outputs and performs final stream validation
 4. **handleToolStart/handleToolEnd**: Validates tool inputs and outputs
@@ -185,7 +187,8 @@ The GuardrailsCallbackHandler integrates with LangChain's callback system:
 
 ## Security Features
 
-- **SEC-002**: Incremental stream validation with early termination prevents malicious content from being sent before validation
+- **SEC-002**: Incremental stream validation with early termination prevents malicious content from
+  being sent before validation
 - **SEC-003**: Max buffer size enforcement prevents DoS via memory exhaustion
 - **SEC-006**: Complex message content handling prevents validation bypass via structured data
 - **SEC-007**: Production mode prevents information leakage via detailed error messages

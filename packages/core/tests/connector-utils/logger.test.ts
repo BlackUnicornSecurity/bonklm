@@ -30,7 +30,7 @@ import {
   logValidationFailure,
   sanitizeLogMetadata,
   sanitizeMeta,
-  stripLogControlChars,
+  stripLogControlChars
 } from '../../src/connector-utils/logger.js';
 
 function makeSpyLogger() {
@@ -38,7 +38,7 @@ function makeSpyLogger() {
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
-    error: vi.fn(),
+    error: vi.fn()
   };
 }
 
@@ -66,7 +66,7 @@ describe('logTimeout — Sprint 38 CWE-117 sweep + Sprint 50 hex-escape migratio
     // legacy SPACE form rendered the attack indistinguishable from
     // legitimate space-padded input.
     expect(logger.warn).toHaveBeenCalledWith('Timeout: op\\x09with\\x09tabs', {
-      timeout: '5000ms',
+      timeout: '5000ms'
     });
   });
 
@@ -76,7 +76,7 @@ describe('logTimeout — Sprint 38 CWE-117 sweep + Sprint 50 hex-escape migratio
 
     // Sprint 50: NUL → `\x00`, DEL → `\x7f`.
     expect(logger.warn).toHaveBeenCalledWith('Timeout: op\\x00nul\\x7fdel', {
-      timeout: '1000ms',
+      timeout: '1000ms'
     });
   });
 
@@ -85,7 +85,7 @@ describe('logTimeout — Sprint 38 CWE-117 sweep + Sprint 50 hex-escape migratio
     logTimeout(logger, 'query validation', 30_000);
 
     expect(logger.warn).toHaveBeenCalledWith('Timeout: query validation', {
-      timeout: '30000ms',
+      timeout: '30000ms'
     });
   });
 });
@@ -94,7 +94,7 @@ describe('logValidationFailure — Sprint 50 hex-escape migration', () => {
   it('hex-escapes CRLF-injection in reason meta', () => {
     const logger = makeSpyLogger();
     logValidationFailure(logger, 'blocked\nfake_audit_entry: bypass', {
-      contentType: 'query',
+      contentType: 'query'
     });
 
     expect(logger.warn).toHaveBeenCalledTimes(1);
@@ -136,7 +136,7 @@ describe('sanitizeLogMetadata — Sprint 50 hex-escape migration', () => {
   it('hex-escapes control chars in string meta values (CWE-117 layer)', () => {
     const out = sanitizeLogMetadata({
       toolName: 'shell\nINJECTED',
-      model: 'gpt-4',
+      model: 'gpt-4'
     });
     expect(out.toolName).toBe('shell\\nINJECTED');
     // Plain printable strings pass through untouched.
@@ -154,7 +154,7 @@ describe('sanitizeLogMetadata — Sprint 50 hex-escape migration', () => {
     // partial hex-escaped fragments.
     const out = sanitizeLogMetadata({
       apiKey: 'sk-abcd\nefgh1234',
-      query: 'normal text',
+      query: 'normal text'
     });
     expect(out.apiKey).toBe('sk-a****1234');
     expect(out.query).toBe('normal text');
@@ -261,7 +261,7 @@ describe('sanitizeMeta — Sprint 41 helper', () => {
     const hostile = {
       toString: () => {
         throw new Error('hostile-toString boom');
-      },
+      }
     };
     expect(sanitizeMeta(hostile)).toBe('[unstringifiable]');
   });
@@ -270,7 +270,7 @@ describe('sanitizeMeta — Sprint 41 helper', () => {
     const hostile = {
       [Symbol.toPrimitive]: () => {
         throw new Error('toPrimitive boom');
-      },
+      }
     };
     expect(sanitizeMeta(hostile)).toBe('[unstringifiable]');
   });

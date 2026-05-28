@@ -27,5 +27,5 @@ export type {
   GuardedLanceTable,
   GuardedLanceTableOptions,
   GuardedMergeInsertBuilder,
-  GuardedQueryHandle,
+  GuardedQueryHandle
 } from './types.js';

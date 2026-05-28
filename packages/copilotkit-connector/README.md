@@ -60,24 +60,24 @@ interface GuardedCopilotKitOptions {
   logger?: Logger;
 
   // Feature toggles
-  validateUserMessages?: boolean;     // Default: true
-  validateAssistantMessages?: boolean;// Default: true
-  validateActionCalls?: boolean;      // Default: true
-  validateActionResults?: boolean;    // Default: true
+  validateUserMessages?: boolean; // Default: true
+  validateAssistantMessages?: boolean; // Default: true
+  validateActionCalls?: boolean; // Default: true
+  validateActionResults?: boolean; // Default: true
 
   // Streaming
-  validateStreaming?: boolean;        // Default: false
-  streamingMode?: 'incremental' | 'buffer';  // Default: 'incremental'
+  validateStreaming?: boolean; // Default: false
+  streamingMode?: 'incremental' | 'buffer'; // Default: 'incremental'
 
   // Security limits
-  maxStreamBufferSize?: number;       // Default: 1MB
-  maxContentLength?: number;          // Default: 100KB
+  maxStreamBufferSize?: number; // Default: 1MB
+  maxContentLength?: number; // Default: 100KB
 
   // Production mode
-  productionMode?: boolean;           // Default: NODE_ENV === 'production'
+  productionMode?: boolean; // Default: NODE_ENV === 'production'
 
   // Timeout
-  validationTimeout?: number;         // Default: 30000ms (30s)
+  validationTimeout?: number; // Default: 30000ms (30s)
 
   // Callbacks
   onBlocked?: (result, context?) => void;
@@ -94,7 +94,7 @@ For streaming responses, use the stream validator:
 const guardrails = createGuardedCopilotKit({
   validators: [new PromptInjectionValidator()],
   validateStreaming: true,
-  streamingMode: 'incremental',
+  streamingMode: 'incremental'
 });
 
 const validator = guardrails.createStreamValidator();
@@ -116,27 +116,35 @@ try {
 ## Security Features
 
 ### SEC-001: Path Traversal Protection
+
 Path normalization using `path.normalize()` for any path-based operations.
 
 ### SEC-002: Stream Validation
+
 Buffer-and-validate-before-send pattern with early termination on violations.
 
 ### SEC-003: Buffer Overflow Protection
+
 Configurable max buffer size (default 1MB) to prevent DoS attacks.
 
 ### SEC-005: Action Call Injection
+
 Schema validation for action arguments to prevent injection attacks.
 
 ### SEC-006: Structured Content Handling
+
 Proper extraction of text from complex message formats (arrays, images, etc.).
 
 ### SEC-007: Production Mode
+
 Generic error messages in production to avoid information leakage.
 
 ### SEC-008: Validation Timeout
+
 AbortController-based timeout to prevent hanging on slow inputs.
 
 ### SEC-010: Request Size Limits
+
 Configurable max content length to prevent DoS via large inputs.
 
 ## API Reference
@@ -146,6 +154,7 @@ Configurable max content length to prevent DoS via large inputs.
 Creates a guardrail integration object with hook functions.
 
 **Returns:**
+
 - `beforeSendMessage(messages, context?)` - Validate before sending messages
 - `afterReceiveMessage(message, context?)` - Validate after receiving messages
 - `validateActionCall(action, context?)` - Validate action calls

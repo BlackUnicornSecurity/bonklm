@@ -17,7 +17,7 @@ import {
   CustomRule,
   Schema,
   Validators,
-  type ConfigValidationResult,
+  type ConfigValidationResult
 } from '../../../src/validation/ConfigValidator.js';
 
 describe('ConfigValidationError', () => {
@@ -244,14 +244,14 @@ describe('ObjectRule', () => {
   it('should validate properties', () => {
     const rule = new ObjectRule({
       name: new TypeRule('string'),
-      age: new TypeRule('number'),
+      age: new TypeRule('number')
     });
     expect(rule.validate({ name: 'John', age: 30 })).toBeUndefined();
   });
 
   it('should reject invalid property', () => {
     const rule = new ObjectRule({
-      age: new TypeRule('number'),
+      age: new TypeRule('number')
     });
     const result = rule.validate({ age: 'thirty' });
     expect(result).toBeInstanceOf(ConfigValidationError);
@@ -260,7 +260,7 @@ describe('ObjectRule', () => {
 
   it('should allow unknown properties by default', () => {
     const rule = new ObjectRule({
-      name: new TypeRule('string'),
+      name: new TypeRule('string')
     });
     expect(rule.validate({ name: 'John', extra: 'data' })).toBeUndefined();
   });
@@ -268,7 +268,7 @@ describe('ObjectRule', () => {
   it('should reject unknown properties when disabled', () => {
     const rule = new ObjectRule(
       {
-        name: new TypeRule('string'),
+        name: new TypeRule('string')
       },
       false
     );
@@ -279,7 +279,7 @@ describe('ObjectRule', () => {
 
   it('should build nested path', () => {
     const rule = new ObjectRule({
-      name: new TypeRule('string'),
+      name: new TypeRule('string')
     });
     const result = rule.validate({ name: 123 }, 'config');
     expect(result?.field).toBe('config.name');
@@ -317,7 +317,7 @@ describe('OptionalRule', () => {
 
 describe('CustomRule', () => {
   it('should use custom validator', () => {
-    const rule = new CustomRule((value) => {
+    const rule = new CustomRule(value => {
       if (typeof value === 'string' && value.length < 3) {
         return new ConfigValidationError('Too short');
       }
@@ -340,7 +340,7 @@ describe('Schema', () => {
   it('should validate valid config', () => {
     const schema = new Schema({
       name: new TypeRule('string'),
-      age: new TypeRule('number'),
+      age: new TypeRule('number')
     });
     const result = schema.validate({ name: 'John', age: 30 });
     expect(result.valid).toBe(true);
@@ -351,7 +351,7 @@ describe('Schema', () => {
     const schema = new Schema({
       name: new TypeRule('string'),
       age: new TypeRule('number'),
-      email: new TypeRule('string'),
+      email: new TypeRule('string')
     });
     const result = schema.validate({ name: 123, age: '30' });
     expect(result.valid).toBe(false);
@@ -361,7 +361,7 @@ describe('Schema', () => {
 
   it('should ignore extra properties', () => {
     const schema = new Schema({
-      name: new TypeRule('string'),
+      name: new TypeRule('string')
     });
     const result = schema.validate({ name: 'John', extra: 'data' });
     expect(result.valid).toBe(true);
@@ -369,7 +369,7 @@ describe('Schema', () => {
 
   it('should not throw for valid config in validateOrThrow', () => {
     const schema = new Schema({
-      name: new TypeRule('string'),
+      name: new TypeRule('string')
     });
     expect(() => schema.validateOrThrow({ name: 'John' })).not.toThrow();
   });
@@ -377,7 +377,7 @@ describe('Schema', () => {
   it('should throw for invalid config in validateOrThrow', () => {
     const schema = new Schema({
       name: new TypeRule('string'),
-      age: new TypeRule('number'),
+      age: new TypeRule('number')
     });
     expect(() => schema.validateOrThrow({ name: 123 })).toThrow(ConfigValidationError);
     expect(() => schema.validateOrThrow({ name: 123 })).toThrow('Configuration validation failed');
@@ -385,7 +385,7 @@ describe('Schema', () => {
 
   it('should include value in error message', () => {
     const schema = new Schema({
-      port: new NumberRangeRule(1, 65535),
+      port: new NumberRangeRule(1, 65535)
     });
     expect(() => schema.validateOrThrow({ port: 70000 })).toThrow('70000');
   });
@@ -449,7 +449,7 @@ describe('Validators', () => {
   it('should provide object validator factory', () => {
     const validator = Validators.object(
       {
-        name: Validators.string,
+        name: Validators.string
       },
       false
     );
@@ -473,7 +473,7 @@ describe('Validators', () => {
   });
 
   it('should provide custom validator factory', () => {
-    const validator = Validators.custom((value) => {
+    const validator = Validators.custom(value => {
       if (typeof value === 'string' && value.startsWith('bad')) {
         return new ConfigValidationError('Bad prefix');
       }

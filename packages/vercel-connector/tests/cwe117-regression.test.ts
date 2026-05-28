@@ -27,9 +27,7 @@ describe('vercel-connector — Sprint 43 CWE-117 sanitization contract', () => {
 
   it('sanitizes validator-extracted reason for input/output throws', () => {
     const reason = 'matched ignore_previous\nINJECTED:fake_severity';
-    expect(sanitizeMeta(reason)).toBe(
-      'matched ignore_previous\\nINJECTED:fake_severity'
-    );
+    expect(sanitizeMeta(reason)).toBe('matched ignore_previous\\nINJECTED:fake_severity');
   });
 
   it('sanitizes streamed JSON-chunk error field (client-output surface)', () => {
@@ -40,7 +38,7 @@ describe('vercel-connector — Sprint 43 CWE-117 sanitization contract', () => {
     const reason = 'stream blocked\nINJECTED:fake_chunk';
     const chunk = JSON.stringify({
       type: 'error',
-      error: `Content filtered: ${sanitizeMeta(reason)}`,
+      error: `Content filtered: ${sanitizeMeta(reason)}`
     });
     // JSON.stringify escapes literal control chars in string values
     // (via `\u00XX` form) so even raw `\n` would be encoded. The

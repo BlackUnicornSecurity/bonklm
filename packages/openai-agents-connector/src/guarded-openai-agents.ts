@@ -38,12 +38,9 @@ import {
   GuardrailEngine,
   type Logger,
   sanitizeMeta,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
-import {
-  ConnectorValidationError,
-  logValidationFailure,
-} from '@blackunicorn/bonklm/core/connector-utils';
+import { ConnectorValidationError, logValidationFailure } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
   AgentInputGuardrailLike,
   AgentInputGuardrailResult,
@@ -57,7 +54,7 @@ import type {
   ToolInputGuardrailLike,
   ToolInputGuardrailResult,
   ToolOutputGuardrailLike,
-  ToolOutputGuardrailResult,
+  ToolOutputGuardrailResult
 } from './types.js';
 import { DEFAULT_VALIDATION_TIMEOUT } from './types.js';
 
@@ -118,22 +115,18 @@ function payloadToText(payload: unknown): string {
  * `execute` impls below) don't repeat the validateWithTimeoutSecure
  * boilerplate.
  */
-function makeValidate(
-  engine: GuardrailEngine,
-  timeout: number,
-  logger: Logger,
-  _label: string
-) {
+function makeValidate(engine: GuardrailEngine, timeout: number, logger: Logger, _label: string) {
   return async (content: string, context: string) => {
     const r = await validateWithTimeoutSecure({
       operation: () => engine.validate(content, context),
       timeoutMs: timeout,
-      timeoutSentinel: () => ({
-        allowed: false,
-        blocked: true,
-        reason: 'Validation timeout',
-      } as { allowed: boolean; blocked: boolean; reason?: string }),
-      logger,
+      timeoutSentinel: () =>
+        ({
+          allowed: false,
+          blocked: true,
+          reason: 'Validation timeout'
+        }) as { allowed: boolean; blocked: boolean; reason?: string },
+      logger
     });
     return r;
   };
@@ -164,18 +157,18 @@ export function defineInputGuardrail(
       if (!r.allowed) {
         logValidationFailure(logger, r.reason ?? 'Input blocked', {
           guardrail: name,
-          agent: args.agent?.name,
+          agent: args.agent?.name
         });
         options.onInputBlocked?.(r.reason ?? 'input_blocked');
         return {
           tripwireTriggered: true,
           outputInfo: {
-            reason: productionMode ? 'Input blocked' : r.reason,
-          },
+            reason: productionMode ? 'Input blocked' : r.reason
+          }
         };
       }
       return { tripwireTriggered: false };
-    },
+    }
   };
 }
 
@@ -202,18 +195,18 @@ export function defineOutputGuardrail(
       if (!r.allowed) {
         logValidationFailure(logger, r.reason ?? 'Output blocked', {
           guardrail: name,
-          agent: args.agent?.name,
+          agent: args.agent?.name
         });
         options.onOutputBlocked?.(r.reason ?? 'output_blocked');
         return {
           tripwireTriggered: true,
           outputInfo: {
-            reason: productionMode ? 'Output blocked' : r.reason,
-          },
+            reason: productionMode ? 'Output blocked' : r.reason
+          }
         };
       }
       return { tripwireTriggered: false };
-    },
+    }
   };
 }
 
@@ -240,9 +233,7 @@ export function defineToolInputGuardrail(
   const productionMode = options.productionMode ?? process.env.NODE_ENV === 'production';
   const validators = options.validators ?? [];
   // Build the tool-call args validator once and reuse it.
-  const toolCallValidator = validators.length > 0
-    ? createToolCallArgsValidator({ validators })
-    : null;
+  const toolCallValidator = validators.length > 0 ? createToolCallArgsValidator({ validators }) : null;
 
   return {
     name,
@@ -251,24 +242,24 @@ export function defineToolInputGuardrail(
       const r = await toolCallValidator.validate({
         kind: 'tool_call',
         toolName: args.toolName ?? '',
-        args: args.toolArgs,
+        args: args.toolArgs
       });
       if (r.blocked) {
         logValidationFailure(logger, r.reason ?? 'Tool input blocked', {
           guardrail: name,
           tool: args.toolName,
-          agent: args.agent?.name,
+          agent: args.agent?.name
         });
         options.onToolBlocked?.(args.toolName ?? '', r.reason ?? 'tool_input_blocked', r);
         return {
           tripwireTriggered: true,
           outputInfo: {
-            reason: productionMode ? 'Tool input blocked' : r.reason,
-          },
+            reason: productionMode ? 'Tool input blocked' : r.reason
+          }
         };
       }
       return { tripwireTriggered: false };
-    },
+    }
   };
 }
 
@@ -298,7 +289,7 @@ export function defineToolOutputGuardrail(
         logValidationFailure(logger, r.reason ?? 'Tool output blocked', {
           guardrail: name,
           tool: args.toolName,
-          agent: args.agent?.name,
+          agent: args.agent?.name
         });
         options.onToolBlocked?.(args.toolName ?? '', r.reason ?? 'tool_output_blocked', {
           allowed: false,
@@ -308,7 +299,7 @@ export function defineToolOutputGuardrail(
           risk_level: 'HIGH' as never,
           risk_score: 30,
           findings: [],
-          timestamp: Date.now(),
+          timestamp: Date.now()
         });
         // Sprint 43 CWE-117 sweep: sanitize `r.reason` in the
         // dev-mode tripwire `outputInfo.reason` field (consumer
@@ -316,12 +307,12 @@ export function defineToolOutputGuardrail(
         return {
           tripwireTriggered: true,
           outputInfo: {
-            reason: productionMode ? 'Tool output blocked' : sanitizeMeta(r.reason),
-          },
+            reason: productionMode ? 'Tool output blocked' : sanitizeMeta(r.reason)
+          }
         };
       }
       return { tripwireTriggered: false };
-    },
+    }
   };
 }
 
@@ -347,11 +338,7 @@ export function defineToolOutputGuardrail(
  * );
  * ```
  */
-export function wrapAgent(
-  agent: AgentLike,
-  engine: GuardrailEngine,
-  options: GuardedAgentsOptions = {}
-): AgentLike {
+export function wrapAgent(agent: AgentLike, engine: GuardrailEngine, options: GuardedAgentsOptions = {}): AgentLike {
   const inputGuard = defineInputGuardrail(engine, options);
   const outputGuard = defineOutputGuardrail(engine, options);
   const toolInputGuard = defineToolInputGuardrail(engine, options);
@@ -363,17 +350,17 @@ export function wrapAgent(
   // Per-tool guardrails: clone each tool with input + output guards
   // appended. Tool mutation uses spread so the original tool definition
   // is not modified.
-  const nextTools = (agent.tools ?? []).map((tool) => ({
+  const nextTools = (agent.tools ?? []).map(tool => ({
     ...tool,
     inputGuardrails: [...(tool.inputGuardrails ?? []), toolInputGuard],
-    outputGuardrails: [...(tool.outputGuardrails ?? []), toolOutputGuard],
+    outputGuardrails: [...(tool.outputGuardrails ?? []), toolOutputGuard]
   }));
 
   if (typeof agent.clone === 'function') {
     return agent.clone({
       inputGuardrails: nextInputGuardrails,
       outputGuardrails: nextOutputGuardrails,
-      tools: nextTools,
+      tools: nextTools
     });
   }
   // Fallback: return a new agent-shaped object (spread). Real SDK
@@ -383,7 +370,7 @@ export function wrapAgent(
     ...agent,
     inputGuardrails: nextInputGuardrails,
     outputGuardrails: nextOutputGuardrails,
-    tools: nextTools,
+    tools: nextTools
   };
 }
 
@@ -409,9 +396,7 @@ export function wrapHandoff(
   const validate = makeValidate(engine, timeout, logger, 'bonklm_handoff');
   const productionMode = options.productionMode ?? process.env.NODE_ENV === 'production';
   const validators = options.validators ?? [];
-  const toolCallValidator = validators.length > 0
-    ? createToolCallArgsValidator({ validators })
-    : null;
+  const toolCallValidator = validators.length > 0 ? createToolCallArgsValidator({ validators }) : null;
   const previousFilter = handoff.inputFilter;
 
   return {
@@ -424,13 +409,9 @@ export function wrapHandoff(
         if (!r.allowed) {
           logValidationFailure(logger, r.reason ?? 'Handoff blocked', {
             handoff: handoff.name,
-            target: handoff.agent?.name,
+            target: handoff.agent?.name
           });
-          options.onHandoffBlocked?.(
-            undefined,
-            handoff.agent?.name,
-            r.reason ?? 'handoff_blocked'
-          );
+          options.onHandoffBlocked?.(undefined, handoff.agent?.name, r.reason ?? 'handoff_blocked');
           // Sprint 43 CWE-117 sweep: sanitize `r.reason` at dev-mode
           // throw boundary.
           throw new ConnectorValidationError(
@@ -449,19 +430,15 @@ export function wrapHandoff(
           const r = await toolCallValidator.validate({
             kind: 'tool_call',
             toolName: maybeToolCall.name,
-            args: maybeToolCall.args,
+            args: maybeToolCall.args
           });
           if (r.blocked) {
             logValidationFailure(logger, r.reason ?? 'Handoff tool args blocked', {
               handoff: handoff.name,
               target: handoff.agent?.name,
-              tool: maybeToolCall.name,
+              tool: maybeToolCall.name
             });
-            options.onHandoffBlocked?.(
-              undefined,
-              handoff.agent?.name,
-              r.reason ?? 'handoff_tool_blocked'
-            );
+            options.onHandoffBlocked?.(undefined, handoff.agent?.name, r.reason ?? 'handoff_tool_blocked');
             // Sprint 43 CWE-117 sweep: sister to handoff-input-filter
             // throw above — tool-args path. Code-review BLOCK closure
             // (initial `replace_all` edit missed this site due to
@@ -480,7 +457,7 @@ export function wrapHandoff(
         return previousFilter(data);
       }
       return data;
-    },
+    }
   };
 }
 
@@ -518,13 +495,13 @@ export function wrapRealtime(
       const r = await validateOutput(text, 'openai_agents_realtime_output');
       if (!r.allowed) {
         logValidationFailure(logger, r.reason ?? 'Realtime output blocked', {
-          guardrail: 'bonklm_realtime_output',
+          guardrail: 'bonklm_realtime_output'
         });
         options.onOutputBlocked?.(r.reason ?? 'realtime_output_blocked');
         return { tripwireTriggered: true };
       }
       return { tripwireTriggered: false };
-    },
+    }
   };
   session.outputGuardrails = [...(session.outputGuardrails ?? []), outputGuard];
 
@@ -539,7 +516,7 @@ export function wrapRealtime(
       const r = await validateInput(transcript, 'openai_agents_realtime_input');
       if (!r.allowed) {
         logValidationFailure(logger, r.reason ?? 'Realtime input blocked', {
-          guardrail: 'bonklm_realtime_input',
+          guardrail: 'bonklm_realtime_input'
         });
         options.onInputBlocked?.(r.reason ?? 'realtime_input_blocked');
         if (typeof session.close === 'function') {

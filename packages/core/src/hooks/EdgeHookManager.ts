@@ -139,7 +139,7 @@ export class EdgeHookManager {
       this.blockedAttempts.push({
         executionId,
         timestamp: startTime,
-        reason,
+        reason
       });
       // Cap blockedAttempts to defeat memory-exhaustion DoS in long-lived
       // edge isolates that reuse a single EdgeHookManager across requests.
@@ -157,7 +157,7 @@ export class EdgeHookManager {
         executionId,
         timestamp: startTime,
         duration,
-        success: true,
+        success: true
       });
       if (this.executionLog.length > MAX_EXECUTION_LOG) {
         this.executionLog = this.executionLog.slice(-MAX_EXECUTION_LOG);
@@ -168,7 +168,7 @@ export class EdgeHookManager {
         executionId,
         result,
         duration,
-        sandboxed: false,
+        sandboxed: false
       };
     } catch (error) {
       const duration = Date.now() - startTime;
@@ -186,7 +186,7 @@ export class EdgeHookManager {
         timestamp: startTime,
         duration,
         success: false,
-        error: safeMessage,
+        error: safeMessage
       });
       if (this.executionLog.length > MAX_EXECUTION_LOG) {
         this.executionLog = this.executionLog.slice(-MAX_EXECUTION_LOG);
@@ -198,7 +198,7 @@ export class EdgeHookManager {
         error: 'EXECUTION_ERROR',
         message: safeMessage,
         duration,
-        sandboxed: false,
+        sandboxed: false
       };
     }
   }
@@ -209,14 +209,11 @@ export class EdgeHookManager {
    */
   getStatistics(): EdgeHookStatistics {
     const total = this.executionLog.length;
-    const sumDuration = this.executionLog.reduce(
-      (sum, e) => sum + (e.duration ?? 0),
-      0
-    );
+    const sumDuration = this.executionLog.reduce((sum, e) => sum + (e.duration ?? 0), 0);
     return {
       totalExecutions: total,
       blockedAttempts: this.blockedAttempts.length,
-      averageExecutionTime: total === 0 ? 0 : sumDuration / total,
+      averageExecutionTime: total === 0 ? 0 : sumDuration / total
     };
   }
 

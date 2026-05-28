@@ -5,10 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  SecretGuard,
-  validateSecrets,
-} from '../../../src/guards/secret.js';
+import { SecretGuard, validateSecrets } from '../../../src/guards/secret.js';
 
 describe('SecretGuard', () => {
   describe('AWS Key Detection', () => {
@@ -54,7 +51,8 @@ describe('SecretGuard', () => {
 
   describe('JWT Detection', () => {
     it('SG-004: should detect JWT tokens', () => {
-      const jwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      const jwt =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
       const result = validateSecrets(jwt);
       expect(result).toBeDefined();
     });
@@ -62,13 +60,13 @@ describe('SecretGuard', () => {
 
   describe('Database URL Detection', () => {
     it('SG-005: should detect database connection strings', () => {
-      const dbUrl = "mongodb://user:pass@localhost:27017/db";
+      const dbUrl = 'mongodb://user:pass@localhost:27017/db';
       const result = validateSecrets(dbUrl);
       expect(result.blocked).toBe(true);
     });
 
     it('should detect PostgreSQL URLs', () => {
-      const pgUrl = "postgres://user:password123@localhost:5432/mydb";
+      const pgUrl = 'postgres://user:password123@localhost:5432/mydb';
       const guard = new SecretGuard({ includeFindings: true });
       const result = guard.validate(pgUrl);
       expect(result.blocked).toBe(true);
@@ -336,7 +334,7 @@ MHcCAQEEIFLu7LfVcWpL4M3baK4Yk4vLkhhGVxNL...
       // 92 valid chars after the prefix — one short of the required 93.
       const guard = new SecretGuard({ checkExamples: false });
       const detections = guard.detect(ANT_KEY_PREFIX + 'a'.repeat(92));
-      const anthropicDetections = detections.filter((d) => d.secretType === 'Anthropic API Key');
+      const anthropicDetections = detections.filter(d => d.secretType === 'Anthropic API Key');
       expect(anthropicDetections).toHaveLength(0);
     });
 
@@ -344,7 +342,7 @@ MHcCAQEEIFLu7LfVcWpL4M3baK4Yk4vLkhhGVxNL...
       // 93 valid chars after the prefix — exactly satisfies {93}.
       const guard = new SecretGuard({ checkExamples: false });
       const detections = guard.detect(ANT_KEY_PREFIX + 'a'.repeat(93));
-      const anthropicDetections = detections.filter((d) => d.secretType === 'Anthropic API Key');
+      const anthropicDetections = detections.filter(d => d.secretType === 'Anthropic API Key');
       expect(anthropicDetections).toHaveLength(1);
     });
 
@@ -362,7 +360,7 @@ MHcCAQEEIFLu7LfVcWpL4M3baK4Yk4vLkhhGVxNL...
       // Also verify SecretGuard fires once (detection semantics preserved).
       const guard = new SecretGuard({ checkExamples: false });
       const detections = guard.detect(input);
-      const anthropicDetections = detections.filter((d) => d.secretType === 'Anthropic API Key');
+      const anthropicDetections = detections.filter(d => d.secretType === 'Anthropic API Key');
       expect(anthropicDetections).toHaveLength(1);
     });
 
@@ -372,7 +370,7 @@ MHcCAQEEIFLu7LfVcWpL4M3baK4Yk4vLkhhGVxNL...
       const invalidKey = 'a'.repeat(50) + '!' + 'a'.repeat(42); // 93 chars, '!' at index 50
       const result = validateSecrets(ANT_KEY_PREFIX + invalidKey, undefined, { includeFindings: true });
       const findings = result.findings ?? [];
-      const anthropicFindings = findings.filter((f) => f.description?.includes('Anthropic'));
+      const anthropicFindings = findings.filter(f => f.description?.includes('Anthropic'));
       expect(anthropicFindings).toHaveLength(0);
     });
   });
@@ -470,8 +468,8 @@ MHcCAQEEIFLu7LfVcWpL4M3baK4Yk4vLkhhGVxNL...
           debug: (msg: string, meta?: unknown) => calls.push({ level: 'debug', msg, meta }),
           info: (msg: string, meta?: unknown) => calls.push({ level: 'info', msg, meta }),
           warn: (msg: string, meta?: unknown) => calls.push({ level: 'warn', msg, meta }),
-          error: (msg: string, meta?: unknown) => calls.push({ level: 'error', msg, meta }),
-        },
+          error: (msg: string, meta?: unknown) => calls.push({ level: 'error', msg, meta })
+        }
       };
     }
 
@@ -485,7 +483,7 @@ MHcCAQEEIFLu7LfVcWpL4M3baK4Yk4vLkhhGVxNL...
       // attack payload) is what gets logged.
       guard.validate('AKIAIOSFODNN7EXAMPLE', 'dir\nINJECTED_LINE/.env.example');
 
-      const info = calls.find((c) => c.level === 'info' && c.msg.startsWith('Skipping'));
+      const info = calls.find(c => c.level === 'info' && c.msg.startsWith('Skipping'));
       expect(info).toBeDefined();
       const meta = info!.meta as { file: string };
       // \n → literal '\n' marker per sanitizeLogString contract.
@@ -497,7 +495,7 @@ MHcCAQEEIFLu7LfVcWpL4M3baK4Yk4vLkhhGVxNL...
       const guard = new SecretGuard({ logger });
       guard.validate('AKIAIOSFODNN7EXAMPLE', 'src/\tinjected\tcols.ts');
 
-      const warn = calls.find((c) => c.level === 'warn' && c.msg === 'Secrets detected');
+      const warn = calls.find(c => c.level === 'warn' && c.msg === 'Secrets detected');
       expect(warn).toBeDefined();
       const meta = warn!.meta as { file: string };
       // TAB → '\x09' hex escape per sanitizeLogString contract.

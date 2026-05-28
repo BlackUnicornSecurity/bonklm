@@ -40,7 +40,7 @@ import type {
   BonklmRuntimeNamespace,
   IAgentRuntimeLike,
   MemoryLike,
-  SourceTrust,
+  SourceTrust
 } from './types.js';
 import { VERIFIED_PUBLISHER_ALLOWLIST } from './types.js';
 import { detectTypoSquat } from './typo-squat.js';
@@ -64,22 +64,16 @@ function assertMemoryWriteAllowed(
 ): void {
   // Provider-source 'messages' writes require authenticated OR
   // agent_internal source.
-  if (
-    memory.tableName === 'messages' &&
-    computedSource !== 'authenticated' &&
-    computedSource !== 'agent_internal'
-  ) {
+  if (memory.tableName === 'messages' && computedSource !== 'authenticated' && computedSource !== 'agent_internal') {
     // Sprint 41 integration-test surfaced site: meta-field `caller`
     // (callerPluginName from plugin registry) was unsanitized. Sprint
     // 40 missed this — only the typo-squat CRITICAL log was covered.
-    logger.warn(
-      `[BonkLM] Refusing ${sanitizeMeta(pathLabel)} 'messages' write — non-authenticated source.`,
-      { caller: sanitizeMeta(callerPluginName), source: sanitizeMeta(computedSource) }
-    );
+    logger.warn(`[BonkLM] Refusing ${sanitizeMeta(pathLabel)} 'messages' write — non-authenticated source.`, {
+      caller: sanitizeMeta(callerPluginName),
+      source: sanitizeMeta(computedSource)
+    });
     onRefused?.(
-      productionMode
-        ? 'memory_write_refused'
-        : `${pathLabel} 'messages' write refused: source=${computedSource}`
+      productionMode ? 'memory_write_refused' : `${pathLabel} 'messages' write refused: source=${computedSource}`
     );
     throw new ConnectorValidationError(
       productionMode
@@ -111,15 +105,8 @@ function assertMemoryWriteAllowed(
         `from verified publisher "${safeTarget}" — likely typo-squat impersonation. ` +
         `Refusing ${safePathLabel} 'messages' write.`;
       logger.error(`[BonkLM] CRITICAL — ${typoMsg}`);
-      onRefused?.(
-        productionMode ? 'memory_write_refused_typo_squat' : typoMsg
-      );
-      throw new ConnectorValidationError(
-        productionMode
-          ? 'Memory write refused'
-          : typoMsg,
-        'validation_failed'
-      );
+      onRefused?.(productionMode ? 'memory_write_refused_typo_squat' : typoMsg);
+      throw new ConnectorValidationError(productionMode ? 'Memory write refused' : typoMsg, 'validation_failed');
     } else {
       // Unknown publisher — refuse with informational diagnostic
       // (Phase-1 behaviour preserved).
@@ -162,11 +149,7 @@ function buildWrappedMemoryFn(
 ): (this: unknown, memory: MemoryLike, ...rest: unknown[]) => Promise<unknown> {
   const logger = options.logger ?? createLogger('console');
   const productionMode = options.productionMode ?? process.env.NODE_ENV === 'production';
-  return async function bonklmWrappedMemoryFn(
-    this: unknown,
-    memory: MemoryLike,
-    ...rest: unknown[]
-  ): Promise<unknown> {
+  return async function bonklmWrappedMemoryFn(this: unknown, memory: MemoryLike, ...rest: unknown[]): Promise<unknown> {
     // Phase-2: read call context from ALS (NOT runtime.bonklm).
     const ctx = getCallContext();
     const computedSource: SourceTrust = ctx?.sourceTrust ?? 'agent_internal';
@@ -193,12 +176,10 @@ function buildWrappedMemoryFn(
       source: computedSource,
       metadata: {
         ...(memory.metadata ?? {}),
-        bonklmTrust: true,
-      },
+        bonklmTrust: true
+      }
     };
-    return (
-      original as (m: MemoryLike, ...r: unknown[]) => Promise<unknown>
-    ).call(runtime, sealed, ...rest);
+    return (original as (m: MemoryLike, ...r: unknown[]) => Promise<unknown>).call(runtime, sealed, ...rest);
   };
 }
 
@@ -220,10 +201,7 @@ function buildWrappedMemoryFn(
  *
  * @returns `void` on success.
  */
-export function installSealedWrapMemory(
-  runtime: IAgentRuntimeLike,
-  options: BonklmPluginOptions
-): void {
+export function installSealedWrapMemory(runtime: IAgentRuntimeLike, options: BonklmPluginOptions): void {
   const logger = options.logger ?? createLogger('console');
   const productionMode = options.productionMode ?? process.env.NODE_ENV === 'production';
   const originalCreate = runtime.createMemory;
@@ -247,9 +225,7 @@ export function installSealedWrapMemory(
   // leaving a partial install.
   const createDescriptor = Object.getOwnPropertyDescriptor(runtime, 'createMemory');
   if (createDescriptor && createDescriptor.configurable === false) {
-    logger.error(
-      '[BonkLM] CRITICAL — runtime.createMemory is already sealed (another plugin wrapped it first).'
-    );
+    logger.error('[BonkLM] CRITICAL — runtime.createMemory is already sealed (another plugin wrapped it first).');
     throw new ConnectorValidationError(
       productionMode
         ? 'Runtime already wrapped'
@@ -260,13 +236,9 @@ export function installSealedWrapMemory(
   if (typeof originalUpdate === 'function') {
     const updateDescriptor = Object.getOwnPropertyDescriptor(runtime, 'updateMemory');
     if (updateDescriptor && updateDescriptor.configurable === false) {
-      logger.error(
-        '[BonkLM] CRITICAL — runtime.updateMemory is already sealed (another plugin wrapped it first).'
-      );
+      logger.error('[BonkLM] CRITICAL — runtime.updateMemory is already sealed (another plugin wrapped it first).');
       throw new ConnectorValidationError(
-        productionMode
-          ? 'Runtime already wrapped'
-          : 'runtime.updateMemory is already sealed by another plugin.',
+        productionMode ? 'Runtime already wrapped' : 'runtime.updateMemory is already sealed by another plugin.',
         'invalid_runtime'
       );
     }
@@ -280,9 +252,7 @@ export function installSealedWrapMemory(
   const sealedBonklm: BonklmRuntimeNamespace = existingBonklm ?? {};
   const bonklmDescriptor = Object.getOwnPropertyDescriptor(runtime, 'bonklm');
   if (bonklmDescriptor && bonklmDescriptor.configurable === false) {
-    logger.error(
-      '[BonkLM] CRITICAL — runtime.bonklm is already sealed (another plugin claimed the namespace first).'
-    );
+    logger.error('[BonkLM] CRITICAL — runtime.bonklm is already sealed (another plugin claimed the namespace first).');
     throw new ConnectorValidationError(
       productionMode
         ? 'Runtime bonklm namespace already sealed'
@@ -316,34 +286,24 @@ export function installSealedWrapMemory(
       value: sealedBonklm,
       writable: false,
       configurable: false,
-      enumerable: true,
+      enumerable: true
     });
 
-    const wrappedCreate = buildWrappedMemoryFn(
-      originalCreate,
-      runtime,
-      options,
-      'createMemory'
-    );
+    const wrappedCreate = buildWrappedMemoryFn(originalCreate, runtime, options, 'createMemory');
     Object.defineProperty(runtime, 'createMemory', {
       value: wrappedCreate,
       writable: false,
       configurable: false,
-      enumerable: true,
+      enumerable: true
     });
 
     if (typeof originalUpdate === 'function') {
-      const wrappedUpdate = buildWrappedMemoryFn(
-        originalUpdate,
-        runtime,
-        options,
-        'updateMemory'
-      );
+      const wrappedUpdate = buildWrappedMemoryFn(originalUpdate, runtime, options, 'updateMemory');
       Object.defineProperty(runtime, 'updateMemory', {
         value: wrappedUpdate,
         writable: false,
         configurable: false,
-        enumerable: true,
+        enumerable: true
       });
     }
   } catch (err) {
@@ -369,7 +329,7 @@ export function installSealedWrapMemory(
 
   logger.info('[BonkLM] wrapMemory installed (sealed)', {
     sealedCreateMemory: true,
-    sealedUpdateMemory: typeof originalUpdate === 'function',
+    sealedUpdateMemory: typeof originalUpdate === 'function'
   });
 }
 

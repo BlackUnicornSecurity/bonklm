@@ -7,21 +7,21 @@ import {
   hasUnvalidatedTail,
   shouldValidateStream,
   StreamValidator,
-  type StreamValidatorEngine,
+  type StreamValidatorEngine
 } from '../../src/connector-utils/stream-validator';
 
 function makeEngine(decide: (content: string) => { allowed: boolean; reason?: string }): StreamValidatorEngine {
   return {
     validate(content: string) {
       return decide(content);
-    },
+    }
   };
 }
 
 describe('StreamValidator lifecycle', () => {
   it('process() validates at interval boundary and finalize() handles the tail', async () => {
     const calls: string[] = [];
-    const engine = makeEngine((content) => {
+    const engine = makeEngine(content => {
       calls.push(content);
       return { allowed: true };
     });
@@ -59,9 +59,9 @@ describe('StreamValidator lifecycle', () => {
   });
 
   it('marks stream blocked when engine rejects on a boundary', async () => {
-    const engine = makeEngine((content) => ({
+    const engine = makeEngine(content => ({
       allowed: !content.includes('STOP'),
-      reason: 'blocked_word',
+      reason: 'blocked_word'
     }));
     const v = StreamValidator.create(engine, { validationInterval: 2 });
     await v.process('safe'); // chunk 1, no boundary
@@ -75,9 +75,9 @@ describe('StreamValidator lifecycle', () => {
   });
 
   it('finalize() blocks when the tail contains a violation', async () => {
-    const engine = makeEngine((content) => ({
+    const engine = makeEngine(content => ({
       allowed: !content.includes('STOP'),
-      reason: 'blocked_word',
+      reason: 'blocked_word'
     }));
     const v = StreamValidator.create(engine, { validationInterval: 10 });
     await v.process('safe-prefix');
@@ -89,7 +89,7 @@ describe('StreamValidator lifecycle', () => {
 
   it('Symbol.asyncDispose finalises the validator', async () => {
     const calls: string[] = [];
-    const engine = makeEngine((content) => {
+    const engine = makeEngine(content => {
       calls.push(content);
       return { allowed: true };
     });
@@ -129,7 +129,7 @@ describe('StreamValidator lifecycle', () => {
       validate() {
         called++;
         throw new Error('moderation backend down');
-      },
+      }
     };
     const v = StreamValidator.create(engine, { validationInterval: 2 });
     await v.process('safe-prefix');

@@ -7,15 +7,11 @@
  */
 import { createServer, type Server } from 'node:http';
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  runDoctorRuntime,
-  probeOutcomeToFindings,
-  auditPlugins,
-} from '../src/doctor.js';
+import { runDoctorRuntime, probeOutcomeToFindings, auditPlugins } from '../src/doctor.js';
 import { __clearProbeCacheForTests, type ProbeOutcome } from '../src/probe.js';
 
 async function spinUp(statusCode: number): Promise<{ server: Server; port: number }> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const server = createServer((_req, res) => {
       res.statusCode = statusCode;
       res.end();
@@ -28,7 +24,7 @@ async function spinUp(statusCode: number): Promise<{ server: Server; port: numbe
 }
 
 async function closeServer(server: Server): Promise<void> {
-  return new Promise((resolve) => server.close(() => resolve()));
+  return new Promise(resolve => server.close(() => resolve()));
 }
 
 describe('runDoctorRuntime', () => {
@@ -39,7 +35,7 @@ describe('runDoctorRuntime', () => {
     try {
       const report = await runDoctorRuntime({
         agentId: 'doctor-1',
-        port,
+        port
       });
       expect(report.criticalCount).toBe(1);
       expect(report.exitCode).toBe(1);
@@ -57,7 +53,7 @@ describe('runDoctorRuntime', () => {
       const report = await runDoctorRuntime({
         agentId: 'doctor-2',
         port,
-        acknowledgeClass4Risk: true,
+        acknowledgeClass4Risk: true
       });
       expect(report.criticalCount).toBe(0);
       expect(report.exitCode).toBe(0);
@@ -73,7 +69,7 @@ describe('runDoctorRuntime', () => {
     try {
       const report = await runDoctorRuntime({
         agentId: 'doctor-3',
-        port,
+        port
       });
       expect(report.criticalCount).toBe(0);
       expect(report.findings[0].severity).toBe('INFO');
@@ -94,7 +90,7 @@ describe('runDoctorRuntime', () => {
     const report = await runDoctorRuntime({
       agentId: 'doctor-5',
       port: 9999,
-      envBindings: { BONKLM_SKIP_RUNTIME_PROBE: '1', NODE_ENV: 'development' },
+      envBindings: { BONKLM_SKIP_RUNTIME_PROBE: '1', NODE_ENV: 'development' }
     });
     expect(report.findings[0].severity).toBe('INFO');
     expect(report.findings[0].category).toBe('runtime_probe_skipped');
@@ -113,21 +109,21 @@ describe('probeOutcomeToFindings — exhaustive branch mapping', () => {
   it('unreachable (network failure) → MEDIUM', () => {
     const findings = probeOutcomeToFindings({
       kind: 'unreachable',
-      reason: 'Probe could not reach...',
+      reason: 'Probe could not reach...'
     } as ProbeOutcome);
     expect(findings[0].severity).toBe('MEDIUM');
   });
   it('unreachable (safe completion) → INFO', () => {
     const findings = probeOutcomeToFindings({
       kind: 'unreachable',
-      reason: 'Probe completed; runtime HTTP /memories route is protected or absent (no unauth exposure detected).',
+      reason: 'Probe completed; runtime HTTP /memories route is protected or absent (no unauth exposure detected).'
     } as ProbeOutcome);
     expect(findings[0].severity).toBe('INFO');
   });
   it('skipped → INFO', () => {
     const findings = probeOutcomeToFindings({
       kind: 'skipped',
-      reason: 'mock skip',
+      reason: 'mock skip'
     });
     expect(findings[0].severity).toBe('INFO');
   });
@@ -136,7 +132,7 @@ describe('probeOutcomeToFindings — exhaustive branch mapping', () => {
 describe('auditPlugins — Phase-2 typo-squat upgrade', () => {
   it('returns CRITICAL plugin_typo_squat for distance-≤2 impersonation', () => {
     const findings = auditPlugins([
-      { name: '@elizaos/plugin-soIana' }, // capital-I typo
+      { name: '@elizaos/plugin-soIana' } // capital-I typo
     ]);
     expect(findings.length).toBe(1);
     expect(findings[0].severity).toBe('CRITICAL');

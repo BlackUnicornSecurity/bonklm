@@ -4,11 +4,7 @@
  * Shared memory-client wrapping primitives consumed by mem0/zep/letta
  * connectors.
  */
-export {
-  wrapMemoryClient,
-  assertGetTenantIdValid,
-  assertTenantIdSafe,
-} from './wrap-memory-client.js';
+export { wrapMemoryClient, assertGetTenantIdValid, assertTenantIdSafe } from './wrap-memory-client.js';
 
 export type {
   AdapterInvocation,
@@ -18,7 +14,7 @@ export type {
   MemorySessionContext,
   MemorySurface,
   WrapMemoryClientFullOptions,
-  WrapMemoryClientOptions,
+  WrapMemoryClientOptions
 } from './types.js';
 
 // Re-export the core error class so consumers building custom adapters

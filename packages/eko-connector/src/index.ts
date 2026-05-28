@@ -23,17 +23,12 @@
  * opted-in via `allowCuaMode: true`; opt-in emits an unmissable
  * warning at construction.
  */
-export {
-  wrapEko,
-  wrapEkoBrowserAgent,
-  wrapEkoFileAgent,
-  EkoGuardrailBlockedError,
-} from './wrap-eko.js';
+export { wrapEko, wrapEkoBrowserAgent, wrapEkoFileAgent, EkoGuardrailBlockedError } from './wrap-eko.js';
 export type {
   EkoBrowserAgentLike,
   EkoFileAgentLike,
   EkoLike,
   EkoMcpClientLike,
   EkoRunTask,
-  WrapEkoOptions,
+  WrapEkoOptions
 } from './types.js';

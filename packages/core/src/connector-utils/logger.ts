@@ -72,11 +72,9 @@ function createPrefixedLogger(baseLogger: Logger, prefix: string): Logger {
     },
     error: (message: string, error?: Error | Record<string, unknown>) => {
       // Convert Error to LogContext format
-      const context = error instanceof Error
-        ? { error: error.message, name: error.name }
-        : error;
+      const context = error instanceof Error ? { error: error.message, name: error.name } : error;
       baseLogger.error(`${prefix} ${message}`, context);
-    },
+    }
   };
 }
 
@@ -99,7 +97,7 @@ export function createConnectorLogger(
 ): Logger {
   return createStandardLogger({
     ...options,
-    prefix: `[${connectorName} Guardrails]`,
+    prefix: `[${connectorName} Guardrails]`
   });
 }
 
@@ -119,9 +117,7 @@ export function createConnectorLogger(
  * // Logs: { apiKey: '[REDACTED]', model: 'gpt-4' }
  * ```
  */
-export function sanitizeLogMetadata(
-  meta: Record<string, unknown>
-): Record<string, unknown> {
+export function sanitizeLogMetadata(meta: Record<string, unknown>): Record<string, unknown> {
   const sanitized: Record<string, unknown> = { ...meta };
   const sensitiveKeys = [
     'apiKey',
@@ -137,12 +133,12 @@ export function sanitizeLogMetadata(
     'refreshToken',
     'refresh_token',
     'privateKey',
-    'private_key',
+    'private_key'
   ];
 
   for (const key of Object.keys(sanitized)) {
     const lowerKey = key.toLowerCase();
-    if (sensitiveKeys.some((sk) => lowerKey.includes(sk.toLowerCase()))) {
+    if (sensitiveKeys.some(sk => lowerKey.includes(sk.toLowerCase()))) {
       const value = sanitized[key];
       if (typeof value === 'string' && value.length > 0) {
         // Show first 4 and last 4 chars
@@ -245,11 +241,7 @@ export function stripLogControlChars(value: string): string {
  * });
  * ```
  */
-export function logValidationFailure(
-  logger: Logger,
-  reason: string,
-  context?: Record<string, unknown>
-): void {
+export function logValidationFailure(logger: Logger, reason: string, context?: Record<string, unknown>): void {
   // Audit-loop HIGH fix #6: `reason` originates from validator output
   // which can carry attacker-influenced text (e.g. matched pattern
   // content); hex-escape control chars + cap before logging.
@@ -261,7 +253,7 @@ export function logValidationFailure(
   // SPACE padding.
   logger.warn('Validation blocked', {
     reason: sanitizeLogString(reason),
-    ...sanitizeLogMetadata(context ?? {}),
+    ...sanitizeLogMetadata(context ?? {})
   });
 }
 
@@ -277,11 +269,7 @@ export function logValidationFailure(
  * logTimeout(logger, 'query validation', 30000);
  * ```
  */
-export function logTimeout(
-  logger: Logger,
-  operation: string,
-  timeoutMs: number
-): void {
+export function logTimeout(logger: Logger, operation: string, timeoutMs: number): void {
   // Sprint 38 CWE-117 sweep: `operation` is a caller-supplied label
   // (typically static like 'query validation'), but connector authors
   // may derive it from request metadata (e.g. `${requestId} validate`)
@@ -291,7 +279,7 @@ export function logTimeout(
   // Sprint 50 (ADR-0001 D#2 revision): migrated from the deprecated
   // `stripLogControlChars` to the canonical `sanitizeLogString`.
   logger.warn(`Timeout: ${sanitizeLogString(operation)}`, {
-    timeout: `${timeoutMs}ms`,
+    timeout: `${timeoutMs}ms`
   });
 }
 

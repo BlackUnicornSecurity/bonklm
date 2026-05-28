@@ -16,9 +16,13 @@
 
 ## Overview
 
-The `@blackunicorn/bonklm-qdrant` package provides security guardrails for [Qdrant](https://qdrant.tech/) vector database operations. It validates queries, sanitizes filters, and detects poisoned points to protect your RAG (Retrieval-Augmented Generation) applications from adversarial attacks.
+The `@blackunicorn/bonklm-qdrant` package provides security guardrails for
+[Qdrant](https://qdrant.tech/) vector database operations. It validates queries, sanitizes filters,
+and detects poisoned points to protect your RAG (Retrieval-Augmented Generation) applications from
+adversarial attacks.
 
 This package contains:
+
 - **Vector Validation** - Validates vector format and dimensions
 - **Filter Sanitization** - Prevents NoSQL injection with Unicode escape detection
 - **Point Poisoning Detection** - Validates retrieved points for malicious content
@@ -78,22 +82,22 @@ console.log('Points blocked:', results.pointsBlocked);
 
 ### GuardedQdrantOptions
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `validators` | `Validator[]` | `[]` | Validators for queries |
-| `guards` | `Guard[]` | `[]` | Guards for content filtering |
-| `logger` | `Logger` | `console` | Logger instance |
-| `validateRetrievedPoints` | `boolean` | `true` | Validate retrieved points |
-| `validateFilters` | `boolean` | `true` | Validate filter expressions |
-| `allowedPayloadFields` | `string[]` | `[]` | Allowed payload field patterns |
-| `onBlockedPoint` | `'filter' \| 'abort'` | `'filter'` | Action when point is blocked |
-| `productionMode` | `boolean` | `NODE_ENV === 'production'` | Generic errors in production |
-| `validationTimeout` | `number` | `30000` | Validation timeout in ms |
-| `maxLimit` | `number` | `100` | Maximum limit value |
-| `maxFilterLength` | `number` | `10000` | Maximum filter string length |
-| `maxPayloadSize` | `number` | `100000` | Maximum payload size in bytes |
-| `regexTimeout` | `number` | `1000` | Regex timeout in ms |
-| `onPointBlocked` | `(id, result) => void` | - | Callback when point is blocked |
+| Option                    | Type                   | Default                     | Description                    |
+| ------------------------- | ---------------------- | --------------------------- | ------------------------------ |
+| `validators`              | `Validator[]`          | `[]`                        | Validators for queries         |
+| `guards`                  | `Guard[]`              | `[]`                        | Guards for content filtering   |
+| `logger`                  | `Logger`               | `console`                   | Logger instance                |
+| `validateRetrievedPoints` | `boolean`              | `true`                      | Validate retrieved points      |
+| `validateFilters`         | `boolean`              | `true`                      | Validate filter expressions    |
+| `allowedPayloadFields`    | `string[]`             | `[]`                        | Allowed payload field patterns |
+| `onBlockedPoint`          | `'filter' \| 'abort'`  | `'filter'`                  | Action when point is blocked   |
+| `productionMode`          | `boolean`              | `NODE_ENV === 'production'` | Generic errors in production   |
+| `validationTimeout`       | `number`               | `30000`                     | Validation timeout in ms       |
+| `maxLimit`                | `number`               | `100`                       | Maximum limit value            |
+| `maxFilterLength`         | `number`               | `10000`                     | Maximum filter string length   |
+| `maxPayloadSize`          | `number`               | `100000`                    | Maximum payload size in bytes  |
+| `regexTimeout`            | `number`               | `1000`                      | Regex timeout in ms            |
+| `onPointBlocked`          | `(id, result) => void` | -                           | Callback when point is blocked |
 
 ---
 
@@ -128,16 +132,16 @@ Result of a guarded search operation.
 
 ```typescript
 interface GuardedQdrantResult {
-  points: QdrantPoint[];       // Valid points only
-  pointsBlocked: number;        // Count of blocked points
-  filtered: boolean;            // True if any points blocked
-  raw: any;                     // Original Qdrant result
+  points: QdrantPoint[]; // Valid points only
+  pointsBlocked: number; // Count of blocked points
+  filtered: boolean; // True if any points blocked
+  raw: any; // Original Qdrant result
 }
 
 interface QdrantPoint {
   id: string | number;
   score: number;
-  payload?: Record<string, any>;  // Filtered if allowedPayloadFields set
+  payload?: Record<string, any>; // Filtered if allowedPayloadFields set
   vector?: number[];
 }
 ```
@@ -154,21 +158,21 @@ Validates vector format and prevents invalid inputs:
 // Empty vector rejected
 await guardedClient.search({
   collectionName: 'test',
-  vector: [],  // Error: Vector cannot be empty
+  vector: [], // Error: Vector cannot be empty
   limit: 10
 });
 
 // Non-finite values rejected
 await guardedClient.search({
   collectionName: 'test',
-  vector: [1, 2, NaN, 4],  // Error: Vector must contain only finite numbers
+  vector: [1, 2, NaN, 4], // Error: Vector must contain only finite numbers
   limit: 10
 });
 
 // Dimension limits enforced
 await guardedClient.search({
   collectionName: 'test',
-  vector: new Array(100001).fill(0),  // Error: Vector dimension exceeds maximum
+  vector: new Array(100001).fill(0), // Error: Vector dimension exceeds maximum
   limit: 10
 });
 ```
@@ -184,7 +188,7 @@ await guardedClient.search({
   vector: [1, 2, 3],
   filter: {
     must: [
-      { key: '__proto__', match: { value: true } }  // Blocked
+      { key: '__proto__', match: { value: true } } // Blocked
     ]
   }
 });
@@ -195,7 +199,7 @@ await guardedClient.search({
   vector: [1, 2, 3],
   filter: {
     // \u0024 = $ (obfuscation attempt)
-    must: [{ key: '\u0024where', match: { value: 'malicious' } }]  // Blocked
+    must: [{ key: '\u0024where', match: { value: 'malicious' } }] // Blocked
   }
 });
 ```
@@ -206,7 +210,7 @@ Restrict which payload fields are returned:
 
 ```typescript
 const guardedClient = createGuardedClient(client, {
-  allowedPayloadFields: ['title', 'content', 'author*']  // Supports wildcards
+  allowedPayloadFields: ['title', 'content', 'author*'] // Supports wildcards
 });
 
 const results = await guardedClient.search({
@@ -229,9 +233,9 @@ const guardedClient = createGuardedClient(client, {
     'title',
     'content',
     // Patterns with excessive wildcards are skipped to prevent ReDoS
-    '*****dangerous'  // This pattern will be skipped
+    '*****dangerous' // This pattern will be skipped
   ],
-  regexTimeout: 1000  // 1 second timeout per pattern
+  regexTimeout: 1000 // 1 second timeout per pattern
 });
 ```
 
@@ -244,13 +248,13 @@ const guardedClient = createGuardedClient(client, {
 ```typescript
 // Only alphanumeric, underscore, and hyphen allowed
 await guardedClient.search({
-  collectionName: 'my_collection-123',  // Valid
+  collectionName: 'my_collection-123', // Valid
   vector: embedding,
   limit: 10
 });
 
 await guardedClient.search({
-  collectionName: '../../etc/passwd',  // Blocked: invalid characters
+  collectionName: '../../etc/passwd', // Blocked: invalid characters
   vector: embedding,
   limit: 10
 });
@@ -260,7 +264,7 @@ await guardedClient.search({
 
 ```typescript
 const guardedClient = createGuardedClient(client, {
-  maxPayloadSize: 50000  // 50KB limit
+  maxPayloadSize: 50000 // 50KB limit
 });
 
 // Points with large payloads are rejected during retrieval validation
@@ -270,7 +274,7 @@ const guardedClient = createGuardedClient(client, {
 
 ```typescript
 const guardedClient = createGuardedClient(client, {
-  onBlockedPoint: 'abort',  // Fail closed
+  onBlockedPoint: 'abort', // Fail closed
   onPointBlocked: (id, result) => {
     console.error(`Point ${id} blocked:`, result.reason);
   }
@@ -292,7 +296,7 @@ try {
 
 ```typescript
 const guardedClient = createGuardedClient(client, {
-  maxFilterLength: 5000  // Prevent DoS via large filters
+  maxFilterLength: 5000 // Prevent DoS via large filters
 });
 
 // Large filters are rejected

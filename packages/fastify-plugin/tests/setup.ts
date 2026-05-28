@@ -12,8 +12,8 @@ if (typeof process !== 'undefined' && process.on) {
     if (
       reason instanceof Error &&
       (reason.message === 'Internal database connection failed' ||
-       reason.message === 'Unexpected error' ||
-       reason.message === 'Validation failed')
+        reason.message === 'Unexpected error' ||
+        reason.message === 'Validation failed')
     ) {
       return; // Suppress expected errors
     }

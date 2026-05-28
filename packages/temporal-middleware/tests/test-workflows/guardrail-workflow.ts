@@ -25,10 +25,7 @@
  */
 import { proxyActivities } from '@temporalio/workflow';
 import { guardrailGate } from '../../src/workflow.js';
-import type {
-  ValidateInputActivityArgs,
-  ValidateInputActivityResult,
-} from '../../src/activity.js';
+import type { ValidateInputActivityArgs, ValidateInputActivityResult } from '../../src/activity.js';
 
 /**
  * Activity proxy shape. The real activity implementation
@@ -45,8 +42,8 @@ const { validateInput } = proxyActivities<{
   // routes through `cachedValidate` so any retry would return the
   // same cached decision anyway.
   retry: {
-    maximumAttempts: 1,
-  },
+    maximumAttempts: 1
+  }
 });
 
 /**

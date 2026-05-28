@@ -38,12 +38,9 @@ import {
   type Logger,
   sanitizeMeta,
   validateWithTimeoutSecure,
-  type Validator,
+  type Validator
 } from '@blackunicorn/bonklm';
-import {
-  ConnectorValidationError,
-  logValidationFailure,
-} from '@blackunicorn/bonklm/core/connector-utils';
+import { ConnectorValidationError, logValidationFailure } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * Surface scope a middleware instance covers. Mirrors the surface
@@ -129,18 +126,9 @@ export interface BonklmLangchainMiddleware {
   readonly priority: number;
   readonly scope: BonklmMiddlewareScope[];
   beforeModel?: (state: BonklmMiddlewareState) => Promise<BonklmMiddlewareState | void>;
-  wrapModelCall?: <T>(
-    state: BonklmMiddlewareState,
-    next: (s: BonklmMiddlewareState) => Promise<T>
-  ) => Promise<T>;
-  afterModel?: (
-    state: BonklmMiddlewareState,
-    response: BonklmModelResponse
-  ) => Promise<BonklmModelResponse | void>;
-  wrapToolCall?: <T>(
-    toolCall: BonklmToolCall,
-    next: (tc: BonklmToolCall) => Promise<T>
-  ) => Promise<T>;
+  wrapModelCall?: <T>(state: BonklmMiddlewareState, next: (s: BonklmMiddlewareState) => Promise<T>) => Promise<T>;
+  afterModel?: (state: BonklmMiddlewareState, response: BonklmModelResponse) => Promise<BonklmModelResponse | void>;
+  wrapToolCall?: <T>(toolCall: BonklmToolCall, next: (tc: BonklmToolCall) => Promise<T>) => Promise<T>;
 }
 
 function extractText(state: BonklmMiddlewareState): string {
@@ -172,7 +160,7 @@ function extractResponseText(r: BonklmModelResponse | undefined): string {
   if (typeof r.content === 'string' && r.content.length > 0) return r.content;
   if (Array.isArray(r.content)) {
     return r.content
-      .map((c) =>
+      .map(c =>
         c && typeof c === 'object' && 'text' in c && typeof (c as { text: unknown }).text === 'string'
           ? (c as { text: string }).text
           : ''
@@ -217,9 +205,7 @@ export function createBonklmMiddleware(
   engine: GuardrailEngine,
   options?: Omit<BonklmMiddlewareConfig, 'engine'>
 ): BonklmLangchainMiddleware;
-export function createBonklmMiddleware(
-  config: BonklmMiddlewareConfig
-): BonklmLangchainMiddleware;
+export function createBonklmMiddleware(config: BonklmMiddlewareConfig): BonklmLangchainMiddleware;
 export function createBonklmMiddleware(
   engineOrConfig: GuardrailEngine | BonklmMiddlewareConfig,
   options?: Omit<BonklmMiddlewareConfig, 'engine'>
@@ -234,7 +220,7 @@ export function createBonklmMiddleware(
           scope: 'text_input',
           validators: [],
           ...(options ?? {}),
-          engine: engineOrConfig as GuardrailEngine,
+          engine: engineOrConfig as GuardrailEngine
         }
       : (engineOrConfig as BonklmMiddlewareConfig);
 
@@ -247,7 +233,10 @@ export function createBonklmMiddleware(
   // Validation surface: either delegate to engine.validate (when an
   // engine is supplied) or build an ad-hoc chain. Both shapes return
   // `{ allowed, reason? }` for the middleware hooks to gate on.
-  const validateContent = async (content: string, ctx: string): Promise<{
+  const validateContent = async (
+    content: string,
+    ctx: string
+  ): Promise<{
     allowed: boolean;
     reason?: string;
   }> => {
@@ -268,7 +257,7 @@ export function createBonklmMiddleware(
       },
       timeoutMs: timeout,
       timeoutSentinel: () => ({ allowed: false, reason: 'Validation timeout' }),
-      logger,
+      logger
     });
   };
 
@@ -278,11 +267,11 @@ export function createBonklmMiddleware(
   const middleware: BonklmLangchainMiddleware = {
     name: 'bonklm-langchain-middleware',
     priority,
-    scope: scopes,
+    scope: scopes
   };
 
   if (covers('text_input')) {
-    middleware.beforeModel = async (state) => {
+    middleware.beforeModel = async state => {
       const inputText = extractText(state);
       if (inputText.length === 0) return undefined;
       const r = await validateContent(inputText, 'bonklm_langchain_input');
@@ -418,7 +407,7 @@ export function withRetrieverGuardrails<TRetriever extends BonklmRetrieverLike>(
       },
       timeoutMs: validationTimeout,
       timeoutSentinel: () => ({ allowed: false, reason: 'Validation timeout' }),
-      logger,
+      logger
     });
   };
 
@@ -431,7 +420,10 @@ export function withRetrieverGuardrails<TRetriever extends BonklmRetrieverLike>(
       const valid: unknown[] = [];
       for (const d of docs) {
         const content =
-          d && typeof d === 'object' && 'pageContent' in d && typeof (d as { pageContent: unknown }).pageContent === 'string'
+          d &&
+          typeof d === 'object' &&
+          'pageContent' in d &&
+          typeof (d as { pageContent: unknown }).pageContent === 'string'
             ? (d as { pageContent: string }).pageContent
             : typeof d === 'string'
               ? d
@@ -454,7 +446,7 @@ export function withRetrieverGuardrails<TRetriever extends BonklmRetrieverLike>(
       // RetrievedDocValidator 'drop' mode default from Story 1.2).
       void productionMode; // reserved for future error-mode toggle
       return valid;
-    },
+    }
   };
 }
 
@@ -521,7 +513,7 @@ export async function bonklmLangGraphNode(
     },
     timeoutMs: options.validationTimeout ?? 5000,
     timeoutSentinel: () => ({ allowed: false, reason: 'Validation timeout' }),
-    logger: options.logger,
+    logger: options.logger
   });
   if (!r.allowed) {
     // Sprint 43 CWE-117 sweep: sanitize `r.reason` at dev-mode throw
@@ -552,6 +544,5 @@ export function createBonklmLangGraphNode(
   engine: GuardrailEngine,
   options: { productionMode?: boolean } = {}
 ): (state: BonklmLangGraphState) => Promise<BonklmLangGraphState> {
-  return (state: BonklmLangGraphState): Promise<BonklmLangGraphState> =>
-    bonklmLangGraphNode(state, engine, options);
+  return (state: BonklmLangGraphState): Promise<BonklmLangGraphState> => bonklmLangGraphNode(state, engine, options);
 }

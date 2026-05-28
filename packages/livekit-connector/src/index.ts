@@ -22,5 +22,5 @@ export type {
   LiveKitGuardrailOptions,
   LiveKitGuardrailPhase,
   LiveKitLatencyExceededEvent,
-  LiveKitBlockEvent,
+  LiveKitBlockEvent
 } from './types.js';

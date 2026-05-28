@@ -43,7 +43,7 @@ export interface DetectedService {
  * SECURITY: Limited to MAX_PORTS_TO_CHECK to prevent DoS.
  */
 const SERVICE_PORTS = {
-  ollama: 11434,
+  ollama: 11434
 } as const;
 
 /**
@@ -94,12 +94,7 @@ const MAX_PORT_TIMEOUT = 2000;
  * @returns True if port is valid
  */
 function isValidPort(port: number): boolean {
-  return (
-    typeof port === 'number' &&
-    Number.isInteger(port) &&
-    port >= MIN_PORT &&
-    port <= MAX_PORT
-  );
+  return typeof port === 'number' && Number.isInteger(port) && port >= MIN_PORT && port <= MAX_PORT;
 }
 
 /**
@@ -111,11 +106,7 @@ function isValidPort(port: number): boolean {
  * @returns True if hostname is valid
  */
 function isValidHost(host: string): boolean {
-  return (
-    typeof host === 'string' &&
-    host.length > 0 &&
-    host.length <= MAX_HOSTNAME_LENGTH
-  );
+  return typeof host === 'string' && host.length > 0 && host.length <= MAX_HOSTNAME_LENGTH;
 }
 
 /**
@@ -134,11 +125,7 @@ function isValidHost(host: string): boolean {
  * @param timeout - Timeout in milliseconds (default 1000, max 2000)
  * @returns Promise that resolves to true if port is open, false otherwise
  */
-async function checkPort(
-  host: string,
-  port: number,
-  timeout = DEFAULT_PORT_TIMEOUT
-): Promise<boolean> {
+async function checkPort(host: string, port: number, timeout = DEFAULT_PORT_TIMEOUT): Promise<boolean> {
   // SECURITY FIX: Validate inputs
   if (!isValidPort(port) || !isValidHost(host)) {
     return false;
@@ -147,7 +134,7 @@ async function checkPort(
   // SECURITY FIX: Cap timeout to prevent long hangs
   const effectiveTimeout = Math.min(Math.max(timeout, 100), MAX_PORT_TIMEOUT);
 
-  return new Promise<boolean>((resolve) => {
+  return new Promise<boolean>(resolve => {
     const socket: Socket = createConnection(port, host);
 
     // Cleanup function to ensure socket is destroyed
@@ -213,7 +200,7 @@ export async function detectDockerContainers(): Promise<string[]> {
     // This prevents command injection through PATH manipulation
     const { stdout } = await execFileAsync(dockerPath, ['ps', '--format', '{{.Names}}'], {
       timeout: 2000,
-      env: { ...process.env, PATH: process.env.PATH }, // Explicit PATH
+      env: { ...process.env, PATH: process.env.PATH } // Explicit PATH
     });
 
     if (!stdout || typeof stdout !== 'string') {
@@ -226,8 +213,8 @@ export async function detectDockerContainers(): Promise<string[]> {
       .trim()
       .split('\n')
       .filter(Boolean)
-      .map((name) => name.replace(/[^a-zA-Z0-9_.-]/g, '').trim())
-      .filter((name) => name.length > 0);
+      .map(name => name.replace(/[^a-zA-Z0-9_.-]/g, '').trim())
+      .filter(name => name.length > 0);
   } catch {
     // Docker command failed (Docker not running, daemon not available, etc.)
     // Return empty array - this is not a fatal error
@@ -254,9 +241,7 @@ type DockerDetectionFn = () => Promise<string[]>;
  * @param detectDockerContainersFn - Optional Docker detection function for testing
  * @returns Promise resolving to array of detected services
  */
-export async function detectServices(
-  detectDockerContainersFn?: DockerDetectionFn
-): Promise<DetectedService[]> {
+export async function detectServices(detectDockerContainersFn?: DockerDetectionFn): Promise<DetectedService[]> {
   return detectWithTimeout(
     async () => {
       const detected: DetectedService[] = [];
@@ -266,9 +251,7 @@ export async function detectServices(
       for (const [name, port] of Object.entries(SERVICE_PORTS)) {
         // SECURITY FIX: Enforce port check limit
         if (portsChecked >= MAX_PORTS_TO_CHECK) {
-          console.warn(
-            `[Service Detection] Maximum port check limit (${MAX_PORTS_TO_CHECK}) reached`
-          );
+          console.warn(`[Service Detection] Maximum port check limit (${MAX_PORTS_TO_CHECK}) reached`);
           break;
         }
 
@@ -277,7 +260,7 @@ export async function detectServices(
           name,
           type: 'port',
           available,
-          address: `localhost:${port}`,
+          address: `localhost:${port}`
         });
 
         portsChecked++;
@@ -295,7 +278,7 @@ export async function detectServices(
             detected.push({
               name: container,
               type: 'docker',
-              available: true,
+              available: true
             });
             break;
           }
@@ -318,7 +301,7 @@ export async function detectServices(
  */
 export async function isOllamaAvailable(): Promise<boolean> {
   const services = await detectServices();
-  const ollama = services.find((s) => s.name === 'ollama' && s.type === 'port');
+  const ollama = services.find(s => s.name === 'ollama' && s.type === 'port');
   return ollama?.available ?? false;
 }
 
@@ -331,7 +314,5 @@ export async function isOllamaAvailable(): Promise<boolean> {
  */
 export async function getVectorDbContainers(): Promise<string[]> {
   const services = await detectServices();
-  return services
-    .filter((s) => s.type === 'docker' && s.available)
-    .map((s) => s.name);
+  return services.filter(s => s.type === 'docker' && s.available).map(s => s.name);
 }

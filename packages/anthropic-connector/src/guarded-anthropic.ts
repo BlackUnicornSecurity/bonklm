@@ -23,7 +23,7 @@ import type {
   MessageCreateParamsNonStreaming,
   MessageCreateParamsStreaming,
   MessageParam,
-  MessageStreamEvent,
+  MessageStreamEvent
 } from '@anthropic-ai/sdk/resources/messages.js';
 import {
   createLogger,
@@ -34,18 +34,10 @@ import {
   type Logger,
   sanitizeMeta,
   Severity,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
-import type {
-  GuardedAnthropicOptions,
-  GuardedMessage,
-  GuardedMessageOptions,
-} from './types.js';
-import {
-  DEFAULT_MAX_BUFFER_SIZE,
-  DEFAULT_VALIDATION_TIMEOUT,
-  VALIDATION_INTERVAL,
-} from './types.js';
+import type { GuardedAnthropicOptions, GuardedMessage, GuardedMessageOptions } from './types.js';
+import { DEFAULT_MAX_BUFFER_SIZE, DEFAULT_VALIDATION_TIMEOUT, VALIDATION_INTERVAL } from './types.js';
 import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
@@ -80,7 +72,7 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  */
 export function messagesToText(messages: MessageParam[]): string {
   return messages
-    .map((m) => {
+    .map(m => {
       const content = m.content;
 
       // Handle messages without content (should not happen with Anthropic API)
@@ -96,11 +88,11 @@ export function messagesToText(messages: MessageParam[]): string {
       // Handle array content (SEC-006: structured data, images, etc.)
       if (Array.isArray(content)) {
         return content
-          .filter((c) => {
+          .filter(c => {
             // Extract text and tool_use blocks for validation (tool_use can contain malicious prompts)
             return c.type === 'text' || c.type === 'tool_use';
           })
-          .map((c) => {
+          .map(c => {
             if (c.type === 'text') {
               return (c as { text: string }).text || '';
             }
@@ -111,9 +103,7 @@ export function messagesToText(messages: MessageParam[]): string {
               if (toolUse.name) parts.push(`Tool: ${toolUse.name}`);
               if (toolUse.input) {
                 // Extract string values from input object
-                const inputStr = typeof toolUse.input === 'string'
-                  ? toolUse.input
-                  : JSON.stringify(toolUse.input);
+                const inputStr = typeof toolUse.input === 'string' ? toolUse.input : JSON.stringify(toolUse.input);
                 parts.push(inputStr);
               }
               return parts.join(' ');
@@ -126,7 +116,7 @@ export function messagesToText(messages: MessageParam[]): string {
       // Handle other types (convert to string)
       return String(content);
     })
-    .filter((c) => c.length > 0)
+    .filter(c => c.length > 0)
     .join('\n');
 }
 
@@ -136,7 +126,6 @@ export function messagesToText(messages: MessageParam[]): string {
  * @internal
  * @throws {TypeError} If value is not a positive finite number
  */
-
 
 /**
  * Extracts text content from a Message object.
@@ -160,9 +149,7 @@ function extractMessageText(message: Message): string {
         if (toolUse.name) parts.push(`Tool: ${toolUse.name}`);
         if (toolUse.input) {
           // Extract string values from input object
-          const inputStr = typeof toolUse.input === 'string'
-            ? toolUse.input
-            : JSON.stringify(toolUse.input);
+          const inputStr = typeof toolUse.input === 'string' ? toolUse.input : JSON.stringify(toolUse.input);
           parts.push(inputStr);
         }
         return parts.join(' ');
@@ -200,12 +187,10 @@ function extractMessageText(message: Message): string {
  */
 export function createGuardedAnthropic(
   client: Anthropic,
-  options: GuardedAnthropicOptions = {},
+  options: GuardedAnthropicOptions = {}
 ): Omit<Anthropic, 'messages'> & {
   messages: {
-    create: (
-      opts: GuardedMessageOptions,
-    ) => Promise<Message | AsyncIterable<MessageStreamEvent>>;
+    create: (opts: GuardedMessageOptions) => Promise<Message | AsyncIterable<MessageStreamEvent>>;
   };
 } {
   const {
@@ -222,7 +207,7 @@ export function createGuardedAnthropic(
     telemetry,
     circuitBreaker,
     enableRetry = true,
-    maxRetries = 3,
+    maxRetries = 3
   } = options;
 
   // Validate critical security options
@@ -232,7 +217,7 @@ export function createGuardedAnthropic(
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   /**
@@ -254,11 +239,7 @@ export function createGuardedAnthropic(
    *
    * @internal
    */
-  const validateWithTimeout = async (
-    content: string,
-    context?: string,
-    runId?: string,
-  ): Promise<GuardrailResult[]> => {
+  const validateWithTimeout = async (content: string, context?: string, runId?: string): Promise<GuardrailResult[]> => {
     const currentRunId = runId || generateRunId();
     const startTime = Date.now();
 
@@ -268,7 +249,7 @@ export function createGuardedAnthropic(
         runId: currentRunId,
         connector: 'anthropic',
         content,
-        direction: context === 'input' ? 'input' : 'output',
+        direction: context === 'input' ? 'input' : 'output'
       });
     }
 
@@ -282,10 +263,10 @@ export function createGuardedAnthropic(
             {
               category: 'timeout',
               description: 'Validation timeout',
-              severity: Severity.CRITICAL,
-            },
+              severity: Severity.CRITICAL
+            }
           ]),
-        logger,
+        logger
       });
 
       const duration = Date.now() - startTime;
@@ -310,7 +291,7 @@ export function createGuardedAnthropic(
           validatorCount: validators.length,
           findingCount: findingsCount,
           riskScore: result[0]?.risk_score || 0,
-          allowed: result[0]?.allowed !== false,
+          allowed: result[0]?.allowed !== false
         });
       }
 
@@ -321,7 +302,7 @@ export function createGuardedAnthropic(
         telemetry.recordValidationError({
           runId: currentRunId,
           connector: 'anthropic',
-          error,
+          error
         });
       }
       throw error;
@@ -338,7 +319,7 @@ export function createGuardedAnthropic(
     const prompt = messagesToText(messages);
     const inputResults = await validateWithTimeout(prompt, 'input');
 
-    const blocked = inputResults.find((r) => !r.allowed);
+    const blocked = inputResults.find(r => !r.allowed);
     if (blocked) {
       // Sprint 40 security audit S40-1 closure: `blocked.reason` is
       // validator-extracted text and may carry attacker-influenced
@@ -364,12 +345,12 @@ export function createGuardedAnthropic(
    */
   const createValidatedStream = (
     stream: AsyncIterable<MessageStreamEvent>,
-    runId: string,
+    runId: string
   ): AsyncIterable<MessageStreamEvent> => {
     if (validateStreaming && streamingMode === 'buffer') {
       logger.warn(
         '[Guardrails] streamingMode:"buffer" not implemented for anthropic connector — falling back to no stream validation. ' +
-        'Use streamingMode:"incremental" (default) for live validation.'
+          'Use streamingMode:"incremental" (default) for live validation.'
       );
     }
     if (validateStreaming && streamingMode === 'incremental') {
@@ -383,7 +364,7 @@ export function createGuardedAnthropic(
         onStreamBlocked,
         productionMode,
         telemetry,
-        runId,
+        runId
       );
     }
 
@@ -395,9 +376,7 @@ export function createGuardedAnthropic(
   const guardedClient = Object.create(client);
   guardedClient.messages = {
     ...client.messages,
-    create: async (
-      opts: GuardedMessageOptions,
-    ): Promise<Message | AsyncIterable<MessageStreamEvent>> => {
+    create: async (opts: GuardedMessageOptions): Promise<Message | AsyncIterable<MessageStreamEvent>> => {
       const runId = generateRunId();
       const isStreaming = 'stream' in opts && opts.stream === true;
 
@@ -413,7 +392,7 @@ export function createGuardedAnthropic(
           telemetry.recordApiCallStart({
             runId,
             connector: 'anthropic',
-            method: 'messages.create',
+            method: 'messages.create'
           });
         }
 
@@ -422,9 +401,7 @@ export function createGuardedAnthropic(
 
           if (isStreaming) {
             // Create streaming request
-            const stream = await client.messages.create(
-              opts as MessageCreateParamsStreaming,
-            );
+            const stream = await client.messages.create(opts as MessageCreateParamsStreaming);
 
             // Record stream start
             if (telemetry) {
@@ -432,26 +409,21 @@ export function createGuardedAnthropic(
             }
 
             // Wrap stream with validation if enabled
-            result = createValidatedStream(
-              stream as unknown as AsyncIterable<MessageStreamEvent>,
-              runId,
-            );
+            result = createValidatedStream(stream as unknown as AsyncIterable<MessageStreamEvent>, runId);
           } else {
             // Non-streaming request
-            const response = await client.messages.create(
-              opts as MessageCreateParamsNonStreaming,
-            );
+            const response = await client.messages.create(opts as MessageCreateParamsNonStreaming);
 
             // Validate output content
             const content = extractMessageText(response);
             if (content) {
               const outputResults = await validateWithTimeout(content, 'output', runId);
-              const outputBlocked = outputResults.find((r) => !r.allowed);
+              const outputBlocked = outputResults.find(r => !r.allowed);
 
               if (outputBlocked) {
                 // Sprint 40 security audit S40-1 closure — see input-blocked rationale.
                 logger.warn('[Guardrails] Output blocked', {
-                  reason: sanitizeMeta(outputBlocked.reason),
+                  reason: sanitizeMeta(outputBlocked.reason)
                 });
                 if (onBlocked) onBlocked(outputBlocked);
 
@@ -470,9 +442,9 @@ export function createGuardedAnthropic(
                   content: [
                     {
                       type: 'text',
-                      text: filteredContent,
-                    },
-                  ],
+                      text: filteredContent
+                    }
+                  ]
                 } as Message;
               } else {
                 result = response;
@@ -491,7 +463,7 @@ export function createGuardedAnthropic(
               connector: 'anthropic',
               method: 'messages.create',
               duration,
-              success: true,
+              success: true
             });
           }
 
@@ -506,7 +478,7 @@ export function createGuardedAnthropic(
               connector: 'anthropic',
               method: 'messages.create',
               duration,
-              success: false,
+              success: false
             });
           }
 
@@ -524,29 +496,25 @@ export function createGuardedAnthropic(
       if (enableRetry) {
         const retryPolicy = createRetryPolicy({
           maxAttempts: maxRetries,
-          logger,
+          logger
         });
 
         const retryResult = await retryPolicy.execute(finalCall);
 
         if (!retryResult.success) {
-          throw retryResult.error instanceof Error
-            ? retryResult.error
-            : new Error(String(retryResult.error));
+          throw retryResult.error instanceof Error ? retryResult.error : new Error(String(retryResult.error));
         }
 
         return retryResult.value ?? finalCall();
       }
 
       return finalCall();
-    },
+    }
   };
 
   return guardedClient as typeof client & {
     messages: {
-      create: (
-        opts: GuardedMessageOptions,
-      ) => Promise<Message | AsyncIterable<MessageStreamEvent>>;
+      create: (opts: GuardedMessageOptions) => Promise<Message | AsyncIterable<MessageStreamEvent>>;
     };
   };
 }
@@ -567,7 +535,7 @@ async function* createIncrementalValidatedStream(
   onStreamBlocked: ((accumulated: string) => void) | undefined,
   productionMode: boolean,
   telemetry: import('@blackunicorn/bonklm').TelemetryService | undefined,
-  runId: string,
+  runId: string
 ): AsyncIterable<MessageStreamEvent> {
   let accumulatedText = '';
   let validationCounter = 0;
@@ -582,7 +550,7 @@ async function* createIncrementalValidatedStream(
         if (accumulatedText.length + content.length > maxStreamBufferSize) {
           logger.warn('[Guardrails] Stream buffer exceeded', {
             size: accumulatedText.length + content.length,
-            limit: maxStreamBufferSize,
+            limit: maxStreamBufferSize
           });
           // Throw StreamValidationError for proper error handling
           const error: any = new Error('Stream buffer exceeded maximum size');
@@ -602,16 +570,16 @@ async function* createIncrementalValidatedStream(
             runId,
             connector: 'anthropic',
             tokenCount: 1,
-            charCount: content.length,
+            charCount: content.length
           });
         }
 
         // SEC-002: Incremental validation every N chunks
         if (validationCounter % VALIDATION_INTERVAL === 0) {
           const results = await validateWithTimeout(accumulatedText, 'output', runId);
-          if (results.some((r) => !r.allowed)) {
+          if (results.some(r => !r.allowed)) {
             logger.warn('[Guardrails] Stream blocked during incremental validation', {
-              chunkCount: validationCounter,
+              chunkCount: validationCounter
             });
             if (onStreamBlocked) onStreamBlocked(accumulatedText);
 
@@ -620,7 +588,7 @@ async function* createIncrementalValidatedStream(
               telemetry.recordStreamBlocked({
                 runId,
                 connector: 'anthropic',
-                accumulatedLength: accumulatedText.length,
+                accumulatedLength: accumulatedText.length
               });
             }
 
@@ -634,15 +602,13 @@ async function* createIncrementalValidatedStream(
                 content: [
                   {
                     type: 'text',
-                    text: productionMode
-                      ? '[Content filtered by guardrails]'
-                      : '[Stream blocked by guardrails]',
-                  },
+                    text: productionMode ? '[Content filtered by guardrails]' : '[Stream blocked by guardrails]'
+                  }
                 ],
                 model: '',
                 stop_reason: 'guardrail_blocked',
-                usage: { input_tokens: 0, output_tokens: 0 },
-              },
+                usage: { input_tokens: 0, output_tokens: 0 }
+              }
             } as MessageStreamEvent;
             return;
           }
@@ -656,7 +622,7 @@ async function* createIncrementalValidatedStream(
     // Final validation on stream completion
     if (accumulatedText.length > 0) {
       const results = await validateWithTimeout(accumulatedText, 'output', runId);
-      if (results.some((r) => !r.allowed)) {
+      if (results.some(r => !r.allowed)) {
         logger.warn('[Guardrails] Stream blocked at final validation');
         if (onStreamBlocked) onStreamBlocked(accumulatedText);
 
@@ -665,14 +631,14 @@ async function* createIncrementalValidatedStream(
           telemetry.recordStreamBlocked({
             runId,
             connector: 'anthropic',
-            accumulatedLength: accumulatedText.length,
+            accumulatedLength: accumulatedText.length
           });
         }
         // Yield warning content block to notify user of post-stream validation failure
         yield {
           type: 'content_block_start',
           index: 0,
-          content_block: { type: 'text', text: '' },
+          content_block: { type: 'text', text: '' }
         } as MessageStreamEvent;
         yield {
           type: 'content_block_delta',
@@ -681,12 +647,12 @@ async function* createIncrementalValidatedStream(
             type: 'text_delta',
             text: productionMode
               ? '\n\n[Content filtered by guardrails - post-stream validation]'
-              : `\n\n[Content filtered by guardrails: ${results.find((r) => !r.allowed)?.reason || 'validation failed'}]`,
-          },
+              : `\n\n[Content filtered by guardrails: ${results.find(r => !r.allowed)?.reason || 'validation failed'}]`
+          }
         } as MessageStreamEvent;
         yield {
           type: 'content_block_stop',
-          index: 0,
+          index: 0
         } as MessageStreamEvent;
       }
     }
@@ -698,15 +664,15 @@ async function* createIncrementalValidatedStream(
     // StreamValidationError: yield a final warning event before ending stream
     yield {
       type: 'content_block_stop',
-      index: 0,
+      index: 0
     } as MessageStreamEvent;
     yield {
       type: 'message_delta',
       delta: { stop_reason: 'max_tokens' as const, stop_sequence: null },
-      usage: { output_tokens: 0 },
+      usage: { output_tokens: 0 }
     } as MessageStreamEvent;
     yield {
-      type: 'message_stop',
+      type: 'message_stop'
     } as MessageStreamEvent;
   }
 }
@@ -714,8 +680,4 @@ async function* createIncrementalValidatedStream(
 /**
  * Re-exports types for convenience.
  */
-export type {
-  GuardedAnthropicOptions,
-  GuardedMessageOptions,
-  GuardedMessage,
-};
+export type { GuardedAnthropicOptions, GuardedMessageOptions, GuardedMessage };

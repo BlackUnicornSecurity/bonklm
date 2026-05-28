@@ -38,9 +38,7 @@
  */
 
 // Core engine + types (Node-portable; no Buffer / no node:crypto).
-export {
-  GuardrailEngine,
-} from '../engine/GuardrailEngine.js';
+export { GuardrailEngine } from '../engine/GuardrailEngine.js';
 export type {
   GuardrailEngineConfig,
   Validator,
@@ -50,7 +48,7 @@ export type {
   ExecutionOrder,
   EngineResult,
   ValidatorResult,
-  InterceptCallback,
+  InterceptCallback
 } from '../engine/GuardrailEngine.types.js';
 
 // Base result types.
@@ -60,75 +58,56 @@ export {
   type Finding,
   type GuardrailResult,
   RiskLevel,
-  Severity,
+  Severity
 } from '../base/GuardrailResult.js';
-export {
-  LogLevel,
-  ConsoleLogger,
-  createLogger,
-  type Logger,
-} from '../base/GenericLogger.js';
+export { LogLevel, ConsoleLogger, createLogger, type Logger } from '../base/GenericLogger.js';
 
 // Validators (post-Story-2.1 portable Buffer.from removal).
 export {
   PromptInjectionValidator,
   validatePromptInjection,
-  analyzePromptInjection,
+  analyzePromptInjection
 } from '../validators/prompt-injection.js';
 export {
   detectPatterns,
   type PatternFinding,
   type PatternDefinition,
   ALL_PATTERN_CATEGORIES,
-  WEB3_PREFERENCE_PATTERNS,
+  WEB3_PREFERENCE_PATTERNS
 } from '../validators/pattern-engine.js';
-export {
-  normalizeText,
-  detectHiddenUnicode,
-} from '../validators/text-normalizer.js';
+export { normalizeText, detectHiddenUnicode } from '../validators/text-normalizer.js';
 export { JailbreakValidator } from '../validators/jailbreak.js';
 export { ReformulationDetector } from '../validators/reformulation-detector.js';
 export { BoundaryDetector } from '../validators/boundary-detector.js';
 export { MultilingualDetector } from '../validators/multilingual-patterns.js';
 
 // Composite validators (Stories 1.1 / 1.2 / 1.3 / 1.3a).
-export {
-  createToolCallArgsValidator,
-} from '../validators/tool-call-args.js';
-export type {
-  ToolCallArgsValidatorConfig,
-  ToolCallSerializer,
-} from '../validators/tool-call-args.js';
+export { createToolCallArgsValidator } from '../validators/tool-call-args.js';
+export type { ToolCallArgsValidatorConfig, ToolCallSerializer } from '../validators/tool-call-args.js';
 
-export {
-  createRetrievedDocValidator,
-} from '../validators/retrieved-doc.js';
+export { createRetrievedDocValidator } from '../validators/retrieved-doc.js';
 export type {
   PerDocFailureMode,
   RetrievedDoc,
   RetrievedDocBatchResult,
   RetrievedDocValidator,
-  RetrievedDocValidatorConfig,
+  RetrievedDocValidatorConfig
 } from '../validators/retrieved-doc.js';
 
-export {
-  createMemoryWriteValidator,
-} from '../validators/memory-write.js';
+export { createMemoryWriteValidator } from '../validators/memory-write.js';
 export type {
   MemoryWritePayload,
   MemoryWriteResult,
   MemoryWriteValidator,
   MemoryWriteValidatorConfig,
-  MemoryWriteFailureMode,
+  MemoryWriteFailureMode
 } from '../validators/memory-write.js';
 
-export {
-  createComposedContextValidator,
-} from '../validators/composed-context.js';
+export { createComposedContextValidator } from '../validators/composed-context.js';
 export type {
   ComposedContextValidator,
   ComposedContextValidatorConfig,
-  ComposedContextBatchResult,
+  ComposedContextBatchResult
 } from '../validators/composed-context.js';
 
 // Shared validator helpers.
@@ -140,7 +119,7 @@ export {
   riskFromScore,
   runValidatorChain,
   type RedactingValidator,
-  type ValidatorErrorCategory,
+  type ValidatorErrorCategory
 } from '../validators/validator-utils.js';
 
 // Guards (Buffer.from removed where present, RedactingValidator parity).
@@ -154,7 +133,7 @@ export {
   StreamValidator,
   BufferedReleaseGate,
   applyRetrievedDocValidatorToMatches,
-  BATCH_POS_PREFIX,
+  BATCH_POS_PREFIX
 } from '../connector-utils/index.js';
 export type {
   StreamValidationOptions,
@@ -163,7 +142,7 @@ export type {
   StreamValidatorReleaseResult,
   StreamValidatorState,
   BufferedReleaseGateConfig,
-  ApplyRetrievedDocValidatorOptions,
+  ApplyRetrievedDocValidatorOptions
 } from '../connector-utils/index.js';
 export {
   ConnectorValidationError,
@@ -171,17 +150,12 @@ export {
   logValidationFailure,
   logTimeout,
   sanitizeLogMetadata,
-  stripLogControlChars,
+  stripLogControlChars
 } from '../connector-utils/index.js';
 
 // Story 2.1 portable codec helpers (also useful for connector
 // authors building their own edge wrappers).
-export {
-  base64DecodeToUtf8,
-  hexDecodeToUtf8,
-  utf8ByteLength,
-  portableRandomUUID,
-} from '../common/edge-codec.js';
+export { base64DecodeToUtf8, hexDecodeToUtf8, utf8ByteLength, portableRandomUUID } from '../common/edge-codec.js';
 
 // Story 2.1b-edge-core: function-only HookManager variant + ALS canary
 // guard + envBindings injection contract.
@@ -189,24 +163,17 @@ export {
   EdgeHookManager,
   type EdgeExecutionContext,
   type EdgeExecutionResult,
-  type EdgeHookStatistics,
+  type EdgeHookStatistics
 } from '../hooks/EdgeHookManager.js';
-export {
-  assertAsyncLocalStorageHealthy,
-  AsyncLocalStorageCanaryError,
-} from './als-canary.js';
-export {
-  isProductionEnvironment,
-  isTestEnvironment,
-  type EnvBindings,
-} from '../guards/production.js';
+export { assertAsyncLocalStorageHealthy, AsyncLocalStorageCanaryError } from './als-canary.js';
+export { isProductionEnvironment, isTestEnvironment, type EnvBindings } from '../guards/production.js';
 
 // Story 1.3b — shadow log primitive (edge-portable, uses Web Crypto).
 export {
   createShadowLog,
   createInMemoryShadowLogStorage,
   computeContentHash,
-  computeChainLinkHash,
+  computeChainLinkHash
 } from '../shadow-log/index.js';
 export type {
   CreateShadowLogOptions,
@@ -217,5 +184,5 @@ export type {
   ShadowLogEntry,
   ShadowLogSourceTrust,
   ShadowLogStorageAdapter,
-  VerifyChainResult,
+  VerifyChainResult
 } from '../shadow-log/index.js';

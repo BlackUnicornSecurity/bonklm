@@ -20,11 +20,7 @@
  */
 import type { GuardrailEngine } from '@blackunicorn/bonklm';
 
-export type DocumentIngestPhase =
-  | 'llamaparse'
-  | 'unstructured'
-  | 'reducto'
-  | 'validate_extracted_text';
+export type DocumentIngestPhase = 'llamaparse' | 'unstructured' | 'reducto' | 'validate_extracted_text';
 
 /**
  * Document-ingest block event. Sprint 21 audit closure (architect C1):

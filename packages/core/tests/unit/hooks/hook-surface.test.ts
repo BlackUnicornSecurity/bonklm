@@ -23,7 +23,7 @@ function captureLogger(): Logger & { warns: string[] } {
       warns.push(msg);
     },
     error: () => {},
-    warns,
+    warns
   } as Logger & { warns: string[] };
 }
 
@@ -40,10 +40,10 @@ describe('HookSurface backward-compat (Story 1.1 / R2-D3)', () => {
     const id = manager.registerHook({
       name: 'compat-hook',
       phase: HookPhase.BEFORE_VALIDATION,
-      handler: async () => ({ success: true }),
+      handler: async () => ({ success: true })
     });
     const hooks = manager.getHooks().get(HookPhase.BEFORE_VALIDATION) ?? [];
-    const target = hooks.find((h) => h.id === id);
+    const target = hooks.find(h => h.id === id);
     expect(target?.surface).toBe('text_input');
   });
 
@@ -51,25 +51,25 @@ describe('HookSurface backward-compat (Story 1.1 / R2-D3)', () => {
     manager.registerHook({
       name: 'no-surface-1',
       phase: HookPhase.BEFORE_VALIDATION,
-      handler: async () => ({ success: true }),
+      handler: async () => ({ success: true })
     });
-    expect(logger.warns.some((w) => /deprecat/i.test(w) && /surface/i.test(w))).toBe(true);
+    expect(logger.warns.some(w => /deprecat/i.test(w) && /surface/i.test(w))).toBe(true);
   });
 
   it('does not re-emit the deprecation warning on the second omitted registration', () => {
     manager.registerHook({
       name: 'no-surface-1',
       phase: HookPhase.BEFORE_VALIDATION,
-      handler: async () => ({ success: true }),
+      handler: async () => ({ success: true })
     });
-    const warnsAfterFirst = logger.warns.filter((w) => /deprecat/i.test(w)).length;
+    const warnsAfterFirst = logger.warns.filter(w => /deprecat/i.test(w)).length;
 
     manager.registerHook({
       name: 'no-surface-2',
       phase: HookPhase.AFTER_VALIDATION,
-      handler: async () => ({ success: true }),
+      handler: async () => ({ success: true })
     });
-    const warnsAfterSecond = logger.warns.filter((w) => /deprecat/i.test(w)).length;
+    const warnsAfterSecond = logger.warns.filter(w => /deprecat/i.test(w)).length;
 
     expect(warnsAfterFirst).toBe(1);
     expect(warnsAfterSecond).toBe(1);
@@ -80,9 +80,9 @@ describe('HookSurface backward-compat (Story 1.1 / R2-D3)', () => {
       name: 'explicit-surface',
       phase: HookPhase.BEFORE_VALIDATION,
       surface: 'tool_call',
-      handler: async () => ({ success: true }),
+      handler: async () => ({ success: true })
     });
-    expect(logger.warns.filter((w) => /deprecat/i.test(w))).toHaveLength(0);
+    expect(logger.warns.filter(w => /deprecat/i.test(w))).toHaveLength(0);
   });
 
   it('preserves explicit surface verbatim across all 7 canonical strings', () => {
@@ -93,17 +93,17 @@ describe('HookSurface backward-compat (Story 1.1 / R2-D3)', () => {
       'retrieved_doc',
       'memory_write',
       'audio_partial',
-      'composed_context',
+      'composed_context'
     ];
     for (const surface of canonical) {
       const id = manager.registerHook({
         name: `surface-${surface}`,
         phase: HookPhase.BEFORE_VALIDATION,
         surface,
-        handler: async () => ({ success: true }),
+        handler: async () => ({ success: true })
       });
       const hooks = manager.getHooks().get(HookPhase.BEFORE_VALIDATION) ?? [];
-      const target = hooks.find((h) => h.id === id);
+      const target = hooks.find(h => h.id === id);
       expect(target?.surface).toBe(surface);
     }
   });

@@ -14,12 +14,7 @@
  *
  * @package @blackunicorn/bonklm
  */
-import type {
-  ReadByRoomOptions,
-  ShadowLogEntry,
-  ShadowLogSourceTrust,
-  ShadowLogStorageAdapter,
-} from './types.js';
+import type { ReadByRoomOptions, ShadowLogEntry, ShadowLogSourceTrust, ShadowLogStorageAdapter } from './types.js';
 
 /**
  * Build an in-memory shadow log storage adapter. No options today;
@@ -40,10 +35,7 @@ export function createInMemoryShadowLogStorage(): ShadowLogStorageAdapter {
       totalCount++;
     },
 
-    async readByRoom(
-      roomId: string,
-      opts?: ReadByRoomOptions
-    ): Promise<ShadowLogEntry[]> {
+    async readByRoom(roomId: string, opts?: ReadByRoomOptions): Promise<ShadowLogEntry[]> {
       const bucket = byRoom.get(roomId);
       if (bucket === undefined) return [];
       const since = opts?.since ?? 0;
@@ -79,7 +71,7 @@ export function createInMemoryShadowLogStorage(): ShadowLogStorageAdapter {
       if (bucket === undefined || bucket.length === 0) return;
       bucket.shift();
       totalCount--;
-    },
+    }
   };
 }
 

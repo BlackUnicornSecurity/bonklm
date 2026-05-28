@@ -16,8 +16,6 @@
  * @module testing/guardrail-test
  */
 
- 
-
 /**
  * Result of a guardrail validation test
  */
@@ -91,14 +89,14 @@ export async function runGuardrailTest(): Promise<GuardrailTestResult> {
     if (!isAvailable) {
       return {
         executed: false,
-        detected: false,
+        detected: false
       };
     }
 
     // Dynamically import the core package modules
-    const coreModule = await import('@blackunicorn/bonklm') as any;
+    const coreModule = (await import('@blackunicorn/bonklm')) as any;
 
-    const validatorModule = await import('@blackunicorn/bonklm/validators') as any;
+    const validatorModule = (await import('@blackunicorn/bonklm/validators')) as any;
     const { PromptInjectionValidator } = validatorModule || {};
 
     // Check if PromptInjectionValidator is available
@@ -107,14 +105,14 @@ export async function runGuardrailTest(): Promise<GuardrailTestResult> {
         executed: true,
         detected: false,
         error: 'PromptInjectionValidator not found in core package',
-        latency: Date.now() - startTime,
+        latency: Date.now() - startTime
       };
     }
 
     // Create the engine with a prompt injection validator
-     
+
     const engine = new coreModule.GuardrailEngine({
-      validators: [new PromptInjectionValidator()],
+      validators: [new PromptInjectionValidator()]
     });
 
     // Run the validation test
@@ -126,7 +124,7 @@ export async function runGuardrailTest(): Promise<GuardrailTestResult> {
     return {
       executed: true,
       detected,
-      latency: Date.now() - startTime,
+      latency: Date.now() - startTime
     };
   } catch (error) {
     // If there's an error during execution (not package missing), report it
@@ -136,7 +134,7 @@ export async function runGuardrailTest(): Promise<GuardrailTestResult> {
       executed: true,
       detected: false,
       error: message,
-      latency: Date.now() - startTime,
+      latency: Date.now() - startTime
     };
   }
 }
@@ -170,14 +168,14 @@ export async function runGuardrailTestWithConnector(
     if (!isAvailable) {
       return {
         executed: false,
-        detected: false,
+        detected: false
       };
     }
 
     // Dynamically import the core package modules
-    const coreModule = await import('@blackunicorn/bonklm') as any;
+    const coreModule = (await import('@blackunicorn/bonklm')) as any;
 
-    const validatorModule = await import('@blackunicorn/bonklm/validators') as any;
+    const validatorModule = (await import('@blackunicorn/bonklm/validators')) as any;
     const { PromptInjectionValidator } = validatorModule || {};
 
     // Check if PromptInjectionValidator is available
@@ -186,15 +184,15 @@ export async function runGuardrailTestWithConnector(
         executed: true,
         detected: false,
         error: 'PromptInjectionValidator not found in core package',
-        latency: Date.now() - startTime,
+        latency: Date.now() - startTime
       };
     }
 
     // Create the engine with validator and connector
-     
+
     const engine = new coreModule.GuardrailEngine({
       validators: [new PromptInjectionValidator()],
-      connectors: [connectorConfig],
+      connectors: [connectorConfig]
     });
 
     // Run the validation test
@@ -206,7 +204,7 @@ export async function runGuardrailTestWithConnector(
     return {
       executed: true,
       detected,
-      latency: Date.now() - startTime,
+      latency: Date.now() - startTime
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -215,7 +213,7 @@ export async function runGuardrailTestWithConnector(
       executed: true,
       detected: false,
       error: message,
-      latency: Date.now() - startTime,
+      latency: Date.now() - startTime
     };
   }
 }

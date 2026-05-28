@@ -77,9 +77,9 @@ export interface GoogleGenAIChatsLike {
 
 export interface GoogleChatSessionLike {
   sendMessage(params: { message: string | GoogleContentLike }): Promise<GoogleGenerateContentResponse>;
-  sendMessageStream(
-    params: { message: string | GoogleContentLike }
-  ): Promise<AsyncIterable<GoogleGenerateContentResponse>> | AsyncIterable<GoogleGenerateContentResponse>;
+  sendMessageStream(params: {
+    message: string | GoogleContentLike;
+  }): Promise<AsyncIterable<GoogleGenerateContentResponse>> | AsyncIterable<GoogleGenerateContentResponse>;
 }
 
 export interface GoogleGenAILiveLike {

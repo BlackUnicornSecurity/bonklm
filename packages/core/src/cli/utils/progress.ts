@@ -32,10 +32,7 @@ import { getTerminalCapabilities } from './terminal.js';
  * });
  * ```
  */
-export async function withSpinner<T>(
-  message: string,
-  fn: () => Promise<T>
-): Promise<T> {
+export async function withSpinner<T>(message: string, fn: () => Promise<T>): Promise<T> {
   const { isTTY } = getTerminalCapabilities();
 
   if (!isTTY) {
@@ -95,7 +92,7 @@ export function createProgressBar(total: number) {
       complete: () => {
         const duration = Date.now() - startTime;
         console.log(`Complete: ${total}/${total} (${duration}ms)`);
-      },
+      }
     };
   }
 
@@ -112,7 +109,7 @@ export function createProgressBar(total: number) {
     complete: () => {
       const duration = Date.now() - startTime;
       spin.stop(`Complete! ${total}/${total} (${duration}ms)`);
-    },
+    }
   };
 }
 
@@ -134,20 +131,14 @@ export function createProgressBar(total: number) {
  * );
  * ```
  */
-export async function withTimeout<T>(
-  message: string,
-  fn: () => Promise<T>,
-  timeout: number
-): Promise<T> {
+export async function withTimeout<T>(message: string, fn: () => Promise<T>, timeout: number): Promise<T> {
   const { isTTY } = getTerminalCapabilities();
 
   if (!isTTY) {
     console.log(`${message} (timeout: ${timeout}ms)`);
     return Promise.race([
       fn(),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Operation timed out')), timeout)
-      ),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Operation timed out')), timeout))
     ]);
   }
 
@@ -157,9 +148,7 @@ export async function withTimeout<T>(
   try {
     const result = await Promise.race([
       fn(),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Operation timed out')), timeout)
-      ),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Operation timed out')), timeout))
     ]);
     spin.stop(`${message} ✓`);
     return result;
@@ -200,7 +189,7 @@ export function createStepTracker(steps: string[]) {
       complete: () => {
         const duration = Date.now() - startTime;
         console.log(`All steps complete (${total}/${total}) in ${duration}ms`);
-      },
+      }
     };
   }
 
@@ -218,7 +207,7 @@ export function createStepTracker(steps: string[]) {
     complete: () => {
       const duration = Date.now() - startTime;
       console.log(`All steps complete (${total}/${total}) in ${duration}ms`);
-    },
+    }
   };
 }
 

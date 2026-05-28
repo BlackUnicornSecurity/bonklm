@@ -6,21 +6,12 @@
  * @package @blackunicorn/bonklm-nestjs
  */
 
-import {
-  DynamicModule,
-  Module,
-  Provider,
-} from '@nestjs/common';
+import { DynamicModule, Module, Provider } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
-import type {
-  GuardrailsModuleAsyncOptions,
-  GuardrailsModuleOptions,
-} from './types.js';
+import type { GuardrailsModuleAsyncOptions, GuardrailsModuleOptions } from './types.js';
 import { GuardrailsService } from './guardrails.service.js';
 import { GuardrailsInterceptor } from './guardrails.interceptor.js';
-import {
-  GUARDRAILS_OPTIONS,
-} from './constants.js';
+import { GUARDRAILS_OPTIONS } from './constants.js';
 
 /**
  * NestJS Module for BonkLM integration.
@@ -76,7 +67,7 @@ export class GuardrailsModule {
   static forRoot(options: GuardrailsModuleOptions = {}): DynamicModule {
     const optionsProvider: Provider = {
       provide: GUARDRAILS_OPTIONS,
-      useValue: options,
+      useValue: options
     };
 
     return {
@@ -86,11 +77,11 @@ export class GuardrailsModule {
         GuardrailsService,
         {
           provide: APP_INTERCEPTOR,
-          useClass: GuardrailsInterceptor,
-        },
+          useClass: GuardrailsInterceptor
+        }
       ],
       exports: [GuardrailsService],
-      global: options.global ?? false,
+      global: options.global ?? false
     };
   }
 
@@ -104,7 +95,7 @@ export class GuardrailsModule {
     const optionsProvider: Provider = {
       provide: GUARDRAILS_OPTIONS,
       useFactory: options.useFactory,
-      inject: options.inject || [],
+      inject: options.inject || []
     };
 
     return {
@@ -114,11 +105,11 @@ export class GuardrailsModule {
         GuardrailsService,
         {
           provide: APP_INTERCEPTOR,
-          useClass: GuardrailsInterceptor,
-        },
+          useClass: GuardrailsInterceptor
+        }
       ],
       exports: [GuardrailsService],
-      global: options.global ?? false,
+      global: options.global ?? false
     };
   }
 
@@ -134,17 +125,13 @@ export class GuardrailsModule {
   static forFeature(options: GuardrailsModuleOptions = {}): DynamicModule {
     const optionsProvider: Provider = {
       provide: GUARDRAILS_OPTIONS,
-      useValue: options,
+      useValue: options
     };
 
     return {
       module: GuardrailsModule,
-      providers: [
-        optionsProvider,
-        GuardrailsService,
-        GuardrailsInterceptor,
-      ],
-      exports: [GuardrailsService, GuardrailsInterceptor],
+      providers: [optionsProvider, GuardrailsService, GuardrailsInterceptor],
+      exports: [GuardrailsService, GuardrailsInterceptor]
     };
   }
 
@@ -158,17 +145,13 @@ export class GuardrailsModule {
     const optionsProvider: Provider = {
       provide: GUARDRAILS_OPTIONS,
       useFactory: options.useFactory,
-      inject: options.inject || [],
+      inject: options.inject || []
     };
 
     return {
       module: GuardrailsModule,
-      providers: [
-        optionsProvider,
-        GuardrailsService,
-        GuardrailsInterceptor,
-      ],
-      exports: [GuardrailsService, GuardrailsInterceptor],
+      providers: [optionsProvider, GuardrailsService, GuardrailsInterceptor],
+      exports: [GuardrailsService, GuardrailsInterceptor]
     };
   }
 }
@@ -181,7 +164,7 @@ export type {
   GuardrailsModuleAsyncOptions,
   UseGuardrailsDecoratorOptions,
   GuardrailsRequest,
-  GuardrailsExecutionContext,
+  GuardrailsExecutionContext
 } from './types.js';
 
 /**
@@ -202,9 +185,4 @@ export { GuardrailsService } from './guardrails.service.js';
 /**
  * Re-export core types from @blackunicorn/bonklm.
  */
-export type {
-  Validator,
-  Guard,
-  GuardrailResult,
-  Logger,
-} from '@blackunicorn/bonklm';
+export type { Validator, Guard, GuardrailResult, Logger } from '@blackunicorn/bonklm';

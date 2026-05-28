@@ -101,7 +101,7 @@ import {
   GuardrailEngine,
   type KeyFn,
   type Validator,
-  type ValidatorInput,
+  type ValidatorInput
 } from '@blackunicorn/bonklm';
 // Sprint 14 deferred-closure PB-6 final: canonical home for
 // `sanitizeReasonText` is `@blackunicorn/bonklm/core/connector-utils`.
@@ -114,7 +114,7 @@ import type {
   BonklmTriggerHandle,
   BonklmTriggerMiddlewareParams,
   BonklmTriggerOptions,
-  BonklmTriggerValidateResult,
+  BonklmTriggerValidateResult
 } from './types.js';
 
 /**
@@ -130,9 +130,7 @@ import type {
  *   Consumers route through `getBonklmHandle()` which validates the
  *   handle's structural shape before returning it.
  */
-export const bonklmHandleLocalsKey = locals.create<BonklmTriggerHandle>(
-  '@blackunicorn/bonklm:handle'
-);
+export const bonklmHandleLocalsKey = locals.create<BonklmTriggerHandle>('@blackunicorn/bonklm:handle');
 
 /**
  * Symbol-keyed tag on every BonkLM handle. Holds the `ctx.run.id` that
@@ -181,9 +179,7 @@ function isStructurallyValidHandle(value: unknown): value is BonklmTriggerHandle
  *   squatting), or when `ctx.run.id` mismatches the handle's tag
  *   (arch X5 — cross-task bleed).
  */
-export function getBonklmHandle(
-  ctx?: { run: { id: string } }
-): BonklmTriggerHandle {
+export function getBonklmHandle(ctx?: { run: { id: string } }): BonklmTriggerHandle {
   const raw = locals.get(bonklmHandleLocalsKey);
   if (raw === null || raw === undefined) {
     throw new Error(
@@ -211,9 +207,7 @@ export function getBonklmHandle(
   // Trigger.dev's standard one-run-per-worker model but the assertion
   // is cheap and forward-compatible.
   if (ctx !== undefined) {
-    const taggedRunId = (raw as unknown as Record<symbol, unknown>)[
-      BONKLM_HANDLE_RUN_ID
-    ];
+    const taggedRunId = (raw as unknown as Record<symbol, unknown>)[BONKLM_HANDLE_RUN_ID];
     if (typeof taggedRunId === 'string' && taggedRunId !== ctx.run.id) {
       throw new Error(
         `getBonklmHandle(ctx): handle in locals was minted for run ` +
@@ -275,9 +269,7 @@ export interface CreateBonklmTriggerHandleOptions extends BonklmTriggerOptions {
  * For Trigger.dev `task({...})` consumers, prefer the `withBonkLM`
  * factory — it wires up the locals storage + onFailure hook for you.
  */
-export function createBonklmTriggerHandle(
-  options: CreateBonklmTriggerHandleOptions
-): BonklmTriggerHandle {
+export function createBonklmTriggerHandle(options: CreateBonklmTriggerHandleOptions): BonklmTriggerHandle {
   const bundle = resolveOptions(options);
   return handleFromBundle(bundle, options.runId);
 }
@@ -320,9 +312,7 @@ export function createBonklmTriggerHandle(
 export function withBonkLM(options: BonklmTriggerOptions): BonklmTriggerBindings {
   const bundle: ResolvedBundle = resolveOptions(options);
 
-  const middleware = async (
-    params: BonklmTriggerMiddlewareParams
-  ): Promise<void> => {
+  const middleware = async (params: BonklmTriggerMiddlewareParams): Promise<void> => {
     // arch X2 closure (Story 2.9 audit, deferred to Sprint 14):
     // when `ctx.run.isReplay === true`, the V8 heap was restored
     // from a CRIU checkpoint AND `locals` was part of that snapshot
@@ -368,15 +358,12 @@ export function withBonkLM(options: BonklmTriggerOptions): BonklmTriggerBindings
         : typeof params.error === 'string'
           ? params.error
           : 'unknown error';
-    bundle.logger?.warn?.(
-      '@blackunicorn/bonklm-trigger: task failure observed',
-      {
-        runId: params.ctx.run.id,
-        // CS3 closure: sanitize attacker-controlled error reason text
-        // before emitting to downstream observability sinks.
-        error: sanitizeReasonText(errorMsg) ?? '',
-      }
-    );
+    bundle.logger?.warn?.('@blackunicorn/bonklm-trigger: task failure observed', {
+      runId: params.ctx.run.id,
+      // CS3 closure: sanitize attacker-controlled error reason text
+      // before emitting to downstream observability sinks.
+      error: sanitizeReasonText(errorMsg) ?? ''
+    });
   };
 
   return { middleware, onFailure };
@@ -393,10 +380,7 @@ function resolveOptions(options: BonklmTriggerOptions): ResolvedBundle {
   // `engine.getValidators()`. Removes the awkward "pass the same list
   // twice" pattern flagged by the cumulative audit.
   let resolvedValidators: Validator[] | undefined = options.validators;
-  if (
-    (resolvedValidators === undefined || resolvedValidators.length === 0) &&
-    options.engine !== undefined
-  ) {
+  if ((resolvedValidators === undefined || resolvedValidators.length === 0) && options.engine !== undefined) {
     const fromEngine = options.engine.getValidators();
     if (fromEngine.length > 0) {
       resolvedValidators = fromEngine;
@@ -414,26 +398,21 @@ function resolveOptions(options: BonklmTriggerOptions): ResolvedBundle {
   // separator. We append `::run-${runId}` at attempt time; if the base
   // namespace also contains `::` the parser at the cachedValidate
   // boundary may produce ambiguous prefixes.
-  if (
-    options.cacheNamespace !== undefined &&
-    options.cacheNamespace.includes('::')
-  ) {
+  if (options.cacheNamespace !== undefined && options.cacheNamespace.includes('::')) {
     throw new Error(
-      'withBonkLM: `cacheNamespace` MUST NOT contain `::` (reserved as ' +
-        'the run-id separator inside the connector).'
+      'withBonkLM: `cacheNamespace` MUST NOT contain `::` (reserved as ' + 'the run-id separator inside the connector).'
     );
   }
 
   const engine =
     options.engine ??
     new GuardrailEngine({
-      validators: resolvedValidators,
+      validators: resolvedValidators
     });
 
   const wantsCache = options.cache !== undefined;
   const keyFn: KeyFn | undefined =
-    options.keyFn ??
-    (wantsCache ? createSaltedKeyFn(engine.getInstanceId()) : undefined);
+    options.keyFn ?? (wantsCache ? createSaltedKeyFn(engine.getInstanceId()) : undefined);
 
   return {
     // sec S7 closure: freeze a shallow copy so post-factory mutation
@@ -447,14 +426,14 @@ function resolveOptions(options: BonklmTriggerOptions): ResolvedBundle {
       keyFn,
       defaultTtlMs: options.defaultTtlMs,
       blockedTtlMs: options.blockedTtlMs,
-      logger: options.logger,
+      logger: options.logger
     },
     baseCacheNamespace: options.cacheNamespace,
     logger: options.logger,
     // Sprint 14 cumulative arch X3 part 2 closure: carry the engine
     // so the per-attempt runPipeline can dispatch to onIntercept
     // callbacks via notifyCachedResult.
-    engine,
+    engine
   };
 }
 
@@ -463,10 +442,7 @@ function resolveOptions(options: BonklmTriggerOptions): ResolvedBundle {
  * current run.id. The cacheNamespace incorporates `run-${runId}` so
  * retries of the SAME run share cache; different runs do NOT.
  */
-function handleFromBundle(
-  bundle: ResolvedBundle,
-  runId: string
-): BonklmTriggerHandle {
+function handleFromBundle(bundle: ResolvedBundle, runId: string): BonklmTriggerHandle {
   const { validators, baseCachedOptions, baseCacheNamespace, engine } = bundle;
   const cacheNamespace =
     baseCacheNamespace !== undefined
@@ -475,24 +451,17 @@ function handleFromBundle(
 
   const cachedOptions: CachedValidateOptions = {
     ...baseCachedOptions,
-    cacheNamespace,
+    cacheNamespace
   };
 
-  const runPipeline = async (
-    input: ValidatorInput,
-    surface: string
-  ): Promise<BonklmTriggerValidateResult> => {
+  const runPipeline = async (input: ValidatorInput, surface: string): Promise<BonklmTriggerValidateResult> => {
     // rev R4 (Story 2.9 audit) DESIGN NOTE: throws from cachedValidate
     // propagate intentionally — Trigger.dev's task runner catches them
     // and triggers a retry per the consumer's `retry` config. Do NOT
     // wrap in try/catch and translate to a structured BLOCK; validator
     // infrastructure errors are distinct from a deterministic BLOCK
     // decision and the retry path is the right escalation.
-    const results = await cachedValidate(
-      validators as Validator[],
-      input,
-      cachedOptions
-    );
+    const results = await cachedValidate(validators as Validator[], input, cachedOptions);
     // Sprint 14 cumulative arch X3 part 2 closure: notify the engine
     // so onIntercept callbacks fire for cached-validate decisions.
     // Without this, Trigger.dev validator decisions silently bypass
@@ -500,20 +469,16 @@ function handleFromBundle(
     // observability consumers can correlate per-run.
     const contentForCallback =
       typeof (input as { content?: unknown }).content === 'string'
-        ? ((input as { content: string }).content)
+        ? (input as { content: string }).content
         : JSON.stringify(input);
-    await engine.notifyCachedResult(
-      results,
-      contentForCallback,
-      `trigger:${surface}:run-${runId}`
-    );
-    const firstBlock = results.find((r) => r.blocked === true);
+    await engine.notifyCachedResult(results, contentForCallback, `trigger:${surface}:run-${runId}`);
+    const firstBlock = results.find(r => r.blocked === true);
     const blocked = firstBlock !== undefined;
     return {
       blocked,
       allowed: !blocked,
       reason: sanitizeReasonText(firstBlock?.reason),
-      results,
+      results
     };
   };
 
@@ -529,11 +494,7 @@ function handleFromBundle(
         // below thinking it should be symmetric — that branch CAN
         // receive Maps / Sets / class instances.
         input = { kind: 'text', content };
-      } else if (
-        typeof content === 'object' &&
-        content !== null &&
-        typeof (content).kind === 'string'
-      ) {
+      } else if (typeof content === 'object' && content !== null && typeof content.kind === 'string') {
         // rev R3 (Story 2.9 audit) closure: assert the
         // discriminant-required field for the `kind: 'text'` branch.
         // The discriminated union declares `content: string`; a
@@ -546,9 +507,7 @@ function handleFromBundle(
         // connector does not duplicate that contract here.
         const maybeText = content as { kind: string; content?: unknown };
         if (maybeText.kind === 'text' && typeof maybeText.content !== 'string') {
-          return blockedAt(
-            'validateInput: kind=text requires `content` to be a string'
-          );
+          return blockedAt('validateInput: kind=text requires `content` to be a string');
         }
         input = content;
         // B3 pre-flight: canonical-serialize the user-supplied
@@ -558,9 +517,7 @@ function handleFromBundle(
         const preflight = preflightCanonical(input);
         if (preflight !== null) return preflight;
       } else {
-        return blockedAt(
-          'validateInput: expected a string or a ValidatorInput object'
-        );
+        return blockedAt('validateInput: expected a string or a ValidatorInput object');
       }
       return runPipeline(input, 'validateInput');
     },
@@ -582,11 +539,11 @@ function handleFromBundle(
         {
           kind: 'tool_call',
           toolName,
-          args,
+          args
         },
         'validateToolArgs'
       );
-    },
+    }
   };
 
   // arch X5 / sec S9 closure: tag the handle with the run.id it was
@@ -598,7 +555,7 @@ function handleFromBundle(
     value: runId,
     enumerable: false,
     writable: false,
-    configurable: false,
+    configurable: false
   });
 
   return handle;
@@ -610,16 +567,12 @@ function handleFromBundle(
  * Trigger.dev's retry machinery (closes T8 — non-serializable args
  * triggering unbounded retries).
  */
-function preflightCanonical(
-  input: ValidatorInput
-): BonklmTriggerValidateResult | null {
+function preflightCanonical(input: ValidatorInput): BonklmTriggerValidateResult | null {
   try {
     canonicalJSONStringify(input);
     return null;
   } catch (err) {
-    return blockedAt(
-      `bonklm: input is not serializable (${err instanceof Error ? err.message : String(err)})`
-    );
+    return blockedAt(`bonklm: input is not serializable (${err instanceof Error ? err.message : String(err)})`);
   }
 }
 
@@ -634,6 +587,6 @@ function blockedAt(reason: string): BonklmTriggerValidateResult {
     blocked: true,
     allowed: false,
     reason: sanitizeReasonText(reason),
-    results: [],
+    results: []
   };
 }

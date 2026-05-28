@@ -19,7 +19,7 @@ export class AppController {
     // In a real app, this would call your LLM
     return {
       response: `I received your message: "${body.message}"`,
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     };
   }
 
@@ -30,12 +30,12 @@ export class AppController {
   @Post('chat-secured')
   @UseGuardrails({
     validateInput: true,
-    validateOutput: true,
+    validateOutput: true
   })
   async chatSecured(@Body() body: { message: string }) {
     // In a real app, this would call your LLM
     return {
-      response: `Safe response to: "${body.message}"`,
+      response: `Safe response to: "${body.message}"`
     };
   }
 
@@ -45,11 +45,11 @@ export class AppController {
    */
   @Post('generate')
   @UseGuardrails({
-    bodyField: 'prompt',
+    bodyField: 'prompt'
   })
   async generate(@Body() body: { prompt: string }) {
     return {
-      text: `Generated content for: "${body.prompt}"`,
+      text: `Generated content for: "${body.prompt}"`
     };
   }
 
@@ -61,12 +61,12 @@ export class AppController {
   @UseGuardrails({
     validateInput: true,
     validateOutput: true,
-    responseField: 'text',
+    responseField: 'text'
   })
   async complete(@Body() body: { input: string }) {
     return {
       text: `Completion for: "${body.input}"`,
-      usage: { tokens: 10 },
+      usage: { tokens: 10 }
     };
   }
 
@@ -75,11 +75,11 @@ export class AppController {
    */
   @Post('summarize')
   @UseGuardrails({
-    maxContentLength: 500, // 500 bytes max
+    maxContentLength: 500 // 500 bytes max
   })
   async summarize(@Body() body: { text: string }) {
     return {
-      summary: `Summary of: "${body.text.substring(0, 50)}..."`,
+      summary: `Summary of: "${body.text.substring(0, 50)}..."`
     };
   }
 

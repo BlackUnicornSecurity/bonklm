@@ -1,16 +1,24 @@
 # @blackunicorn/bonklm-browser-agents-core
 
-Shared event union + guardrail factory used by all BonkLM browser-agent connectors (`@blackunicorn/bonklm-stagehand`, `@blackunicorn/bonklm-eko`, future entrants).
+Shared event union + guardrail factory used by all BonkLM browser-agent connectors
+(`@blackunicorn/bonklm-stagehand`, `@blackunicorn/bonklm-eko`, future entrants).
 
 ---
 
 ## ⚠️ SECURITY WARNING — Screenshot-based / CUA mode is NOT validated
 
-Browser-agent SDKs (Stagehand, Eko, ...) increasingly support a **Computer-Use Agent (CUA) mode** in which the LLM receives raw page **screenshots** instead of (or alongside) DOM text. BonkLM validators inspect **text + tool args** only — they **do not** decode pixel data.
+Browser-agent SDKs (Stagehand, Eko, ...) increasingly support a **Computer-Use Agent (CUA) mode** in
+which the LLM receives raw page **screenshots** instead of (or alongside) DOM text. BonkLM
+validators inspect **text + tool args** only — they **do not** decode pixel data.
 
-Prompt-injection text rendered as page pixels (e.g. an attacker-controlled banner) reaches the LLM **unvalidated** when CUA mode is on, bypassing every guardrail in the pipeline.
+Prompt-injection text rendered as page pixels (e.g. an attacker-controlled banner) reaches the LLM
+**unvalidated** when CUA mode is on, bypassing every guardrail in the pipeline.
 
-The shared factory `withBrowserAgentGuardrails(client, opts)` accepts an `allowCuaMode: boolean` option (default `false`). Connectors built on this core MUST surface the CUA refusal at construction. When CUA is opted in, the wrapper emits a `[browser-agents-core] CUA mode opted in — ...` warning to the supplied logger (or `console.warn` if absent) — the warning is **unmissable** by design.
+The shared factory `withBrowserAgentGuardrails(client, opts)` accepts an `allowCuaMode: boolean`
+option (default `false`). Connectors built on this core MUST surface the CUA refusal at
+construction. When CUA is opted in, the wrapper emits a
+`[browser-agents-core] CUA mode opted in — ...` warning to the supplied logger (or `console.warn` if
+absent) — the warning is **unmissable** by design.
 
 ---
 
@@ -20,7 +28,8 @@ The shared factory `withBrowserAgentGuardrails(client, opts)` accepts an `allowC
 npm install @blackunicorn/bonklm @blackunicorn/bonklm-browser-agents-core
 ```
 
-You usually install a vendor-specific connector (e.g. `@blackunicorn/bonklm-stagehand`) rather than calling this core directly.
+You usually install a vendor-specific connector (e.g. `@blackunicorn/bonklm-stagehand`) rather than
+calling this core directly.
 
 ---
 
@@ -31,7 +40,7 @@ import {
   withBrowserAgentGuardrails,
   BrowserAgentGuardrailBlockedError,
   type BrowserAgentEvent,
-  type BrowserAgentGuardOptions,
+  type BrowserAgentGuardOptions
 } from '@blackunicorn/bonklm-browser-agents-core';
 ```
 
@@ -49,16 +58,17 @@ type BrowserAgentEvent =
 
 ### Surface mapping
 
-| Event kind | BonkLM validator surface |
-|---|---|
-| `act`, `file`, `mcp.tool` | `tool_call` |
-| `extract` | `retrieved_doc` (POST-call) |
-| `observe` | `text_input` |
-| `agent.execute` | `composed_context` |
+| Event kind                | BonkLM validator surface    |
+| ------------------------- | --------------------------- |
+| `act`, `file`, `mcp.tool` | `tool_call`                 |
+| `extract`                 | `retrieved_doc` (POST-call) |
+| `observe`                 | `text_input`                |
+| `agent.execute`           | `composed_context`          |
 
 ### `BrowserAgentGuardrailBlockedError`
 
-Shared base class — every browser-agent connector (`StagehandGuardrailBlockedError`, future `EkoGuardrailBlockedError`) extends it. Catch once for all connectors:
+Shared base class — every browser-agent connector (`StagehandGuardrailBlockedError`, future
+`EkoGuardrailBlockedError`) extends it. Catch once for all connectors:
 
 ```ts
 try {
@@ -70,7 +80,8 @@ try {
 }
 ```
 
-The error's `reason` field is sanitized at construction (non-printable chars stripped, capped at 200 chars) to prevent attacker-controlled validator output from polluting downstream error tracking.
+The error's `reason` field is sanitized at construction (non-printable chars stripped, capped at 200
+chars) to prevent attacker-controlled validator output from polluting downstream error tracking.
 
 ---
 

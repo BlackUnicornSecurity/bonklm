@@ -15,8 +15,8 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
-      whitelist: true,
-    }),
+      whitelist: true
+    })
   );
 
   const port = process.env.PORT || 3000;
@@ -41,7 +41,7 @@ async function bootstrap() {
   `);
 }
 
-bootstrap().catch((error) => {
+bootstrap().catch(error => {
   console.error('Failed to start application:', error);
   process.exit(1);
 });

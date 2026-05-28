@@ -11,7 +11,7 @@ import {
   type ConnectorDefinition,
   isConnectorCategory,
   isTestResult,
-  isConnectorDefinition,
+  isConnectorDefinition
 } from './base.js';
 
 describe('ConnectorCategory', () => {
@@ -50,7 +50,7 @@ describe('DetectionRules', () => {
       packageJson: ['express'],
       envVars: ['OPENAI_API_KEY'],
       ports: [11434],
-      dockerContainers: ['ollama'],
+      dockerContainers: ['ollama']
     };
 
     expect(envOnly.envVars).toEqual(['API_KEY']);
@@ -66,7 +66,7 @@ describe('TestResult', () => {
   it('should create a valid minimal result', () => {
     const result: TestResult = {
       connection: true,
-      validation: true,
+      validation: true
     };
 
     expect(isTestResult(result)).toBe(true);
@@ -77,7 +77,7 @@ describe('TestResult', () => {
       connection: true,
       validation: true,
       error: undefined,
-      latency: 123,
+      latency: 123
     };
 
     expect(isTestResult(result)).toBe(true);
@@ -89,7 +89,7 @@ describe('TestResult', () => {
       connection: false,
       validation: false,
       error: 'Connection refused',
-      latency: 50,
+      latency: 50
     };
 
     expect(isTestResult(result)).toBe(true);
@@ -107,7 +107,7 @@ describe('TestResult', () => {
       { connection: 'true', validation: true },
       { connection: true, validation: 'true' },
       { connection: true, validation: true, error: 123 },
-      { connection: true, validation: true, latency: '123' },
+      { connection: true, validation: true, latency: '123' }
     ];
 
     for (const result of invalidResults) {
@@ -118,12 +118,12 @@ describe('TestResult', () => {
 
 describe('ConnectorDefinition', () => {
   const mockSchema = z.object({
-    apiKey: z.string().min(1),
+    apiKey: z.string().min(1)
   });
 
   const mockTest = vi.fn().mockResolvedValue({
     connection: true,
-    validation: true,
+    validation: true
   });
 
   const mockSnippet = vi.fn().mockReturnValue('code snippet');
@@ -136,7 +136,7 @@ describe('ConnectorDefinition', () => {
       detection: { envVars: ['TEST_API_KEY'] },
       test: mockTest,
       generateSnippet: mockSnippet,
-      configSchema: mockSchema,
+      configSchema: mockSchema
     };
 
     expect(isConnectorDefinition(connector)).toBe(true);
@@ -156,7 +156,7 @@ describe('ConnectorDefinition', () => {
         detection: {},
         test: mockTest,
         generateSnippet: mockSnippet,
-        configSchema: mockSchema,
+        configSchema: mockSchema
       };
 
       expect(isConnectorDefinition(connector)).toBe(true);
@@ -173,11 +173,11 @@ describe('ConnectorDefinition', () => {
         packageJson: ['vector-db'],
         envVars: ['VECTOR_DB_KEY'],
         ports: [8080],
-        dockerContainers: ['vector-db-container'],
+        dockerContainers: ['vector-db-container']
       },
       test: mockTest,
       generateSnippet: mockSnippet,
-      configSchema: mockSchema,
+      configSchema: mockSchema
     };
 
     expect(isConnectorDefinition(connector)).toBe(true);
@@ -201,7 +201,7 @@ describe('ConnectorDefinition', () => {
         name: 'Test',
         category: 'llm',
         detection: {},
-        test: 'not a function',
+        test: 'not a function'
       },
       {
         id: 'test',
@@ -209,7 +209,7 @@ describe('ConnectorDefinition', () => {
         category: 'llm',
         detection: {},
         test: mockTest,
-        generateSnippet: 'not a function',
+        generateSnippet: 'not a function'
       },
       {
         id: 'test',
@@ -219,8 +219,8 @@ describe('ConnectorDefinition', () => {
         test: mockTest,
         generateSnippet: mockSnippet,
         // Plain object without Zod schema methods
-        configSchema: { safeParse: 'not a function' },
-      },
+        configSchema: { safeParse: 'not a function' }
+      }
     ];
 
     for (const connector of invalidConnectors) {
@@ -236,7 +236,7 @@ describe('ConnectorDefinition', () => {
       detection: {},
       test: mockTest,
       generateSnippet: mockSnippet,
-      configSchema: mockSchema,
+      configSchema: mockSchema
     };
 
     const config = { apiKey: 'test-key' };
@@ -256,7 +256,7 @@ describe('ConnectorDefinition', () => {
       detection: {},
       test: mockTest,
       generateSnippet: mockSnippet,
-      configSchema: mockSchema,
+      configSchema: mockSchema
     };
 
     const config = { apiKey: 'test-key' };
@@ -276,20 +276,20 @@ describe('ConnectorDefinition', () => {
       generateSnippet: mockSnippet,
       configSchema: z.object({
         apiKey: z.string().min(1),
-        baseUrl: z.string().url().optional(),
-      }),
+        baseUrl: z.string().url().optional()
+      })
     };
 
     // Valid config
     const validResult = connector.configSchema.safeParse({
       apiKey: 'test-key',
-      baseUrl: 'https://api.example.com',
+      baseUrl: 'https://api.example.com'
     });
     expect(validResult.success).toBe(true);
 
     // Invalid config
     const invalidResult = connector.configSchema.safeParse({
-      apiKey: '', // Empty string should fail
+      apiKey: '' // Empty string should fail
     });
     expect(invalidResult.success).toBe(false);
   });
@@ -320,7 +320,7 @@ describe('isConnectorDefinition', () => {
       detection: {},
       test: vi.fn().mockResolvedValue({ connection: true, validation: true }),
       generateSnippet: vi.fn(),
-      configSchema: z.object({}),
+      configSchema: z.object({})
     };
 
     expect(isConnectorDefinition(validDef)).toBe(true);
@@ -337,7 +337,7 @@ describe('TypeScript Type Checking', () => {
   it('should allow type narrowing with type guards', () => {
     const value: unknown = {
       connection: true,
-      validation: true,
+      validation: true
     };
 
     if (isTestResult(value)) {
@@ -358,7 +358,7 @@ describe('TypeScript Type Checking', () => {
       detection: {},
       test: vi.fn(),
       generateSnippet: vi.fn(),
-      configSchema: z.object({}),
+      configSchema: z.object({})
     };
 
     if (isConnectorDefinition(value)) {
@@ -376,7 +376,7 @@ describe('z export', () => {
   it('should export z type for use in other modules', async () => {
     // This is a compile-time test - if it compiles, the export works
     const schema = z.object({
-      test: z.string(),
+      test: z.string()
     });
 
     const result = schema.safeParse({ test: 'hello' });

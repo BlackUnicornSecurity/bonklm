@@ -37,7 +37,7 @@ interface CacheEntry {
  */
 const validationCache = new LRUCache<string, CacheEntry>({
   max: 100,
-  ttl: 60 * 1000, // 1 minute in milliseconds
+  ttl: 60 * 1000 // 1 minute in milliseconds
 });
 
 /**
@@ -125,10 +125,7 @@ export interface SecureValidationConfig {
  * });
  * ```
  */
-export async function validateApiKeySecure(
-  apiKey: string,
-  config: SecureValidationConfig
-): Promise<boolean> {
+export async function validateApiKeySecure(apiKey: string, config: SecureValidationConfig): Promise<boolean> {
   // Check cache first to avoid unnecessary API calls
   const cached = validationCache.get(apiKey);
   if (cached && Date.now() - cached.timestamp < RATE_LIMIT_WINDOW) {
@@ -137,8 +134,9 @@ export async function validateApiKeySecure(
 
   // Rate limiting: Count recent validations within the time window
   const now = Date.now();
-  const recentValidations = Array.from(validationCache.values())
-    .filter(entry => now - entry.timestamp < RATE_LIMIT_WINDOW);
+  const recentValidations = Array.from(validationCache.values()).filter(
+    entry => now - entry.timestamp < RATE_LIMIT_WINDOW
+  );
 
   if (recentValidations.length >= MAX_VALIDATIONS_PER_MINUTE) {
     throw new WizardError(
@@ -154,7 +152,7 @@ export async function validateApiKeySecure(
   const secureKey = new SecureCredential(apiKey);
 
   try {
-    const result = await secureKey.use(async (key) => {
+    const result = await secureKey.use(async key => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), config.timeout);
 
@@ -162,13 +160,13 @@ export async function validateApiKeySecure(
         // Build fetch options
         const options: RequestInit = {
           method: config.method,
-          signal: controller.signal,
+          signal: controller.signal
         };
 
         // Add Authorization header if configured
         if (config.sendInHeader) {
           options.headers = {
-            'Authorization': `Bearer ${key}`,
+            Authorization: `Bearer ${key}`
           };
         }
 
@@ -251,17 +249,16 @@ export function getRateLimitStatus(): {
   resetTime: number;
 } {
   const now = Date.now();
-  const recentValidations = Array.from(validationCache.values())
-    .filter(entry => now - entry.timestamp < RATE_LIMIT_WINDOW);
+  const recentValidations = Array.from(validationCache.values()).filter(
+    entry => now - entry.timestamp < RATE_LIMIT_WINDOW
+  );
 
   // Find the oldest timestamp in the current window
-  const oldestTimestamp = recentValidations.length > 0
-    ? Math.min(...recentValidations.map(e => e.timestamp))
-    : now;
+  const oldestTimestamp = recentValidations.length > 0 ? Math.min(...recentValidations.map(e => e.timestamp)) : now;
 
   return {
     used: recentValidations.length,
     max: MAX_VALIDATIONS_PER_MINUTE,
-    resetTime: oldestTimestamp + RATE_LIMIT_WINDOW,
+    resetTime: oldestTimestamp + RATE_LIMIT_WINDOW
   };
 }

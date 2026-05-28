@@ -48,7 +48,7 @@ import {
   type BrowserAgentValidateResult,
   isUnsafeBinaryResult,
   normaliseActArg,
-  withBrowserAgentGuardrails,
+  withBrowserAgentGuardrails
 } from '@blackunicorn/bonklm-browser-agents-core';
 import type { StagehandLike, WrapStagehandOptions } from './types.js';
 
@@ -127,13 +127,13 @@ export function wrapStagehand<T extends StagehandLike>(
   // (false-positive risk for names like `"gpt-computer-use"`).
   assertNonCuaMode('wrapStagehand', client, {
     allowCuaMode,
-    configOverride: stagehandConfig,
+    configOverride: stagehandConfig
   });
 
   const guarded = withBrowserAgentGuardrails(client as object, {
     engine,
     allowCuaMode,
-    logger,
+    logger
   });
 
   // ── B8 closure (sec T4 CRITICAL): monkey-patch the original `act` ─
@@ -163,9 +163,7 @@ export function wrapStagehand<T extends StagehandLike>(
   // validator stack alone is enforced. Wrap exactly once per client
   // lifetime.
   const originalAct = client.act.bind(client);
-  const validatedAct = async (
-    actionArg: string | { action: string; [k: string]: unknown }
-  ): Promise<unknown> => {
+  const validatedAct = async (actionArg: string | { action: string; [k: string]: unknown }): Promise<unknown> => {
     const { actionString, args } = normaliseActArg(actionArg);
     const r = await (
       guarded as { bonklm: { validateEvent: typeof guarded.bonklm.validateEvent } }
@@ -189,9 +187,7 @@ export function wrapStagehand<T extends StagehandLike>(
     opts: string | { instruction: string; schema?: unknown; [k: string]: unknown }
   ): Promise<U> => {
     const schema =
-      typeof opts === 'object' && opts !== null && 'schema' in opts
-        ? (opts as { schema?: unknown }).schema
-        : undefined;
+      typeof opts === 'object' && opts !== null && 'schema' in opts ? (opts as { schema?: unknown }).schema : undefined;
     let result: U;
     try {
       result = (await originalExtract(opts as never)) as U;
@@ -246,9 +242,7 @@ export function wrapStagehand<T extends StagehandLike>(
 
   // ── observe (validates the prompt BEFORE dispatch). ────────────
   const originalObserve = client.observe.bind(client);
-  const validatedObserve = async (
-    opts: string | { instruction: string; [k: string]: unknown }
-  ): Promise<unknown> => {
+  const validatedObserve = async (opts: string | { instruction: string; [k: string]: unknown }): Promise<unknown> => {
     const prompt = typeof opts === 'string' ? opts : opts.instruction;
     const r = await (
       guarded as { bonklm: { validateEvent: typeof guarded.bonklm.validateEvent } }
@@ -268,9 +262,7 @@ export function wrapStagehand<T extends StagehandLike>(
     const originalExecute = originalAgent.execute.bind(originalAgent);
     const wrappedAgent = Object.create(Object.getPrototypeOf(originalAgent));
     Object.assign(wrappedAgent, originalAgent);
-    wrappedAgent.execute = async (
-      taskOpt: string | { task: string; [k: string]: unknown }
-    ): Promise<unknown> => {
+    wrappedAgent.execute = async (taskOpt: string | { task: string; [k: string]: unknown }): Promise<unknown> => {
       const task = typeof taskOpt === 'string' ? taskOpt : taskOpt.task;
       const r = await (
         guarded as { bonklm: { validateEvent: typeof guarded.bonklm.validateEvent } }

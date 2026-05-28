@@ -23,18 +23,11 @@ import {
   type Logger,
   sanitizeMeta,
   Severity,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
 import { applyRetrievedDocValidatorToMatches } from '@blackunicorn/bonklm/core/connector-utils';
-import type {
-  GuardedWeaviateOptions,
-  GuardedWeaviateResult,
-  WeaviateQueryOptions,
-} from './types.js';
-import {
-  DEFAULT_MAX_LIMIT,
-  DEFAULT_VALIDATION_TIMEOUT,
-} from './types.js';
+import type { GuardedWeaviateOptions, GuardedWeaviateResult, WeaviateQueryOptions } from './types.js';
+import { DEFAULT_MAX_LIMIT, DEFAULT_VALIDATION_TIMEOUT } from './types.js';
 
 /**
  * Default logger instance.
@@ -115,10 +108,7 @@ export interface GuardedWeaviateClient {
  * });
  * ```
  */
-export function createGuardedClient(
-  weaviateClient: any,
-  options: GuardedWeaviateOptions = {}
-): GuardedWeaviateClient {
+export function createGuardedClient(weaviateClient: any, options: GuardedWeaviateOptions = {}): GuardedWeaviateClient {
   const {
     validators = [],
     guards = [],
@@ -134,13 +124,13 @@ export function createGuardedClient(
     onQueryBlocked,
     onObjectBlocked,
     onClassNotAllowed,
-    retrievedDocValidator, // Story 1.2 opt-in batch validator
+    retrievedDocValidator // Story 1.2 opt-in batch validator
   } = options;
 
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   /**
@@ -148,10 +138,7 @@ export function createGuardedClient(
    *
    * @internal
    */
-  const validateWithTimeout = async (
-    content: string,
-    context?: string
-  ): Promise<GuardrailResult> => {
+  const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult> => {
     const result = await validateWithTimeoutSecure<GuardrailResult>({
       operation: () => engine.validate(content, context) as Promise<GuardrailResult>,
       timeoutMs: validationTimeout,
@@ -161,10 +148,10 @@ export function createGuardedClient(
             category: 'timeout',
             description: 'Validation timeout',
             severity: Severity.CRITICAL,
-            weight: 30,
-          },
+            weight: 30
+          }
         ]),
-      logger,
+      logger
     });
     return result;
   };
@@ -193,7 +180,7 @@ export function createGuardedClient(
       return false;
     }
 
-    return allowedClasses.some((pattern) => {
+    return allowedClasses.some(pattern => {
       // Validate pattern length to prevent ReDoS
       if (pattern.length > 100) {
         logger.warn('[Guardrails] Allowed class pattern exceeds maximum length');
@@ -230,7 +217,7 @@ export function createGuardedClient(
     // Validate each field name against GraphQL safe characters
     const safeFieldRegex = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
-    return fields.filter((field) => {
+    return fields.filter(field => {
       // Reject fields with unsafe characters (GraphQL injection risk)
       if (!safeFieldRegex.test(field)) {
         logger.warn('[Guardrails] Field contains invalid characters', { field });
@@ -238,7 +225,7 @@ export function createGuardedClient(
       }
 
       // Check if field matches any allowed pattern
-      return allowedFields.some((pattern) => {
+      return allowedFields.some(pattern => {
         // Escape special regex characters (except * and ? which are wildcards)
         const escapedPattern = pattern
           .replace(/[.+^${}()|[\]\\]/g, '\\$&')
@@ -277,8 +264,8 @@ export function createGuardedClient(
       /\$where/i,
       /\$ne\b/,
       /\$regex\b/,
-      /\\u0024/i,  // Unicode escape for $
-      /\\u005f/i,  // Unicode escape for _
+      /\\u0024/i, // Unicode escape for $
+      /\\u005f/i // Unicode escape for _
     ];
 
     for (const pattern of dangerousPatterns) {
@@ -300,7 +287,7 @@ export function createGuardedClient(
           // Previous: key.toLowerCase().includes(dk.toLowerCase()) would match "myNeField" due to "ne"
           const dangerousKeys = ['constructor', '__proto__', 'prototype', 'where', 'ne', 'regex'];
           const keyLower = key.toLowerCase();
-          if (dangerousKeys.some((dk) => keyLower === dk.toLowerCase())) {
+          if (dangerousKeys.some(dk => keyLower === dk.toLowerCase())) {
             logger.warn('[Guardrails] Dangerous filter key detected', { key });
             throw new Error(productionMode ? 'Invalid filter' : 'Filter contains dangerous keys');
           }
@@ -342,9 +329,9 @@ export function createGuardedClient(
       return applyRetrievedDocValidatorToMatches(
         objects,
         retrievedDocValidator,
-        (o) => ({
+        o => ({
           content: JSON.stringify(o),
-          metadata: o as Record<string, unknown> | undefined,
+          metadata: o as Record<string, unknown> | undefined
         }),
         { productionMode, itemNoun: 'Object' }
       );
@@ -368,7 +355,7 @@ export function createGuardedClient(
         // chose) and `result.reason` is validator output. Both wrap.
         logger.warn('[Guardrails] Object blocked', {
           id: sanitizeMeta(obj.id),
-          reason: sanitizeMeta(result.reason),
+          reason: sanitizeMeta(result.reason)
         });
         if (onObjectBlocked) {
           onObjectBlocked(obj, result);
@@ -446,7 +433,8 @@ export function createGuardedClient(
 
       // Step 6: Execute the query
       // Build the query chain
-      let queryChain = weaviateClient.collections.get(options.className)
+      let queryChain = weaviateClient.collections
+        .get(options.className)
         .query()
         .withLimit(limit)
         .withFields(validatedFields.join(' '));
@@ -519,12 +507,7 @@ export function createGuardedClient(
       // Last resort: nested value extraction
       if (objects.length === 0) {
         // Try to get objects by using various path patterns
-        const possiblePaths = [
-          `data.${className}.objects`,
-          `data.${className}`,
-          `data.Get.${className}`,
-          'objects',
-        ];
+        const possiblePaths = [`data.${className}.objects`, `data.${className}`, `data.Get.${className}`, 'objects'];
 
         for (const path of possiblePaths) {
           try {
@@ -546,14 +529,14 @@ export function createGuardedClient(
           ...result.data,
           Get: {
             ...(result.data?.Get || {}),
-            [options.className]: validObjects,
-          },
+            [options.className]: validObjects
+          }
         },
         objectsBlocked: blocked,
         filtered: blocked > 0,
-        raw: result,
+        raw: result
       };
-    },
+    }
   };
 }
 
@@ -564,5 +547,5 @@ export type {
   GuardedWeaviateOptions,
   GuardedWeaviateResult,
   WeaviateQueryOptions,
-  BlockedObjectHandling,
+  BlockedObjectHandling
 } from './types.js';

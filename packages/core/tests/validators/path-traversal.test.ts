@@ -37,7 +37,7 @@ describe('PathTraversalValidator — `..` traversal rejection', () => {
     // Double-encoded
     '%252e%252e/etc/passwd',
     // Null byte
-    'foo\x00/../../../etc/passwd',
+    'foo\x00/../../../etc/passwd'
   ];
 
   for (const attack of ATTACKS) {
@@ -202,7 +202,7 @@ describe('PathTraversalValidator — null-byte null in payload (security CONCERN
   it('blocks a payload containing a literal \\x00 null byte', async () => {
     const r = await v.validate('foo\x00../../etc/passwd');
     expect(r.blocked).toBe(true);
-    expect(r.findings.some((f) => f.category === 'path_traversal_nullbyte')).toBe(true);
+    expect(r.findings.some(f => f.category === 'path_traversal_nullbyte')).toBe(true);
   });
 });
 
@@ -210,15 +210,13 @@ describe('PathTraversalValidator — symlink fail-secure on realpath error (secu
   it('blocks (fail-secure) when checkSymlinks=true and the path does not exist', async () => {
     const v = new PathTraversalValidator({
       cwd: '/srv/app',
-      checkSymlinks: true,
+      checkSymlinks: true
     });
     // The path is RELATIVE so the absolute-outside check doesn't fire;
     // realpath on a non-existent path under cwd will throw → fail-secure.
     const r = await v.validate('definitely/does/not/exist.txt');
     expect(r.blocked).toBe(true);
-    expect(
-      r.findings.some((f) => f.category === 'path_traversal_symlink_check_error')
-    ).toBe(true);
+    expect(r.findings.some(f => f.category === 'path_traversal_symlink_check_error')).toBe(true);
   });
 });
 
@@ -228,7 +226,7 @@ describe('PathTraversalValidator — extended ValidatorInput kinds (code-reviewe
   it('accepts composed_context (joined entries)', async () => {
     const r = await v.validate({
       kind: 'composed_context',
-      entries: ['benign', '../etc/passwd', 'more'],
+      entries: ['benign', '../etc/passwd', 'more']
     });
     expect(r.blocked).toBe(true);
   });
@@ -236,7 +234,7 @@ describe('PathTraversalValidator — extended ValidatorInput kinds (code-reviewe
   it('accepts memory_write payload.content', async () => {
     const r = await v.validate({
       kind: 'memory_write',
-      payload: { content: '../etc/passwd' },
+      payload: { content: '../etc/passwd' }
     });
     expect(r.blocked).toBe(true);
   });
@@ -245,7 +243,7 @@ describe('PathTraversalValidator — extended ValidatorInput kinds (code-reviewe
     const r = await v.validate({
       kind: 'tool_call',
       toolName: 'read_file',
-      args: { path: '../etc/passwd' },
+      args: { path: '../etc/passwd' }
     });
     expect(r.blocked).toBe(true);
   });

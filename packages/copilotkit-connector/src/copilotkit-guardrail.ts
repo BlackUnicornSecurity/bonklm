@@ -27,21 +27,21 @@ import {
   type Logger,
   sanitizeMeta,
   Severity,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
 import type {
   CopilotKitAction,
   CopilotKitContext,
   CopilotKitMessage,
   GuardedCopilotKitOptions,
-  HookResult,
+  HookResult
 } from './types.js';
 import {
   DEFAULT_MAX_BUFFER_SIZE,
   DEFAULT_MAX_CONTENT_LENGTH,
   DEFAULT_VALIDATION_TIMEOUT,
   StreamValidationError,
-  VALIDATION_INTERVAL,
+  VALIDATION_INTERVAL
 } from './types.js';
 import { actionsToText, messagesToText } from './messages-to-text.js';
 import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-utils';
@@ -59,7 +59,6 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  * @internal
  * @throws {TypeError} If value is not a positive finite number
  */
-
 
 /**
  * Creates a CopilotKit guardrail integration that intercepts and validates messages.
@@ -87,25 +86,11 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  * ```
  */
 export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}): {
-  beforeSendMessage: (
-    messages: CopilotKitMessage[],
-    context?: CopilotKitContext,
-  ) => Promise<HookResult>;
-  afterReceiveMessage: (
-    message: CopilotKitMessage,
-    context?: CopilotKitContext,
-  ) => Promise<HookResult>;
-  validateActionCall: (
-    action: CopilotKitAction,
-    context?: CopilotKitContext,
-  ) => Promise<HookResult>;
-  validateActionResult: (
-    actionResult: string,
-    context?: CopilotKitContext,
-  ) => Promise<HookResult>;
-  createStreamValidator: (
-    context?: CopilotKitContext,
-  ) => (chunk: string) => Promise<string | null>;
+  beforeSendMessage: (messages: CopilotKitMessage[], context?: CopilotKitContext) => Promise<HookResult>;
+  afterReceiveMessage: (message: CopilotKitMessage, context?: CopilotKitContext) => Promise<HookResult>;
+  validateActionCall: (action: CopilotKitAction, context?: CopilotKitContext) => Promise<HookResult>;
+  validateActionResult: (actionResult: string, context?: CopilotKitContext) => Promise<HookResult>;
+  createStreamValidator: (context?: CopilotKitContext) => (chunk: string) => Promise<string | null>;
 } {
   const {
     validators = [],
@@ -127,7 +112,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
     allowedActionNames, // S012-008: Action name whitelist
     blockedActionNames = ['eval', 'exec', 'deleteDatabase', 'dropTable', 'system', 'cmd', 'shell'], // S012-008: Default dangerous actions
     maxActionNameLength = 100, // S012-008: Prevent excessively long action names
-    maxArgumentsSize = 100_000, // S012-008: Prevent oversized arguments
+    maxArgumentsSize = 100_000 // S012-008: Prevent oversized arguments
   } = options;
 
   // Validate critical security options
@@ -140,7 +125,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   /**
@@ -151,7 +136,10 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
   const isActionNameAllowed = (actionName: string): boolean => {
     // Check name length
     if (actionName.length > maxActionNameLength) {
-      logger.warn('[CopilotKit Guardrails] Action name exceeds maximum length', { actionName, length: actionName.length });
+      logger.warn('[CopilotKit Guardrails] Action name exceeds maximum length', {
+        actionName,
+        length: actionName.length
+      });
       return false;
     }
 
@@ -236,7 +224,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
       /\bconstructor\b/i,
       /\b__proto__\b/i,
       /\$\$.*\$\(/, // Template string execution attempt
-      /\\u0024/i, // Unicode escape for $
+      /\\u0024/i // Unicode escape for $
     ];
 
     const argsStr = JSON.stringify(actionArgs);
@@ -255,10 +243,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
    *
    * @internal
    */
-  const validateWithTimeout = async (
-    content: string,
-    context?: string,
-  ): Promise<GuardrailResult[]> => {
+  const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult[]> => {
     // DEV-001: Correct API signature - use string context, not object
     // DEV-003: AWAIT the validation
     // Sprint 31 cumulative audit fix (architect CRITICAL-1): canonical
@@ -273,19 +258,18 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
         {
           category: 'timeout',
           severity: Severity.CRITICAL,
-          description: 'Validation timeout',
-        },
+          description: 'Validation timeout'
+        }
       ]);
     type CopilotkitWrappedResult = GuardrailResult & { results: GuardrailResult[] };
     const engineResult = await validateWithTimeoutSecure<CopilotkitWrappedResult>({
-      operation: () =>
-        engine.validate(content, context) as Promise<CopilotkitWrappedResult>,
+      operation: () => engine.validate(content, context) as Promise<CopilotkitWrappedResult>,
       timeoutMs: validationTimeout,
       timeoutSentinel: () => {
         const top = sentinelGuardrail();
         return { ...top, results: [top] };
       },
-      logger,
+      logger
     });
     return engineResult.results;
   };
@@ -310,7 +294,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
   const validateBefore = async (
     content: string,
     context: string,
-    executionContext?: CopilotKitContext,
+    executionContext?: CopilotKitContext
   ): Promise<HookResult> => {
     // SEC-010: Check content length
     if (content.length > maxContentLength) {
@@ -318,28 +302,28 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
         {
           category: 'size-limit',
           severity: Severity.WARNING,
-          description: `Content exceeds maximum length of ${maxContentLength}`,
-        },
+          description: `Content exceeds maximum length of ${maxContentLength}`
+        }
       ]);
       onBlocked?.(errorResult, executionContext);
       logger.warn('[CopilotKit Guardrails] Content too large');
       return {
         allowed: false,
-        blockedReason: createErrorMessage(errorResult),
+        blockedReason: createErrorMessage(errorResult)
       };
     }
 
     // DEV-003: AWAIT the validation
     const results = await validateWithTimeout(content, context);
 
-    const blocked = results.find((r) => !r.allowed);
+    const blocked = results.find(r => !r.allowed);
     if (blocked) {
       onBlocked?.(blocked, executionContext);
       // Sprint 43 cross-connector CWE-117 sweep.
       logger.warn('[CopilotKit Guardrails] Input blocked', { reason: sanitizeMeta(blocked.reason) });
       return {
         allowed: false,
-        blockedReason: createErrorMessage(blocked),
+        blockedReason: createErrorMessage(blocked)
       };
     }
 
@@ -351,21 +335,18 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
    *
    * @internal
    */
-  const validateAfter = async (
-    content: string,
-    executionContext?: CopilotKitContext,
-  ): Promise<HookResult> => {
+  const validateAfter = async (content: string, executionContext?: CopilotKitContext): Promise<HookResult> => {
     // DEV-003: AWAIT the validation
     const results = await validateWithTimeout(content, 'output');
 
-    const blocked = results.find((r) => !r.allowed);
+    const blocked = results.find(r => !r.allowed);
     if (blocked) {
       onBlocked?.(blocked, executionContext);
       // Sprint 43 CWE-117 sweep (sister to input-blocked above).
       logger.warn('[CopilotKit Guardrails] Output blocked', { reason: sanitizeMeta(blocked.reason) });
       return {
         allowed: false,
-        blockedReason: createErrorMessage(blocked),
+        blockedReason: createErrorMessage(blocked)
       };
     }
 
@@ -381,9 +362,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
    *
    * @internal
    */
-  const createStreamValidator = (
-    executionContext?: CopilotKitContext,
-  ): ((chunk: string) => Promise<string | null>) => {
+  const createStreamValidator = (executionContext?: CopilotKitContext): ((chunk: string) => Promise<string | null>) => {
     let accumulatedText = '';
     let chunkCount = 0;
 
@@ -405,11 +384,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
           const result = await validateAfter(accumulatedText, executionContext);
           if (!result.allowed) {
             onStreamBlocked?.(accumulatedText, executionContext);
-            throw new StreamValidationError(
-              result.blockedReason || 'Stream blocked',
-              'Content policy violation',
-              true,
-            );
+            throw new StreamValidationError(result.blockedReason || 'Stream blocked', 'Content policy violation', true);
           }
         }
       }
@@ -425,7 +400,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
      */
     beforeSendMessage: async (
       messages: CopilotKitMessage[],
-      executionContext?: CopilotKitContext,
+      executionContext?: CopilotKitContext
     ): Promise<HookResult> => {
       if (!validateUserMessages) {
         return { allowed: true };
@@ -441,7 +416,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
      */
     afterReceiveMessage: async (
       message: CopilotKitMessage,
-      executionContext?: CopilotKitContext,
+      executionContext?: CopilotKitContext
     ): Promise<HookResult> => {
       if (!validateAssistantMessages) {
         return { allowed: true };
@@ -456,10 +431,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
      * Addresses SEC-005: Action call injection protection.
      * S012-008: Enhanced with action name and argument validation.
      */
-    validateActionCall: async (
-      action: CopilotKitAction,
-      executionContext?: CopilotKitContext,
-    ): Promise<HookResult> => {
+    validateActionCall: async (action: CopilotKitAction, executionContext?: CopilotKitContext): Promise<HookResult> => {
       if (!validateActionCalls) {
         return { allowed: true };
       }
@@ -472,13 +444,13 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
             severity: Severity.CRITICAL,
             description: productionMode
               ? 'Action not allowed'
-              : `Action '${action.name}' is not allowed or is blocked by security policy`,
-          },
+              : `Action '${action.name}' is not allowed or is blocked by security policy`
+          }
         ]);
         onActionCallBlocked?.(action, errorResult, executionContext);
         return {
           allowed: false,
-          blockedReason: createErrorMessage(errorResult),
+          blockedReason: createErrorMessage(errorResult)
         };
       }
 
@@ -490,13 +462,13 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
             severity: Severity.CRITICAL,
             description: productionMode
               ? 'Action arguments not allowed'
-              : 'Action arguments contain dangerous patterns or exceed size limit',
-          },
+              : 'Action arguments contain dangerous patterns or exceed size limit'
+          }
         ]);
         onActionCallBlocked?.(action, errorResult, executionContext);
         return {
           allowed: false,
-          blockedReason: createErrorMessage(errorResult),
+          blockedReason: createErrorMessage(errorResult)
         };
       }
 
@@ -511,10 +483,10 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
             {
               category: 'action-call-blocked',
               severity: Severity.CRITICAL,
-              description: result.blockedReason || 'Action call blocked',
-            },
+              description: result.blockedReason || 'Action call blocked'
+            }
           ]),
-          executionContext,
+          executionContext
         );
       }
 
@@ -524,10 +496,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
     /**
      * Validates an action result after execution.
      */
-    validateActionResult: async (
-      actionResult: string,
-      executionContext?: CopilotKitContext,
-    ): Promise<HookResult> => {
+    validateActionResult: async (actionResult: string, executionContext?: CopilotKitContext): Promise<HookResult> => {
       if (!validateActionResults) {
         return { allowed: true };
       }
@@ -538,31 +507,22 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
     /**
      * Creates a stream validator for streaming responses.
      */
-    createStreamValidator: (
-      executionContext?: CopilotKitContext,
-    ): ((chunk: string) => Promise<string | null>) => {
+    createStreamValidator: (executionContext?: CopilotKitContext): ((chunk: string) => Promise<string | null>) => {
       return createStreamValidator(executionContext);
     },
 
     // Internal: Expose finalizeStream for complete validation
-    _finalizeStream: async (
-      accumulatedText: string,
-      executionContext?: CopilotKitContext,
-    ): Promise<string> => {
+    _finalizeStream: async (accumulatedText: string, executionContext?: CopilotKitContext): Promise<string> => {
       if (streamingMode === 'buffer' || !validateStreaming) {
         // Validate full buffer
         const result = await validateAfter(accumulatedText, executionContext);
         if (!result.allowed) {
           onStreamBlocked?.(accumulatedText, executionContext);
-          throw new StreamValidationError(
-            result.blockedReason || 'Stream blocked',
-            'Content policy violation',
-            true,
-          );
+          throw new StreamValidationError(result.blockedReason || 'Stream blocked', 'Content policy violation', true);
         }
       }
       return accumulatedText;
-    },
+    }
   } as any;
 }
 
@@ -573,5 +533,5 @@ export type {
   CopilotKitAction,
   CopilotKitContext,
   HookResult,
-  CopilotKitContentPart,
+  CopilotKitContentPart
 } from './types.js';

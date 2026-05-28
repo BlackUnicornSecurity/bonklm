@@ -13,7 +13,7 @@ import {
   brand,
   type TerminalCapabilities,
   type DetailedTerminalCapabilities,
-  type ColorLevel,
+  type ColorLevel
 } from './terminal.js';
 
 describe('terminal', () => {
@@ -43,17 +43,17 @@ describe('terminal', () => {
     Object.defineProperty(process.stdout, 'isTTY', {
       value: originalIsTTY,
       writable: true,
-      configurable: true,
+      configurable: true
     });
     Object.defineProperty(process.stdout, 'columns', {
       value: originalColumns,
       writable: true,
-      configurable: true,
+      configurable: true
     });
     Object.defineProperty(process.stdout, 'rows', {
       value: originalRows,
       writable: true,
-      configurable: true,
+      configurable: true
     });
   });
 
@@ -78,7 +78,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'columns', {
         value: undefined,
         writable: true,
-        configurable: true,
+        configurable: true
       });
 
       const caps = getTerminalCapabilities();
@@ -90,7 +90,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'columns', {
         value: 120,
         writable: true,
-        configurable: true,
+        configurable: true
       });
 
       const caps = getTerminalCapabilities();
@@ -102,7 +102,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'rows', {
         value: undefined,
         writable: true,
-        configurable: true,
+        configurable: true
       });
 
       const caps = getTerminalCapabilities();
@@ -114,7 +114,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'rows', {
         value: 50,
         writable: true,
-        configurable: true,
+        configurable: true
       });
 
       const caps = getTerminalCapabilities();
@@ -126,7 +126,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', {
         value: true,
         writable: true,
-        configurable: true,
+        configurable: true
       });
       delete process.env.FORCE_COLOR;
 
@@ -139,7 +139,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', {
         value: true,
         writable: true,
-        configurable: true,
+        configurable: true
       });
       process.env.FORCE_COLOR = '0';
 
@@ -152,7 +152,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', {
         value: false,
         writable: true,
-        configurable: true,
+        configurable: true
       });
 
       const caps = getTerminalCapabilities();
@@ -218,7 +218,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', {
         value: true,
         writable: true,
-        configurable: true,
+        configurable: true
       });
 
       const caps = getDetailedTerminalCapabilities();
@@ -423,7 +423,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', {
         value: true,
         writable: true,
-        configurable: true,
+        configurable: true
       });
 
       const controls = getCursorControls();
@@ -440,7 +440,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', {
         value: false,
         writable: true,
-        configurable: true,
+        configurable: true
       });
 
       const controls = getCursorControls();
@@ -459,7 +459,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', {
         value: true,
         writable: true,
-        configurable: true,
+        configurable: true
       });
       delete process.env.FORCE_COLOR;
 
@@ -472,7 +472,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', {
         value: false,
         writable: true,
-        configurable: true,
+        configurable: true
       });
 
       const colored = colorize('test', 31);
@@ -484,7 +484,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', {
         value: true,
         writable: true,
-        configurable: true,
+        configurable: true
       });
       process.env.FORCE_COLOR = '0';
 
@@ -512,7 +512,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', {
         value: true,
         writable: true,
-        configurable: true,
+        configurable: true
       });
 
       expect(colors.red('error')).toBe('\x1b[31merror\x1b[0m');
@@ -527,7 +527,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', {
         value: true,
         writable: true,
-        configurable: true,
+        configurable: true
       });
 
       expect(colors.bold('bold text')).toBe('\x1b[1mbold text\x1b[0m');
@@ -538,7 +538,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', {
         value: false,
         writable: true,
-        configurable: true,
+        configurable: true
       });
 
       expect(colors.red('error')).toBe('error');
@@ -582,7 +582,7 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', {
         value: true,
         writable: true,
-        configurable: true,
+        configurable: true
       });
     });
 
@@ -640,17 +640,17 @@ describe('terminal', () => {
       Object.defineProperty(process.stdout, 'isTTY', {
         value: true,
         writable: true,
-        configurable: true,
+        configurable: true
       });
       Object.defineProperty(process.stdout, 'columns', {
         value: 100,
         writable: true,
-        configurable: true,
+        configurable: true
       });
       Object.defineProperty(process.stdout, 'rows', {
         value: 30,
         writable: true,
-        configurable: true,
+        configurable: true
       });
 
       const basicCaps = getTerminalCapabilities();

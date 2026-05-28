@@ -10,7 +10,9 @@
 // consumers with `moduleResolution: "node16"`/`"nodenext"` can type-resolve
 // this import across the CJS connector → ESM core boundary. Without the
 // attribute, tsc emits TS1541 in the consumer build.
-import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm' with { 'resolution-mode': 'import' };
+import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm' with {
+  'resolution-mode': 'import'
+};
 
 /**
  * Configuration options for the guarded LlamaIndex wrapper.

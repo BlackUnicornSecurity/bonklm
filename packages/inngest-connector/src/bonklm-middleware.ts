@@ -59,7 +59,7 @@ import {
   createSaltedKeyFn,
   GuardrailEngine,
   type Validator,
-  type ValidatorInput,
+  type ValidatorInput
 } from '@blackunicorn/bonklm';
 // v0.5.0 pre-publish audit arch v5#7 closure: migrate sanitizeReasonText
 // import to the canonical edge-safe home in core/connector-utils so the
@@ -70,7 +70,7 @@ import { sanitizeReasonText } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
   BonklmInngestContextSurface,
   BonklmInngestMiddlewareOptions,
-  BonklmInngestValidateResult,
+  BonklmInngestValidateResult
 } from './types.js';
 
 /**
@@ -172,9 +172,7 @@ export function createBonklmInngestContextSurface(
  * );
  * ```
  */
-export function bonklmInngestMiddleware(
-  options: BonklmInngestMiddlewareOptions
-): typeof Middleware.BaseMiddleware {
+export function bonklmInngestMiddleware(options: BonklmInngestMiddlewareOptions): typeof Middleware.BaseMiddleware {
   // Hoist resolution to factory scope — engine + keyFn + step prefix
   // are built ONCE here and reused across every function-run via the
   // closure below. Closes audit BLOCK-B1 (per-invocation engine =
@@ -184,9 +182,7 @@ export function bonklmInngestMiddleware(
   class BonklmInngestMiddleware extends Middleware.BaseMiddleware {
     readonly id = '@blackunicorn/bonklm-inngest';
 
-    transformFunctionInput(
-      arg: Middleware.TransformFunctionInputArgs
-    ): Middleware.TransformFunctionInputArgs {
+    transformFunctionInput(arg: Middleware.TransformFunctionInputArgs): Middleware.TransformFunctionInputArgs {
       // B5 runtime guard: `ctx.step` MUST be defined in a function-run
       // context. If absent (some hook contexts, future SDK versions),
       // surface a clear error instead of letting downstream `.run(...)`
@@ -202,7 +198,7 @@ export function bonklmInngestMiddleware(
       const bonklm = surfaceFromBundle(step, bundle);
       return {
         ...arg,
-        ctx: { ...arg.ctx, bonklm } as Middleware.TransformFunctionInputArgs['ctx'],
+        ctx: { ...arg.ctx, bonklm } as Middleware.TransformFunctionInputArgs['ctx']
       };
     }
   }
@@ -222,22 +218,12 @@ export function bonklmInngestMiddleware(
  * closure object); the expensive `resolveOptions` work is hoisted
  * to factory scope by the caller.
  */
-function surfaceFromBundle(
-  step: StepRunner,
-  bundle: ResolvedBundle
-): BonklmInngestContextSurface {
+function surfaceFromBundle(step: StepRunner, bundle: ResolvedBundle): BonklmInngestContextSurface {
   const { validators, cachedOptions, stepPrefix, engine } = bundle;
 
-  const runPipeline = async (
-    stepId: string,
-    input: ValidatorInput
-  ): Promise<BonklmInngestValidateResult> => {
+  const runPipeline = async (stepId: string, input: ValidatorInput): Promise<BonklmInngestValidateResult> => {
     return step.run(stepId, async () => {
-      const results = await cachedValidate(
-        validators as Validator[],
-        input,
-        cachedOptions
-      );
+      const results = await cachedValidate(validators as Validator[], input, cachedOptions);
       // Sprint 14 cumulative arch X3 part 2 closure: notify the engine
       // so `engine.onIntercept(...)` callbacks fire for cached-validate
       // decisions too (Inngest's previous bypass meant attack telemetry
@@ -248,14 +234,10 @@ function surfaceFromBundle(
       // function-run.
       const contentForCallback =
         typeof (input as { content?: unknown }).content === 'string'
-          ? ((input as { content: string }).content)
+          ? (input as { content: string }).content
           : JSON.stringify(input);
-      await engine.notifyCachedResult(
-        results,
-        contentForCallback,
-        `inngest:${stepId}`
-      );
-      const firstBlock = results.find((r) => r.blocked === true);
+      await engine.notifyCachedResult(results, contentForCallback, `inngest:${stepId}`);
+      const firstBlock = results.find(r => r.blocked === true);
       const blocked = firstBlock !== undefined;
       return {
         blocked,
@@ -265,7 +247,7 @@ function surfaceFromBundle(
         // message), so attacker-controlled validator output must NOT
         // pass into Inngest step history / OTel spans / logs raw.
         reason: sanitizeReasonText(firstBlock?.reason),
-        results,
+        results
       };
     });
   };
@@ -275,11 +257,7 @@ function surfaceFromBundle(
       let input: ValidatorInput;
       if (typeof content === 'string') {
         input = { kind: 'text', content };
-      } else if (
-        typeof content === 'object' &&
-        content !== null &&
-        typeof (content).kind === 'string'
-      ) {
+      } else if (typeof content === 'object' && content !== null && typeof content.kind === 'string') {
         input = content;
         // B3 pre-flight: canonical-serialize the user-supplied
         // ValidatorInput so non-serializable values (Map / Set /
@@ -288,9 +266,7 @@ function surfaceFromBundle(
         const preflight = preflightCanonical(input);
         if (preflight !== null) return preflight;
       } else {
-        return blockedAt(
-          'validateInput: expected a string or a ValidatorInput object'
-        );
+        return blockedAt('validateInput: expected a string or a ValidatorInput object');
       }
       return runPipeline(`${stepPrefix}-input`, input);
     },
@@ -311,9 +287,9 @@ function surfaceFromBundle(
       return runPipeline(`${stepPrefix}-tool-args`, {
         kind: 'tool_call',
         toolName,
-        args,
+        args
       });
-    },
+    }
   };
 }
 
@@ -331,9 +307,7 @@ function preflightCanonical(input: ValidatorInput): BonklmInngestValidateResult 
     canonicalJSONStringify(input);
     return null;
   } catch (err) {
-    return blockedAt(
-      `bonklm: input is not serializable (${err instanceof Error ? err.message : String(err)})`
-    );
+    return blockedAt(`bonklm: input is not serializable (${err instanceof Error ? err.message : String(err)})`);
   }
 }
 
@@ -348,7 +322,7 @@ function blockedAt(reason: string): BonklmInngestValidateResult {
     blocked: true,
     allowed: false,
     reason: sanitizeReasonText(reason),
-    results: [],
+    results: []
   };
 }
 
@@ -363,10 +337,7 @@ function resolveOptions(options: BonklmInngestMiddlewareOptions): ResolvedBundle
   // `engine.getValidators()`. Removes the awkward "pass the same list
   // twice" pattern flagged by the cumulative audit.
   let resolvedValidators: Validator[] | undefined = options.validators;
-  if (
-    (resolvedValidators === undefined || resolvedValidators.length === 0) &&
-    options.engine !== undefined
-  ) {
+  if ((resolvedValidators === undefined || resolvedValidators.length === 0) && options.engine !== undefined) {
     const fromEngine = options.engine.getValidators();
     if (fromEngine.length > 0) {
       resolvedValidators = fromEngine;
@@ -387,8 +358,7 @@ function resolveOptions(options: BonklmInngestMiddlewareOptions): ResolvedBundle
   const stepPrefix = options.stepNamePrefix ?? 'bonklm-validate';
   if (typeof stepPrefix !== 'string' || /^\s*$/.test(stepPrefix)) {
     throw new Error(
-      'bonklmInngestMiddleware: `stepNamePrefix` must be a non-empty string ' +
-        '(default `bonklm-validate` if unset).'
+      'bonklmInngestMiddleware: `stepNamePrefix` must be a non-empty string ' + '(default `bonklm-validate` if unset).'
     );
   }
   if (!/^[a-zA-Z0-9_\-:.]+$/.test(stepPrefix)) {
@@ -397,11 +367,7 @@ function resolveOptions(options: BonklmInngestMiddlewareOptions): ResolvedBundle
         '(Inngest step IDs reject other characters).'
     );
   }
-  if (
-    /-input$/.test(stepPrefix) ||
-    /-output$/.test(stepPrefix) ||
-    /-tool-args$/.test(stepPrefix)
-  ) {
+  if (/-input$/.test(stepPrefix) || /-output$/.test(stepPrefix) || /-tool-args$/.test(stepPrefix)) {
     throw new Error(
       'bonklmInngestMiddleware: `stepNamePrefix` cannot end with `-input`, ' +
         '`-output`, or `-tool-args` — would collide with the suffix appended ' +
@@ -412,13 +378,11 @@ function resolveOptions(options: BonklmInngestMiddlewareOptions): ResolvedBundle
   const engine =
     options.engine ??
     new GuardrailEngine({
-      validators: resolvedValidators,
+      validators: resolvedValidators
     });
 
   const wantsCache = options.cache !== undefined;
-  const keyFn =
-    options.keyFn ??
-    (wantsCache ? createSaltedKeyFn(engine.getInstanceId()) : undefined);
+  const keyFn = options.keyFn ?? (wantsCache ? createSaltedKeyFn(engine.getInstanceId()) : undefined);
 
   const cachedOptions: CachedValidateOptions = {
     cache: options.cache,
@@ -426,7 +390,7 @@ function resolveOptions(options: BonklmInngestMiddlewareOptions): ResolvedBundle
     defaultTtlMs: options.defaultTtlMs,
     blockedTtlMs: options.blockedTtlMs,
     cacheNamespace: options.cacheNamespace,
-    logger: options.logger,
+    logger: options.logger
   };
 
   return {
@@ -434,6 +398,6 @@ function resolveOptions(options: BonklmInngestMiddlewareOptions): ResolvedBundle
     validators: Object.freeze([...resolvedValidators]),
     cachedOptions,
     stepPrefix,
-    engine,
+    engine
   };
 }

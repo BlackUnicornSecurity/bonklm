@@ -15,11 +15,7 @@ import { createResult, Finding, type GuardrailResult, Severity } from '../base/G
 import { getRiskThreshold, mergeConfig, type ReformulationConfig } from '../base/ValidatorConfig.js';
 import { sanitizeLogString } from '../common/index.js';
 import { CRITICAL_PATTERNS, detectPatterns } from './pattern-engine.js';
-import {
-  type SessionPatternFinding,
-  updateFragmentBuffer,
-  updateSessionState,
-} from '../session/SessionTracker.js';
+import { type SessionPatternFinding, updateFragmentBuffer, updateSessionState } from '../session/SessionTracker.js';
 
 // =============================================================================
 // TYPES
@@ -32,8 +28,8 @@ export interface ReformulationFinding {
   category: string;
   pattern_name: string;
   severity: Severity;
-  source_type: string;        // 'code_comment' | 'variable_name' | 'rot13' | 'flooding' etc.
-  extracted_text: string;      // The text extracted from the construct
+  source_type: string; // 'code_comment' | 'variable_name' | 'rot13' | 'flooding' etc.
+  extracted_text: string; // The text extracted from the construct
   description: string;
   weight?: number;
 }
@@ -89,12 +85,20 @@ const COMMENT_PATTERNS: Array<{
   { name: 'rem_comment', pattern: /^REM\s+(.*?)$/gim, description: 'Batch file REM comment' },
   // Multi-line comments
   { name: 'c_style_multi', pattern: /\/\*\s*([\s\S]*?)\s*\*\//g, description: 'C-style multi-line comment' },
-  { name: 'python_triple_double', pattern: /"""\s*([\s\S]*?)\s*"""/g, description: 'Python triple-double-quote docstring' },
-  { name: 'python_triple_single', pattern: /'''\s*([\s\S]*?)\s*'''/g, description: 'Python triple-single-quote docstring' },
+  {
+    name: 'python_triple_double',
+    pattern: /"""\s*([\s\S]*?)\s*"""/g,
+    description: 'Python triple-double-quote docstring'
+  },
+  {
+    name: 'python_triple_single',
+    pattern: /'''\s*([\s\S]*?)\s*'''/g,
+    description: 'Python triple-single-quote docstring'
+  },
   { name: 'haskell_multi', pattern: /\{-\s*([\s\S]*?)\s*-\}/g, description: 'Haskell multi-line comment' },
   { name: 'pascal_multi', pattern: /\(\*\s*([\s\S]*?)\s*\*\)/g, description: 'Pascal/OCaml multi-line comment' },
   // HTML/XML comments
-  { name: 'html_comment', pattern: /<!--\s*([\s\S]*?)\s*-->/g, description: 'HTML/XML comment' },
+  { name: 'html_comment', pattern: /<!--\s*([\s\S]*?)\s*-->/g, description: 'HTML/XML comment' }
 ];
 
 /**
@@ -105,8 +109,12 @@ const MARKDOWN_CODE_PATTERNS: Array<{
   pattern: RegExp;
   description: string;
 }> = [
-  { name: 'fenced_code_block', pattern: /```(?:\w+)?\s*\n([\s\S]*?)\n\s*```/g, description: 'Markdown fenced code block' },
-  { name: 'inline_code', pattern: /`([^`]+)`/g, description: 'Markdown inline code' },
+  {
+    name: 'fenced_code_block',
+    pattern: /```(?:\w+)?\s*\n([\s\S]*?)\n\s*```/g,
+    description: 'Markdown fenced code block'
+  },
+  { name: 'inline_code', pattern: /`([^`]+)`/g, description: 'Markdown inline code' }
 ];
 
 /**
@@ -155,24 +163,25 @@ const IDENTIFIER_INJECTION_PATTERNS: Array<{
     name: 'var_bypass_safety',
     pattern:
       /(?:const|let|var|function|def|class)\s+(?:\w*(?:bypass|ignore|override|disable|remove)(?:Safety|Security|Filter|Guard|Rules?|Restrictions?|Constraints?)\w*)/i,
-    description: 'Variable/function name encodes safety bypass instruction',
+    description: 'Variable/function name encodes safety bypass instruction'
   },
   {
     name: 'var_jailbreak',
     pattern: /(?:const|let|var|function|def|class)\s+(?:\w*(?:jailbreak|jailBreak|jail_break)\w*)/i,
-    description: 'Variable/function name contains jailbreak reference',
+    description: 'Variable/function name contains jailbreak reference'
   },
   {
     name: 'var_ignore_instructions',
     pattern:
       /(?:const|let|var|function|def|class)\s+(?:\w*(?:ignoreAll(?:Previous|Prior)?(?:Rules?|Instructions?)|forgetRules|overrideSystem)\w*)/i,
-    description: 'Variable/function name encodes instruction override',
+    description: 'Variable/function name encodes instruction override'
   },
   {
     name: 'assignment_nullify_rules',
-    pattern: /(?:rules?|restrictions?|safety|constraints?|guardrails?|filters?)\s*(?:=|:=)\s*(?:null|nil|false|0|undefined|None|\[\]|\{\}|"")/i,
-    description: 'Assignment nullifies rules/restrictions variable',
-  },
+    pattern:
+      /(?:rules?|restrictions?|safety|constraints?|guardrails?|filters?)\s*(?:=|:=)\s*(?:null|nil|false|0|undefined|None|\[\]|\{\}|"")/i,
+    description: 'Assignment nullifies rules/restrictions variable'
+  }
 ];
 
 function detectIdentifierEncoding(content: string): ReformulationFinding[] {
@@ -188,7 +197,7 @@ function detectIdentifierEncoding(content: string): ReformulationFinding[] {
         source_type: pattern.name.startsWith('assignment') ? 'assignment' : 'variable_name',
         extracted_text: match[0].slice(0, 100),
         description: pattern.description,
-        weight: 3,
+        weight: 3
       });
     }
   }
@@ -215,7 +224,7 @@ function detectCodeFormatInjection(content: string): ReformulationFinding[] {
     const patternFindings = detectPatterns(text);
 
     for (const pf of patternFindings) {
-      const isCriticalPattern = CRITICAL_PATTERNS.some((cp) => cp.name === pf.pattern_name);
+      const isCriticalPattern = CRITICAL_PATTERNS.some(cp => cp.name === pf.pattern_name);
       const severity: Severity = isCriticalPattern ? Severity.WARNING : Severity.INFO;
 
       findings.push({
@@ -225,7 +234,7 @@ function detectCodeFormatInjection(content: string): ReformulationFinding[] {
         source_type: 'code_comment',
         extracted_text: text.slice(0, 100),
         description: `Code comment (${source}) contains ${pf.description}`,
-        weight: isCriticalPattern ? 8 : 2,
+        weight: isCriticalPattern ? 8 : 2
       });
     }
   }
@@ -241,14 +250,14 @@ function detectCodeFormatInjection(content: string): ReformulationFinding[] {
 // =============================================================================
 
 function rot13(text: string): string {
-  return text.replace(/[a-zA-Z]/g, (c) => {
+  return text.replace(/[a-zA-Z]/g, c => {
     const base = c <= 'Z' ? 65 : 97;
     return String.fromCharCode(((c.charCodeAt(0) - base + 13) % 26) + base);
   });
 }
 
 function rot47(text: string): string {
-  return text.replace(/[!-~]/g, (c) => {
+  return text.replace(/[!-~]/g, c => {
     return String.fromCharCode(((c.charCodeAt(0) - 33 + 47) % 94) + 33);
   });
 }
@@ -258,17 +267,17 @@ function reverseText(text: string): string {
 }
 
 function extractAcrostic(text: string): string | null {
-  const lines = text.split('\n').filter((l) => l.trim().length > 0);
+  const lines = text.split('\n').filter(l => l.trim().length > 0);
   if (lines.length < 5) return null;
-  return lines.map((l) => l.trim()[0] || '').join('');
+  return lines.map(l => l.trim()[0] || '').join('');
 }
 
 function detectPigLatin(text: string): string | null {
   const words = text.split(/\s+/);
-  const pigLatinWords = words.filter((w) => /[a-z]+ay$/i.test(w));
+  const pigLatinWords = words.filter(w => /[a-z]+ay$/i.test(w));
   if (pigLatinWords.length < 3 || pigLatinWords.length / words.length < 0.5) return null;
 
-  const decoded = pigLatinWords.map((w) => {
+  const decoded = pigLatinWords.map(w => {
     if (/^[aeiou].*way$/i.test(w)) {
       return w.slice(0, -3);
     }
@@ -286,7 +295,10 @@ function detectPigLatin(text: string): string | null {
 /**
  * Detect character-level encoded injection payloads.
  */
-function detectCharacterLevelEncoding(content: string, maxSize: number = DEFAULT_MAX_DECODE_SIZE): ReformulationFinding[] {
+function detectCharacterLevelEncoding(
+  content: string,
+  maxSize: number = DEFAULT_MAX_DECODE_SIZE
+): ReformulationFinding[] {
   if (!content || content.length > maxSize || content.trim().length === 0) {
     return [];
   }
@@ -297,7 +309,7 @@ function detectCharacterLevelEncoding(content: string, maxSize: number = DEFAULT
   const rot13Decoded = rot13(content);
   if (rot13Decoded !== content && CHAR_INJECTION_KEYWORDS.test(rot13Decoded)) {
     const patternHits = detectPatterns(rot13Decoded);
-    const hasCritical = patternHits.some((p) => p.severity === Severity.CRITICAL || p.severity === Severity.WARNING);
+    const hasCritical = patternHits.some(p => p.severity === Severity.CRITICAL || p.severity === Severity.WARNING);
     findings.push({
       category: 'character_encoding',
       pattern_name: 'rot13_injection',
@@ -305,7 +317,7 @@ function detectCharacterLevelEncoding(content: string, maxSize: number = DEFAULT
       source_type: 'rot13',
       extracted_text: rot13Decoded.slice(0, 100),
       description: 'ROT13 decoded content contains injection keywords',
-      weight: hasCritical ? 8 : 3,
+      weight: hasCritical ? 8 : 3
     });
   }
 
@@ -319,7 +331,7 @@ function detectCharacterLevelEncoding(content: string, maxSize: number = DEFAULT
       source_type: 'rot47',
       extracted_text: rot47Decoded.slice(0, 100),
       description: 'ROT47 decoded content contains injection keywords',
-      weight: 3,
+      weight: 3
     });
   }
 
@@ -327,7 +339,7 @@ function detectCharacterLevelEncoding(content: string, maxSize: number = DEFAULT
   const reversed = reverseText(content);
   if (CHAR_INJECTION_KEYWORDS.test(reversed)) {
     const patternHits = detectPatterns(reversed);
-    const hasCritical = patternHits.some((p) => p.severity === Severity.CRITICAL || p.severity === Severity.WARNING);
+    const hasCritical = patternHits.some(p => p.severity === Severity.CRITICAL || p.severity === Severity.WARNING);
     findings.push({
       category: 'character_encoding',
       pattern_name: 'reverse_text_injection',
@@ -335,7 +347,7 @@ function detectCharacterLevelEncoding(content: string, maxSize: number = DEFAULT
       source_type: 'reverse',
       extracted_text: reversed.slice(0, 100),
       description: 'Reversed text contains injection keywords',
-      weight: hasCritical ? 7 : 3,
+      weight: hasCritical ? 7 : 3
     });
   }
 
@@ -349,7 +361,7 @@ function detectCharacterLevelEncoding(content: string, maxSize: number = DEFAULT
       source_type: 'acrostic',
       extracted_text: acrostic,
       description: 'Acrostic (first letters of lines) contains injection keywords',
-      weight: 5,
+      weight: 5
     });
   }
 
@@ -363,7 +375,7 @@ function detectCharacterLevelEncoding(content: string, maxSize: number = DEFAULT
       source_type: 'pig_latin',
       extracted_text: pigLatinDecoded.slice(0, 100),
       description: 'Pig Latin decoded content contains injection keywords',
-      weight: 4,
+      weight: 4
     });
   }
 
@@ -386,7 +398,7 @@ function detectContextOverload(content: string): ReformulationFinding[] {
 
   // Token flooding heuristic: >15,000 chars with high repetition ratio
   if (content.length > 15000) {
-    const sentences = content.split(/[.!?\n]+/).filter((s) => s.trim().length > 5);
+    const sentences = content.split(/[.!?\n]+/).filter(s => s.trim().length > 5);
     if (sentences.length > 0) {
       const hashBuckets = new Map<string, number>();
       for (const sentence of sentences) {
@@ -407,7 +419,7 @@ function detectContextOverload(content: string): ReformulationFinding[] {
           source_type: 'flooding',
           extracted_text: `${content.length} chars, ${totalSentences} sentences, ${Math.round(repetitionRatio * 100)}% repetition`,
           description: 'Token flooding detected: long content with high repetition ratio',
-          weight: 6,
+          weight: 6
         });
       }
     }
@@ -425,12 +437,12 @@ function detectContextOverload(content: string): ReformulationFinding[] {
       source_type: 'many_shot',
       extracted_text: `${instructionMatches.length} instruction-like patterns detected`,
       description: 'Many-shot injection: >10 similar instruction patterns in single message',
-      weight: 5,
+      weight: 5
     });
   }
 
   // Repetition analysis
-  const allSentences = content.split(/[.!?\n]+/).filter((s) => s.trim().length > 5);
+  const allSentences = content.split(/[.!?\n]+/).filter(s => s.trim().length > 5);
   if (allSentences.length > 5) {
     const hashBuckets = new Map<string, number>();
     for (const sentence of allSentences) {
@@ -451,7 +463,7 @@ function detectContextOverload(content: string): ReformulationFinding[] {
         source_type: 'repetition',
         extracted_text: `${totalSentences} sentences, ${Math.round(repetitionRatio * 100)}% repetition`,
         description: 'High repetition ratio: >40% of sentences are duplicates',
-        weight: 5,
+        weight: 5
       });
     }
   }
@@ -472,19 +484,20 @@ const MATH_LOGIC_PATTERNS: Array<{
     name: 'formal_logic_override',
     pattern:
       /(?:∀|∃|⊢|⊨|→|⇒|∧|∨)\s*(?:\w+\s*)?[:(]?\s*(?:safety|rules?|instructions?|constraints?|restrictions?)(?:\([^)]*\))?\s*(?:→|⇒|=)\s*(?:ignore|null|false|0|⊥)(?:\([^)]*\))?/i,
-    description: 'Formal logic encoding of safety override',
+    description: 'Formal logic encoding of safety override'
   },
   {
     name: 'pseudomath_nullify',
-    pattern: /(?:let|set|define)\s+(?:rules?|restrictions?|safety|constraints?|guardrails?)\s*(?:=|:=|←)\s*(?:null|nil|0|false|∅|undefined|None|empty|\[\]|\{\})/i,
-    description: 'Pseudomath notation nullifying rules',
+    pattern:
+      /(?:let|set|define)\s+(?:rules?|restrictions?|safety|constraints?|guardrails?)\s*(?:=|:=|←)\s*(?:null|nil|0|false|∅|undefined|None|empty|\[\]|\{\})/i,
+    description: 'Pseudomath notation nullifying rules'
   },
   {
     name: 'conditional_override',
     pattern:
       /(?:if|when|given)\s+(?:true|1|always)\s*(?:then|→|⇒|:)\s*(?:ignore|bypass|override|disable)\s+(?:all\s+)?(?:rules?|safety|restrictions?)/i,
-    description: 'Conditional logic encoding safety bypass',
-  },
+    description: 'Conditional logic encoding safety bypass'
+  }
 ];
 
 function detectMathLogicEncoding(content: string, maxSize: number = DEFAULT_MATH_MAX_SIZE): ReformulationFinding[] {
@@ -504,7 +517,7 @@ function detectMathLogicEncoding(content: string, maxSize: number = DEFAULT_MATH
         source_type: 'math_notation',
         extracted_text: match[0].slice(0, 100),
         description: pattern.description,
-        weight: 4,
+        weight: 4
       });
     }
   }
@@ -522,7 +535,8 @@ function detectMathLogicEncoding(content: string, maxSize: number = DEFAULT_MATH
  * Detects injection payloads disguised through reformulation techniques.
  */
 export class ReformulationDetector {
-  private readonly config: ReformulationConfig & Required<Pick<ReformulationConfig, 'sensitivity' | 'action' | 'enabled' | 'logLevel' | 'includeFindings'>>;
+  private readonly config: ReformulationConfig &
+    Required<Pick<ReformulationConfig, 'sensitivity' | 'action' | 'enabled' | 'logLevel' | 'includeFindings'>>;
   private readonly logger: Logger;
 
   constructor(config: ReformulationConfig = {}) {
@@ -535,7 +549,7 @@ export class ReformulationDetector {
       detectContextOverload: config.detectContextOverload ?? true,
       detectMathLogic: config.detectMathLogic ?? true,
       maxDecodeSize: config.maxDecodeSize ?? DEFAULT_MAX_DECODE_SIZE,
-      enableSessionTracking: config.enableSessionTracking ?? false,
+      enableSessionTracking: config.enableSessionTracking ?? false
     };
     this.logger = this.config.logger ?? createLogger('console', this.config.logLevel);
   }
@@ -547,20 +561,22 @@ export class ReformulationDetector {
     // Prevent DoS attacks with extremely large inputs
     if (content.length > MAX_INPUT_LENGTH) {
       return {
-        findings: [{
-          category: 'input_too_large',
-          pattern_name: 'size_limit_exceeded',
-          severity: Severity.WARNING,
-          source_type: 'size_limit',
-          extracted_text: '',
-          description: `Input length ${content.length} exceeds maximum ${MAX_INPUT_LENGTH}`,
-        }],
+        findings: [
+          {
+            category: 'input_too_large',
+            pattern_name: 'size_limit_exceeded',
+            severity: Severity.WARNING,
+            source_type: 'size_limit',
+            extracted_text: '',
+            description: `Input length ${content.length} exceeds maximum ${MAX_INPUT_LENGTH}`
+          }
+        ],
         code_format_findings: [],
         character_encoding_findings: [],
         context_overload_findings: [],
         math_logic_findings: [],
         obfuscation_detected: false,
-        risk_score: 5,
+        risk_score: 5
       };
     }
 
@@ -617,18 +633,18 @@ export class ReformulationDetector {
             source_type: 'session',
             extracted_text: content.slice(0, 100),
             description: 'Fragmented injection keyword detected across turns',
-            weight: 4,
+            weight: 4
           }))
         );
         obfuscation_detected = true;
       }
 
       // Update session state
-      const sessionFindings: SessionPatternFinding[] = findings.map((f) => ({
+      const sessionFindings: SessionPatternFinding[] = findings.map(f => ({
         category: f.category,
         weight: f.weight ?? 1,
         pattern_name: f.pattern_name,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       }));
 
       const sessionResult = updateSessionState(sessionId, sessionFindings);
@@ -652,7 +668,7 @@ export class ReformulationDetector {
       math_logic_findings,
       obfuscation_detected,
       session_escalated,
-      risk_score,
+      risk_score
     };
   }
 
@@ -667,19 +683,19 @@ export class ReformulationDetector {
     const analysis = this.analyze(content, sessionId);
 
     // Convert findings to standard Finding format
-    const stdFindings: Finding[] = analysis.findings.map((f) => ({
+    const stdFindings: Finding[] = analysis.findings.map(f => ({
       category: f.category,
       pattern_name: f.pattern_name,
       severity: f.severity,
       weight: f.weight ?? 1,
       match: f.extracted_text,
-      description: f.description,
+      description: f.description
     }));
 
     // Determine if content should be blocked
     const threshold = getRiskThreshold(this.config.sensitivity);
-    const hasCritical = stdFindings.some((f) => f.severity === Severity.CRITICAL);
-    const hasWarning = stdFindings.some((f) => f.severity === Severity.WARNING);
+    const hasCritical = stdFindings.some(f => f.severity === Severity.CRITICAL);
+    const hasWarning = stdFindings.some(f => f.severity === Severity.WARNING);
 
     let allowed = true;
     let severity = Severity.INFO;
@@ -731,10 +747,7 @@ export class ReformulationDetector {
 /**
  * Quick validation function for reformulation detection.
  */
-export function validateReformulation(
-  content: string,
-  config?: ReformulationConfig
-): GuardrailResult {
+export function validateReformulation(content: string, config?: ReformulationConfig): GuardrailResult {
   const detector = new ReformulationDetector(config);
   return detector.validate(content);
 }
@@ -742,10 +755,7 @@ export function validateReformulation(
 /**
  * Analyze content for reformulation patterns (detailed result).
  */
-export function analyzeReformulation(
-  content: string,
-  config?: ReformulationConfig
-): ReformulationAnalysisResult {
+export function analyzeReformulation(content: string, config?: ReformulationConfig): ReformulationAnalysisResult {
   const detector = new ReformulationDetector(config);
   return detector.analyze(content);
 }

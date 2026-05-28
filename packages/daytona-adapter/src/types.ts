@@ -17,10 +17,7 @@
  * literal as a `child_process.exec(`-class pattern. Both syntaxes are
  * structurally equivalent for assignability.
  */
-import type {
-  OnSandboxErrorAction,
-  SandboxValidationResult,
-} from '@blackunicorn/bonklm-sandbox-utils';
+import type { OnSandboxErrorAction, SandboxValidationResult } from '@blackunicorn/bonklm-sandbox-utils';
 
 const SH = 'ex' + 'ec';
 const RN = 'r' + 'un';
@@ -50,12 +47,7 @@ export interface DaytonaFsLike {
    * Daytona's `replaceInFiles(filePaths, search, replace)` — path AND
    * value are double-validated per Story 3.5 AC.
    */
-  replaceInFiles?: (
-    filePaths: string[],
-    search: string,
-    replace: string,
-    opts?: unknown
-  ) => Promise<unknown>;
+  replaceInFiles?: (filePaths: string[], search: string, replace: string, opts?: unknown) => Promise<unknown>;
 }
 
 /**

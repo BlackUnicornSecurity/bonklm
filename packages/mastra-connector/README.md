@@ -33,7 +33,7 @@ import { Mastra } from '@mastra/core';
 const guardrails = createGuardedMastra({
   validators: [new PromptInjectionValidator()],
   validateAgentInput: true,
-  validateAgentOutput: true,
+  validateAgentOutput: true
 });
 
 // Use with Mastra agents
@@ -45,9 +45,7 @@ const mastra = new Mastra({
 const agent = mastra.getAgent('my-agent');
 
 // Before execution
-const beforeResult = await guardrails.beforeAgentExecution([
-  { role: 'user', content: userInput }
-]);
+const beforeResult = await guardrails.beforeAgentExecution([{ role: 'user', content: userInput }]);
 
 if (!beforeResult.allowed) {
   throw new Error(beforeResult.blockedReason);
@@ -73,12 +71,9 @@ import { wrapAgent } from '@blackunicorn/bonklm-mastra';
 import { PromptInjectionValidator, JailbreakValidator } from '@blackunicorn/bonklm';
 
 const guardedAgent = wrapAgent(myAgent, {
-  validators: [
-    new PromptInjectionValidator(),
-    new JailbreakValidator()
-  ],
+  validators: [new PromptInjectionValidator(), new JailbreakValidator()],
   validateAgentInput: true,
-  validateAgentOutput: true,
+  validateAgentOutput: true
 });
 
 // Use normally - guardrails are applied automatically
@@ -97,24 +92,24 @@ interface GuardedMastraOptions {
   logger?: Logger;
 
   // Feature toggles
-  validateAgentInput?: boolean;      // Default: true
-  validateAgentOutput?: boolean;     // Default: true
-  validateToolCalls?: boolean;       // Default: true
-  validateToolResults?: boolean;     // Default: true
+  validateAgentInput?: boolean; // Default: true
+  validateAgentOutput?: boolean; // Default: true
+  validateToolCalls?: boolean; // Default: true
+  validateToolResults?: boolean; // Default: true
 
   // Streaming
-  validateStreaming?: boolean;       // Default: false
-  streamingMode?: 'incremental' | 'buffer';  // Default: 'incremental'
+  validateStreaming?: boolean; // Default: false
+  streamingMode?: 'incremental' | 'buffer'; // Default: 'incremental'
 
   // Security limits
-  maxStreamBufferSize?: number;      // Default: 1MB
-  maxContentLength?: number;         // Default: 100KB
+  maxStreamBufferSize?: number; // Default: 1MB
+  maxContentLength?: number; // Default: 100KB
 
   // Production mode
-  productionMode?: boolean;          // Default: NODE_ENV === 'production'
+  productionMode?: boolean; // Default: NODE_ENV === 'production'
 
   // Timeout
-  validationTimeout?: number;        // Default: 30000ms (30s)
+  validationTimeout?: number; // Default: 30000ms (30s)
 
   // Callbacks
   onBlocked?: (result, context?) => void;
@@ -131,7 +126,7 @@ For streaming responses, use the stream validator:
 const guardrails = createGuardedMastra({
   validators: [new PromptInjectionValidator()],
   validateStreaming: true,
-  streamingMode: 'incremental',
+  streamingMode: 'incremental'
 });
 
 const validator = guardrails.createStreamValidator();
@@ -158,7 +153,7 @@ Tool calls are validated to prevent injection attacks:
 const toolCall: MastraToolCall = {
   id: 'tool-123',
   name: 'search',
-  input: { query: userInput },
+  input: { query: userInput }
 };
 
 const result = await guardrails.validateToolCall(toolCall);
@@ -174,27 +169,35 @@ const toolResult = await executeTool(toolCall);
 ## Security Features
 
 ### SEC-001: Path Traversal Protection
+
 Path normalization using `path.normalize()` for any path-based operations.
 
 ### SEC-002: Stream Validation
+
 Buffer-and-validate-before-send pattern with early termination on violations.
 
 ### SEC-003: Buffer Overflow Protection
+
 Configurable max buffer size (default 1MB) to prevent DoS attacks.
 
 ### SEC-005: Tool Call Injection
+
 Schema validation for tool arguments to prevent injection attacks.
 
 ### SEC-006: Structured Content Handling
+
 Proper extraction of text from complex message formats (arrays, images, etc.).
 
 ### SEC-007: Production Mode
+
 Generic error messages in production to avoid information leakage.
 
 ### SEC-008: Validation Timeout
+
 AbortController-based timeout to prevent hanging on slow inputs.
 
 ### SEC-010: Request Size Limits
+
 Configurable max content length to prevent DoS via large inputs.
 
 ## API Reference
@@ -204,6 +207,7 @@ Configurable max content length to prevent DoS via large inputs.
 Creates a guardrail integration object with hook functions.
 
 **Returns:**
+
 - `beforeAgentExecution(messages, context?)` - Validate before agent execution
 - `afterAgentExecution(response, context?)` - Validate after agent execution
 - `validateToolCall(toolCall, context?)` - Validate tool call inputs

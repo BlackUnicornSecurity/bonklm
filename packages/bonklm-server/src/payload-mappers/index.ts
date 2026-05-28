@@ -130,18 +130,15 @@ function joinMessagesContent(messages: OpenAIChatMessage[] | undefined): string 
  * the unread envelope.
  */
 export function mapLiteLLM(payload: LiteLLMHookPayload): MappedGuardInput {
-  const merged: OpenAIChatMessage[] = [
-    ...(payload.data?.messages ?? []),
-    ...(payload.request_data?.messages ?? []),
-  ];
+  const merged: OpenAIChatMessage[] = [...(payload.data?.messages ?? []), ...(payload.request_data?.messages ?? [])];
   const model = payload.data?.model ?? payload.request_data?.model;
   return {
     content: joinMessagesContent(merged),
     metadata: {
       source: 'litellm',
       model,
-      messageCount: merged.length,
-    },
+      messageCount: merged.length
+    }
   };
 }
 
@@ -155,10 +152,7 @@ export function mapLiteLLM(payload: LiteLLMHookPayload): MappedGuardInput {
  * before validation (confused-deputy defense — see `mapLiteLLM`).
  */
 export function mapPortkey(payload: PortkeyHookPayload): MappedGuardInput {
-  const merged: OpenAIChatMessage[] = [
-    ...(payload.request?.json?.messages ?? []),
-    ...(payload.messages ?? []),
-  ];
+  const merged: OpenAIChatMessage[] = [...(payload.request?.json?.messages ?? []), ...(payload.messages ?? [])];
   const model = payload.request?.json?.model ?? payload.model;
   const prompt = payload.request?.json?.prompt ?? payload.request?.text;
   let content = joinMessagesContent(merged);
@@ -168,8 +162,8 @@ export function mapPortkey(payload: PortkeyHookPayload): MappedGuardInput {
     metadata: {
       source: 'portkey',
       model,
-      messageCount: merged.length,
-    },
+      messageCount: merged.length
+    }
   };
 }
 
@@ -189,7 +183,7 @@ export function mapOpenAICompat(payload: OpenAICompatPayload): MappedGuardInput 
     metadata: {
       source: 'openai-compatible',
       model: payload.model,
-      messageCount: messages.length,
-    },
+      messageCount: messages.length
+    }
   };
 }

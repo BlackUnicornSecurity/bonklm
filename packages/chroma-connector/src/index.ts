@@ -14,7 +14,7 @@ export type {
   GuardedChromaOptions,
   GuardedChromaQueryResult,
   ChromaQueryOptions,
-  BlockedDocumentHandling,
+  BlockedDocumentHandling
 } from './types.js';
 
 export { DEFAULT_VALIDATION_TIMEOUT, DEFAULT_MAX_N_RESULTS } from './types.js';

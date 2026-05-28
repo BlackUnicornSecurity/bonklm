@@ -45,10 +45,12 @@ function formatStatusItem(label: string, items: Array<{ name: string; version?: 
     return `${label}: ${empty}`;
   }
 
-  return `${label}:\n${items.map(item => {
-    const version = item.version ? ` (${item.version})` : '';
-    return `  - ${item.name}${version}`;
-  }).join('\n')}`;
+  return `${label}:\n${items
+    .map(item => {
+      const version = item.version ? ` (${item.version})` : '';
+      return `  - ${item.name}${version}`;
+    })
+    .join('\n')}`;
 }
 
 /**
@@ -63,7 +65,7 @@ export const statusCommand = new Command('status')
       detectFrameworks(),
       detectServices(),
       detectCredentials(),
-      new EnvManager().read().catch(() => ({})),
+      new EnvManager().read().catch(() => ({}))
     ]);
 
     const allConnectors = getAllConnectors();
@@ -78,8 +80,8 @@ export const statusCommand = new Command('status')
       available: allConnectors.map(c => ({
         id: c.id,
         name: c.name,
-        category: c.category,
-      })),
+        category: c.category
+      }))
     };
 
     // Output JSON if requested
@@ -89,17 +91,17 @@ export const statusCommand = new Command('status')
         ...output,
         credentials: output.credentials.map(c => ({
           ...c,
-          maskedValue: c.maskedValue,
-        })),
+          maskedValue: c.maskedValue
+        }))
       };
       console.log(JSON.stringify(maskedOutput, null, 2));
       return;
     }
 
     // Human-readable output
-    console.log(`\n${  '═'.repeat(50)}`);
+    console.log(`\n${'═'.repeat(50)}`);
     console.log('  BonkLM Environment Status');
-    console.log(`${'═'.repeat(50)  }\n`);
+    console.log(`${'═'.repeat(50)}\n`);
 
     // Frameworks
     console.log(formatStatusItem('Frameworks', frameworks, 'No frameworks detected'));
@@ -111,7 +113,7 @@ export const statusCommand = new Command('status')
     if (services.length > availableServices.length) {
       const unavailable = services.filter(s => !s.available);
       if (unavailable.length > 0) {
-        console.log(`  (Unavailable: ${  unavailable.map(s => s.name).join(', ')  })`);
+        console.log(`  (Unavailable: ${unavailable.map(s => s.name).join(', ')})`);
       }
     }
     console.log('');
@@ -134,9 +136,8 @@ export const statusCommand = new Command('status')
       for (const key of configured) {
         // Mask the value for display
         const value = (env as Record<string, string>)[key] || '';
-        const masked = value.length > 8
-          ? `${value.slice(0, 2)}${'*'.repeat(value.length - 6)}${value.slice(-4)}`
-          : '***';
+        const masked =
+          value.length > 8 ? `${value.slice(0, 2)}${'*'.repeat(value.length - 6)}${value.slice(-4)}` : '***';
         console.log(`  ${key}=${masked}`);
       }
     } else {
@@ -152,7 +153,7 @@ export const statusCommand = new Command('status')
       console.log(`  [${status}] ${connector.name} (${connector.id})`);
     }
 
-    console.log(`\n${  '═'.repeat(50)}`);
+    console.log(`\n${'═'.repeat(50)}`);
     console.log(`  Run 'bonklm wizard' to set up connectors`);
-    console.log(`${'═'.repeat(50)  }\n`);
+    console.log(`${'═'.repeat(50)}\n`);
   });

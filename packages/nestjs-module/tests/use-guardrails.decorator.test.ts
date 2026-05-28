@@ -14,7 +14,7 @@ vi.mock('@nestjs/common', async () => {
   const actual = await vi.importActual('@nestjs/common');
   return {
     ...actual,
-    SetMetadata: vi.fn((key: string, value: unknown) => value),
+    SetMetadata: vi.fn((key: string, value: unknown) => value)
   };
 });
 
@@ -34,7 +34,7 @@ describe('UseGuardrails Decorator', () => {
         validateOutput: true,
         bodyField: 'prompt',
         responseField: 'text',
-        maxContentLength: 2048,
+        maxContentLength: 2048
       };
 
       const decorator = UseGuardrails(options);
@@ -96,7 +96,7 @@ describe('UseGuardrails Decorator', () => {
     it('should return true for valid options object', () => {
       const options: UseGuardrailsDecoratorOptions = {
         validateInput: true,
-        validateOutput: false,
+        validateOutput: false
       };
 
       expect(isUseGuardrailsOptions(options)).toBe(true);
@@ -161,7 +161,7 @@ describe('UseGuardrails Decorator', () => {
     it('should return false for object with irrelevant properties', () => {
       const options = {
         someOtherProperty: 'value',
-        anotherProperty: 123,
+        anotherProperty: 123
       };
 
       expect(isUseGuardrailsOptions(options)).toBe(false);

@@ -18,12 +18,7 @@
  * cuts the volume of escaping paths that reach the sandbox.
  */
 import type { HookSurface, Validator, ValidatorInput } from '../engine/GuardrailEngine.types.js';
-import {
-  createResult,
-  type Finding,
-  type GuardrailResult,
-  Severity,
-} from '../base/GuardrailResult.js';
+import { createResult, type Finding, type GuardrailResult, Severity } from '../base/GuardrailResult.js';
 import { isAbsolute as pathIsAbsolute, resolve as pathResolve, sep as pathSep } from 'node:path';
 import { scoreToRiskLevel, unwrapValidatorInput } from './internal/unwrap-input.js';
 
@@ -55,9 +50,7 @@ export class PathTraversalValidator implements Validator {
 
   constructor(config: PathTraversalValidatorConfig) {
     if (!config || typeof config.cwd !== 'string' || config.cwd.length === 0) {
-      throw new TypeError(
-        'PathTraversalValidator: config.cwd is required (non-empty string).'
-      );
+      throw new TypeError('PathTraversalValidator: config.cwd is required (non-empty string).');
     }
     this.cwd = pathResolve(config.cwd);
     this.checkSymlinks = config.checkSymlinks ?? false;
@@ -77,7 +70,7 @@ export class PathTraversalValidator implements Validator {
         category: 'path_traversal_nullbyte',
         severity: Severity.CRITICAL,
         description: 'Path contains a null byte (path-truncation attack)',
-        weight: 10,
+        weight: 10
       });
     }
 
@@ -90,7 +83,7 @@ export class PathTraversalValidator implements Validator {
         category: 'path_traversal_dotdot',
         severity: Severity.CRITICAL,
         description: 'Path contains `..` traversal segment',
-        weight: 10,
+        weight: 10
       });
     }
 
@@ -102,7 +95,7 @@ export class PathTraversalValidator implements Validator {
           category: 'path_traversal_absolute_outside',
           severity: Severity.CRITICAL,
           description: `Absolute path '${content}' resolves outside cwd '${this.cwd}'`,
-          weight: 10,
+          weight: 10
         });
       }
     }
@@ -126,7 +119,7 @@ export class PathTraversalValidator implements Validator {
             category: 'path_traversal_symlink_escape',
             severity: Severity.CRITICAL,
             description: `Symlink target '${resolved}' escapes cwd '${realCwd}'`,
-            weight: 10,
+            weight: 10
           });
         }
       } catch {
@@ -138,7 +131,7 @@ export class PathTraversalValidator implements Validator {
           category: 'path_traversal_symlink_check_error',
           severity: Severity.CRITICAL,
           description: 'Symlink resolution failed — treating as potential escape (fail-secure)',
-          weight: 10,
+          weight: 10
         });
       }
     }
@@ -208,4 +201,3 @@ function safeResolve(p: string, _cwd: string): string | null {
     return null;
   }
 }
-

@@ -1,21 +1,19 @@
 # Recipe: pgvector + RetrievedDocValidator
 
-Wire BonkLM's `createRetrievedDocValidator` (Story 1.2) into a
-`pg`-based pgvector search so retrieved RAG hits flow through prompt-
-injection / secret / PII scanning before reaching the LLM. No
-dedicated `pgvector-connector` package is needed — pgvector is just
-Postgres + the `vector` extension, so the standard `pg` driver
-combined with a thin wrapper carries the full Story 1.2 surface.
+Wire BonkLM's `createRetrievedDocValidator` (Story 1.2) into a `pg`-based pgvector search so
+retrieved RAG hits flow through prompt- injection / secret / PII scanning before reaching the LLM.
+No dedicated `pgvector-connector` package is needed — pgvector is just Postgres + the `vector`
+extension, so the standard `pg` driver combined with a thin wrapper carries the full Story 1.2
+surface.
 
 ## When to use this recipe
 
-- You already run Postgres and want vector search in the same store
-  rather than introducing a separate vector DB.
-- You're using `pgvector` (any version) via the standard `pg` /
-  `node-postgres` driver, Drizzle, Kysely, or any other Postgres
-  ORM that returns rows as plain objects.
-- You want the same drop / block-all / redact mode semantics that the
-  pinecone / qdrant / weaviate / chroma retrofits ship.
+- You already run Postgres and want vector search in the same store rather than introducing a
+  separate vector DB.
+- You're using `pgvector` (any version) via the standard `pg` / `node-postgres` driver, Drizzle,
+  Kysely, or any other Postgres ORM that returns rows as plain objects.
+- You want the same drop / block-all / redact mode semantics that the pinecone / qdrant / weaviate /
+  chroma retrofits ship.
 
 ## Install
 
@@ -51,7 +49,7 @@ import {
   createRetrievedDocValidator,
   PromptInjectionValidator,
   SecretGuard,
-  PIIGuard,
+  PIIGuard
 } from '@blackunicorn/bonklm';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -60,12 +58,8 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 // stateless, so a single instance carries the validator chain
 // across every retrieval.
 const docValidator = createRetrievedDocValidator({
-  validators: [
-    new PromptInjectionValidator(),
-    new SecretGuard(),
-    new PIIGuard(),
-  ],
-  onPerDocFailure: 'redact', // or 'drop' / 'block-all'
+  validators: [new PromptInjectionValidator(), new SecretGuard(), new PIIGuard()],
+  onPerDocFailure: 'redact' // or 'drop' / 'block-all'
   // 'redact' uses the RedactingValidator capability (SecretGuard +
   // PIIGuard implement it; PromptInjection findings fall back to
   // Finding.match substring-replace).
@@ -106,14 +100,14 @@ export async function safeSimilaritySearch(
   // 2. Adapt the SQL rows into the validator's RetrievedDoc shape.
   //    `content` is the field the validator scans; `metadata` flows
   //    through unchanged for downstream use.
-  const docs = rows.map((row) => ({
+  const docs = rows.map(row => ({
     id: row.id,
     content: row.chunk_text,
     metadata: {
       source_url: row.source_url,
       similarity: row.similarity,
-      ...row.metadata,
-    },
+      ...row.metadata
+    }
   }));
 
   // 3. Validate. `validateBatch` returns BOTH the aggregate
@@ -126,16 +120,16 @@ export async function safeSimilaritySearch(
   //    discarded for blocked / redacted docs so an attacker payload
   //    cannot reach the LLM.
   return {
-    docs: batch.docs.map((d) => ({
+    docs: batch.docs.map(d => ({
       id: d.id ?? '',
       sourceUrl: (d.metadata?.source_url as string | null) ?? null,
       chunkText: d.content,
-      similarity: (d.metadata?.similarity as number) ?? 0,
+      similarity: (d.metadata?.similarity as number) ?? 0
     })),
     result: {
       allowed: batch.result.allowed,
-      severity: batch.result.severity,
-    },
+      severity: batch.result.severity
+    }
   };
 }
 
@@ -166,33 +160,31 @@ if (!result.allowed) {
 // Pass surviving / redacted chunks to the LLM. Secrets and PII have
 // been replaced with [REDACTED] under 'redact' mode; injection-tripped
 // chunks have been dropped under 'drop' mode.
-const context = docs.map((d) => d.chunkText).join('\n\n');
+const context = docs.map(d => d.chunkText).join('\n\n');
 ```
 
 ## Failure-mode trade-offs
 
-| Mode | When to use | Behaviour |
-|---|---|---|
-| `'drop'` | RAG with `topK >= 5` — losing 1-2 docs is acceptable. | Drop flagged docs; keep the rest. `result.allowed` stays `true`. |
-| `'block-all'` | Compliance use cases — a single tripped doc means the entire batch is contaminated. | Top-level `result.blocked = true`. Caller must abort. |
-| `'redact'` | Customer-support transcripts, internal-doc KB. | Keep docs; replace `SecretGuard` / `PIIGuard` matched regions with `[REDACTED]` (or your `redactReplacement`). Injection-pattern findings dropped if no `Finding.match` available (rare). |
+| Mode          | When to use                                                                         | Behaviour                                                                                                                                                                                 |
+| ------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `'drop'`      | RAG with `topK >= 5` — losing 1-2 docs is acceptable.                               | Drop flagged docs; keep the rest. `result.allowed` stays `true`.                                                                                                                          |
+| `'block-all'` | Compliance use cases — a single tripped doc means the entire batch is contaminated. | Top-level `result.blocked = true`. Caller must abort.                                                                                                                                     |
+| `'redact'`    | Customer-support transcripts, internal-doc KB.                                      | Keep docs; replace `SecretGuard` / `PIIGuard` matched regions with `[REDACTED]` (or your `redactReplacement`). Injection-pattern findings dropped if no `Finding.match` available (rare). |
 
 ## Composed-context follow-on
 
-If your application concatenates retrieved chunks into a single recall
-blob before the LLM call, ALSO run `createComposedContextValidator`
-(Story 1.3a) on the joined string. The wake-up attack class — three
-benign chunks that combine into an injection — is invisible to a
-per-doc scan.
+If your application concatenates retrieved chunks into a single recall blob before the LLM call,
+ALSO run `createComposedContextValidator` (Story 1.3a) on the joined string. The wake-up attack
+class — three benign chunks that combine into an injection — is invisible to a per-doc scan.
 
 ```ts
 import { createComposedContextValidator } from '@blackunicorn/bonklm';
 
 const composedValidator = createComposedContextValidator({
-  validators: [new PromptInjectionValidator()],
+  validators: [new PromptInjectionValidator()]
 });
 
-const combined = docs.map((d) => d.chunkText);
+const combined = docs.map(d => d.chunkText);
 const composedResult = await composedValidator.validateEntries(combined);
 if (composedResult.result.blocked) {
   throw new Error('Composed context tripped wake-up-attack detection.');
@@ -201,20 +193,14 @@ if (composedResult.result.blocked) {
 
 ## Notes
 
-- **No new package.** This recipe uses the standard `pg` driver and
-  BonkLM's existing `@blackunicorn/bonklm` core. A dedicated
-  `bonklm-pgvector` package is not in the roadmap because pgvector
-  is "just Postgres" — wiring through the standard `pg` driver
-  surfaces the same `chunk_text` + `metadata` shape the existing 4
-  vector-DB connectors normalise to.
-- **Performance**: the validator runs in-process on each query.
-  Latency adds roughly the per-validator cost summed across the
-  validator stack — typically <5ms for the default
-  `PromptInjectionValidator + SecretGuard + PIIGuard` chain on a
-  `topK=10` batch with 1-2KB chunks. Benchmark in your environment
-  before assuming.
-- **Pool reuse**: keep the `Pool` instance module-level; do NOT
-  create one per request.
-- **Backpressure**: pgvector returns sorted rows; you can apply a
-  cosine-similarity threshold filter BEFORE the validator if your
-  KB is large.
+- **No new package.** This recipe uses the standard `pg` driver and BonkLM's existing
+  `@blackunicorn/bonklm` core. A dedicated `bonklm-pgvector` package is not in the roadmap because
+  pgvector is "just Postgres" — wiring through the standard `pg` driver surfaces the same
+  `chunk_text` + `metadata` shape the existing 4 vector-DB connectors normalise to.
+- **Performance**: the validator runs in-process on each query. Latency adds roughly the
+  per-validator cost summed across the validator stack — typically <5ms for the default
+  `PromptInjectionValidator + SecretGuard + PIIGuard` chain on a `topK=10` batch with 1-2KB chunks.
+  Benchmark in your environment before assuming.
+- **Pool reuse**: keep the `Pool` instance module-level; do NOT create one per request.
+- **Backpressure**: pgvector returns sorted rows; you can apply a cosine-similarity threshold filter
+  BEFORE the validator if your KB is large.

@@ -34,7 +34,7 @@ import {
   type AdapterRoute,
   assertTenantIdSafe,
   type GetTenantId,
-  type MemoryAdapter,
+  type MemoryAdapter
 } from '@blackunicorn/bonklm-memory-utils';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 
@@ -105,10 +105,7 @@ function extractRecallEntries(result: unknown): string[] {
   let entries: Mem0RecallEntry[];
   if (Array.isArray(result)) {
     entries = result as Mem0RecallEntry[];
-  } else if (
-    typeof result === 'object' &&
-    Array.isArray((result as { results?: unknown }).results)
-  ) {
+  } else if (typeof result === 'object' && Array.isArray((result as { results?: unknown }).results)) {
     entries = (result as { results: Mem0RecallEntry[] }).results;
   } else if (typeof result === 'object') {
     // Single-entry return (e.g. Mem0 `get(memory_id)`).
@@ -116,24 +113,14 @@ function extractRecallEntries(result: unknown): string[] {
   } else {
     return [];
   }
-  return entries
-    .map((e) => e?.memory ?? e?.text ?? e?.content ?? '')
-    .filter((s) => typeof s === 'string' && s.length > 0);
+  return entries.map(e => e?.memory ?? e?.text ?? e?.content ?? '').filter(s => typeof s === 'string' && s.length > 0);
 }
 
 /**
  * The Mem0 method names this adapter wraps. Methods NOT in this set
  * pass through unchanged.
  */
-const MEM0_METHODS = new Set([
-  'add',
-  'update',
-  'history',
-  'reset',
-  'search',
-  'get',
-  'getAll',
-]);
+const MEM0_METHODS = new Set(['add', 'update', 'history', 'reset', 'search', 'get', 'getAll']);
 
 /**
  * Iter-1 security BLOCK #3 (multi-tenant scoping leak): the Mem0 SDK
@@ -192,16 +179,14 @@ function rewriteMem0UserId(
     add: 1,
     search: 1,
     getAll: 0,
-    reset: 0, // Iter-1 security BLOCK #10: reset MUST be scoped.
+    reset: 0 // Iter-1 security BLOCK #10: reset MUST be scoped.
   };
   const pos = optionsPos[method];
   if (pos === undefined) return args;
 
   const orig = args[pos];
   const baseOptions: Record<string, unknown> =
-    orig !== null && typeof orig === 'object'
-      ? { ...(orig as Record<string, unknown>) }
-      : {};
+    orig !== null && typeof orig === 'object' ? { ...(orig as Record<string, unknown>) } : {};
 
   // Cumulative security BLOCK #3: neutralize alternative scoping fields.
   for (const field of MEM0_BYPASS_FIELDS) {
@@ -236,14 +221,14 @@ export function buildMem0Adapter(getTenantId: GetTenantId): MemoryAdapter {
             writeContent: extractAddContent(args),
             // Iter-1 security BLOCK #3: overwrite user_id with
             // getTenantId(ctx) to defeat cross-tenant write leak.
-            rewriteArgs: rewriteMem0UserId('add', args, ctx, getTenantId),
+            rewriteArgs: rewriteMem0UserId('add', args, ctx, getTenantId)
           };
         case 'update':
           // `update(memory_id, data)` — memory_id scopes the write,
           // no user_id in args. Validate content; no rewrite needed.
           return {
             surface: 'memory_write',
-            writeContent: extractUpdateContent(args),
+            writeContent: extractUpdateContent(args)
           };
         case 'history':
           // Read of mutation history; no INPUT to validate. Pass-through.
@@ -259,17 +244,17 @@ export function buildMem0Adapter(getTenantId: GetTenantId): MemoryAdapter {
           // AND strips the alternative-scoping fields.
           return {
             surface: null,
-            rewriteArgs: rewriteMem0UserId('reset', args, ctx, getTenantId),
+            rewriteArgs: rewriteMem0UserId('reset', args, ctx, getTenantId)
           };
         case 'search':
           return {
             surface: null,
-            rewriteArgs: rewriteMem0UserId('search', args, ctx, getTenantId),
+            rewriteArgs: rewriteMem0UserId('search', args, ctx, getTenantId)
           };
         case 'getAll':
           return {
             surface: null,
-            rewriteArgs: rewriteMem0UserId('getAll', args, ctx, getTenantId),
+            rewriteArgs: rewriteMem0UserId('getAll', args, ctx, getTenantId)
           };
         case 'get':
           // `get(memory_id)` — memory_id scopes the read, no user_id.
@@ -286,7 +271,7 @@ export function buildMem0Adapter(getTenantId: GetTenantId): MemoryAdapter {
       const entries = extractRecallEntries(result);
       if (entries.length === 0) return;
       await helpers.runComposedContextValidator(entries);
-    },
+    }
   };
 }
 

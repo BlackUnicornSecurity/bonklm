@@ -1,6 +1,7 @@
 # @blackunicorn/bonklm-nestjs
 
-NestJS integration for BonkLM - Request/response validation for NestJS applications using interceptors and decorators.
+NestJS integration for BonkLM - Request/response validation for NestJS applications using
+interceptors and decorators.
 
 ## Features
 
@@ -30,13 +31,10 @@ import { PromptInjectionValidator, JailbreakValidator } from '@blackunicorn/bonk
 @Module({
   imports: [
     GuardrailsModule.forRoot({
-      validators: [
-        new PromptInjectionValidator(),
-        new JailbreakValidator(),
-      ],
-      global: true,
-    }),
-  ],
+      validators: [new PromptInjectionValidator(), new JailbreakValidator()],
+      global: true
+    })
+  ]
 })
 export class AppModule {}
 ```
@@ -67,16 +65,10 @@ import { PromptInjectionValidator, SecretGuard } from '@blackunicorn/bonklm';
 
 GuardrailsModule.forRoot({
   // Validators for content checking
-  validators: [
-    new PromptInjectionValidator(),
-    new JailbreakValidator(),
-  ],
+  validators: [new PromptInjectionValidator(), new JailbreakValidator()],
 
   // Guards for context-aware checking
-  guards: [
-    new SecretGuard(),
-    new PIIGuard(),
-  ],
+  guards: [new SecretGuard(), new PIIGuard()],
 
   // Make interceptor available globally
   global: true,
@@ -96,8 +88,8 @@ GuardrailsModule.forRoot({
   },
 
   // Custom content extractors
-  bodyExtractor: (req) => req.body?.prompt || '',
-  responseExtractor: (res) => res.text || '',
+  bodyExtractor: req => req.body?.prompt || '',
+  responseExtractor: res => res.text || ''
 });
 ```
 
@@ -112,10 +104,10 @@ GuardrailsModule.forRootAsync({
   useFactory: (config: ConfigService) => ({
     validators: config.get('guardrails.validators'),
     productionMode: config.get('NODE_ENV') === 'production',
-    validationTimeout: config.get('guardrails.timeout'),
+    validationTimeout: config.get('guardrails.timeout')
   }),
   inject: [ConfigService],
-  global: true,
+  global: true
 });
 ```
 
@@ -216,7 +208,7 @@ export class ManualController {
       const blocked = this.guardrails.getBlockedResult(results);
       throw new BadRequestException({
         error: this.guardrails.getErrorMessage(blocked),
-        risk_level: blocked.risk_level,
+        risk_level: blocked.risk_level
       });
     }
 
@@ -228,15 +220,19 @@ export class ManualController {
 ## Security Features
 
 ### Path Traversal Protection (SEC-001)
+
 All paths are normalized using `path.normalize()` before matching.
 
 ### Validation Timeout (SEC-008)
+
 Enforce maximum validation time using `AbortController`.
 
 ### Content Size Limits (SEC-010)
+
 Reject requests/responses exceeding configured size limits.
 
 ### Production Mode (SEC-007)
+
 Generic error messages in production to prevent information leakage.
 
 ## Example Application
@@ -253,46 +249,45 @@ npm run start:dev
 
 ### GuardrailsModule
 
-| Method | Description |
-|--------|-------------|
-| `forRoot(options)` | Configure module with static options |
-| `forRootAsync(options)` | Configure module with async factory |
-| `forFeature(options)` | Non-global module for specific controllers |
-| `forFeatureAsync(options)` | Async non-global module |
+| Method                     | Description                                |
+| -------------------------- | ------------------------------------------ |
+| `forRoot(options)`         | Configure module with static options       |
+| `forRootAsync(options)`    | Configure module with async factory        |
+| `forFeature(options)`      | Non-global module for specific controllers |
+| `forFeatureAsync(options)` | Async non-global module                    |
 
 ### UseGuardrails Decorator
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `validateInput` | boolean | `true` | Validate request body |
-| `validateOutput` | boolean | `false` | Validate response body |
-| `bodyField` | string | - | Custom request field to extract |
-| `responseField` | string | - | Custom response field to extract |
-| `maxContentLength` | number | - | Per-endpoint size limit |
-| `onError` | function | - | Custom error handler |
+| Option             | Type     | Default | Description                      |
+| ------------------ | -------- | ------- | -------------------------------- |
+| `validateInput`    | boolean  | `true`  | Validate request body            |
+| `validateOutput`   | boolean  | `false` | Validate response body           |
+| `bodyField`        | string   | -       | Custom request field to extract  |
+| `responseField`    | string   | -       | Custom response field to extract |
+| `maxContentLength` | number   | -       | Per-endpoint size limit          |
+| `onError`          | function | -       | Custom error handler             |
 
 ### GuardrailsService
 
-| Method | Description |
-|--------|-------------|
-| `validateInput(content, context?)` | Validate input content |
-| `validateOutput(content, context?)` | Validate output content |
-| `isAllowed(results)` | Check if validation passed |
-| `getBlockedResult(results)` | Get first blocked result |
-| `getErrorMessage(result)` | Get user-friendly error message |
-| `getEngine()` | Get underlying GuardrailEngine |
-| `getConfig()` | Get service configuration |
+| Method                              | Description                     |
+| ----------------------------------- | ------------------------------- |
+| `validateInput(content, context?)`  | Validate input content          |
+| `validateOutput(content, context?)` | Validate output content         |
+| `isAllowed(results)`                | Check if validation passed      |
+| `getBlockedResult(results)`         | Get first blocked result        |
+| `getErrorMessage(result)`           | Get user-friendly error message |
+| `getEngine()`                       | Get underlying GuardrailEngine  |
+| `getConfig()`                       | Get service configuration       |
 
 ## Security: rate limiting
 
-This module does **not** include rate limiting. Per the BonkLM rate-limiting
-policy, ingress rate limiting belongs at the edge / load-balancer layer or in
-a NestJS-native limiter ahead of the guardrails — see
-[`docs/user/security/rate-limiting.md`](../../docs/user/security/rate-limiting.md)
+This module does **not** include rate limiting. Per the BonkLM rate-limiting policy, ingress rate
+limiting belongs at the edge / load-balancer layer or in a NestJS-native limiter ahead of the
+guardrails — see [`docs/user/security/rate-limiting.md`](../../docs/user/security/rate-limiting.md)
 for the multi-instance / deployment-shape rationale.
 
-Wire `@nestjs/throttler` (or a distributed alternative for production)
-**before** the guardrails interceptor:
+Wire `@nestjs/throttler` (or a distributed alternative for production) **before** the guardrails
+interceptor:
 
 ```typescript
 import { Module } from '@nestjs/common';
@@ -304,18 +299,18 @@ import { PromptInjectionValidator } from '@blackunicorn/bonklm';
 @Module({
   imports: [
     ThrottlerModule.forRoot([{ ttl: 15 * 60 * 1000, limit: 100 }]),
-    BonkLMModule.forRoot({ validators: [new PromptInjectionValidator()] }),
+    BonkLMModule.forRoot({ validators: [new PromptInjectionValidator()] })
   ],
   providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard },           // limiter FIRST
-    { provide: APP_INTERCEPTOR, useClass: GuardrailsInterceptor },
-  ],
+    { provide: APP_GUARD, useClass: ThrottlerGuard }, // limiter FIRST
+    { provide: APP_INTERCEPTOR, useClass: GuardrailsInterceptor }
+  ]
 })
 export class AppModule {}
 ```
 
-To suppress the `bonklm doctor` rate-limiter advisory after acknowledging the
-policy, add to your project's `package.json`:
+To suppress the `bonklm doctor` rate-limiter advisory after acknowledging the policy, add to your
+project's `package.json`:
 
 ```json
 { "bonklm": { "rateLimit": "documented" } }

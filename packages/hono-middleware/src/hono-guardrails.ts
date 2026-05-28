@@ -31,12 +31,7 @@
  *
  * @package @blackunicorn/bonklm-hono
  */
-import {
-  createLogger,
-  type GuardrailEngine,
-  type Logger,
-  type Validator,
-} from '@blackunicorn/bonklm';
+import { createLogger, type GuardrailEngine, type Logger, type Validator } from '@blackunicorn/bonklm';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 import { extractBody, type ExtractedBody } from './body-extractor.js';
 import type {
@@ -44,7 +39,7 @@ import type {
   HonoGuardrailsErrorResponse,
   HonoGuardrailsOptions,
   HonoMiddlewareHandler,
-  HonoNext,
+  HonoNext
 } from './types.js';
 
 const DEFAULT_VALIDATE_METHODS: ReadonlyArray<string> = ['POST', 'PUT', 'PATCH'];
@@ -72,10 +67,7 @@ const DEFAULT_VALIDATE_METHODS: ReadonlyArray<string> = ['POST', 'PUT', 'PATCH']
  * });
  * ```
  */
-export function honoGuardrails(
-  engine: GuardrailEngine,
-  options: HonoGuardrailsOptions = {}
-): HonoMiddlewareHandler {
+export function honoGuardrails(engine: GuardrailEngine, options: HonoGuardrailsOptions = {}): HonoMiddlewareHandler {
   // Iter-1-ready (Story 2.1b adversarial #7 / security A&D-7): freeze
   // options so a downstream middleware sharing the reference cannot
   // mutate `productionMode` or callbacks after construction.
@@ -83,7 +75,7 @@ export function honoGuardrails(
   const logger: Logger = frozenOptions.logger ?? createLogger('console');
   const productionMode = resolveProductionMode(frozenOptions.productionMode);
   const validateMethods = new Set(
-    (frozenOptions.validateMethods ?? DEFAULT_VALIDATE_METHODS).map((m) => m.toUpperCase())
+    (frozenOptions.validateMethods ?? DEFAULT_VALIDATE_METHODS).map(m => m.toUpperCase())
   );
   const bodyFields = frozenOptions.bodyFields;
   const validatorOverride: Validator[] | undefined = frozenOptions.validators;
@@ -100,10 +92,7 @@ export function honoGuardrails(
     );
   }
 
-  return async function bonklmHonoMiddleware(
-    c: HonoContextLike,
-    next: HonoNext
-  ): Promise<Response | void> {
+  return async function bonklmHonoMiddleware(c: HonoContextLike, next: HonoNext): Promise<Response | void> {
     const method = c.req.method.toUpperCase();
     if (!validateMethods.has(method)) {
       // Method not in the validate set — pass through.
@@ -121,7 +110,7 @@ export function honoGuardrails(
       // rather than 500-ing on the consumer's request.
       const e = err as Error;
       logger.warn('[bonklm-hono] body extraction threw; skipping validation', {
-        error: e.message,
+        error: e.message
       });
       return next();
     }
@@ -134,7 +123,7 @@ export function honoGuardrails(
         error: productionMode
           ? 'Unsupported request charset'
           : 'Unsupported charset in content-type header. Supported: utf-8, ascii, iso-8859-1.',
-        category: 'unsupported_charset',
+        category: 'unsupported_charset'
       };
       return c.json(errorResponse, 415);
     }
@@ -176,11 +165,11 @@ export function honoGuardrails(
       // operators can distinguish at the HTTP layer.
       const e = err as Error;
       logger.error('[bonklm-hono] engine threw during validate()', {
-        error: e.message,
+        error: e.message
       });
       const errorResponse: HonoGuardrailsErrorResponse = {
         error: productionMode ? 'Internal validation error' : `Engine error: ${e.message}`,
-        category: 'engine_error',
+        category: 'engine_error'
       };
       return c.json(errorResponse, 500);
     }
@@ -199,13 +188,13 @@ export function honoGuardrails(
         const e = callbackErr as Error;
         logger.warn('[bonklm-hono] onBlocked callback threw', {
           error: e.message,
-          stack: e.stack,
+          stack: e.stack
         });
       }
       const errorResponse: HonoGuardrailsErrorResponse = {
         error: productionMode ? 'Request blocked by security policy' : blockedReason,
         category: blockedCategory,
-        ...(severity !== undefined && { severity }),
+        ...(severity !== undefined && { severity })
       };
       return c.json(errorResponse, 400);
     }

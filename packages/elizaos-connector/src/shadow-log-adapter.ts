@@ -25,7 +25,7 @@ import type {
   ReadByRoomOptions,
   ShadowLogEntry,
   ShadowLogSourceTrust,
-  ShadowLogStorageAdapter,
+  ShadowLogStorageAdapter
 } from '@blackunicorn/bonklm';
 
 /**
@@ -77,19 +77,14 @@ export interface DrizzleShadowLogStorageOptions {
  * configured for an ISOLATED schema; tests can pass an in-memory
  * client implementing the same shape.
  */
-export function createElizaOSDrizzleShadowLogStorage(
-  options: DrizzleShadowLogStorageOptions
-): ShadowLogStorageAdapter {
+export function createElizaOSDrizzleShadowLogStorage(options: DrizzleShadowLogStorageOptions): ShadowLogStorageAdapter {
   const { client } = options;
 
   return {
     async append(entry: ShadowLogEntry): Promise<void> {
       await client.insert(entry);
     },
-    async readByRoom(
-      roomId: string,
-      opts?: ReadByRoomOptions
-    ): Promise<ShadowLogEntry[]> {
+    async readByRoom(roomId: string, opts?: ReadByRoomOptions): Promise<ShadowLogEntry[]> {
       return client.selectByRoom(roomId, opts);
     },
     async getLatestHashForRoom(roomId: string): Promise<string | null> {
@@ -103,7 +98,7 @@ export function createElizaOSDrizzleShadowLogStorage(
     },
     async evictOldestForRoom(roomId: string): Promise<void> {
       await client.deleteOldestForRoom?.(roomId);
-    },
+    }
   };
 }
 
@@ -160,10 +155,7 @@ export class ShadowLogAuthError extends Error {
  *     } else { throw e; }
  *   }
  */
-export function assertRoomAccess(
-  authenticatedRoomIds: Set<string> | undefined,
-  requestedRoomId: string
-): void {
+export function assertRoomAccess(authenticatedRoomIds: Set<string> | undefined, requestedRoomId: string): void {
   if (authenticatedRoomIds === undefined) {
     throw new ShadowLogAuthError(
       'Cross-room access denied; admin review required.',
@@ -214,6 +206,6 @@ export function mapMessageReceivedToShadowLog(
     roomId: event.roomId,
     entityId: event.entityId,
     text: event.content?.text ?? '',
-    sourceTrust,
+    sourceTrust
   };
 }

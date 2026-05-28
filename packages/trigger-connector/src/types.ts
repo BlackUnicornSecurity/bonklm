@@ -9,12 +9,7 @@
  * @package @blackunicorn/bonklm-trigger
  */
 import type { GuardrailEngine } from '@blackunicorn/bonklm';
-import type {
-  CachedValidateOptions,
-  CachedValidatorResult,
-  Validator,
-  ValidatorInput,
-} from '@blackunicorn/bonklm';
+import type { CachedValidateOptions, CachedValidatorResult, Validator, ValidatorInput } from '@blackunicorn/bonklm';
 
 /**
  * Aggregated outcome of a single validate-* helper call. Designed for
@@ -50,9 +45,7 @@ export interface BonklmTriggerHandle {
    * string to wrap as `{ kind: 'text', content }` automatically, or a
    * pre-built `ValidatorInput` discriminated-union value.
    */
-  validateInput(
-    content: string | ValidatorInput
-  ): Promise<BonklmTriggerValidateResult>;
+  validateInput(content: string | ValidatorInput): Promise<BonklmTriggerValidateResult>;
 
   /**
    * Validate model output / generated text.
@@ -62,10 +55,7 @@ export interface BonklmTriggerHandle {
   /**
    * Validate a tool-call arguments object before dispatch.
    */
-  validateToolArgs(
-    toolName: string,
-    args: unknown
-  ): Promise<BonklmTriggerValidateResult>;
+  validateToolArgs(toolName: string, args: unknown): Promise<BonklmTriggerValidateResult>;
 }
 
 /**

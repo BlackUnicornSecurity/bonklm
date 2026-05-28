@@ -87,7 +87,7 @@ const PRODUCTION_PATTERNS: Array<[RegExp, string]> = [
   // Cloud provider indicators
   [/aws[-_]?prod/i, 'AWS production reference'],
   [/gcp[-_]?prod/i, 'GCP production reference'],
-  [/azure[-_]?prod/i, 'Azure production reference'],
+  [/azure[-_]?prod/i, 'Azure production reference']
 ];
 
 /**
@@ -100,7 +100,7 @@ const CRITICAL_PATTERNS: Array<[RegExp, string]> = [
   [/kubectl\s+.*prod/i, 'Kubernetes in production context'],
   [/helm\s+.*prod/i, 'Helm in production context'],
   [/\blive\b.*deploy/i, 'Deploy to live'],
-  [/\brelease\b.*deploy/i, 'Release deployment'],
+  [/\brelease\b.*deploy/i, 'Release deployment']
 ];
 
 /**
@@ -122,7 +122,7 @@ const SAFE_PATTERNS: RegExp[] = [
   /production[-_]?quality/i,
   /production[-_]?grade/i,
   /for\s+production/i,
-  /in\s+production/i,
+  /in\s+production/i
 ];
 
 /**
@@ -138,7 +138,7 @@ const DOCUMENTATION_PATTERNS: RegExp[] = [
   /\.rst$/i,
   /\.adoc$/i,
   /\/docs\//i,
-  /\/documentation\//i,
+  /\/documentation\//i
 ];
 
 // =============================================================================
@@ -251,14 +251,7 @@ export function isProductionEnvironment(envBindings?: EnvBindings): boolean {
   const env = resolveEnv(envBindings);
 
   // Check standard environment variables
-  const productionEnvVars = [
-    'NODE_ENV',
-    'RAILS_ENV',
-    'FLASK_ENV',
-    'APP_ENV',
-    'ENVIRONMENT',
-    'ENV',
-  ];
+  const productionEnvVars = ['NODE_ENV', 'RAILS_ENV', 'FLASK_ENV', 'APP_ENV', 'ENVIRONMENT', 'ENV'];
 
   for (const key of productionEnvVars) {
     const value = env[key];
@@ -281,10 +274,10 @@ export function isProductionEnvironment(envBindings?: EnvBindings): boolean {
     // Vercel
     env.VERCEL_ENV === 'production',
     // Heroku
-    env.NODE_ENV === 'production' && env.DYNO !== undefined,
+    env.NODE_ENV === 'production' && env.DYNO !== undefined
   ];
 
-  if (cloudProductionIndicators.some((indicator) => indicator === true)) {
+  if (cloudProductionIndicators.some(indicator => indicator === true)) {
     return true;
   }
 
@@ -315,7 +308,7 @@ export function isTestEnvironment(envBindings?: EnvBindings): boolean {
     env.AVOCADO_TEST_WORKER_ID !== undefined,
     env.PYTEST_CURRENT_TEST !== undefined, // Python pytest
     env.TEST === 'true',
-    env.TESTING === 'true',
+    env.TESTING === 'true'
   ];
 
   // CI/CD environments (often run tests)
@@ -328,10 +321,10 @@ export function isTestEnvironment(envBindings?: EnvBindings): boolean {
     env.CIRCLECI === 'true',
     env.JENKINS_URL !== undefined,
     env.TRAVIS === 'true',
-    env.CODEBUILD_BUILD_ID !== undefined, // AWS CodeBuild
+    env.CODEBUILD_BUILD_ID !== undefined // AWS CodeBuild
   ];
 
-  return [...testIndicators, ...ciIndicators].some((indicator) => indicator === true);
+  return [...testIndicators, ...ciIndicators].some(indicator => indicator === true);
 }
 
 /**
@@ -339,14 +332,14 @@ export function isTestEnvironment(envBindings?: EnvBindings): boolean {
  */
 export function isDocumentationFile(filePath: string | undefined): boolean {
   if (!filePath) return false;
-  return DOCUMENTATION_PATTERNS.some((pattern) => pattern.test(filePath));
+  return DOCUMENTATION_PATTERNS.some(pattern => pattern.test(filePath));
 }
 
 /**
  * Check if text is in a safe context (comments, safe words)
  */
 export function isSafeContext(text: string): boolean {
-  return SAFE_PATTERNS.some((pattern) => pattern.test(text));
+  return SAFE_PATTERNS.some(pattern => pattern.test(text));
 }
 
 /**
@@ -358,7 +351,7 @@ export function isCriticalDeployCommand(text: string): { isCritical: boolean; me
     if (match) {
       return {
         isCritical: true,
-        message: `Critical production operation: ${description}`,
+        message: `Critical production operation: ${description}`
       };
     }
   }
@@ -385,7 +378,7 @@ export function detectProductionIndicators(text: string): ProductionIndicator[] 
           pattern: description,
           match: match[0],
           context: line.trim().slice(0, 100),
-          isCritical: false,
+          isCritical: false
         });
       }
     }
@@ -410,7 +403,7 @@ export class ProductionGuard {
       filePath: config?.filePath,
       allowDocumentationFiles: config?.allowDocumentationFiles ?? true,
       // iter-1 security BLOCK #9 + reviewer HIGH-2: forward edge env bindings.
-      envBindings: config?.envBindings,
+      envBindings: config?.envBindings
     } as Required<Omit<ProductionGuardConfig, 'filePath'>> & { filePath?: string };
   }
 
@@ -436,12 +429,14 @@ export class ProductionGuard {
 
     // Skip documentation files
     if (this.config.allowDocumentationFiles && isDocumentationFile(effectiveFilePath)) {
-      return createResult(true, Sev.INFO, [{
-        category: 'production_guard',
-        description: 'Documentation file bypassed',
-        severity: Sev.INFO,
-        weight: 0,
-      }]);
+      return createResult(true, Sev.INFO, [
+        {
+          category: 'production_guard',
+          description: 'Documentation file bypassed',
+          severity: Sev.INFO,
+          weight: 0
+        }
+      ]);
     }
 
     const findings: import('../base/GuardrailResult.js').Finding[] = [];
@@ -455,7 +450,7 @@ export class ProductionGuard {
         severity: Sev.CRITICAL,
         match: 'Runtime: production',
         description: 'Cannot execute in production environment. This operation requires a non-production runtime.',
-        weight: 50,
+        weight: 50
       });
 
       return createResult(false, Sev.CRITICAL, findings);
@@ -470,7 +465,7 @@ export class ProductionGuard {
         severity: Sev.CRITICAL,
         match: content.slice(0, 100),
         description: criticalCheck.message,
-        weight: 30,
+        weight: 30
       });
 
       return createResult(false, Sev.CRITICAL, findings);
@@ -486,7 +481,7 @@ export class ProductionGuard {
         severity: Sev.WARNING,
         match: indicator.match,
         description: `${indicator.pattern}: "${indicator.match}"`,
-        weight: 15,
+        weight: 15
       });
     }
 
@@ -496,11 +491,7 @@ export class ProductionGuard {
 
     const shouldBlock = this.config.action === 'block';
 
-    return createResult(
-      !shouldBlock,
-      Sev.WARNING,
-      findings
-    );
+    return createResult(!shouldBlock, Sev.WARNING, findings);
   }
 
   /**

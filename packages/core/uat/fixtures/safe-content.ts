@@ -15,7 +15,7 @@ export const safeQueries = [
   'Explain how photosynthesis works.',
   'How do I write a for loop in JavaScript?',
   'What are the best practices for API design?',
-  'Can you explain machine learning concepts?',
+  'Can you explain machine learning concepts?'
 ];
 
 export const safeCodeSnippets = [
@@ -26,7 +26,7 @@ export const safeCodeSnippets = [
   'interface User { name: string; age: number; }',
   'const config = { apiKey: "<YOUR_API_KEY_HERE>" };',
   'password = "xxxxxxxx"',
-  'api_key = "test_key_for_development"',
+  'api_key = "test_key_for_development"'
 ];
 
 export const safeConversationTurns = [
@@ -35,7 +35,7 @@ export const safeConversationTurns = [
   'Can you explain generics?',
   'That makes sense, thank you.',
   'One more question about types.',
-  'Great, thanks for your help!',
+  'Great, thanks for your help!'
 ];
 
 export const safeStreamingChunks = [
@@ -49,35 +49,15 @@ export const safeStreamingChunks = [
   'understand your ',
   'pricing options? ',
   'Thank you for ',
-  'your assistance.',
+  'your assistance.'
 ];
 
 export const safeMultilingualContent = {
-  spanish: [
-    'Hola, ¿cómo estás?',
-    '¿Puedes ayudarme con español?',
-    'Gracias por tu ayuda.',
-  ],
-  french: [
-    'Bonjour, comment allez-vous?',
-    'Pouvez-vous m\'aider?',
-    'Merci pour votre aide.',
-  ],
-  german: [
-    'Hallo, wie geht es dir?',
-    'Können Sie mir helfen?',
-    'Vielen Dank für Ihre Hilfe.',
-  ],
-  japanese: [
-    'こんにちは、元気ですか？',
-    '手伝ってもらえますか？',
-    'ご協力ありがとうございます。',
-  ],
-  chinese: [
-    '你好，你好吗？',
-    '你能帮助我吗？',
-    '谢谢你的帮助。',
-  ],
+  spanish: ['Hola, ¿cómo estás?', '¿Puedes ayudarme con español?', 'Gracias por tu ayuda.'],
+  french: ['Bonjour, comment allez-vous?', "Pouvez-vous m'aider?", 'Merci pour votre aide.'],
+  german: ['Hallo, wie geht es dir?', 'Können Sie mir helfen?', 'Vielen Dank für Ihre Hilfe.'],
+  japanese: ['こんにちは、元気ですか？', '手伝ってもらえますか？', 'ご協力ありがとうございます。'],
+  chinese: ['你好，你好吗？', '你能帮助我吗？', '谢谢你的帮助。']
 };
 
 export const safeTechnicalContent = [
@@ -90,7 +70,7 @@ export const safeTechnicalContent = [
   'What are REST API best practices?',
   'How do I optimize database queries?',
   'Explain the concept of dependency injection.',
-  'What is the difference between SQL and NoSQL?',
+  'What is the difference between SQL and NoSQL?'
 ];
 
 export const safeLongFormContent = [
@@ -133,7 +113,7 @@ export const safeLongFormContent = [
 
   Step 4: Run
   ----------
-  node app.js`,
+  node app.js`
 ];
 
 export const safePlaceholderContent = [
@@ -141,7 +121,7 @@ export const safePlaceholderContent = [
   '<REPLACE_WITH_YOUR_CREDENTIALS>',
   'password = "********"',
   'email = "user@example.com"',
-  'SSN = "***-**-****"',
+  'SSN = "***-**-****"'
 ];
 
 // Combined export
@@ -153,5 +133,5 @@ export const allSafeContent = {
   multilingual: safeMultilingualContent,
   technical: safeTechnicalContent,
   longForm: safeLongFormContent,
-  placeholders: safePlaceholderContent,
+  placeholders: safePlaceholderContent
 };

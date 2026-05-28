@@ -17,9 +17,4 @@ export { statusCommand } from './status.js';
 // `readConfiguredPreCommit` are test-only; consumers should import
 // them directly from `./doctor.js`. Keeps the barrel surface tight
 // per code-review NIT 7.
-export {
-  doctorCommand,
-  runDoctor,
-  type DoctorCheckResult,
-  type DoctorReport,
-} from './doctor.js';
+export { doctorCommand, runDoctor, type DoctorCheckResult, type DoctorReport } from './doctor.js';

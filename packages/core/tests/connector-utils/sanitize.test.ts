@@ -21,9 +21,7 @@ describe('sanitizeReasonText', () => {
   });
 
   it('passes through normal printable ASCII', () => {
-    expect(sanitizeReasonText('Blocked: prompt injection detected')).toBe(
-      'Blocked: prompt injection detected'
-    );
+    expect(sanitizeReasonText('Blocked: prompt injection detected')).toBe('Blocked: prompt injection detected');
   });
 
   it('strips ANSI escape sequences (non-printable chars outside 0x20-0x7E stripped after hex pass)', () => {

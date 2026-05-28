@@ -11,7 +11,7 @@ import {
   isExampleContent,
   readFileContent,
   isExpectedSecretFile,
-  sanitizeLogString,
+  sanitizeLogString
 } from '../../../src/common/index.js';
 import { fileURLToPath } from 'node:url';
 
@@ -164,7 +164,7 @@ describe('isExampleContent', () => {
       'line 9',
       'line 10',
       'line 11',
-      'line 12',
+      'line 12'
     ].join('\n');
     expect(isExampleContent(content, 'SECRET_KEY=placeholder')).toBe(true);
   });
@@ -253,7 +253,6 @@ describe('isExpectedSecretFile', () => {
     expect(isExpectedSecretFile('secrets.txt')).toBe(false);
   });
 });
-
 
 // ---------------------------------------------------------------------------
 // sanitizeLogString bidi-range hex-escape
@@ -356,7 +355,7 @@ describe('sanitizeLogString — bidi-override regression corpus', () => {
     const allBidi = '\u202A\u202B\u202C\u202D\u202E\u2066\u2067\u2068\u2069';
     const result = sanitizeLogString(allBidi);
     // None of the raw code points should remain
-    for (const cp of ['\u202A','\u202B','\u202C','\u202D','\u202E','\u2066','\u2067','\u2068','\u2069']) {
+    for (const cp of ['\u202A', '\u202B', '\u202C', '\u202D', '\u202E', '\u2066', '\u2067', '\u2068', '\u2069']) {
       expect(result).not.toContain(cp);
     }
     // All hex-escape forms must appear

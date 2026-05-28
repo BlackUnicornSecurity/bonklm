@@ -31,15 +31,11 @@ describe('google-genai-connector — Sprint 43 CWE-117 sanitization contract', (
     // `${X.reason}` interpolation shape; the sweep used a per-shape
     // replace_all so all are covered uniformly.
     const reason = 'matched gemini-pattern\nINJECTED:CRITICAL bypass';
-    expect(sanitizeMeta(reason)).toBe(
-      'matched gemini-pattern\\nINJECTED:CRITICAL bypass'
-    );
+    expect(sanitizeMeta(reason)).toBe('matched gemini-pattern\\nINJECTED:CRITICAL bypass');
   });
 
   it('sanitizes function-call result reason (sister site shape)', () => {
     const reason = 'function call validation failed\nINJECTED:fake_tool';
-    expect(sanitizeMeta(reason)).toBe(
-      'function call validation failed\\nINJECTED:fake_tool'
-    );
+    expect(sanitizeMeta(reason)).toBe('function call validation failed\\nINJECTED:fake_tool');
   });
 });

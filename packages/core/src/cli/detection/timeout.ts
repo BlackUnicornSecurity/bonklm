@@ -21,7 +21,7 @@ export const DETECTION_TIMEOUTS = {
   /** 5s for port scanning and Docker container detection */
   services: 5000,
   /** 1s for environment variable reading */
-  credentials: 1000,
+  credentials: 1000
 } as const;
 
 /**
@@ -43,11 +43,7 @@ export type DetectionPhase = keyof typeof DETECTION_TIMEOUTS;
  * @returns Result of the function
  * @throws WizardError with code 'DETECTION_TIMEOUT' if timeout expires
  */
-export async function detectWithTimeout<T>(
-  fn: () => Promise<T>,
-  timeout: number,
-  phase: DetectionPhase
-): Promise<T> {
+export async function detectWithTimeout<T>(fn: () => Promise<T>, timeout: number, phase: DetectionPhase): Promise<T> {
   // Cap maximum timeout to prevent excessive waits
   const maxTimeout = Math.min(timeout, 10000);
 
@@ -96,11 +92,7 @@ export async function detectWithTimeout<T>(
  * @param controller - AbortController to cancel the timeout
  * @returns Promise that rejects after timeout
  */
-export function createTimeoutPromise(
-  ms: number,
-  phase: DetectionPhase,
-  controller: AbortController
-): Promise<never> {
+export function createTimeoutPromise(ms: number, phase: DetectionPhase, controller: AbortController): Promise<never> {
   return new Promise((_, reject) => {
     let timeoutId: NodeJS.Timeout | undefined;
 

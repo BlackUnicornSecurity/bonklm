@@ -9,13 +9,7 @@
  * ElizaOS APIs shift between minors in the v1/v2 line; we re-align
  * this file when bumping the peer.
  */
-import type {
-  Guard,
-  Logger,
-  ShadowLog,
-  ShadowLogSourceTrust,
-  Validator,
-} from '@blackunicorn/bonklm';
+import type { Guard, Logger, ShadowLog, ShadowLogSourceTrust, Validator } from '@blackunicorn/bonklm';
 
 /**
  * Plugin priorities are documented as numeric; higher runs FIRST per
@@ -41,7 +35,7 @@ export const VERIFIED_PUBLISHER_ALLOWLIST: ReadonlyArray<string> = Object.freeze
   '@elizaos/plugin-hyperliquid',
   '@elizaos/plugin-aave',
   '@elizaos/plugin-tee',
-  '@elizaos/plugin-mcp',
+  '@elizaos/plugin-mcp'
 ]);
 
 /**
@@ -154,10 +148,7 @@ export interface BonklmPluginOptions {
    * RIGHT default for single-room agents (the common case); multi-
    * room deployments MUST supply a real session-derived resolver.
    */
-  getAuthenticatedRoomIds?: (
-    runtime: IAgentRuntimeLike,
-    message: MemoryLike
-  ) => Promise<Set<string>> | Set<string>;
+  getAuthenticatedRoomIds?: (runtime: IAgentRuntimeLike, message: MemoryLike) => Promise<Set<string>> | Set<string>;
 
   /**
    * Story 2.4a Phase-2: callback returning the source-trust tag for
@@ -199,8 +190,11 @@ export interface IAgentRuntimeLike {
   agentId?: string;
   character?: { name?: string };
   createMemory?: (memory: MemoryLike, ...rest: unknown[]) => Promise<unknown> | unknown;
-  getMemories?: (params: { roomId?: string; entityId?: string; tableName?: string }) =>
-    Promise<MemoryLike[]> | MemoryLike[];
+  getMemories?: (params: {
+    roomId?: string;
+    entityId?: string;
+    tableName?: string;
+  }) => Promise<MemoryLike[]> | MemoryLike[];
   actions?: ActionLike[];
   plugins?: PluginLike[];
   bonklm?: BonklmRuntimeNamespace;

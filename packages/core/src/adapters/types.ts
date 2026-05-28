@@ -139,9 +139,11 @@ export interface GuardrailAdapter<TInput = unknown, TOutput = unknown, TContext 
  * Base adapter class that provides common functionality
  * Extend this class to create custom adapters
  */
-export abstract class BaseAdapter<TInput = unknown, TOutput = unknown, TContext = unknown>
-  implements GuardrailAdapter<TInput, TOutput, TContext>
-{
+export abstract class BaseAdapter<TInput = unknown, TOutput = unknown, TContext = unknown> implements GuardrailAdapter<
+  TInput,
+  TOutput,
+  TContext
+> {
   protected readonly config: AdapterConfig;
   protected engine?: GuardrailEngine;
   protected context?: FrameworkContext<TContext>;
@@ -149,7 +151,7 @@ export abstract class BaseAdapter<TInput = unknown, TOutput = unknown, TContext 
   constructor(config: AdapterConfig) {
     this.config = {
       enabled: true,
-      ...config,
+      ...config
     };
   }
 
@@ -194,7 +196,7 @@ export abstract class BaseAdapter<TInput = unknown, TOutput = unknown, TContext 
       risk_level: result.risk_level,
       risk_score: result.risk_score,
       findings: result.findings,
-      timestamp: result.timestamp,
+      timestamp: result.timestamp
     };
   }
 
@@ -205,7 +207,7 @@ export abstract class BaseAdapter<TInput = unknown, TOutput = unknown, TContext 
   transform?(result: GuardrailResult, _input: AdapterInput<TInput>): AdapterOutput<TOutput> {
     return {
       allowed: result.allowed,
-      result,
+      result
     } as AdapterOutput<TOutput>;
   }
 
@@ -297,7 +299,7 @@ export class AdapterBuilder<
       const contextWithEngine: FrameworkContext<TContext> & { engine?: GuardrailEngine } = {
         ...(this.context ?? {}),
         framework: this.context?.framework ?? 'generic',
-        engine: this.engine,
+        engine: this.engine
       };
       await adapter.initialize(contextWithEngine);
     }

@@ -27,8 +27,6 @@ describe('chroma-connector — Sprint 43 CWE-117 sanitization contract', () => {
 
   it('sanitizes validator-extracted reason for query-blocked + document-blocked paths', () => {
     const reason = 'matched "pattern"\nINJECTED:CRITICAL bypass';
-    expect(sanitizeMeta(reason)).toBe(
-      'matched "pattern"\\nINJECTED:CRITICAL bypass'
-    );
+    expect(sanitizeMeta(reason)).toBe('matched "pattern"\\nINJECTED:CRITICAL bypass');
   });
 });

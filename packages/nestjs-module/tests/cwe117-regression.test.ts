@@ -53,9 +53,7 @@ describe('nestjs-module — Sprint 40 CWE-117 sanitization contract', () => {
     // `\`Request blocked: ${blocked.reason}\`` forged a phantom log
     // line in downstream aggregators.
     const reason = 'Pattern "ignore_previous_rules" matched\nfake_severity: CRITICAL';
-    expect(sanitizeLogString(reason)).toBe(
-      'Pattern "ignore_previous_rules" matched\\nfake_severity: CRITICAL'
-    );
+    expect(sanitizeLogString(reason)).toBe('Pattern "ignore_previous_rules" matched\\nfake_severity: CRITICAL');
   });
 
   it('serializeError replaces bare { error } at the custom-error-handler catch sites', () => {
@@ -94,8 +92,8 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
         risk_score: 100,
         reason: hostileReason,
         findings: [],
-        timestamp: Date.now(),
-      } satisfies GuardrailResult),
+        timestamp: Date.now()
+      } satisfies GuardrailResult)
     } as unknown as Validator;
   }
 
@@ -109,19 +107,23 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
    * `request.url` path without duplicating the helper inline.
    */
   function makeHttpContext(body: unknown, url = ''): ExecutionContext {
-    const handler = function dummyHandler() { /* test handler */ };
-    class DummyController { /* test controller */ }
+    const handler = function dummyHandler() {
+      /* test handler */
+    };
+    class DummyController {
+      /* test controller */
+    }
     return {
       getType: () => 'http',
       switchToHttp: () => ({
         getRequest: () => ({ body, url }),
         getResponse: () => ({}),
-        getNext: () => () => undefined,
+        getNext: () => () => undefined
       }),
       getHandler: () => handler,
       getClass: () => DummyController,
       getArgs: () => [],
-      getArgByIndex: () => undefined,
+      getArgByIndex: () => undefined
     } as unknown as ExecutionContext;
   }
 
@@ -132,9 +134,8 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
    */
   function makeReflector(options: UseGuardrailsDecoratorOptions): Reflector {
     return {
-      getAllAndOverride: (key: string) =>
-        key === USE_GUARDRAILS_KEY ? options : undefined,
-      get: () => undefined,
+      getAllAndOverride: (key: string) => (key === USE_GUARDRAILS_KEY ? options : undefined),
+      get: () => undefined
     } as unknown as Reflector;
   }
 
@@ -156,20 +157,16 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
   });
 
   it('sanitizes hostile blocked.reason in the input-validation warn log path', async () => {
-    const hostileReason =
-      'Pattern matched: ignore_previous\nINJECTED:CRITICAL fake_alert';
+    const hostileReason = 'Pattern matched: ignore_previous\nINJECTED:CRITICAL fake_alert';
     const service = new GuardrailsService({
       validators: [hostileValidator(hostileReason)],
-      productionMode: false,
+      productionMode: false
     });
-    const interceptor = new GuardrailsInterceptor(
-      makeReflector({ validateInput: true }),
-      service
-    );
+    const interceptor = new GuardrailsInterceptor(makeReflector({ validateInput: true }), service);
 
     const ctx = makeHttpContext({ message: 'irrelevant — validator forces block' });
     const nextHandler: CallHandler = {
-      handle: () => of({ response: 'should not run' }),
+      handle: () => of({ response: 'should not run' })
     };
 
     // The blocked input path emits a BadRequestException; awaiting
@@ -188,7 +185,7 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
     // aggregators.
     expect(warnSpy).toHaveBeenCalled();
     const requestBlockedCall = warnSpy.mock.calls.find(
-      (call) => typeof call[0] === 'string' && call[0].startsWith('Request blocked:')
+      call => typeof call[0] === 'string' && call[0].startsWith('Request blocked:')
     );
     expect(requestBlockedCall).toBeDefined();
     const msg = requestBlockedCall![0] as string;
@@ -207,20 +204,16 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
     // downstream aggregator logs the response body, the raw `\n`
     // forges phantom log lines. Per Sprint 41 defensive-by-default:
     // sanitize at the boundary regardless of downstream context.
-    const hostileReason =
-      'Pattern matched: ignore_previous\nINJECTED:CRITICAL fake_severity';
+    const hostileReason = 'Pattern matched: ignore_previous\nINJECTED:CRITICAL fake_severity';
     const service = new GuardrailsService({
       validators: [hostileValidator(hostileReason)],
-      productionMode: false,
+      productionMode: false
     });
-    const interceptor = new GuardrailsInterceptor(
-      makeReflector({ validateInput: true }),
-      service
-    );
+    const interceptor = new GuardrailsInterceptor(makeReflector({ validateInput: true }), service);
 
     const ctx = makeHttpContext({ message: 'irrelevant — validator forces block' });
     const nextHandler: CallHandler = {
-      handle: () => of({ response: 'should not run' }),
+      handle: () => of({ response: 'should not run' })
     };
 
     let thrown: unknown = null;
@@ -243,8 +236,7 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
     // Sister test to the input-leg `getErrorMessage` wrap: the
     // response-validation leg also embeds `blocked.reason` in the
     // returned filtered body. Validator allows INPUT, blocks OUTPUT.
-    const hostileReason =
-      'Pattern matched: harmful_response\nINJECTED:CRITICAL fake_severity';
+    const hostileReason = 'Pattern matched: harmful_response\nINJECTED:CRITICAL fake_severity';
     const stateAwareValidator: Validator = {
       name: 'StateAwareValidator',
       validate: vi.fn((input: string) => {
@@ -258,14 +250,14 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
           risk_score: 100,
           reason: isInputLeg ? '' : hostileReason,
           findings: [],
-          timestamp: Date.now(),
+          timestamp: Date.now()
         } satisfies GuardrailResult;
-      }),
+      })
     } as unknown as Validator;
 
     const service = new GuardrailsService({
       validators: [stateAwareValidator],
-      productionMode: false,
+      productionMode: false
     });
     const interceptor = new GuardrailsInterceptor(
       makeReflector({ validateInput: true, validateOutput: true }),
@@ -274,12 +266,10 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
 
     const ctx = makeHttpContext({ message: 'input-side payload' });
     const nextHandler: CallHandler = {
-      handle: () => of({ text: 'output-text generated by handler' }),
+      handle: () => of({ text: 'output-text generated by handler' })
     };
 
-    const response = await firstValueFrom(
-      interceptor.intercept(ctx, nextHandler)
-    );
+    const response = await firstValueFrom(interceptor.intercept(ctx, nextHandler));
 
     // Filtered response shape: { error: 'Response filtered…', reason: sanitized }.
     const reasonField = (response as { reason?: string }).reason;
@@ -298,12 +288,9 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
     const hostileReason = 'matched ignore_previous\nINJECTED';
     const service = new GuardrailsService({
       validators: [hostileValidator(hostileReason)],
-      productionMode: false,
+      productionMode: false
     });
-    const interceptor = new GuardrailsInterceptor(
-      makeReflector({ validateInput: true }),
-      service
-    );
+    const interceptor = new GuardrailsInterceptor(makeReflector({ validateInput: true }), service);
 
     // Build a context whose request.url carries control chars.
     // Sprint 44 code-review MUST-FIX #2 closure: use the existing
@@ -313,7 +300,7 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
     const ctx = makeHttpContext({ message: 'irrelevant' }, hostilePath);
 
     const nextHandler: CallHandler = {
-      handle: () => of({ response: 'should not run' }),
+      handle: () => of({ response: 'should not run' })
     };
 
     try {
@@ -324,7 +311,7 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
 
     expect(warnSpy).toHaveBeenCalled();
     const requestBlockedCall = warnSpy.mock.calls.find(
-      (call) => typeof call[0] === 'string' && call[0].startsWith('Request blocked:')
+      call => typeof call[0] === 'string' && call[0].startsWith('Request blocked:')
     );
     expect(requestBlockedCall).toBeDefined();
     // The hostile path MUST appear sanitized in the second-arg meta.
@@ -364,14 +351,14 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
                 category: hostileCategory,
                 severity: 'critical',
                 description: 'test',
-                weight: 1,
-              },
+                weight: 1
+              }
             ],
-            timestamp: Date.now(),
-          } satisfies GuardrailResult),
-        } as unknown as Validator,
+            timestamp: Date.now()
+          } satisfies GuardrailResult)
+        } as unknown as Validator
       ],
-      productionMode: false,
+      productionMode: false
     });
 
     // Build a request shape compatible with the default sessionIdExtractor.
@@ -404,20 +391,16 @@ describe('nestjs-module — Sprint 42 CWE-117 integration tests', () => {
     // 'Content blocked by security policy' string — the raw reason
     // never reaches the body. Sanity-check this stays true post the
     // dev-mode wrap.
-    const hostileReason =
-      'Pattern matched: ignore_previous\nINJECTED:CRITICAL fake_severity';
+    const hostileReason = 'Pattern matched: ignore_previous\nINJECTED:CRITICAL fake_severity';
     const service = new GuardrailsService({
       validators: [hostileValidator(hostileReason)],
-      productionMode: true,
+      productionMode: true
     });
-    const interceptor = new GuardrailsInterceptor(
-      makeReflector({ validateInput: true }),
-      service
-    );
+    const interceptor = new GuardrailsInterceptor(makeReflector({ validateInput: true }), service);
 
     const ctx = makeHttpContext({ message: 'irrelevant — validator forces block' });
     const nextHandler: CallHandler = {
-      handle: () => of({ response: 'should not run' }),
+      handle: () => of({ response: 'should not run' })
     };
 
     let thrown: unknown = null;

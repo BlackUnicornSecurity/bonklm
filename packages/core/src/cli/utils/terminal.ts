@@ -55,10 +55,10 @@ function detectCI(): boolean {
     'CIRCLECI',
     'APPVEYOR',
     'BUILDKITE',
-    'GO_PIPELINE_LABEL',
+    'GO_PIPELINE_LABEL'
   ];
 
-  return ciVars.some((varName) => process.env[varName] !== undefined);
+  return ciVars.some(varName => process.env[varName] !== undefined);
 }
 
 /**
@@ -115,7 +115,7 @@ export function getTerminalCapabilities(): TerminalCapabilities {
     isTTY: Boolean(process.stdout.isTTY),
     supportsColor: process.env.FORCE_COLOR !== '0' && Boolean(process.stdout.isTTY),
     width: process.stdout.columns || 80,
-    height: process.stdout.rows || 24,
+    height: process.stdout.rows || 24
   };
 }
 
@@ -155,7 +155,7 @@ export function getDetailedTerminalCapabilities(): DetailedTerminalCapabilities 
     width: process.stdout.columns || 80,
     height: process.stdout.rows || 24,
     colorLevel: effectiveColorLevel,
-    isCI,
+    isCI
   };
 }
 
@@ -195,7 +195,7 @@ export function getCursorControls(): {
       left: () => '',
       right: () => '',
       clearLine: () => '',
-      clearScreen: () => '',
+      clearScreen: () => ''
     };
   }
 
@@ -205,7 +205,7 @@ export function getCursorControls(): {
     left: (cols: number) => `\x1b[${cols}D`,
     right: (cols: number) => `\x1b[${cols}C`,
     clearLine: () => '\x1b[2K',
-    clearScreen: () => '\x1b[2J\x1b[H',
+    clearScreen: () => '\x1b[2J\x1b[H'
   };
 }
 
@@ -239,7 +239,7 @@ export const colors = {
   blue: (text: string) => colorize(text, 34),
   magenta: (text: string) => colorize(text, 35),
   cyan: (text: string) => colorize(text, 36),
-  gray: (text: string) => colorize(text, 90),
+  gray: (text: string) => colorize(text, 90)
 } as const;
 
 /**
@@ -308,5 +308,5 @@ export const brand = {
   ok: (text: string) => brandColorize(text, BRAND_CYAN),
   block: (text: string) => brandColorize(text, BRAND_YELLOW),
   warn: (text: string) => brandColorize(text, BRAND_AMBER),
-  crit: (text: string) => brandColorize(text, BRAND_RED),
+  crit: (text: string) => brandColorize(text, BRAND_RED)
 } as const;

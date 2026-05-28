@@ -20,7 +20,7 @@ const DEFAULTS = {
   custom_origin: '',
   warn_before_ttl_clear: true,
   sanitize_pii: true,
-  max_content_size: 1048576, // 1MB in bytes (S014-005)
+  max_content_size: 1048576 // 1MB in bytes (S014-005)
 };
 
 /**
@@ -53,35 +53,27 @@ export function validateConfig(config: AttackLoggerConfig = {}): ValidatedConfig
     custom_origin: config.custom_origin ?? DEFAULTS.custom_origin,
     warn_before_ttl_clear: config.warn_before_ttl_clear ?? DEFAULTS.warn_before_ttl_clear,
     sanitize_pii: config.sanitize_pii ?? DEFAULTS.sanitize_pii,
-    max_content_size: config.max_content_size ?? DEFAULTS.max_content_size,
+    max_content_size: config.max_content_size ?? DEFAULTS.max_content_size
   };
 
   // Validate max_logs
   if (!Number.isFinite(validated.max_logs) || validated.max_logs < 1) {
-    throw new Error(
-      `Invalid max_logs: ${validated.max_logs}. Must be a positive number.`
-    );
+    throw new Error(`Invalid max_logs: ${validated.max_logs}. Must be a positive number.`);
   }
 
   if (validated.max_logs > 100000) {
-    throw new Error(
-      `Invalid max_logs: ${validated.max_logs}. Maximum allowed is 100000 to prevent memory exhaustion.`
-    );
+    throw new Error(`Invalid max_logs: ${validated.max_logs}. Maximum allowed is 100000 to prevent memory exhaustion.`);
   }
 
   // Validate ttl
   if (!Number.isFinite(validated.ttl) || validated.ttl < 1000) {
-    throw new Error(
-      `Invalid ttl: ${validated.ttl}. Must be at least 1000ms (1 second).`
-    );
+    throw new Error(`Invalid ttl: ${validated.ttl}. Must be at least 1000ms (1 second).`);
   }
 
   // Validate origin_type
   const validOriginTypes: OriginType[] = ['sessionId', 'custom', 'none'];
   if (!validOriginTypes.includes(validated.origin_type)) {
-    throw new Error(
-      `Invalid origin_type: ${validated.origin_type}. Must be one of: ${validOriginTypes.join(', ')}`
-    );
+    throw new Error(`Invalid origin_type: ${validated.origin_type}. Must be one of: ${validOriginTypes.join(', ')}`);
   }
 
   // Validate custom_origin when origin_type is 'custom'
@@ -91,9 +83,7 @@ export function validateConfig(config: AttackLoggerConfig = {}): ValidatedConfig
 
   // Validate max_content_size (S014-005)
   if (!Number.isFinite(validated.max_content_size) || validated.max_content_size < 1024) {
-    throw new Error(
-      `Invalid max_content_size: ${validated.max_content_size}. Must be at least 1024 bytes (1KB).`
-    );
+    throw new Error(`Invalid max_content_size: ${validated.max_content_size}. Must be at least 1024 bytes (1KB).`);
   }
 
   if (validated.max_content_size > 10485760) {

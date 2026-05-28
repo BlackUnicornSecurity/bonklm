@@ -1,10 +1,13 @@
 # User Acceptance Testing Guide
 
-This guide explains how to run and interpret User Acceptance Testing (UAT) for `@blackunicorn/bonklm`.
+This guide explains how to run and interpret User Acceptance Testing (UAT) for
+`@blackunicorn/bonklm`.
 
 ## What is UAT?
 
-User Acceptance Testing validates that the package meets real-world requirements and works as expected in production-like scenarios. Unlike unit tests which check individual functions, UAT verifies end-to-end functionality from a user's perspective.
+User Acceptance Testing validates that the package meets real-world requirements and works as
+expected in production-like scenarios. Unlike unit tests which check individual functions, UAT
+verifies end-to-end functionality from a user's perspective.
 
 ## Quick Start
 
@@ -53,9 +56,11 @@ npm run uat -- --report
 
 ### HTML Report
 
-When using `--report`, an interactive HTML report is generated at `packages/core/uat/reports/uat-report-<timestamp>.html`.
+When using `--report`, an interactive HTML report is generated at
+`packages/core/uat/reports/uat-report-<timestamp>.html`.
 
 The report includes:
+
 - Summary metrics (total, passed, failed, pass rate, duration)
 - Per-category breakdowns
 - Detailed test results with error messages
@@ -68,6 +73,7 @@ The report includes:
 Tests normal, expected usage scenarios.
 
 **What it validates:**
+
 - Safe content passes through validators
 - GuardrailEngine works with multiple validators
 - Streaming validation processes safe chunks
@@ -80,6 +86,7 @@ Tests normal, expected usage scenarios.
 Tests attack detection capabilities.
 
 **What it validates:**
+
 - Prompt injection detection (35+ patterns)
 - Jailbreak detection (10 categories, 44 patterns)
 - Secret detection (30+ credential types)
@@ -93,6 +100,7 @@ Tests attack detection capabilities.
 Tests boundary conditions and unusual inputs.
 
 **What it validates:**
+
 - Empty and null input handling
 - Very long content (up to 10MB)
 - Unicode and special characters
@@ -106,6 +114,7 @@ Tests boundary conditions and unusual inputs.
 Tests error recovery and invalid inputs.
 
 **What it validates:**
+
 - Invalid configuration handling
 - Type coercion
 - Broken validators in engine
@@ -119,6 +128,7 @@ Tests error recovery and invalid inputs.
 Tests performance benchmarks.
 
 **What it validates:**
+
 - Large payload processing
 - Streaming performance
 - Multi-validator performance
@@ -132,6 +142,7 @@ Tests performance benchmarks.
 Tests multi-component scenarios.
 
 **What it validates:**
+
 - Full stack protection
 - Session-based tracking
 - Framework integration patterns
@@ -144,6 +155,7 @@ Tests multi-component scenarios.
 Tests configuration options.
 
 **What it validates:**
+
 - Sensitivity levels (strict/standard/permissive)
 - Action modes (block/sanitize/log/allow)
 - Custom logger configuration
@@ -163,25 +175,28 @@ Tests configuration options.
 
 Review each category:
 
-| Category Status | Meaning |
-|-----------------|---------|
-| ✅ All passed | This area is working well |
-| ⚠️ Some failed | Investigate failures before production use |
-| ❌ Many failed | Significant issues in this area |
+| Category Status | Meaning                                    |
+| --------------- | ------------------------------------------ |
+| ✅ All passed   | This area is working well                  |
+| ⚠️ Some failed  | Investigate failures before production use |
+| ❌ Many failed  | Significant issues in this area            |
 
 ### Common Failure Types
 
 **Detection Rate Failures:**
+
 - Attack detection below threshold
 - May indicate pattern updates needed
 - Review failed attack patterns
 
 **Performance Failures:**
+
 - Tests exceeded time limits
 - May need optimization or hardware upgrade
 - Check system load
 
 **Integration Failures:**
+
 - Component interaction issues
 - May require API review
 - Check configuration
@@ -240,6 +255,7 @@ uat:
 ## Support
 
 For issues or questions about UAT:
+
 - Review failed test details in the report
 - Check [GitHub Issues](https://github.com/your-repo/issues)
 - Consult the main [API Reference](./api-reference.md)

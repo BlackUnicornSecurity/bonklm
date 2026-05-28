@@ -15,14 +15,7 @@
  * - DEV-002: Logger type
  */
 
-import type {
-  CircuitBreaker,
-  Guard,
-  GuardrailResult,
-  Logger,
-  TelemetryService,
-  Validator,
-} from '@blackunicorn/bonklm';
+import type { CircuitBreaker, Guard, GuardrailResult, Logger, TelemetryService, Validator } from '@blackunicorn/bonklm';
 
 /**
  * Configuration options for the GuardrailsCallbackHandler.
@@ -206,7 +199,7 @@ export class GuardrailsViolationError extends Error {
     message: string,
     public readonly reason: string,
     public readonly findings: GuardrailResult['findings'] = [],
-    public readonly riskScore: number = 0,
+    public readonly riskScore: number = 0
   ) {
     super(message);
     this.name = 'GuardrailsViolationError';

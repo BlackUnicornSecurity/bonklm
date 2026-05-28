@@ -17,7 +17,7 @@ import {
   ExecutionContext,
   Injectable,
   NestInterceptor,
-  Logger as NestLogger,
+  Logger as NestLogger
 } from '@nestjs/common';
 import { forkJoin, Observable, of, throwError } from 'rxjs';
 import { catchError, finalize, map, switchMap } from 'rxjs/operators';
@@ -34,14 +34,17 @@ import { isUseGuardrailsOptions } from './use-guardrails.decorator.js';
  * Prevents prototype pollution attacks by avoiding direct property assignment.
  * Automatically cleaned up when request objects are garbage collected.
  */
-const requestMetadataMap = new WeakMap<any, {
-  validated: boolean;
-  results?: GuardrailResult[];
-  response?: {
-    originalSend?: any;
-    chunks?: Buffer[];
-  };
-}>();
+const requestMetadataMap = new WeakMap<
+  any,
+  {
+    validated: boolean;
+    results?: GuardrailResult[];
+    response?: {
+      originalSend?: any;
+      chunks?: Buffer[];
+    };
+  }
+>();
 
 /**
  * S013-001: Mark request as validated in WeakMap.
@@ -83,7 +86,7 @@ export class GuardrailsInterceptor implements NestInterceptor {
 
   constructor(
     private readonly reflector: Reflector,
-    private readonly guardrailsService: GuardrailsService,
+    private readonly guardrailsService: GuardrailsService
   ) {
     this.logger.debug('GuardrailsInterceptor initialized');
   }
@@ -100,10 +103,10 @@ export class GuardrailsInterceptor implements NestInterceptor {
    */
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     // Get decorator options from handler and class metadata
-    const handlerOptions = this.reflector.getAllAndOverride<UseGuardrailsDecoratorOptions>(
-      USE_GUARDRAILS_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const handlerOptions = this.reflector.getAllAndOverride<UseGuardrailsDecoratorOptions>(USE_GUARDRAILS_KEY, [
+      context.getHandler(),
+      context.getClass()
+    ]);
 
     // If no decorator options, skip validation
     if (!handlerOptions && !this.hasDecoratorOnClass(context)) {
@@ -130,13 +133,14 @@ export class GuardrailsInterceptor implements NestInterceptor {
       // Create an observable for input validation
       return of(null).pipe(
         switchMap(() => this.validateInput(content, context, options)),
-        switchMap((inputResult) => {
+        switchMap(inputResult => {
           if (!inputResult.allowed) {
             return throwError(
-              () => new BadRequestException({
-                error: this.guardrailsService.getErrorMessage(inputResult),
-                risk_level: inputResult.risk_level,
-              }),
+              () =>
+                new BadRequestException({
+                  error: this.guardrailsService.getErrorMessage(inputResult),
+                  risk_level: inputResult.risk_level
+                })
             );
           }
 
@@ -145,12 +149,7 @@ export class GuardrailsInterceptor implements NestInterceptor {
 
           // Proceed to handler and optionally validate output
           // S013-001: Add cleanup on response completion
-          return this.handleWithOutputValidation(
-            context,
-            next,
-            validateOutput,
-            options,
-          ).pipe(
+          return this.handleWithOutputValidation(context, next, validateOutput, options).pipe(
             // S013-001: Cleanup metadata on response completion (success or error)
             finalize(() => {
               cleanupRequestMetadata(request);
@@ -158,7 +157,7 @@ export class GuardrailsInterceptor implements NestInterceptor {
           );
         }),
         // S013-001: Also cleanup on error
-        catchError((error) => {
+        catchError(error => {
           cleanupRequestMetadata(request);
           return throwError(() => error);
         })
@@ -167,16 +166,11 @@ export class GuardrailsInterceptor implements NestInterceptor {
 
     // Skip input validation, only validate output if requested
     // S013-001: Add cleanup on response completion
-    return this.handleWithOutputValidation(
-      context,
-      next,
-      validateOutput,
-      options,
-    ).pipe(
+    return this.handleWithOutputValidation(context, next, validateOutput, options).pipe(
       finalize(() => {
         cleanupRequestMetadata(request);
       }),
-      catchError((error) => {
+      catchError(error => {
         cleanupRequestMetadata(request);
         return throwError(() => error);
       })
@@ -191,7 +185,7 @@ export class GuardrailsInterceptor implements NestInterceptor {
   private async validateInput(
     content: string,
     context: ExecutionContext,
-    options: UseGuardrailsDecoratorOptions,
+    options: UseGuardrailsDecoratorOptions
   ): Promise<GuardrailResult> {
     // S013-008: Check content size using UTF-8 byte count, not character count
     const contentByteLength = Buffer.byteLength(content, 'utf8');
@@ -202,7 +196,7 @@ export class GuardrailsInterceptor implements NestInterceptor {
       // uniformity — add sanitized `path` meta to match the
       // blocked-request log shape. byte counts are numeric (safe).
       this.logger.warn(`Content exceeds max length: ${contentByteLength} bytes > ${maxLength} bytes`, {
-        path: sanitizeMeta(this.extractRequestUrl(context)),
+        path: sanitizeMeta(this.extractRequestUrl(context))
       });
       return {
         allowed: false,
@@ -212,7 +206,7 @@ export class GuardrailsInterceptor implements NestInterceptor {
         risk_score: 50,
         reason: 'Content too large',
         findings: [],
-        timestamp: Date.now(),
+        timestamp: Date.now()
       };
     }
 
@@ -230,7 +224,7 @@ export class GuardrailsInterceptor implements NestInterceptor {
       // ExecutionContext the interceptor already consumes.
       const requestUrl = this.extractRequestUrl(context);
       this.logger.warn(`Request blocked: ${sanitizeMeta(blocked.reason)}`, {
-        path: sanitizeMeta(requestUrl),
+        path: sanitizeMeta(requestUrl)
       });
       // Call custom error handler if provided and is a function
       if (options.onError && typeof options.onError === 'function') {
@@ -247,15 +241,17 @@ export class GuardrailsInterceptor implements NestInterceptor {
       return blocked;
     }
 
-    return results[0] || {
-      allowed: true,
-      blocked: false,
-      severity: Severity.INFO,
-      risk_level: RiskLevel.LOW,
-      risk_score: 0,
-      findings: [],
-      timestamp: Date.now()
-    };
+    return (
+      results[0] || {
+        allowed: true,
+        blocked: false,
+        severity: Severity.INFO,
+        risk_level: RiskLevel.LOW,
+        risk_score: 0,
+        findings: [],
+        timestamp: Date.now()
+      }
+    );
   }
 
   /**
@@ -267,14 +263,14 @@ export class GuardrailsInterceptor implements NestInterceptor {
     context: ExecutionContext,
     next: CallHandler,
     validateOutput: boolean,
-    options: UseGuardrailsDecoratorOptions,
+    options: UseGuardrailsDecoratorOptions
   ): Observable<any> {
     if (!validateOutput) {
       return next.handle();
     }
 
     return next.handle().pipe(
-      switchMap((data) => {
+      switchMap(data => {
         // Extract response content
         const content = this.extractContentFromResponse(data, options.responseField);
 
@@ -290,20 +286,18 @@ export class GuardrailsInterceptor implements NestInterceptor {
           // Sprint 44 architect MEDIUM #2 closure: response-leg
           // sister to request-leg content-too-large log.
           this.logger.warn(`Response content exceeds max length: ${contentByteLength} bytes > ${maxLength} bytes`, {
-            path: sanitizeMeta(this.extractRequestUrl(context)),
+            path: sanitizeMeta(this.extractRequestUrl(context))
           });
           return of({
             error: 'Response filtered by guardrails',
-            ...(this.guardrailsService.getConfig().productionMode
-              ? {}
-              : { reason: 'Response too large' }),
+            ...(this.guardrailsService.getConfig().productionMode ? {} : { reason: 'Response too large' })
           });
         }
 
         // Validate output asynchronously
         return forkJoin({
           original: of(data),
-          validation: this.guardrailsService.validateOutput(content),
+          validation: this.guardrailsService.validateOutput(content)
         }).pipe(
           map(({ original, validation }) => {
             const blocked = this.guardrailsService.getBlockedResult(validation);
@@ -314,7 +308,7 @@ export class GuardrailsInterceptor implements NestInterceptor {
               // the request-blocked log site — add sanitized path
               // meta. Sister of fastify response-blocked log.
               this.logger.warn(`Response blocked: ${sanitizeMeta(blocked.reason)}`, {
-                path: sanitizeMeta(this.extractRequestUrl(context)),
+                path: sanitizeMeta(this.extractRequestUrl(context))
               });
               // Call custom error handler if provided and is a function
               if (options.onError && typeof options.onError === 'function') {
@@ -322,10 +316,10 @@ export class GuardrailsInterceptor implements NestInterceptor {
                   options.onError(blocked, context);
                 } catch (error) {
                   // Sprint 40 connector CWE-117 sweep: use canonical serializeError
-          // (Sprint 33 primitive) for the `error` meta field. Bare
-          // `{ error }` renders as `error={}` post-JSON.stringify because
-          // Error properties are non-enumerable.
-          this.logger.error('Error in custom error handler', { error: serializeError(error) });
+                  // (Sprint 33 primitive) for the `error` meta field. Bare
+                  // `{ error }` renders as `error={}` post-JSON.stringify because
+                  // Error properties are non-enumerable.
+                  this.logger.error('Error in custom error handler', { error: serializeError(error) });
                 }
               }
 
@@ -337,24 +331,22 @@ export class GuardrailsInterceptor implements NestInterceptor {
               // boundary per Sprint 41 defensive-by-default policy.
               return {
                 error: 'Response filtered by guardrails',
-                ...(this.guardrailsService.getConfig().productionMode
-                  ? {}
-                  : { reason: sanitizeMeta(blocked.reason) }),
+                ...(this.guardrailsService.getConfig().productionMode ? {} : { reason: sanitizeMeta(blocked.reason) })
               };
             }
 
             return original;
-          }),
+          })
         );
       }),
-      catchError((error) => {
+      catchError(error => {
         // Sprint 40 audit closure (architect HIGH-1 + security S40-3):
         // sister site to the interceptor's existing serializeError
         // call sites (lines 231 + 306). The Sprint 40 first pass
         // missed this `catchError` block 90 lines down.
         this.logger.error('Error in output validation', { error: serializeError(error) });
         return throwError(() => error);
-      }),
+      })
     );
   }
 
@@ -442,7 +434,7 @@ export class GuardrailsInterceptor implements NestInterceptor {
         // attacker-influenced messages — apply the canonical
         // serializeError + sanitizeLogString chain.
         this.logger.warn('Custom bodyExtractor failed, using default', {
-          error: serializeError(error),
+          error: serializeError(error)
         });
         // Fall through to default extraction
       }
@@ -481,7 +473,7 @@ export class GuardrailsInterceptor implements NestInterceptor {
       // Sprint 42 security MEDIUM closure: canonical serializeError
       // for the `error` meta field.
       this.logger.warn('Failed to stringify body, using String conversion', {
-        error: serializeError(error),
+        error: serializeError(error)
       });
       return String(request.body);
     }
@@ -508,7 +500,7 @@ export class GuardrailsInterceptor implements NestInterceptor {
         // Sprint 42 security MEDIUM closure: canonical serializeError
         // for the `error` meta field (sister site to bodyExtractor).
         this.logger.warn('Custom responseExtractor failed, using default', {
-          error: serializeError(error),
+          error: serializeError(error)
         });
         // Fall through to default extraction
       }
@@ -551,7 +543,7 @@ export class GuardrailsInterceptor implements NestInterceptor {
       // Sprint 42 security MEDIUM closure: canonical serializeError
       // for the `error` meta field.
       this.logger.warn('Failed to stringify response data, using String conversion', {
-        error: serializeError(error),
+        error: serializeError(error)
       });
       return String(data);
     }
@@ -561,10 +553,7 @@ export class GuardrailsInterceptor implements NestInterceptor {
    * Check if the class has the decorator.
    */
   private hasDecoratorOnClass(context: ExecutionContext): boolean {
-    const classMetadata = this.reflector.get<UseGuardrailsDecoratorOptions>(
-      USE_GUARDRAILS_KEY,
-      context.getClass(),
-    );
+    const classMetadata = this.reflector.get<UseGuardrailsDecoratorOptions>(USE_GUARDRAILS_KEY, context.getClass());
     return isUseGuardrailsOptions(classMetadata);
   }
 }

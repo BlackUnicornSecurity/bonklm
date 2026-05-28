@@ -14,7 +14,7 @@ export type {
   GuardedWeaviateOptions,
   GuardedWeaviateResult,
   WeaviateQueryOptions,
-  BlockedObjectHandling,
+  BlockedObjectHandling
 } from './types.js';
 
 export { DEFAULT_VALIDATION_TIMEOUT, DEFAULT_MAX_LIMIT } from './types.js';

@@ -33,5 +33,5 @@ export {
   type BonklmAgentHookContext,
   type CloudflareAgentBlockEvent,
   type DurableObjectStorageLike,
-  type SqlStorageLike,
+  type SqlStorageLike
 } from './types.js';

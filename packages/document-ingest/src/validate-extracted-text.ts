@@ -15,7 +15,7 @@ import {
   DocumentIngestBlockedError,
   type DocumentIngestBlockEvent,
   type DocumentIngestPhase,
-  type DocumentIngestWrapOptions,
+  type DocumentIngestWrapOptions
 } from './types.js';
 
 /** Default maximum text size accepted by the validator (1 MB). */
@@ -104,14 +104,10 @@ export async function validateExtractedText(
   options: ValidateExtractedTextOptions
 ): Promise<ValidateExtractedTextResult> {
   if (typeof text !== 'string') {
-    throw new TypeError(
-      'validateExtractedText: text must be a string (the parser-extracted document body).'
-    );
+    throw new TypeError('validateExtractedText: text must be a string (the parser-extracted document body).');
   }
   if (!options?.engine) {
-    throw new TypeError(
-      'validateExtractedText: options.engine (GuardrailEngine) is required.'
-    );
+    throw new TypeError('validateExtractedText: options.engine (GuardrailEngine) is required.');
   }
 
   const phase: DocumentIngestPhase = options.phase ?? 'validate_extracted_text';
@@ -148,7 +144,7 @@ export async function validateExtractedText(
         documentId: options.documentId,
         category: 'oversized_document',
         severity: 'critical',
-        excerpt: text.slice(0, 200),
+        excerpt: text.slice(0, 200)
       };
       safeOnBlock(options, ev);
       if (options.returnInsteadOfThrow) {
@@ -158,18 +154,14 @@ export async function validateExtractedText(
           category: ev.category,
           severity: ev.severity,
           excerpt: ev.excerpt,
-          oversized: true,
+          oversized: true
         };
       }
-      throw new DocumentIngestBlockedError(
-        `${phaseTag} extracted text exceeded ${maxBytes} bytes`,
-        phaseTag,
-        {
-          documentId: options.documentId,
-          category: ev.category,
-          severity: ev.severity,
-        }
-      );
+      throw new DocumentIngestBlockedError(`${phaseTag} extracted text exceeded ${maxBytes} bytes`, phaseTag, {
+        documentId: options.documentId,
+        category: ev.category,
+        severity: ev.severity
+      });
     }
     // truncate / allow: validate the truncated prefix.
     safeOnError(
@@ -196,7 +188,7 @@ export async function validateExtractedText(
     documentId: options.documentId,
     category: finding?.category,
     severity: String(result.severity),
-    excerpt,
+    excerpt
   };
   safeOnBlock(options, event);
 
@@ -206,19 +198,15 @@ export async function validateExtractedText(
       reason: event.reason,
       category: event.category,
       severity: event.severity,
-      excerpt,
+      excerpt
     };
   }
 
-  throw new DocumentIngestBlockedError(
-    `${phase} extracted text blocked: ${event.reason}`,
-    phase,
-    {
-      documentId: options.documentId,
-      category: event.category,
-      severity: event.severity,
-    }
-  );
+  throw new DocumentIngestBlockedError(`${phase} extracted text blocked: ${event.reason}`, phase, {
+    documentId: options.documentId,
+    category: event.category,
+    severity: event.severity
+  });
 }
 
 async function safeValidate(
@@ -234,10 +222,7 @@ async function safeValidate(
   }
 }
 
-function safeOnBlock(
-  options: ValidateExtractedTextOptions,
-  ev: DocumentIngestBlockEvent
-): void {
+function safeOnBlock(options: ValidateExtractedTextOptions, ev: DocumentIngestBlockEvent): void {
   if (!options.onBlock) return;
   try {
     options.onBlock(ev);
@@ -246,10 +231,7 @@ function safeOnBlock(
   }
 }
 
-function safeOnError(
-  options: ValidateExtractedTextOptions,
-  err: unknown
-): void {
+function safeOnError(options: ValidateExtractedTextOptions, err: unknown): void {
   if (!options.onError) return;
   try {
     options.onError(err);

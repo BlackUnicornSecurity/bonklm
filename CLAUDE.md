@@ -34,8 +34,8 @@ it is always a safe, known-good reference and parallel work never collides.
 - **One PR ⇄ one worktree ⇄ one branch.** Create the worktree before Phase 0, outside the repo (e.g.
   a sibling directory): `git worktree add ../bonklm-<slug> -b <type>/<slug>` — the branch name
   follows the commit-type convention (`feat/`, `fix/`, `refactor/`, `docs/`, `chore/`, etc.).
-- **Run the entire Definition-of-Done loop inside that worktree** — edits, `pnpm quality-gate`,
-  the audit-loop, commits, push, and PR.
+- **Run the entire Definition-of-Done loop inside that worktree** — edits, `pnpm quality-gate`, the
+  audit-loop, commits, push, and PR.
 - **Clean up on merge.** Once the PR is merged, remove the worktree and prune its branch:
   `git worktree remove ../bonklm-<slug>`, then `git branch -d <branch>` (and delete the remote
   branch if it was not auto-deleted), then `git worktree prune` to clear stale metadata.

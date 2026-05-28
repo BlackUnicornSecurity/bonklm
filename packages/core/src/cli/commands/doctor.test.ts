@@ -28,7 +28,7 @@ import {
   readConfiguredPreCommit,
   resolveHooksPath,
   runDoctor,
-  type SpawnResult,
+  type SpawnResult
 } from './doctor.js';
 
 // ---------------------------------------------------------------------------
@@ -38,25 +38,23 @@ import {
 function makePassAuditSpawn(): (cmd: string, args: string[], opts: object) => SpawnResult {
   return () => ({
     stdout: JSON.stringify({
-      metadata: { vulnerabilities: { info: 0, low: 0, moderate: 0, high: 0, critical: 0 } },
-    }),
+      metadata: { vulnerabilities: { info: 0, low: 0, moderate: 0, high: 0, critical: 0 } }
+    })
   });
 }
 
 function makeFailAuditSpawn(
   high: number,
-  critical: number,
+  critical: number
 ): (cmd: string, args: string[], opts: object) => SpawnResult {
   return () => ({
     stdout: JSON.stringify({
-      metadata: { vulnerabilities: { info: 0, low: 1, moderate: 2, high, critical } },
-    }),
+      metadata: { vulnerabilities: { info: 0, low: 1, moderate: 2, high, critical } }
+    })
   });
 }
 
-function makeErrorAuditSpawn(
-  errMsg: string,
-): (cmd: string, args: string[], opts: object) => SpawnResult {
+function makeErrorAuditSpawn(errMsg: string): (cmd: string, args: string[], opts: object) => SpawnResult {
   return () => ({ stdout: '', error: new Error(errMsg) });
 }
 
@@ -184,7 +182,7 @@ describe('readConfiguredPreCommit', () => {
   it('returns null when simple-git-hooks lacks a pre-commit entry', () => {
     writePackageJson(cwd, {
       name: 'whatever',
-      'simple-git-hooks': { 'pre-push': 'pnpm test' },
+      'simple-git-hooks': { 'pre-push': 'pnpm test' }
     });
     expect(readConfiguredPreCommit(cwd)).toBeNull();
   });
@@ -192,7 +190,7 @@ describe('readConfiguredPreCommit', () => {
   it('returns the configured command when present', () => {
     writePackageJson(cwd, {
       name: 'whatever',
-      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' },
+      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' }
     });
     expect(readConfiguredPreCommit(cwd)).toBe('pnpm typecheck');
   });
@@ -205,7 +203,7 @@ describe('readConfiguredPreCommit', () => {
   it('returns null when pre-commit value is empty', () => {
     writePackageJson(cwd, {
       name: 'whatever',
-      'simple-git-hooks': { 'pre-commit': '   ' },
+      'simple-git-hooks': { 'pre-commit': '   ' }
     });
     expect(readConfiguredPreCommit(cwd)).toBeNull();
   });
@@ -213,7 +211,7 @@ describe('readConfiguredPreCommit', () => {
   it('returns null when simple-git-hooks is a string (malformed shape)', () => {
     writePackageJson(cwd, {
       name: 'whatever',
-      'simple-git-hooks': 'oops',
+      'simple-git-hooks': 'oops'
     });
     expect(readConfiguredPreCommit(cwd)).toBeNull();
   });
@@ -221,7 +219,7 @@ describe('readConfiguredPreCommit', () => {
   it('returns null when simple-git-hooks is an array (malformed shape)', () => {
     writePackageJson(cwd, {
       name: 'whatever',
-      'simple-git-hooks': ['pnpm typecheck'],
+      'simple-git-hooks': ['pnpm typecheck']
     });
     expect(readConfiguredPreCommit(cwd)).toBeNull();
   });
@@ -239,13 +237,10 @@ describe('checkPreCommitHook', () => {
   it('PASS when hook installed and contains the configured command', () => {
     writePackageJson(cwd, {
       name: 'whatever',
-      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' },
+      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' }
     });
     writeGitDir(cwd);
-    writeFileSync(
-      join(cwd, '.git', 'hooks', 'pre-commit'),
-      '#!/usr/bin/env sh\npnpm typecheck\n'
-    );
+    writeFileSync(join(cwd, '.git', 'hooks', 'pre-commit'), '#!/usr/bin/env sh\npnpm typecheck\n');
 
     const result = checkPreCommitHook(cwd);
     expect(result.status).toBe('pass');
@@ -257,7 +252,7 @@ describe('checkPreCommitHook', () => {
   it('FAIL when hook is missing entirely', () => {
     writePackageJson(cwd, {
       name: 'whatever',
-      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' },
+      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' }
     });
     writeGitDir(cwd);
 
@@ -270,13 +265,10 @@ describe('checkPreCommitHook', () => {
   it('FAIL when hook installed but does not reference the configured command (Sprint 50 audit MUST-FIX 3)', () => {
     writePackageJson(cwd, {
       name: 'whatever',
-      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' },
+      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' }
     });
     writeGitDir(cwd);
-    writeFileSync(
-      join(cwd, '.git', 'hooks', 'pre-commit'),
-      '#!/usr/bin/env sh\necho "stale hook"\n'
-    );
+    writeFileSync(join(cwd, '.git', 'hooks', 'pre-commit'), '#!/usr/bin/env sh\necho "stale hook"\n');
 
     // Sprint 50 promotion: a stale hook is functionally identical to
     // a missing hook from the contributor's perspective — the
@@ -296,16 +288,13 @@ describe('checkPreCommitHook', () => {
     // ingestor that consumes the doctor output.
     writePackageJson(cwd, {
       name: 'whatever',
-      'simple-git-hooks': { 'pre-commit': 'pnpm\ttypecheck' },
+      'simple-git-hooks': { 'pre-commit': 'pnpm\ttypecheck' }
     });
     const gitDir = join(cwd, '.git');
     mkdirSync(join(gitDir, 'hooks'), { recursive: true });
     // hooksPath value with embedded newline: pre-Sprint-50 fix this
     // would inject a fake log line.
-    writeFileSync(
-      join(gitDir, 'config'),
-      `[core]\n\thooksPath = .hooks\nINJECTED_LOG_LINE\n`
-    );
+    writeFileSync(join(gitDir, 'config'), `[core]\n\thooksPath = .hooks\nINJECTED_LOG_LINE\n`);
     mkdirSync(join(cwd, '.hooks'), { recursive: true });
 
     const result = checkPreCommitHook(cwd);
@@ -323,13 +312,10 @@ describe('checkPreCommitHook', () => {
   it('sanitizes control chars in stale-hook message including configured command (Sprint 50 audit MEDIUM)', () => {
     writePackageJson(cwd, {
       name: 'whatever',
-      'simple-git-hooks': { 'pre-commit': 'pnpm\ttypecheck' },
+      'simple-git-hooks': { 'pre-commit': 'pnpm\ttypecheck' }
     });
     writeGitDir(cwd);
-    writeFileSync(
-      join(cwd, '.git', 'hooks', 'pre-commit'),
-      '#!/usr/bin/env sh\necho "stale hook"\n'
-    );
+    writeFileSync(join(cwd, '.git', 'hooks', 'pre-commit'), '#!/usr/bin/env sh\necho "stale hook"\n');
 
     const result = checkPreCommitHook(cwd);
     expect(result.status).toBe('fail');
@@ -343,7 +329,7 @@ describe('checkPreCommitHook', () => {
   it('WARN when project declares pre-commit but cwd is not a git repo', () => {
     writePackageJson(cwd, {
       name: 'whatever',
-      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' },
+      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' }
     });
 
     const result = checkPreCommitHook(cwd);
@@ -371,14 +357,11 @@ describe('checkPreCommitHook', () => {
   it('honours `core.hooksPath` override when checking the hook file', () => {
     writePackageJson(cwd, {
       name: 'whatever',
-      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' },
+      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' }
     });
     writeGitDir(cwd, '.githooks');
     mkdirSync(join(cwd, '.githooks'), { recursive: true });
-    writeFileSync(
-      join(cwd, '.githooks', 'pre-commit'),
-      '#!/usr/bin/env sh\npnpm typecheck\n'
-    );
+    writeFileSync(join(cwd, '.githooks', 'pre-commit'), '#!/usr/bin/env sh\npnpm typecheck\n');
 
     const result = checkPreCommitHook(cwd);
     expect(result.status).toBe('pass');
@@ -398,13 +381,10 @@ describe('runDoctor', () => {
   it('overallStatus is pass when every check passes', () => {
     writePackageJson(cwd, {
       name: 'whatever',
-      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' },
+      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' }
     });
     writeGitDir(cwd);
-    writeFileSync(
-      join(cwd, '.git', 'hooks', 'pre-commit'),
-      '#!/usr/bin/env sh\npnpm typecheck\n'
-    );
+    writeFileSync(join(cwd, '.git', 'hooks', 'pre-commit'), '#!/usr/bin/env sh\npnpm typecheck\n');
     // Sprint 51: env file check also runs — provide .env.example so it passes.
     writeFileSync(join(cwd, '.env.example'), '# example');
 
@@ -418,7 +398,7 @@ describe('runDoctor', () => {
   it('overallStatus is fail when any check fails', () => {
     writePackageJson(cwd, {
       name: 'whatever',
-      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' },
+      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' }
     });
     writeGitDir(cwd);
 
@@ -447,7 +427,7 @@ describe('doctorCommand', () => {
   });
 
   it('exposes a --json option', () => {
-    const jsonOption = doctorCommand.options.find((opt) => opt.long === '--json');
+    const jsonOption = doctorCommand.options.find(opt => opt.long === '--json');
     expect(jsonOption).toBeDefined();
   });
 });
@@ -505,7 +485,7 @@ describe('runDoctor — cwd validation (B.14)', () => {
   it('runs normally when cwd is a valid existing directory', () => {
     // A valid cwd should NOT produce a cwd_invalid check
     const report = runDoctor(cwd, makePassAuditSpawn());
-    const cwdInvalid = report.checks.find((c) => c.name === 'cwd_invalid');
+    const cwdInvalid = report.checks.find(c => c.name === 'cwd_invalid');
     expect(cwdInvalid).toBeUndefined();
     // At minimum pre-commit, env, audit checks are present
     expect(report.checks.length).toBeGreaterThanOrEqual(1);
@@ -643,15 +623,12 @@ describe('runDoctor --json sanitization round-trip (B.16)', () => {
     // hookFileDisplay = sanitizeLogString(hookFile). Verify the JSON remains parseable.
     writePackageJson(cwd, {
       name: 'whatever',
-      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' },
+      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' }
     });
     // Write a .git dir with an ANSI-contaminated hooksPath
     const gitDir = join(cwd, '.git');
     mkdirSync(join(gitDir, 'hooks'), { recursive: true });
-    writeFileSync(
-      join(gitDir, 'config'),
-      '[core]\n\thooksPath = \x1b[31mred-path\x1b[0m\n'
-    );
+    writeFileSync(join(gitDir, 'config'), '[core]\n\thooksPath = \x1b[31mred-path\x1b[0m\n');
 
     const report = runDoctor(cwd, makePassAuditSpawn());
     const jsonString = JSON.stringify(report, null, 2);
@@ -679,7 +656,7 @@ describe('checkRateLimiterAdvisory (B.5, ST-05-104)', () => {
   it('PASS when no BonkLM framework connector is installed', () => {
     writePackageJson(cwd, {
       name: 'consumer',
-      dependencies: { lodash: '^4.17.21' },
+      dependencies: { lodash: '^4.17.21' }
     });
     const result = checkRateLimiterAdvisory(cwd);
     expect(result.status).toBe('pass');
@@ -691,8 +668,8 @@ describe('checkRateLimiterAdvisory (B.5, ST-05-104)', () => {
       name: 'consumer',
       dependencies: {
         '@blackunicorn/bonklm-express': '^1.0.0',
-        'express-rate-limit': '^7.0.0',
-      },
+        'express-rate-limit': '^7.0.0'
+      }
     });
     const result = checkRateLimiterAdvisory(cwd);
     expect(result.status).toBe('pass');
@@ -704,7 +681,7 @@ describe('checkRateLimiterAdvisory (B.5, ST-05-104)', () => {
     writePackageJson(cwd, {
       name: 'consumer',
       dependencies: { '@blackunicorn/bonklm-fastify': '^1.0.0' },
-      bonklm: { rateLimit: 'documented' },
+      bonklm: { rateLimit: 'documented' }
     });
     const result = checkRateLimiterAdvisory(cwd);
     expect(result.status).toBe('pass');
@@ -716,7 +693,7 @@ describe('checkRateLimiterAdvisory (B.5, ST-05-104)', () => {
     writePackageJson(cwd, {
       name: 'consumer',
       dependencies: { '@blackunicorn/bonklm-hono': '^1.0.0' },
-      bonklm: { rateLimit: 'external' },
+      bonklm: { rateLimit: 'external' }
     });
     const result = checkRateLimiterAdvisory(cwd);
     expect(result.status).toBe('pass');
@@ -726,7 +703,7 @@ describe('checkRateLimiterAdvisory (B.5, ST-05-104)', () => {
     writePackageJson(cwd, {
       name: 'consumer',
       dependencies: { '@blackunicorn/bonklm-elysia': '^1.0.0' },
-      bonklm: { rateLimit: 'in-process' },
+      bonklm: { rateLimit: 'in-process' }
     });
     const result = checkRateLimiterAdvisory(cwd);
     expect(result.status).toBe('pass');
@@ -735,7 +712,7 @@ describe('checkRateLimiterAdvisory (B.5, ST-05-104)', () => {
   it('WARN when framework connector is installed with no known limiter and no opt-out', () => {
     writePackageJson(cwd, {
       name: 'consumer',
-      dependencies: { '@blackunicorn/bonklm-nextjs': '^1.0.0' },
+      dependencies: { '@blackunicorn/bonklm-nextjs': '^1.0.0' }
     });
     const result = checkRateLimiterAdvisory(cwd);
     expect(result.status).toBe('warn');
@@ -750,8 +727,8 @@ describe('checkRateLimiterAdvisory (B.5, ST-05-104)', () => {
       name: 'consumer',
       dependencies: {
         '@blackunicorn/bonklm-express': '^1.0.0',
-        '@blackunicorn/bonklm-fastify': '^1.0.0',
-      },
+        '@blackunicorn/bonklm-fastify': '^1.0.0'
+      }
     });
     const result = checkRateLimiterAdvisory(cwd);
     expect(result.status).toBe('warn');
@@ -763,7 +740,7 @@ describe('checkRateLimiterAdvisory (B.5, ST-05-104)', () => {
     writePackageJson(cwd, {
       name: 'consumer',
       dependencies: { '@blackunicorn/bonklm-nestjs': '^1.0.0' },
-      devDependencies: { '@nestjs/throttler': '^6.0.0' },
+      devDependencies: { '@nestjs/throttler': '^6.0.0' }
     });
     const result = checkRateLimiterAdvisory(cwd);
     expect(result.status).toBe('pass');
@@ -784,8 +761,8 @@ describe('checkRateLimiterAdvisory (B.5, ST-05-104)', () => {
     writePackageJson(cwd, {
       name: 'consumer',
       dependencies: {
-        '@blackunicorn/bonklm-express': '^1.0.0\x1b[31mred\x1b[0m',
-      },
+        '@blackunicorn/bonklm-express': '^1.0.0\x1b[31mred\x1b[0m'
+      }
     });
     const result = checkRateLimiterAdvisory(cwd);
     // The KEY (@blackunicorn/bonklm-express) passes through sanitizeLogString;

@@ -11,7 +11,7 @@ import {
   Severity,
   RiskLevel,
   type GuardrailResult,
-  type Finding,
+  type Finding
 } from '../../../src/base/GuardrailResult.js';
 
 describe('GuardrailResult', () => {
@@ -35,7 +35,7 @@ describe('GuardrailResult', () => {
   describe('GR-003: Allowed False', () => {
     it('should set allowed=false', () => {
       const result = createResult(false, Severity.CRITICAL, [
-        { category: 'test', severity: Severity.CRITICAL, description: 'Blocked', weight: 20 },
+        { category: 'test', severity: Severity.CRITICAL, description: 'Blocked', weight: 20 }
       ]);
       expect(result.allowed).toBe(false);
       expect(result.blocked).toBe(true);
@@ -67,9 +67,7 @@ describe('GuardrailResult', () => {
 
   describe('Risk Level Calculation', () => {
     it('GR-007: should set LOW risk for low weight', () => {
-      const findings: Finding[] = [
-        { category: 'test', severity: Severity.INFO, description: 'Test', weight: 1 },
-      ];
+      const findings: Finding[] = [{ category: 'test', severity: Severity.INFO, description: 'Test', weight: 1 }];
       const result = createResult(true, Severity.INFO, findings);
       expect(result.risk_level).toBe('LOW');
       expect(result.risk_score).toBe(1);
@@ -77,7 +75,7 @@ describe('GuardrailResult', () => {
 
     it('GR-008: should set MEDIUM risk for medium weight', () => {
       const findings: Finding[] = [
-        { category: 'test', severity: Severity.WARNING, description: 'Warning', weight: 15 },
+        { category: 'test', severity: Severity.WARNING, description: 'Warning', weight: 15 }
       ];
       const result = createResult(false, Severity.WARNING, findings);
       expect(result.risk_level).toBe('MEDIUM');
@@ -86,7 +84,7 @@ describe('GuardrailResult', () => {
 
     it('GR-009: should set HIGH risk for high weight', () => {
       const findings: Finding[] = [
-        { category: 'test', severity: Severity.CRITICAL, description: 'Critical', weight: 30 },
+        { category: 'test', severity: Severity.CRITICAL, description: 'Critical', weight: 30 }
       ];
       const result = createResult(false, Severity.CRITICAL, findings);
       expect(result.risk_level).toBe('HIGH');
@@ -98,7 +96,7 @@ describe('GuardrailResult', () => {
     it('should add findings to result', () => {
       const findings: Finding[] = [
         { category: 'test1', severity: Severity.WARNING, description: 'Test 1', weight: 10 },
-        { category: 'test2', severity: Severity.INFO, description: 'Test 2', weight: 5 },
+        { category: 'test2', severity: Severity.INFO, description: 'Test 2', weight: 5 }
       ];
       const result = createResult(false, Severity.WARNING, findings);
       expect(result.findings).toHaveLength(2);
@@ -123,7 +121,7 @@ describe('GuardrailResult', () => {
       const findings: Finding[] = [
         { category: 'test1', severity: Severity.WARNING, description: 'Test 1', weight: 10 },
         { category: 'test2', severity: Severity.INFO, description: 'Test 2', weight: 5 },
-        { category: 'test3', severity: Severity.CRITICAL, description: 'Test 3', weight: 20 },
+        { category: 'test3', severity: Severity.CRITICAL, description: 'Test 3', weight: 20 }
       ];
       const result = createResult(false, Severity.CRITICAL, findings);
       expect(result.risk_score).toBe(35); // 10 + 5 + 20
@@ -146,7 +144,7 @@ describe('GuardrailResult', () => {
         category: `test${i}`,
         severity: i % 2 === 0 ? Severity.WARNING : Severity.INFO,
         description: `Test ${i}`,
-        weight: 10,
+        weight: 10
       }));
       const result = createResult(false, Severity.WARNING, findings);
       expect(result.findings).toHaveLength(10);
@@ -163,7 +161,7 @@ describe('GuardrailResult', () => {
         weight: 20,
         pattern_name: 'ignore_instructions',
         match: 'Ignore all instructions',
-        line_number: 1,
+        line_number: 1
       };
 
       const result = createResult(false, Severity.CRITICAL, [finding]);
@@ -180,9 +178,7 @@ describe('GuardrailResult', () => {
 
   describe('Result Immutability', () => {
     it('should use same reference (not cloned)', () => {
-      const findings: Finding[] = [
-        { category: 'test', severity: Severity.WARNING, description: 'Test', weight: 10 },
-      ];
+      const findings: Finding[] = [{ category: 'test', severity: Severity.WARNING, description: 'Test', weight: 10 }];
       const result = createResult(false, Severity.WARNING, findings);
 
       // Modify original array
@@ -195,9 +191,7 @@ describe('GuardrailResult', () => {
 
   describe('Edge Cases', () => {
     it('should handle zero weight findings', () => {
-      const findings: Finding[] = [
-        { category: 'test', severity: Severity.INFO, description: 'Test', weight: 0 },
-      ];
+      const findings: Finding[] = [{ category: 'test', severity: Severity.INFO, description: 'Test', weight: 0 }];
       const result = createResult(true, Severity.INFO, findings);
       expect(result.risk_score).toBe(0);
       expect(result.risk_level).toBe('LOW');
@@ -205,7 +199,7 @@ describe('GuardrailResult', () => {
 
     it('should handle very high weight', () => {
       const findings: Finding[] = [
-        { category: 'test', severity: Severity.CRITICAL, description: 'Test', weight: 1000 },
+        { category: 'test', severity: Severity.CRITICAL, description: 'Test', weight: 1000 }
       ];
       const result = createResult(false, Severity.CRITICAL, findings);
       expect(result.risk_score).toBe(1000);
@@ -213,9 +207,7 @@ describe('GuardrailResult', () => {
     });
 
     it('should handle negative weight (should not happen but test)', () => {
-      const findings: Finding[] = [
-        { category: 'test', severity: Severity.INFO, description: 'Test', weight: -10 },
-      ];
+      const findings: Finding[] = [{ category: 'test', severity: Severity.INFO, description: 'Test', weight: -10 }];
       const result = createResult(true, Severity.INFO, findings);
       expect(result.risk_score).toBe(-10);
     });
@@ -240,9 +232,7 @@ describe('GuardrailResult', () => {
 
   describe('mergeResults', () => {
     it('GR-015: should merge single result', () => {
-      const findings: Finding[] = [
-        { category: 'test', severity: Severity.CRITICAL, description: 'Test', weight: 10 },
-      ];
+      const findings: Finding[] = [{ category: 'test', severity: Severity.CRITICAL, description: 'Test', weight: 10 }];
       const result = createResult(false, Severity.CRITICAL, findings);
       const merged = mergeResults(result);
 
@@ -265,7 +255,7 @@ describe('GuardrailResult', () => {
 
     it('GR-017: should merge multiple results with some blocked', () => {
       const findings: Finding[] = [
-        { category: 'test', severity: Severity.CRITICAL, description: 'Blocked', weight: 10 },
+        { category: 'test', severity: Severity.CRITICAL, description: 'Blocked', weight: 10 }
       ];
       const result1 = createResult(true, Severity.INFO, []);
       const result2 = createResult(false, Severity.CRITICAL, findings);
@@ -278,11 +268,9 @@ describe('GuardrailResult', () => {
 
     it('GR-018: should aggregate findings from all results', () => {
       const findings1: Finding[] = [
-        { category: 'test1', severity: Severity.WARNING, description: 'Warning 1', weight: 5 },
+        { category: 'test1', severity: Severity.WARNING, description: 'Warning 1', weight: 5 }
       ];
-      const findings2: Finding[] = [
-        { category: 'test2', severity: Severity.INFO, description: 'Info', weight: 3 },
-      ];
+      const findings2: Finding[] = [{ category: 'test2', severity: Severity.INFO, description: 'Info', weight: 3 }];
       const result1 = createResult(true, Severity.INFO, findings1);
       const result2 = createResult(true, Severity.INFO, findings2);
       const merged = mergeResults(result1, result2);
@@ -294,10 +282,10 @@ describe('GuardrailResult', () => {
 
     it('GR-019: should sum risk scores from all results', () => {
       const findings1: Finding[] = [
-        { category: 'test1', severity: Severity.WARNING, description: 'Warning 1', weight: 10 },
+        { category: 'test1', severity: Severity.WARNING, description: 'Warning 1', weight: 10 }
       ];
       const findings2: Finding[] = [
-        { category: 'test2', severity: Severity.CRITICAL, description: 'Critical', weight: 15 },
+        { category: 'test2', severity: Severity.CRITICAL, description: 'Critical', weight: 15 }
       ];
       const result1 = createResult(true, Severity.INFO, findings1);
       const result2 = createResult(true, Severity.INFO, findings2);
@@ -330,7 +318,7 @@ describe('GuardrailResult', () => {
 
     it('GR-022: should calculate MEDIUM risk level correctly (10-24)', () => {
       const findings: Finding[] = [
-        { category: 'test', severity: Severity.WARNING, description: 'Warning', weight: 10 },
+        { category: 'test', severity: Severity.WARNING, description: 'Warning', weight: 10 }
       ];
       const result = createResult(false, Severity.WARNING, findings);
       const merged = mergeResults(result);
@@ -340,7 +328,7 @@ describe('GuardrailResult', () => {
 
     it('GR-023: should calculate HIGH risk level correctly (25+)', () => {
       const findings: Finding[] = [
-        { category: 'test', severity: Severity.CRITICAL, description: 'Critical', weight: 25 },
+        { category: 'test', severity: Severity.CRITICAL, description: 'Critical', weight: 25 }
       ];
       const result = createResult(false, Severity.CRITICAL, findings);
       const merged = mergeResults(result);
@@ -360,10 +348,10 @@ describe('GuardrailResult', () => {
 
     it('GR-025: should get reason from first blocked result', () => {
       const findings1: Finding[] = [
-        { category: 'test1', severity: Severity.CRITICAL, description: 'First blocked', weight: 10 },
+        { category: 'test1', severity: Severity.CRITICAL, description: 'First blocked', weight: 10 }
       ];
       const findings2: Finding[] = [
-        { category: 'test2', severity: Severity.CRITICAL, description: 'Second blocked', weight: 10 },
+        { category: 'test2', severity: Severity.CRITICAL, description: 'Second blocked', weight: 10 }
       ];
       const result1 = createResult(true, Severity.INFO, []);
       const result2 = createResult(false, Severity.CRITICAL, findings1);

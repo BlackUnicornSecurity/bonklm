@@ -29,9 +29,7 @@ export type HmacFailureReason =
   | 'signature_mismatch'
   | 'secret_too_short';
 
-export type HmacVerifyResult =
-  | { valid: true }
-  | { valid: false; reason: HmacFailureReason };
+export type HmacVerifyResult = { valid: true } | { valid: false; reason: HmacFailureReason };
 
 export interface VapiHmacOptions {
   rawBody: string;
@@ -82,9 +80,7 @@ export function verifyVapiHmac(options: VapiHmacOptions): HmacVerifyResult {
     return { valid: false, reason: 'replay_window_exceeded' };
   }
 
-  const expectedHex = createHmac('sha256', secret)
-    .update(`${timestamp}.${rawBody}`, 'utf8')
-    .digest('hex');
+  const expectedHex = createHmac('sha256', secret).update(`${timestamp}.${rawBody}`, 'utf8').digest('hex');
 
   return timingSafeHexEqual(providedHex, expectedHex)
     ? { valid: true }
@@ -104,9 +100,7 @@ export function verifyRetellHmac(options: RetellHmacOptions): HmacVerifyResult {
     return { valid: false, reason: 'malformed_signature' };
   }
 
-  const expectedHex = createHmac('sha256', secret)
-    .update(rawBody, 'utf8')
-    .digest('hex');
+  const expectedHex = createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex');
 
   return timingSafeHexEqual(providedHex, expectedHex)
     ? { valid: true }

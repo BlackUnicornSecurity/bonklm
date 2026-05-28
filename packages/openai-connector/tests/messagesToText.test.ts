@@ -13,7 +13,7 @@ describe('messagesToText', () => {
   it('should extract text from string content messages', () => {
     const messages: ChatCompletionMessageParam[] = [
       { role: 'user', content: 'Hello world' },
-      { role: 'assistant', content: 'Hi there!' },
+      { role: 'assistant', content: 'Hi there!' }
     ];
     const text = messagesToText(messages);
     expect(text).toBe('Hello world\nHi there!');
@@ -25,9 +25,9 @@ describe('messagesToText', () => {
         role: 'user',
         content: [
           { type: 'text', text: 'What do you see' },
-          { type: 'text', text: ' in this image?' },
-        ],
-      },
+          { type: 'text', text: ' in this image?' }
+        ]
+      }
     ];
     const text = messagesToText(messages);
     expect(text).toBe('What do you see\n in this image?');
@@ -40,9 +40,9 @@ describe('messagesToText', () => {
         content: [
           { type: 'text', text: 'Look at this' },
           { type: 'image_url', image_url: { url: 'https://example.com/image.jpg' } },
-          { type: 'text', text: ' image' },
-        ],
-      },
+          { type: 'text', text: ' image' }
+        ]
+      }
     ];
     const text = messagesToText(messages);
     expect(text).toBe('Look at this\n image');
@@ -52,16 +52,14 @@ describe('messagesToText', () => {
   it('should handle null content', () => {
     const messages: ChatCompletionMessageParam[] = [
       { role: 'assistant', content: null },
-      { role: 'user', content: 'Hello' },
+      { role: 'user', content: 'Hello' }
     ];
     const text = messagesToText(messages);
     expect(text).toBe('Hello');
   });
 
   it('should handle empty content arrays', () => {
-    const messages: ChatCompletionMessageParam[] = [
-      { role: 'user', content: [] },
-    ];
+    const messages: ChatCompletionMessageParam[] = [{ role: 'user', content: [] }];
     const text = messagesToText(messages);
     expect(text).toBe('');
   });
@@ -70,10 +68,8 @@ describe('messagesToText', () => {
     const messages: ChatCompletionMessageParam[] = [
       {
         role: 'assistant',
-        content: [
-          { type: 'refusal', refusal: 'I cannot fulfill this request.' },
-        ],
-      },
+        content: [{ type: 'refusal', refusal: 'I cannot fulfill this request.' }]
+      }
     ];
     const text = messagesToText(messages);
     expect(text).toBe('I cannot fulfill this request.');
@@ -87,9 +83,9 @@ describe('messagesToText', () => {
           { type: 'text', text: 'Check this' },
           { type: 'image_url', image_url: { url: 'https://example.com/img.jpg' } },
           { type: 'input_audio', input_audio: { data: 'base64data', format: 'wav' } },
-          { type: 'text', text: ' and listen' },
-        ],
-      },
+          { type: 'text', text: ' and listen' }
+        ]
+      }
     ];
     const text = messagesToText(messages);
     expect(text).toBe('Check this\n and listen');
@@ -101,9 +97,9 @@ describe('messagesToText', () => {
         role: 'user',
         content: [
           { type: 'text', text: 'Analyze this file' },
-          { type: 'file', file: { file_id: 'file-abc123' } },
-        ],
-      },
+          { type: 'file', file: { file_id: 'file-abc123' } }
+        ]
+      }
     ];
     const text = messagesToText(messages);
     expect(text).toBe('Analyze this file');
@@ -115,9 +111,9 @@ describe('messagesToText', () => {
         role: 'assistant',
         content: [
           { type: 'text', text: 'I can help with' },
-          { type: 'refusal', refusal: ' but not that' },
-        ],
-      },
+          { type: 'refusal', refusal: ' but not that' }
+        ]
+      }
     ];
     const text = messagesToText(messages);
     expect(text).toBe('I can help with\n but not that');
@@ -126,7 +122,7 @@ describe('messagesToText', () => {
   it('should handle system messages with string content', () => {
     const messages: ChatCompletionMessageParam[] = [
       { role: 'system', content: 'You are a helpful assistant.' },
-      { role: 'user', content: 'Hello' },
+      { role: 'user', content: 'Hello' }
     ];
     const text = messagesToText(messages);
     expect(text).toBe('You are a helpful assistant.\nHello');
@@ -138,9 +134,9 @@ describe('messagesToText', () => {
         role: 'developer',
         content: [
           { type: 'text', text: 'Special instructions' },
-          { type: 'text', text: ' for the model' },
-        ],
-      },
+          { type: 'text', text: ' for the model' }
+        ]
+      }
     ];
     const text = messagesToText(messages);
     expect(text).toBe('Special instructions\n for the model');
@@ -152,10 +148,10 @@ describe('messagesToText', () => {
         role: 'user',
         content: [
           { type: 'image_url', image_url: { url: 'https://example.com/image.jpg' } },
-          { type: 'image_url', image_url: { url: 'https://example.com/image2.jpg' } },
-        ],
+          { type: 'image_url', image_url: { url: 'https://example.com/image2.jpg' } }
+        ]
       },
-      { role: 'user', content: 'Now text' },
+      { role: 'user', content: 'Now text' }
     ];
     const text = messagesToText(messages);
     expect(text).toBe('Now text');
@@ -171,19 +167,19 @@ describe('messagesToText', () => {
             type: 'image_url',
             image_url: {
               url: 'https://example.com/image1.jpg',
-              detail: 'high',
-            },
+              detail: 'high'
+            }
           },
           {
             type: 'image_url',
             image_url: {
               url: 'https://example.com/image2.jpg',
-              detail: 'low',
-            },
+              detail: 'low'
+            }
           },
-          { type: 'text', text: 'Describe both.' },
-        ],
-      },
+          { type: 'text', text: 'Describe both.' }
+        ]
+      }
     ];
     const text = messagesToText(messages);
     expect(text).toBe('What is in these images?\nDescribe both.');
@@ -200,12 +196,12 @@ describe('messagesToText', () => {
             type: 'function',
             function: {
               name: 'get_weather',
-              arguments: '{}',
-            },
-          },
-        ],
+              arguments: '{}'
+            }
+          }
+        ]
       },
-      { role: 'user', content: 'Hello' },
+      { role: 'user', content: 'Hello' }
     ];
     const text = messagesToText(messages);
     expect(text).toBe('Hello');
@@ -215,7 +211,7 @@ describe('messagesToText', () => {
     const messages = [
       { role: 'user', content: 'Hello' },
       // @ts-expect-error - testing undefined case
-      { role: 'assistant', content: undefined },
+      { role: 'assistant', content: undefined }
     ] as ChatCompletionMessageParam[];
     const text = messagesToText(messages);
     expect(text).toBe('Hello');

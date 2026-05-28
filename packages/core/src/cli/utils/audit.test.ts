@@ -20,7 +20,7 @@ const mocks = {
   mkdir: vi.fn(),
   chmod: vi.fn(),
   stat: vi.fn(),
-  open: vi.fn(),
+  open: vi.fn()
 };
 
 vi.mock('fs/promises', () => ({
@@ -29,19 +29,21 @@ vi.mock('fs/promises', () => ({
   mkdir: (...args: unknown[]) => mocks.mkdir(...args),
   chmod: (...args: unknown[]) => mocks.chmod(...args),
   stat: (...args: unknown[]) => mocks.stat(...args),
-  open: (...args: unknown[]) => mocks.open(...args),
+  open: (...args: unknown[]) => mocks.open(...args)
 }));
 
 // Mock existsSync
 const existsSyncMock = vi.fn();
 vi.mock('fs', () => ({
-  existsSync: (...args: unknown[]) => existsSyncMock(...args),
+  existsSync: (...args: unknown[]) => existsSyncMock(...args)
 }));
 
 // Mock crypto for deterministic HMAC signatures
 const hmacMock = {
-  update: vi.fn(function(this: any) { return this; }),
-  digest: vi.fn(() => 'valid-signature-123'),
+  update: vi.fn(function (this: any) {
+    return this;
+  }),
+  digest: vi.fn(() => 'valid-signature-123')
 };
 
 const createHmacMock = vi.fn(() => hmacMock);
@@ -52,11 +54,11 @@ const createHmacMock = vi.fn(() => hmacMock);
 // when the mock factory references it. `createHmac` doesn't need this because
 // it's only invoked from method bodies, after beforeEach() has run.
 const { randomBytesMock } = vi.hoisted(() => ({
-  randomBytesMock: () => Buffer.from('deadbeefdeadbeefdeadbeefdeadbeef', 'hex'),
+  randomBytesMock: () => Buffer.from('deadbeefdeadbeefdeadbeefdeadbeef', 'hex')
 }));
 vi.mock('node:crypto', () => ({
   createHmac: (...args: unknown[]) => createHmacMock(...args),
-  randomBytes: (...args: unknown[]) => randomBytesMock(),
+  randomBytes: (...args: unknown[]) => randomBytesMock()
 }));
 
 describe('AuditLogger', () => {
@@ -103,7 +105,7 @@ describe('AuditLogger', () => {
       const event = {
         action: 'connector_added' as AuditAction,
         connector_id: 'openai',
-        success: true,
+        success: true
       };
 
       await auditLogger.log(event);
@@ -126,7 +128,7 @@ describe('AuditLogger', () => {
       const event = {
         timestamp: fixedTimestamp,
         action: 'connector_added' as AuditAction,
-        success: true,
+        success: true
       };
 
       await auditLogger.log(event);
@@ -146,13 +148,10 @@ describe('AuditLogger', () => {
 
       await auditLogger.log({
         action: 'connector_added' as AuditAction,
-        success: true,
+        success: true
       });
 
-      expect(mocks.mkdir).toHaveBeenCalledWith(
-        '.bonklm',
-        { recursive: true, mode: 0o700 }
-      );
+      expect(mocks.mkdir).toHaveBeenCalledWith('.bonklm', { recursive: true, mode: 0o700 });
     });
 
     it('should create directory if existsSync returns false', async () => {
@@ -163,7 +162,7 @@ describe('AuditLogger', () => {
 
       await auditLogger.log({
         action: 'connector_added' as AuditAction,
-        success: true,
+        success: true
       });
 
       expect(mocks.mkdir).toHaveBeenCalled();
@@ -177,7 +176,7 @@ describe('AuditLogger', () => {
 
       await auditLogger.log({
         action: 'connector_added' as AuditAction,
-        success: true,
+        success: true
       });
 
       expect(mocks.mkdir).not.toHaveBeenCalled();
@@ -192,7 +191,7 @@ describe('AuditLogger', () => {
       await auditLogger.log({
         action: 'connector_added' as AuditAction,
         connector_id: 'openai',
-        success: true,
+        success: true
       });
 
       const writeCall = mocks.appendFile.mock.calls[0];
@@ -213,7 +212,7 @@ describe('AuditLogger', () => {
 
       await auditLogger.log({
         action: 'connector_added' as AuditAction,
-        success: true,
+        success: true
       });
 
       const writeCall = mocks.appendFile.mock.calls[0];
@@ -232,7 +231,7 @@ describe('AuditLogger', () => {
         auditLogger.log({
           action: 'credential_validated' as AuditAction,
           success: true,
-          metadata: { api_key: 'sk-1234567890abcdef' },
+          metadata: { api_key: 'sk-1234567890abcdef' }
         })
       ).rejects.toThrow(WizardError);
 
@@ -240,7 +239,7 @@ describe('AuditLogger', () => {
         await auditLogger.log({
           action: 'credential_validated' as AuditAction,
           success: true,
-          metadata: { api_key: 'sk-1234567890abcdef' },
+          metadata: { api_key: 'sk-1234567890abcdef' }
         });
       } catch (error) {
         expect(error).toBeInstanceOf(WizardError);
@@ -259,7 +258,7 @@ describe('AuditLogger', () => {
         auditLogger.log({
           action: 'connector_tested' as AuditAction,
           success: true,
-          metadata: { token: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' },
+          metadata: { token: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9' }
         })
       ).rejects.toThrow(WizardError);
     });
@@ -274,7 +273,7 @@ describe('AuditLogger', () => {
         auditLogger.log({
           action: 'connector_added' as AuditAction,
           connector_id: 'openai',
-          success: true,
+          success: true
         })
       ).resolves.not.toThrow();
     });
@@ -288,14 +287,10 @@ describe('AuditLogger', () => {
 
       await auditLogger.log({
         action: 'connector_added' as AuditAction,
-        success: true,
+        success: true
       });
 
-      expect(mocks.appendFile).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.any(String),
-        { mode: 0o600 }
-      );
+      expect(mocks.appendFile).toHaveBeenCalledWith(expect.any(String), expect.any(String), { mode: 0o600 });
     });
 
     it('should chmod file after write to ensure permissions', async () => {
@@ -307,7 +302,7 @@ describe('AuditLogger', () => {
 
       await auditLogger.log({
         action: 'connector_added' as AuditAction,
-        success: true,
+        success: true
       });
 
       expect(mocks.chmod).toHaveBeenCalledWith('.bonklm/audit.log', 0o600);
@@ -341,11 +336,11 @@ describe('AuditLogger', () => {
         timestamp: '2026-02-18T12:00:00.000Z',
         action: 'connector_added' as AuditAction,
         connector_id: 'openai',
-        success: true,
+        success: true
       };
       const mockEntry = {
         event: mockEvent,
-        signature: 'valid-signature-123', // Match the mocked HMAC digest
+        signature: 'valid-signature-123' // Match the mocked HMAC digest
       };
       mocks.readFile.mockResolvedValue(JSON.stringify(mockEntry) + '\n');
       auditLogger = new AuditLogger();
@@ -361,20 +356,18 @@ describe('AuditLogger', () => {
       const event1 = {
         timestamp: '2026-02-18T12:00:00.000Z',
         action: 'connector_added' as AuditAction,
-        success: true,
+        success: true
       };
       const event2 = {
         timestamp: '2026-02-18T12:01:00.000Z',
         action: 'connector_tested' as AuditAction,
-        success: true,
+        success: true
       };
       // Use the mocked signature value
       const entry1 = { event: event1, signature: 'valid-signature-123' };
       const entry2 = { event: event2, signature: 'valid-signature-123' };
 
-      mocks.readFile.mockResolvedValue(
-        JSON.stringify(entry1) + '\n' + JSON.stringify(entry2) + '\n'
-      );
+      mocks.readFile.mockResolvedValue(JSON.stringify(entry1) + '\n' + JSON.stringify(entry2) + '\n');
       auditLogger = new AuditLogger();
 
       const result = await auditLogger.read();
@@ -389,9 +382,9 @@ describe('AuditLogger', () => {
       const events = Array.from({ length: 10 }, (_, i) => ({
         timestamp: `2026-02-18T12:0${i}:00.000Z`,
         action: 'connector_added' as AuditAction,
-        success: true,
+        success: true
       }));
-      const lines = events.map((e) => JSON.stringify({ event: e, signature: 'valid-signature-123' }) + '\n');
+      const lines = events.map(e => JSON.stringify({ event: e, signature: 'valid-signature-123' }) + '\n');
       mocks.readFile.mockResolvedValue(lines.join(''));
       auditLogger = new AuditLogger();
 
@@ -416,11 +409,9 @@ describe('AuditLogger', () => {
       const event = {
         timestamp: '2026-02-18T12:00:00.000Z',
         action: 'connector_added' as AuditAction,
-        success: true,
+        success: true
       };
-      mocks.readFile.mockResolvedValue(
-        '\n\n' + JSON.stringify({ event, signature: 'valid-signature-123' }) + '\n\n'
-      );
+      mocks.readFile.mockResolvedValue('\n\n' + JSON.stringify({ event, signature: 'valid-signature-123' }) + '\n\n');
       auditLogger = new AuditLogger();
 
       const result = await auditLogger.read();
@@ -433,17 +424,19 @@ describe('AuditLogger', () => {
       const validEvent = {
         timestamp: '2026-02-18T12:00:00.000Z',
         action: 'connector_added' as AuditAction,
-        success: true,
+        success: true
       };
       const tamperedEvent = {
         timestamp: '2026-02-18T12:01:00.000Z',
         action: 'connector_tested' as AuditAction,
-        success: true,
+        success: true
       };
       // Mix of valid and tampered entries
       mocks.readFile.mockResolvedValue(
-        JSON.stringify({ event: validEvent, signature: 'valid-signature-123' }) + '\n' +
-        JSON.stringify({ event: tamperedEvent, signature: 'wrong-signature' }) + '\n'
+        JSON.stringify({ event: validEvent, signature: 'valid-signature-123' }) +
+          '\n' +
+          JSON.stringify({ event: tamperedEvent, signature: 'wrong-signature' }) +
+          '\n'
       );
       auditLogger = new AuditLogger();
 
@@ -465,7 +458,7 @@ describe('AuditLogger', () => {
 
       await auditLogger.log({
         action: 'connector_added' as AuditAction,
-        success: true,
+        success: true
       });
 
       expect(mocks.chmod).toHaveBeenCalledWith('.bonklm', 0o700);
@@ -480,7 +473,7 @@ describe('AuditLogger', () => {
 
       await auditLogger.log({
         action: 'connector_added' as AuditAction,
-        success: true,
+        success: true
       });
 
       // Should not chmod the directory (only the file)
@@ -498,7 +491,7 @@ describe('AuditLogger', () => {
       await expect(
         auditLogger.log({
           action: 'connector_added' as AuditAction,
-          success: true,
+          success: true
         })
       ).rejects.toThrow(WizardError);
     });
@@ -512,7 +505,7 @@ describe('AuditLogger', () => {
       await expect(
         auditLogger.log({
           action: 'connector_added' as AuditAction,
-          success: true,
+          success: true
         })
       ).rejects.toThrow(WizardError);
     });
@@ -526,7 +519,7 @@ describe('AuditLogger', () => {
       try {
         await auditLogger.log({
           action: 'connector_added' as AuditAction,
-          success: true,
+          success: true
         });
       } catch (error) {
         expect(error).toBeInstanceOf(WizardError);

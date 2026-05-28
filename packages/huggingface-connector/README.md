@@ -1,6 +1,7 @@
 # @blackunicorn/bonklm-huggingface
 
-HuggingFace Inference API connector for BonkLM - Provides security validation for model inputs and outputs.
+HuggingFace Inference API connector for BonkLM - Provides security validation for model inputs and
+outputs.
 
 ## Installation
 
@@ -57,12 +58,9 @@ The guarded client supports all HuggingFace inference methods:
 ### Chat Completion Example
 
 ```typescript
-const result = await guardedHF.chatCompletion(
-  'meta-llama/Llama-3-8b',
-  [
-    { role: 'user', content: 'What is AI safety?' }
-  ]
-);
+const result = await guardedHF.chatCompletion('meta-llama/Llama-3-8b', [
+  { role: 'user', content: 'What is AI safety?' }
+]);
 
 console.log(result.output);
 ```
@@ -71,18 +69,18 @@ console.log(result.output);
 
 ### GuardedHuggingFaceOptions
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `validators` | `Validator[]` | `[]` | Validators for inputs |
-| `guards` | `Guard[]` | `[]` | Guards for outputs |
-| `logger` | `Logger` | `console` | Logger instance |
-| `productionMode` | `boolean` | `NODE_ENV === 'production'` | Generic errors in production |
-| `validationTimeout` | `number` | `30000` | Validation timeout in ms |
-| `maxInputLength` | `number` | `10000` | Maximum input length |
-| `allowedModels` | `string[]` | `[]` | Allowed model patterns |
-| `onInputBlocked` | `(result) => void` | - | Callback when input is blocked |
-| `onOutputBlocked` | `(result) => void` | - | Callback when output is blocked |
-| `onModelNotAllowed` | `(model) => void` | - | Callback when model is not allowed |
+| Option              | Type               | Default                     | Description                        |
+| ------------------- | ------------------ | --------------------------- | ---------------------------------- |
+| `validators`        | `Validator[]`      | `[]`                        | Validators for inputs              |
+| `guards`            | `Guard[]`          | `[]`                        | Guards for outputs                 |
+| `logger`            | `Logger`           | `console`                   | Logger instance                    |
+| `productionMode`    | `boolean`          | `NODE_ENV === 'production'` | Generic errors in production       |
+| `validationTimeout` | `number`           | `30000`                     | Validation timeout in ms           |
+| `maxInputLength`    | `number`           | `10000`                     | Maximum input length               |
+| `allowedModels`     | `string[]`         | `[]`                        | Allowed model patterns             |
+| `onInputBlocked`    | `(result) => void` | -                           | Callback when input is blocked     |
+| `onOutputBlocked`   | `(result) => void` | -                           | Callback when output is blocked    |
+| `onModelNotAllowed` | `(model) => void`  | -                           | Callback when model is not allowed |
 
 ## Security Features
 
@@ -99,9 +97,9 @@ Control which models can be used with pattern matching:
 ```typescript
 const guardedHF = createGuardedInference(hf, {
   allowedModels: [
-    'meta-llama/Llama-*',      // All Llama models
-    'mistralai/Mistral-*',     // All Mistral models
-    'google/gemma-*'           // All Gemma models
+    'meta-llama/Llama-*', // All Llama models
+    'mistralai/Mistral-*', // All Mistral models
+    'google/gemma-*' // All Gemma models
   ]
 });
 
@@ -115,7 +113,7 @@ await guardedHF.textGeneration({
 await guardedHF.textGeneration({
   model: 'unknown-model/X',
   inputs: 'Hello'
-});  // Throws: Model not allowed
+}); // Throws: Model not allowed
 ```
 
 ## Example Application

@@ -15,7 +15,7 @@ import {
   getConnectorsByCategory,
   hasConnector,
   getConnectorIds,
-  getCategories,
+  getCategories
 } from './registry.js';
 import type { ConnectorDefinition, ConnectorCategory } from './base.js';
 
@@ -121,7 +121,7 @@ describe('Connector Registry', () => {
 
     it('should include all expected connector IDs', () => {
       const connectors = getAllConnectors();
-      const ids = connectors.map((c) => c.id);
+      const ids = connectors.map(c => c.id);
       expect(ids).toContain('openai');
       expect(ids).toContain('anthropic');
       expect(ids).toContain('ollama');
@@ -131,7 +131,7 @@ describe('Connector Registry', () => {
 
     it('should return connectors with correct structure', () => {
       const connectors = getAllConnectors();
-      connectors.forEach((connector) => {
+      connectors.forEach(connector => {
         expect(connector).toHaveProperty('id');
         expect(connector).toHaveProperty('name');
         expect(connector).toHaveProperty('category');
@@ -160,7 +160,7 @@ describe('Connector Registry', () => {
     it('should return only LLM connectors', () => {
       const connectors = getConnectorsByCategory('llm');
       expect(connectors).toHaveLength(3);
-      const ids = connectors.map((c) => c.id);
+      const ids = connectors.map(c => c.id);
       expect(ids).toContain('openai');
       expect(ids).toContain('anthropic');
       expect(ids).toContain('ollama');
@@ -169,7 +169,7 @@ describe('Connector Registry', () => {
     it('should return only framework connectors', () => {
       const connectors = getConnectorsByCategory('framework');
       expect(connectors).toHaveLength(2);
-      const ids = connectors.map((c) => c.id);
+      const ids = connectors.map(c => c.id);
       expect(ids).toContain('express');
       expect(ids).toContain('langchain');
     });
@@ -191,11 +191,11 @@ describe('Connector Registry', () => {
       const llmConnectors = getConnectorsByCategory('llm');
       const frameworkConnectors = getConnectorsByCategory('framework');
 
-      llmConnectors.forEach((connector) => {
+      llmConnectors.forEach(connector => {
         expect(connector.category).toBe('llm');
       });
 
-      frameworkConnectors.forEach((connector) => {
+      frameworkConnectors.forEach(connector => {
         expect(connector.category).toBe('framework');
       });
     });
@@ -231,7 +231,7 @@ describe('Connector Registry', () => {
     it('should return array of strings', () => {
       const ids = getConnectorIds();
       expect(Array.isArray(ids)).toBe(true);
-      ids.forEach((id) => {
+      ids.forEach(id => {
         expect(typeof id).toBe('string');
       });
     });
@@ -260,7 +260,7 @@ describe('Connector Registry', () => {
     it('should return array of valid ConnectorCategory values', () => {
       const categories = getCategories();
       const validCategories: ConnectorCategory[] = ['llm', 'framework', 'vector-db'];
-      categories.forEach((cat) => {
+      categories.forEach(cat => {
         expect(validCategories).toContain(cat);
       });
     });

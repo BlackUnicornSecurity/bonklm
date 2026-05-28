@@ -33,9 +33,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
-  "include": [
-    "packages/*/src/**/*"
-  ],
+  "include": ["packages/*/src/**/*"],
   "exclude": [
     "node_modules",
     "**/node_modules",

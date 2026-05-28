@@ -20,13 +20,9 @@
  *   - `BonklmInngestValidateResult`
  *   - `StepRunner` — minimum step.run shape used by the helpers.
  */
-export {
-  bonklmInngestMiddleware,
-  createBonklmInngestContextSurface,
-  type StepRunner,
-} from './bonklm-middleware.js';
+export { bonklmInngestMiddleware, createBonklmInngestContextSurface, type StepRunner } from './bonklm-middleware.js';
 export type {
   BonklmInngestContextSurface,
   BonklmInngestMiddlewareOptions,
-  BonklmInngestValidateResult,
+  BonklmInngestValidateResult
 } from './types.js';

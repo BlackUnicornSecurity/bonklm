@@ -44,11 +44,7 @@ export class TemporalGuardrailBlockedError extends Error {
   readonly category?: string;
   readonly severity?: string;
 
-  constructor(
-    message: string,
-    validatorName: string,
-    extra?: { category?: string; severity?: string }
-  ) {
+  constructor(message: string, validatorName: string, extra?: { category?: string; severity?: string }) {
     super(message);
     this.validatorName = validatorName;
     this.category = extra?.category;

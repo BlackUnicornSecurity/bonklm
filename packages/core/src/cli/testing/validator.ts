@@ -95,7 +95,7 @@ export async function testConnector(
         connection: false,
         validation: false,
         error: 'Connector test returned invalid result format',
-        latency: Date.now() - startTime,
+        latency: Date.now() - startTime
       };
     }
 
@@ -104,7 +104,7 @@ export async function testConnector(
       connection: result.connection,
       validation: result.validation,
       error: result.error,
-      latency: Date.now() - startTime,
+      latency: Date.now() - startTime
     };
   } catch (error) {
     // Handle unexpected errors
@@ -119,7 +119,7 @@ export async function testConnector(
       connection: false,
       validation: false,
       error: message,
-      latency: Date.now() - startTime,
+      latency: Date.now() - startTime
     };
   }
 }
@@ -166,7 +166,7 @@ export async function testConnectorWithTimeout(
     // Handle timeout specifically
     // Note: AbortError can be either Error.name or DOMException name
     const isError = error instanceof Error;
-    const isErrorName = isError && (error).name === 'AbortError';
+    const isErrorName = isError && error.name === 'AbortError';
     const isDOMException = error instanceof DOMException && error.name === 'AbortError';
 
     if (isErrorName || isDOMException) {
@@ -174,7 +174,7 @@ export async function testConnectorWithTimeout(
         'TEST_TIMEOUT',
         `Connector test timed out after ${validTimeout}ms`,
         'Check your network connection or increase the timeout',
-        isError ? error as Error : undefined,
+        isError ? (error as Error) : undefined,
         ExitCode.PARTIAL
       );
     }
@@ -272,7 +272,7 @@ export function validateConnectorConfig(
   return {
     isValid: missing.length === 0 && errors.length === 0,
     missing,
-    errors,
+    errors
   };
 }
 
@@ -297,7 +297,7 @@ export function createTestResult(
     connection,
     validation,
     error,
-    latency,
+    latency
   };
 }
 

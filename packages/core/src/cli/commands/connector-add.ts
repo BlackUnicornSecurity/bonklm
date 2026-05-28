@@ -36,13 +36,7 @@ const MAX_CREDENTIAL_LENGTH = 2048;
 /**
  * Allowed connector IDs - whitelist for security
  */
-const ALLOWED_CONNECTOR_IDS = [
-  'openai',
-  'anthropic',
-  'ollama',
-  'express',
-  'langchain',
-] as const;
+const ALLOWED_CONNECTOR_IDS = ['openai', 'anthropic', 'ollama', 'express', 'langchain'] as const;
 
 /**
  * Valid connector ID format pattern
@@ -91,11 +85,7 @@ function validateConnectorId(id: string): boolean {
 async function collectCredentials(connectorId: string): Promise<Record<string, string>> {
   const connector = getConnector(connectorId);
   if (!connector) {
-    throw new WizardError(
-      'UNKNOWN_CONNECTOR',
-      `Connector not found: ${connectorId}`,
-      'Use a valid connector ID'
-    );
+    throw new WizardError('UNKNOWN_CONNECTOR', `Connector not found: ${connectorId}`, 'Use a valid connector ID');
   }
 
   const config: Record<string, string> = {};
@@ -104,7 +94,7 @@ async function collectCredentials(connectorId: string): Promise<Record<string, s
   for (const envVar of envVars) {
     const value = await p.password({
       message: `Enter ${envVar}:`,
-      validate: (value) => {
+      validate: value => {
         if (!value || value.length === 0) {
           return `${envVar} is required`;
         }
@@ -120,7 +110,7 @@ async function collectCredentials(connectorId: string): Promise<Record<string, s
           return 'Anthropic API key must start with "sk-ant-"';
         }
         return undefined;
-      },
+      }
     });
 
     if (p.isCancel(value)) {
@@ -155,7 +145,9 @@ export const connectorAddCommand = new Command('add')
     if (!validateConnectorId(id)) {
       p.cancel(`Invalid connector ID: ${id}`);
       p.log.info(`Available connectors: ${ALLOWED_CONNECTOR_IDS.join(', ')}`);
-      p.log.info('Connector IDs must start with a lowercase letter and contain only lowercase letters, numbers, and hyphens');
+      p.log.info(
+        'Connector IDs must start with a lowercase letter and contain only lowercase letters, numbers, and hyphens'
+      );
       process.exit(1);
     }
 
@@ -163,13 +155,7 @@ export const connectorAddCommand = new Command('add')
     const connector = getConnector(id);
     if (!connector) {
       p.cancel(`Unknown connector: ${id}`);
-      p.log.info(`Available connectors: ${  [
-        'openai',
-        'anthropic',
-        'ollama',
-        'express',
-        'langchain',
-      ].join(', ')}`);
+      p.log.info(`Available connectors: ${['openai', 'anthropic', 'ollama', 'express', 'langchain'].join(', ')}`);
       process.exit(1);
     }
 
@@ -195,7 +181,7 @@ export const connectorAddCommand = new Command('add')
 
         const useExisting = await p.confirm({
           message: `Use existing credentials for ${connector.name}?`,
-          initialValue: true,
+          initialValue: true
         });
 
         if (p.isCancel(useExisting)) {
@@ -225,7 +211,7 @@ export const connectorAddCommand = new Command('add')
             action: 'connector_added',
             connector_id: id,
             success: false,
-            error_code: 'TEST_FAILED',
+            error_code: 'TEST_FAILED'
           });
           process.exit(1);
         }
@@ -245,13 +231,12 @@ export const connectorAddCommand = new Command('add')
         timestamp: new Date().toISOString(),
         action: 'connector_added',
         connector_id: id,
-        success: true,
+        success: true
       });
 
       p.log.success(`✓ ${connector.name} connector added successfully.`);
       p.log.info(`Run 'bonklm status' to see all configured connectors.`);
       p.outro('Done!');
-
     } catch (error) {
       if (error instanceof WizardError) {
         if (error.exitCode === ExitCode.ERROR) {

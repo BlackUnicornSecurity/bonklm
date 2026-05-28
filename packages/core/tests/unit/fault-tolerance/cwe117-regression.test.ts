@@ -26,7 +26,7 @@ describe('fault-tolerance — Sprint 47 CWE-117 sanitization contract', () => {
       debug: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
-      error: vi.fn(),
+      error: vi.fn()
     };
   }
 
@@ -42,7 +42,7 @@ describe('fault-tolerance — Sprint 47 CWE-117 sanitization contract', () => {
       logger,
       // Wide retryable list so an arbitrary Error name is treated as
       // non-retryable (forces the line-167 path).
-      retryableErrors: ['NeverMatchesThisError'],
+      retryableErrors: ['NeverMatchesThisError']
     });
 
     // Hostile error message — newline-laden provider error wrapping
@@ -58,7 +58,7 @@ describe('fault-tolerance — Sprint 47 CWE-117 sanitization contract', () => {
     // The non-retryable warn fired with sanitized message in the
     // template literal.
     const nonRetryableCall = logger.warn.mock.calls.find(
-      (call) => typeof call[0] === 'string' && call[0].includes('Non-retryable error')
+      call => typeof call[0] === 'string' && call[0].includes('Non-retryable error')
     );
     expect(nonRetryableCall).toBeDefined();
     const msg = nonRetryableCall![0] as string;
@@ -72,7 +72,7 @@ describe('fault-tolerance — Sprint 47 CWE-117 sanitization contract', () => {
       maxAttempts: 3,
       logger,
       initialDelay: 1,
-      maxDelay: 2,
+      maxDelay: 2
     });
 
     // Use a message containing 'timeout' so isRetryableError returns
@@ -87,7 +87,7 @@ describe('fault-tolerance — Sprint 47 CWE-117 sanitization contract', () => {
 
     // The retry-attempt warn fires at least once before max-attempts hits.
     const retryCall = logger.warn.mock.calls.find(
-      (call) => typeof call[0] === 'string' && call[0].includes('failed, retrying in')
+      call => typeof call[0] === 'string' && call[0].includes('failed, retrying in')
     );
     expect(retryCall).toBeDefined();
     const msg = retryCall![0] as string;

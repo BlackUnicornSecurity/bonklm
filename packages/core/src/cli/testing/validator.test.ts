@@ -20,7 +20,7 @@ import {
   isConnectionFailure,
   isValidationFailure,
   formatTestResult,
-  validateTimeout,
+  validateTimeout
 } from './validator.js';
 import type { ConnectorDefinition, TestResult } from '../connectors/base.js';
 import { z } from 'zod';
@@ -60,14 +60,14 @@ describe('validator', () => {
         detection: { envVars: ['TEST_KEY'] },
         test: vi.fn(),
         generateSnippet: () => 'snippet',
-        configSchema: z.object({ apiKey: z.string() }),
+        configSchema: z.object({ apiKey: z.string() })
       };
     });
 
     it('should return successful result with latency', async () => {
       (mockConnector.test as ReturnType<typeof vi.fn>).mockResolvedValue({
         connection: true,
-        validation: true,
+        validation: true
       });
 
       const result = await testConnector(mockConnector, { apiKey: 'test-key' });
@@ -83,7 +83,7 @@ describe('validator', () => {
       (mockConnector.test as ReturnType<typeof vi.fn>).mockResolvedValue({
         connection: false,
         validation: false,
-        error: testError,
+        error: testError
       });
 
       const result = await testConnector(mockConnector, { apiKey: 'invalid-key' });
@@ -118,7 +118,7 @@ describe('validator', () => {
     it('should return invalid result for malformed test output', async () => {
       (mockConnector.test as ReturnType<typeof vi.fn>).mockResolvedValue({
         connection: 'yes' as unknown as boolean,
-        validation: true,
+        validation: true
       });
 
       const result = await testConnector(mockConnector, { apiKey: 'test-key' });
@@ -135,7 +135,7 @@ describe('validator', () => {
         test: vi.fn(async () => {
           await new Promise(resolve => setTimeout(resolve, 50));
           return { connection: true, validation: true };
-        }),
+        })
       };
 
       const result = await testConnector(slowConnector, { apiKey: 'test-key' });
@@ -158,7 +158,7 @@ describe('validator', () => {
         detection: { envVars: ['TEST_KEY'] },
         test: vi.fn(),
         generateSnippet: () => 'snippet',
-        configSchema: z.object({ apiKey: z.string() }),
+        configSchema: z.object({ apiKey: z.string() })
       };
       useRealTimers = true;
     });
@@ -172,14 +172,10 @@ describe('validator', () => {
     it('should return result within timeout', async () => {
       (mockConnector.test as ReturnType<typeof vi.fn>).mockResolvedValue({
         connection: true,
-        validation: true,
+        validation: true
       });
 
-      const result = await testConnectorWithTimeout(
-        mockConnector,
-        { apiKey: 'test-key' },
-        5000
-      );
+      const result = await testConnectorWithTimeout(mockConnector, { apiKey: 'test-key' }, 5000);
 
       expect(result.connection).toBe(true);
       expect(result.validation).toBe(true);
@@ -188,7 +184,7 @@ describe('validator', () => {
     it('should use default timeout of 10000ms', async () => {
       (mockConnector.test as ReturnType<typeof vi.fn>).mockResolvedValue({
         connection: true,
-        validation: true,
+        validation: true
       });
 
       const result = await testConnectorWithTimeout(mockConnector, { apiKey: 'test-key' });
@@ -208,7 +204,7 @@ describe('validator', () => {
               reject(new DOMException('Aborted', 'AbortError'));
             });
           });
-        }),
+        })
       };
 
       vi.useRealTimers();
@@ -227,16 +223,14 @@ describe('validator', () => {
     it('should validate timeout parameter', async () => {
       (mockConnector.test as ReturnType<typeof vi.fn>).mockResolvedValue({
         connection: true,
-        validation: true,
+        validation: true
       });
 
-      await expect(
-        testConnectorWithTimeout(mockConnector, { apiKey: 'test-key' }, -1)
-      ).rejects.toThrow(WizardError);
+      await expect(testConnectorWithTimeout(mockConnector, { apiKey: 'test-key' }, -1)).rejects.toThrow(WizardError);
 
-      await expect(
-        testConnectorWithTimeout(mockConnector, { apiKey: 'test-key' }, 100000)
-      ).rejects.toThrow(WizardError);
+      await expect(testConnectorWithTimeout(mockConnector, { apiKey: 'test-key' }, 100000)).rejects.toThrow(
+        WizardError
+      );
     });
 
     it('should return error result for connector test errors', async () => {
@@ -263,7 +257,7 @@ describe('validator', () => {
           detection: { envVars: ['KEY1'] },
           test: vi.fn(),
           generateSnippet: () => 'snippet1',
-          configSchema: z.object({ key: z.string() }),
+          configSchema: z.object({ key: z.string() })
         },
         {
           id: 'connector-2',
@@ -272,7 +266,7 @@ describe('validator', () => {
           detection: { envVars: ['KEY2'] },
           test: vi.fn(),
           generateSnippet: () => 'snippet2',
-          configSchema: z.object({ key: z.string() }),
+          configSchema: z.object({ key: z.string() })
         },
         {
           id: 'connector-3',
@@ -281,30 +275,30 @@ describe('validator', () => {
           detection: { envVars: ['KEY3'] },
           test: vi.fn(),
           generateSnippet: () => 'snippet3',
-          configSchema: z.object({ key: z.string() }),
-        },
+          configSchema: z.object({ key: z.string() })
+        }
       ];
     });
 
     it('should test all connectors in parallel', async () => {
       (mockConnectors[0].test as ReturnType<typeof vi.fn>).mockResolvedValue({
         connection: true,
-        validation: true,
+        validation: true
       });
       (mockConnectors[1].test as ReturnType<typeof vi.fn>).mockResolvedValue({
         connection: true,
-        validation: true,
+        validation: true
       });
       (mockConnectors[2].test as ReturnType<typeof vi.fn>).mockResolvedValue({
         connection: false,
         validation: false,
-        error: 'Auth failed',
+        error: 'Auth failed'
       });
 
       const results = await testMultipleConnectors([
         { connectorId: 'connector-1', connector: mockConnectors[0], config: { key: 'key1' } },
         { connectorId: 'connector-2', connector: mockConnectors[1], config: { key: 'key2' } },
-        { connectorId: 'connector-3', connector: mockConnectors[2], config: { key: 'key3' } },
+        { connectorId: 'connector-3', connector: mockConnectors[2], config: { key: 'key3' } }
       ]);
 
       expect(results).toHaveLength(3);
@@ -321,14 +315,14 @@ describe('validator', () => {
       for (const connector of mockConnectors) {
         (connector.test as ReturnType<typeof vi.fn>).mockResolvedValue({
           connection: true,
-          validation: true,
+          validation: true
         });
       }
 
       const results = await testMultipleConnectors([
         { connectorId: 'connector-1', connector: mockConnectors[0], config: { key: 'key1' } },
         { connectorId: 'connector-2', connector: mockConnectors[1], config: { key: 'key2' } },
-        { connectorId: 'connector-3', connector: mockConnectors[2], config: { key: 'key3' } },
+        { connectorId: 'connector-3', connector: mockConnectors[2], config: { key: 'key3' } }
       ]);
 
       for (const { result } of results) {
@@ -352,8 +346,8 @@ describe('validator', () => {
         configSchema: z.object({
           apiKey: z.string().min(1),
           endpoint: z.string().url().optional(),
-          model: z.string().default('gpt-4'),
-        }),
+          model: z.string().default('gpt-4')
+        })
       };
     });
 
@@ -361,7 +355,7 @@ describe('validator', () => {
       const result = validateConnectorConfig(mockConnector, {
         apiKey: 'sk-test',
         endpoint: 'https://api.example.com',
-        model: 'gpt-4',
+        model: 'gpt-4'
       });
 
       expect(result.isValid).toBe(true);
@@ -379,7 +373,7 @@ describe('validator', () => {
     it('should detect validation errors', () => {
       const result = validateConnectorConfig(mockConnector, {
         apiKey: 'sk-test',
-        endpoint: 'not-a-url',
+        endpoint: 'not-a-url'
       });
 
       expect(result.isValid).toBe(false);
@@ -388,7 +382,7 @@ describe('validator', () => {
 
     it('should use default values correctly', () => {
       const result = validateConnectorConfig(mockConnector, {
-        apiKey: 'sk-test',
+        apiKey: 'sk-test'
       });
 
       expect(result.isValid).toBe(true);
@@ -399,7 +393,7 @@ describe('validator', () => {
     it('should handle empty config schema', () => {
       const lenientConnector: ConnectorDefinition = {
         ...mockConnector,
-        configSchema: z.object({}),
+        configSchema: z.object({})
       };
 
       const result = validateConnectorConfig(lenientConnector, {});
@@ -443,7 +437,7 @@ describe('validator', () => {
     it('should return true for successful result', () => {
       const result: TestResult = {
         connection: true,
-        validation: true,
+        validation: true
       };
 
       expect(isTestSuccessful(result)).toBe(true);
@@ -452,7 +446,7 @@ describe('validator', () => {
     it('should return false for connection failure', () => {
       const result: TestResult = {
         connection: false,
-        validation: true,
+        validation: true
       };
 
       expect(isTestSuccessful(result)).toBe(false);
@@ -461,7 +455,7 @@ describe('validator', () => {
     it('should return false for validation failure', () => {
       const result: TestResult = {
         connection: true,
-        validation: false,
+        validation: false
       };
 
       expect(isTestSuccessful(result)).toBe(false);
@@ -470,7 +464,7 @@ describe('validator', () => {
     it('should return false for complete failure', () => {
       const result: TestResult = {
         connection: false,
-        validation: false,
+        validation: false
       };
 
       expect(isTestSuccessful(result)).toBe(false);
@@ -481,7 +475,7 @@ describe('validator', () => {
     it('should return true for connection failure', () => {
       const result: TestResult = {
         connection: false,
-        validation: false,
+        validation: false
       };
 
       expect(isConnectionFailure(result)).toBe(true);
@@ -490,7 +484,7 @@ describe('validator', () => {
     it('should return false for successful connection', () => {
       const result: TestResult = {
         connection: true,
-        validation: true,
+        validation: true
       };
 
       expect(isConnectionFailure(result)).toBe(false);
@@ -499,7 +493,7 @@ describe('validator', () => {
     it('should return false for validation failure with good connection', () => {
       const result: TestResult = {
         connection: true,
-        validation: false,
+        validation: false
       };
 
       expect(isConnectionFailure(result)).toBe(false);
@@ -510,7 +504,7 @@ describe('validator', () => {
     it('should return true for validation failure with good connection', () => {
       const result: TestResult = {
         connection: true,
-        validation: false,
+        validation: false
       };
 
       expect(isValidationFailure(result)).toBe(true);
@@ -519,7 +513,7 @@ describe('validator', () => {
     it('should return false for successful validation', () => {
       const result: TestResult = {
         connection: true,
-        validation: true,
+        validation: true
       };
 
       expect(isValidationFailure(result)).toBe(false);
@@ -528,7 +522,7 @@ describe('validator', () => {
     it('should return false for connection failure', () => {
       const result: TestResult = {
         connection: false,
-        validation: false,
+        validation: false
       };
 
       expect(isValidationFailure(result)).toBe(false);
@@ -540,7 +534,7 @@ describe('validator', () => {
       const result: TestResult = {
         connection: true,
         validation: true,
-        latency: 123,
+        latency: 123
       };
 
       const formatted = formatTestResult(result);
@@ -554,7 +548,7 @@ describe('validator', () => {
         connection: true,
         validation: false,
         error: 'Invalid API key',
-        latency: 45,
+        latency: 45
       };
 
       const formatted = formatTestResult(result);
@@ -569,7 +563,7 @@ describe('validator', () => {
         connection: false,
         validation: false,
         error: 'Service unreachable',
-        latency: 500,
+        latency: 500
       };
 
       const formatted = formatTestResult(result);
@@ -582,7 +576,7 @@ describe('validator', () => {
     it('should format result without latency', () => {
       const result: TestResult = {
         connection: true,
-        validation: true,
+        validation: true
       };
 
       const formatted = formatTestResult(result);
@@ -595,7 +589,7 @@ describe('validator', () => {
       const result: TestResult = {
         connection: false,
         validation: false,
-        latency: 100,
+        latency: 100
       };
 
       const formatted = formatTestResult(result);

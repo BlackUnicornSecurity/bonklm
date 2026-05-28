@@ -17,11 +17,7 @@ export class WebMiddlewareBlockedError extends Error {
   readonly category?: string;
   readonly severity?: string;
 
-  constructor(
-    message: string,
-    phase: WebMiddlewarePhase,
-    extra?: { category?: string; severity?: string }
-  ) {
+  constructor(message: string, phase: WebMiddlewarePhase, extra?: { category?: string; severity?: string }) {
     super(message);
     this.phase = phase;
     this.category = extra?.category;

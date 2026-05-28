@@ -16,9 +16,6 @@ export {
   createValidateInputActivity,
   type ValidateInputActivityArgs,
   type ValidateInputActivityResult,
-  type ValidatorActivityConfig,
+  type ValidatorActivityConfig
 } from './activity.js';
-export {
-  guardrailGate,
-  TemporalGuardrailBlockedError,
-} from './workflow.js';
+export { guardrailGate, TemporalGuardrailBlockedError } from './workflow.js';

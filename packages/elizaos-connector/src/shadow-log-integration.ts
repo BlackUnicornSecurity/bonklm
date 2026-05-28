@@ -21,12 +21,7 @@
  *
  * @package @blackunicorn/bonklm-elizaos
  */
-import type {
-  Logger,
-  ShadowLog,
-  ShadowLogEntry,
-  ShadowLogSourceTrust,
-} from '@blackunicorn/bonklm';
+import type { Logger, ShadowLog, ShadowLogEntry, ShadowLogSourceTrust } from '@blackunicorn/bonklm';
 import { assertRoomAccess } from './shadow-log-adapter.js';
 
 /**
@@ -43,9 +38,7 @@ import { assertRoomAccess } from './shadow-log-adapter.js';
  * message "shadow log integrity check failed; admin review required"
  * without position information.
  */
-export type AuthenticatedMessagesResult =
-  | { ok: true; entries: ShadowLogEntry[] }
-  | { ok: false };
+export type AuthenticatedMessagesResult = { ok: true; entries: ShadowLogEntry[] } | { ok: false };
 
 /**
  * Options for `verifyAndReadAuthenticatedMessages`.
@@ -88,10 +81,7 @@ export interface VerifyAndReadOptions {
    * Per the storage-isolation contract, telemetry MUST land in an
    * audit pipeline scoped separately from public HTTP responses.
    */
-  onTamperDetected?: (diagnostic: {
-    roomId: string;
-    brokenAt: number;
-  }) => void;
+  onTamperDetected?: (diagnostic: { roomId: string; brokenAt: number }) => void;
 }
 
 /**
@@ -115,15 +105,15 @@ export async function verifyAndReadAuthenticatedMessages(
     // return shape does NOT.
     const logger = opts.logger;
     if (logger !== undefined) {
-      logger.error(
-        '[bonklm-elizaos] CRITICAL — shadow log integrity check failed; admin review required.',
-        { roomId: opts.roomId, brokenAt: verification.brokenAt }
-      );
+      logger.error('[bonklm-elizaos] CRITICAL — shadow log integrity check failed; admin review required.', {
+        roomId: opts.roomId,
+        brokenAt: verification.brokenAt
+      });
     }
     try {
       opts.onTamperDetected?.({
         roomId: opts.roomId,
-        brokenAt: verification.brokenAt,
+        brokenAt: verification.brokenAt
       });
     } catch {
       // Callback throws are swallowed — they MUST NOT crash the
@@ -140,7 +130,7 @@ export async function verifyAndReadAuthenticatedMessages(
   const sourceFilter = opts.sourceFilter ?? ['authenticated'];
   const entries = await opts.shadowLog.readByRoom(opts.roomId, {
     sourceTrust: sourceFilter,
-    limit: Number.MAX_SAFE_INTEGER,
+    limit: Number.MAX_SAFE_INTEGER
   });
 
   return { ok: true, entries };
@@ -180,7 +170,7 @@ export function buildEolFindingV04(installedVersion: string): {
       `Class-4 structural defence (shadow log integration) ships in v0.5.0 via Story 2.4a. ` +
       `Upgrade to v0.5.x for full Construct-A + Construct-B coverage. The v0.4.x line is ` +
       `scheduled for EOL 30 days post-v0.5.0.`,
-    pluginName: '@blackunicorn/bonklm-elizaos',
+    pluginName: '@blackunicorn/bonklm-elizaos'
   };
 }
 
@@ -194,7 +184,7 @@ export function buildEolFindingV04(installedVersion: string): {
 export function warnAcknowledgeClass4RiskDeprecated(logger: Logger | undefined): void {
   logger?.warn(
     '[bonklm-elizaos] `acknowledgeClass4Risk: true` is no longer needed in v0.5+ — Story 2.4a ' +
-    'ships shadow-log structural defence (Construct A). The flag is accepted for one minor ' +
-    'cycle for backward compat and will throw in v0.6.'
+      'ships shadow-log structural defence (Construct A). The flag is accepted for one minor ' +
+      'cycle for backward compat and will throw in v0.6.'
   );
 }

@@ -19,9 +19,9 @@ describe('EdgeHookManager', () => {
       const manager = new EdgeHookManager();
       await manager.initialize();
 
-      await expect(
-        manager.executeHook('return 1 + 1' as unknown as () => unknown, {})
-      ).rejects.toThrowError(ConnectorValidationError);
+      await expect(manager.executeHook('return 1 + 1' as unknown as () => unknown, {})).rejects.toThrowError(
+        ConnectorValidationError
+      );
     });
 
     it('throws with `configuration_error` category for diagnostic clarity', async () => {
@@ -55,10 +55,7 @@ describe('EdgeHookManager', () => {
       const manager = new EdgeHookManager();
       await manager.initialize();
 
-      const result = await manager.executeHook(
-        (ctx) => ({ doubled: (ctx.value as number) * 2 }),
-        { value: 21 }
-      );
+      const result = await manager.executeHook(ctx => ({ doubled: (ctx.value as number) * 2 }), { value: 21 });
 
       expect(result.success).toBe(true);
       expect(result.result).toEqual({ doubled: 42 });
@@ -83,8 +80,8 @@ describe('EdgeHookManager', () => {
       await manager.initialize();
 
       const result = await manager.executeHook(
-        async (ctx) => {
-          await new Promise((r) => setTimeout(r, 1));
+        async ctx => {
+          await new Promise(r => setTimeout(r, 1));
           return `processed:${ctx.id as string}`;
         },
         { id: 'edge-1' }
@@ -100,9 +97,7 @@ describe('EdgeHookManager', () => {
       const manager = new EdgeHookManager();
       // intentionally NOT calling initialize()
 
-      await expect(manager.executeHook(() => 1, {})).rejects.toThrowError(
-        /not initialized/i
-      );
+      await expect(manager.executeHook(() => 1, {})).rejects.toThrowError(/not initialized/i);
     });
   });
 
@@ -124,10 +119,7 @@ describe('EdgeHookManager', () => {
       await manager.initialize();
 
       try {
-        await manager.executeHook(
-          'return 1 + 1' as unknown as () => unknown,
-          {}
-        );
+        await manager.executeHook('return 1 + 1' as unknown as () => unknown, {});
       } catch {
         /* expected */
       }

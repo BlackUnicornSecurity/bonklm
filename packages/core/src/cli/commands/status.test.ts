@@ -20,7 +20,7 @@ describe('status command', () => {
 
   it('should have --json option', () => {
     const options = statusCommand.options;
-    const jsonOption = options.find((opt) => opt.long === '--json');
+    const jsonOption = options.find(opt => opt.long === '--json');
     expect(jsonOption).toBeDefined();
   });
 

@@ -215,15 +215,13 @@ describe('Qdrant Connector', () => {
 
     it('should support wildcard patterns in allowedPayloadFields', async () => {
       const mockClient = {
-        search: vi
-          .fn()
-          .mockResolvedValue([
-            {
-              id: '1',
-              score: 0.95,
-              payload: { title: 'Doc 1', titleExtra: 'Extra', content: 'Content', secret: 'Hidden' }
-            }
-          ]),
+        search: vi.fn().mockResolvedValue([
+          {
+            id: '1',
+            score: 0.95,
+            payload: { title: 'Doc 1', titleExtra: 'Extra', content: 'Content', secret: 'Hidden' }
+          }
+        ]),
         upsert: vi.fn()
       };
 

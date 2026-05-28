@@ -6,23 +6,14 @@
  * `@e2b/code-interpreter` to keep the connector installable without
  * the SDK present.
  */
-import type {
-  OnSandboxErrorAction,
-  SandboxValidationResult,
-} from '@blackunicorn/bonklm-sandbox-utils';
+import type { OnSandboxErrorAction, SandboxValidationResult } from '@blackunicorn/bonklm-sandbox-utils';
 
 /**
  * E2B surface tags emitted in `onBlock` events + `E2BGuardrailBlockedError.surface`.
  * Exported so consumers writing `if (err.surface === 'commands.run')`
  * get IDE completion (Sprint 19 audit code-reviewer C-2 + N closure).
  */
-export type E2BSurface =
-  | 'commands.run'
-  | 'runCode'
-  | 'files.write'
-  | 'files.read'
-  | 'files.remove'
-  | 'files.list';
+export type E2BSurface = 'commands.run' | 'runCode' | 'files.write' | 'files.read' | 'files.remove' | 'files.list';
 
 /**
  * Subset of the E2B Sandbox surface we proxy.

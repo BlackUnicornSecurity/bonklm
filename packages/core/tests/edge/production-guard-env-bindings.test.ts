@@ -25,19 +25,19 @@ describe('ProductionGuard envBindings forwarding', () => {
 
   it('treats configured envBindings.NODE_ENV=production as actually-in-production (CRITICAL block)', () => {
     const guard = new ProductionGuard({
-      envBindings: { NODE_ENV: 'production' },
+      envBindings: { NODE_ENV: 'production' }
     });
 
     const result = guard.validate(BENIGN_CONTENT);
     // Production env + no test-env override → CRITICAL block with
     // a `runtime_production` finding.
     expect(result.allowed).toBe(false);
-    expect(result.findings.some((f) => f.category === 'runtime_production')).toBe(true);
+    expect(result.findings.some(f => f.category === 'runtime_production')).toBe(true);
   });
 
   it('treats configured envBindings.NODE_ENV=development as NOT in production', () => {
     const guard = new ProductionGuard({
-      envBindings: { NODE_ENV: 'development' },
+      envBindings: { NODE_ENV: 'development' }
     });
 
     const result = guard.validate(BENIGN_CONTENT);
@@ -45,7 +45,7 @@ describe('ProductionGuard envBindings forwarding', () => {
     // finding fires. Pass/fail of the overall decision depends on
     // pattern composition; we assert the env injection path was
     // honoured (no runtime_production CRITICAL).
-    expect(result.findings.some((f) => f.category === 'runtime_production')).toBe(false);
+    expect(result.findings.some(f => f.category === 'runtime_production')).toBe(false);
   });
 
   it('treats envBindings.NODE_ENV=test AND NODE_ENV=production as test (test overrides production)', () => {
@@ -54,13 +54,13 @@ describe('ProductionGuard envBindings forwarding', () => {
       // the guard treats the runtime as test (NOT production).
       envBindings: {
         NODE_ENV: 'production',
-        JEST_WORKER_ID: '1', // indicates test runtime
-      },
+        JEST_WORKER_ID: '1' // indicates test runtime
+      }
     });
 
     const result = guard.validate(BENIGN_CONTENT);
     // Test env wins → no runtime_production block.
-    expect(result.findings.some((f) => f.category === 'runtime_production')).toBe(false);
+    expect(result.findings.some(f => f.category === 'runtime_production')).toBe(false);
   });
 
   it('without envBindings, falls back to process.env (Node parity)', () => {
@@ -69,6 +69,6 @@ describe('ProductionGuard envBindings forwarding', () => {
     // runtime_production check does NOT fire.
     const guard = new ProductionGuard();
     const result = guard.validate(BENIGN_CONTENT);
-    expect(result.findings.some((f) => f.category === 'runtime_production')).toBe(false);
+    expect(result.findings.some(f => f.category === 'runtime_production')).toBe(false);
   });
 });

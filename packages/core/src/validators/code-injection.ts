@@ -41,12 +41,7 @@
  * pattern-bearing source files.
  */
 import type { HookSurface, Validator, ValidatorInput } from '../engine/GuardrailEngine.types.js';
-import {
-  createResult,
-  type Finding,
-  type GuardrailResult,
-  Severity,
-} from '../base/GuardrailResult.js';
+import { createResult, type Finding, type GuardrailResult, Severity } from '../base/GuardrailResult.js';
 import { scoreToRiskLevel, unwrapValidatorInput } from './internal/unwrap-input.js';
 
 export enum CodeInjectionCategory {
@@ -54,7 +49,7 @@ export enum CodeInjectionCategory {
   JS_DYNAMIC_EXEC = 'js_dynamic_exec',
   SHELL_METACHAR = 'shell_metachar',
   NETWORK_EGRESS = 'network_egress',
-  PACKAGE_INSTALL = 'package_install',
+  PACKAGE_INSTALL = 'package_install'
 }
 
 interface CodeInjectionPattern {
@@ -85,127 +80,127 @@ const PYTHON_PATTERNS: CodeInjectionPattern[] = [
     pattern: /\beval\s*(?:\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/)?\s*\(/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python eval() call',
+    description: 'Python eval() call'
   },
   {
     name: 'python_exec',
     pattern: /\bexec\s*\(/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python exec() call',
+    description: 'Python exec() call'
   },
   {
     name: 'python_dunder_import',
     pattern: /\b__import__\s*\(/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python __import__ dynamic import',
+    description: 'Python __import__ dynamic import'
   },
   {
     name: 'python_importlib',
     pattern: /\bimportlib\.(?:import_module|__import__)\s*\(/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python importlib dynamic import',
+    description: 'Python importlib dynamic import'
   },
   {
     name: 'python_subprocess',
     pattern: /\bsubprocess\.(?:call|run|Popen|check_output|check_call)\s*\(/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python subprocess invocation',
+    description: 'Python subprocess invocation'
   },
   {
     name: 'python_os_system',
     pattern: /\bos\.(?:system|popen|execv|execve|execvp|spawnl|spawnv|spawnvp)\s*\(/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python os.system / os.popen / os.exec*',
+    description: 'Python os.system / os.popen / os.exec*'
   },
   {
     name: 'python_pickle',
     pattern: /\b(?:c?[Pp]ickle|dill)\.(?:loads?)\s*\(/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python pickle/dill deserialization sink',
+    description: 'Python pickle/dill deserialization sink'
   },
   {
     name: 'python_marshal',
     pattern: /\bmarshal\.loads?\s*\(/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python marshal deserialization',
+    description: 'Python marshal deserialization'
   },
   {
     name: 'python_yaml_load',
     pattern: /\byaml\.(?:load|unsafe_load|full_load)\s*\(/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python yaml.load (deserialization sink)',
+    description: 'Python yaml.load (deserialization sink)'
   },
   {
     name: 'python_shelve',
     pattern: /\bshelve\.open\s*\(/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python shelve.open (pickle-backed)',
+    description: 'Python shelve.open (pickle-backed)'
   },
   {
     name: 'python_compile',
     pattern: /\bcompile\s*\(\s*["'][^"']*["']\s*,/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python compile() call',
+    description: 'Python compile() call'
   },
   {
     name: 'python_globals_builtins',
     pattern: /\bglobals\s*\(\s*\)\s*\[\s*["']__builtins__["']/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python globals()["__builtins__"] sandbox escape',
+    description: 'Python globals()["__builtins__"] sandbox escape'
   },
   {
     name: 'python_getattr_builtins',
     pattern: /\bgetattr\s*\(\s*__builtins__/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python getattr(__builtins__, ...) sandbox escape',
+    description: 'Python getattr(__builtins__, ...) sandbox escape'
   },
   {
     name: 'python_breakpoint',
     pattern: /\bbreakpoint\s*\(\s*\)/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python breakpoint() — interactive debugger entry (sandbox-escape primitive)',
+    description: 'Python breakpoint() — interactive debugger entry (sandbox-escape primitive)'
   },
   {
     name: 'python_ctypes',
     pattern: /\bctypes\.CDLL\s*\(/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python ctypes shared-library load',
+    description: 'Python ctypes shared-library load'
   },
   {
     name: 'python_ast_literal_eval',
     pattern: /\bast\.literal_eval\s*\(\s*["'].*__import__/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python ast.literal_eval bypass via embedded __import__',
+    description: 'Python ast.literal_eval bypass via embedded __import__'
   },
   {
     name: 'python_codeop',
     pattern: /\bcodeop\.compile_command\s*\(/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python codeop.compile_command',
+    description: 'Python codeop.compile_command'
   },
   {
     name: 'python_type_metaclass',
     pattern: /\btype\s*\(\s*["'][^"']*["']\s*,\s*\(\s*\)\s*,/,
     category: CodeInjectionCategory.PYTHON_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'Python dynamic class via type() — sandbox-escape building block',
-  },
+    description: 'Python dynamic class via type() — sandbox-escape building block'
+  }
 ];
 
 const JS_PATTERNS: CodeInjectionPattern[] = [
@@ -216,49 +211,49 @@ const JS_PATTERNS: CodeInjectionPattern[] = [
     pattern: /\beval\s*(?:\/\*[^*]*\*+(?:[^/*][^*]*\*+)*\/)?\s*[(.]/,
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript eval() / eval.call / eval.apply',
+    description: 'JavaScript eval() / eval.call / eval.apply'
   },
   {
     name: 'js_indirect_eval',
     pattern: /\(\s*0\s*,\s*eval\s*\)/,
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript indirect eval ((0,eval))',
+    description: 'JavaScript indirect eval ((0,eval))'
   },
   {
     name: 'js_globalThis_eval',
     pattern: /\b(?:globalThis|global|window)\s*[.\[]\s*['"]?eval['"]?\s*\]?/,
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript bracket-access eval',
+    description: 'JavaScript bracket-access eval'
   },
   {
     name: 'js_function_ctor',
     pattern: /\b(?:new\s+)?Function\s*\(/,
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript Function constructor',
+    description: 'JavaScript Function constructor'
   },
   {
     name: 'js_globalThis_Function',
     pattern: /\bglobalThis\.Function\s*\(/,
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript globalThis.Function constructor',
+    description: 'JavaScript globalThis.Function constructor'
   },
   {
     name: 'js_reflect_construct_function',
     pattern: /\bReflect\.construct\s*\(\s*Function/,
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript Reflect.construct(Function, ...)',
+    description: 'JavaScript Reflect.construct(Function, ...)'
   },
   {
     name: 'js_settimeout_string',
     pattern: /\bset(?:Timeout|Interval)\s*\(\s*['"]/,
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript setTimeout/setInterval with string code',
+    description: 'JavaScript setTimeout/setInterval with string code'
   },
   {
     name: 'js_child_process_require',
@@ -267,7 +262,7 @@ const JS_PATTERNS: CodeInjectionPattern[] = [
     ),
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript child_process spawn family',
+    description: 'JavaScript child_process spawn family'
   },
   {
     name: 'js_child_process_member',
@@ -276,28 +271,30 @@ const JS_PATTERNS: CodeInjectionPattern[] = [
     ),
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript bare child_process member',
+    description: 'JavaScript bare child_process member'
   },
   {
     name: 'js_child_process_dynamic_import',
     pattern: new RegExp(`\\bimport\\s*\\(\\s*['"]${CP_TOKEN}['"]\\s*\\)`),
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript dynamic-import child_process',
+    description: 'JavaScript dynamic-import child_process'
   },
   {
     name: 'js_fs_destructive',
-    pattern: /\brequire\s*\(\s*['"]fs['"]\s*\)\s*\.\s*(?:writeFile|writeFileSync|appendFile|appendFileSync|unlink|unlinkSync|rm|rmSync|rmdir|rmdirSync)/,
+    pattern:
+      /\brequire\s*\(\s*['"]fs['"]\s*\)\s*\.\s*(?:writeFile|writeFileSync|appendFile|appendFileSync|unlink|unlinkSync|rm|rmSync|rmdir|rmdirSync)/,
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript fs destructive write/delete',
+    description: 'JavaScript fs destructive write/delete'
   },
   {
     name: 'js_fs_dynamic_import',
-    pattern: /\bimport\s*\(\s*['"]fs['"]\s*\)\s*\.then\s*\(\s*\w+\s*=>\s*\w+\.(?:writeFile|writeFileSync|unlink|unlinkSync|rm|rmSync)/,
+    pattern:
+      /\bimport\s*\(\s*['"]fs['"]\s*\)\s*\.then\s*\(\s*\w+\s*=>\s*\w+\.(?:writeFile|writeFileSync|unlink|unlinkSync|rm|rmSync)/,
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript dynamic-import fs destructive',
+    description: 'JavaScript dynamic-import fs destructive'
   },
   {
     name: 'js_fs_dynamic_import_await',
@@ -306,43 +303,43 @@ const JS_PATTERNS: CodeInjectionPattern[] = [
     pattern: /\bawait\s+import\s*\(\s*['"](?:fs|node:fs)['"]\s*\)/,
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript await import("fs") (destructure-destruction vector)',
+    description: 'JavaScript await import("fs") (destructure-destruction vector)'
   },
   {
     name: 'js_vm_runIn',
     pattern: /\brequire\s*\(\s*['"]vm['"]\s*\)\s*\.\s*runIn(?:NewContext|ThisContext)/,
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript vm.runInNewContext / runInThisContext',
+    description: 'JavaScript vm.runInNewContext / runInThisContext'
   },
   {
     name: 'js_vm_script_ctor',
     pattern: /new\s+\(?\s*require\s*\(\s*['"]vm['"]\s*\)\s*\.\s*Script\)?\s*\(/,
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript vm.Script constructor',
+    description: 'JavaScript vm.Script constructor'
   },
   {
     name: 'js_process_binding',
     pattern: /\bprocess\.binding\s*\(/,
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript process.binding (internal API)',
+    description: 'JavaScript process.binding (internal API)'
   },
   {
     name: 'js_process_dlopen',
     pattern: /\bprocess\.dlopen\s*\(/,
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript process.dlopen (native lib load)',
+    description: 'JavaScript process.dlopen (native lib load)'
   },
   {
     name: 'js_worker_threads',
     pattern: /\brequire\s*\(\s*['"]worker_threads['"]\s*\)\s*\.\s*Worker/,
     category: CodeInjectionCategory.JS_DYNAMIC_EXEC,
     severity: Severity.CRITICAL,
-    description: 'JavaScript worker_threads Worker',
-  },
+    description: 'JavaScript worker_threads Worker'
+  }
 ];
 
 const SHELL_PATTERNS: CodeInjectionPattern[] = [
@@ -351,14 +348,14 @@ const SHELL_PATTERNS: CodeInjectionPattern[] = [
     pattern: /;\s*(?:rm|nc|curl|wget|chmod|chown|kill|dd|mkfs|reboot|shutdown)\b/i,
     category: CodeInjectionCategory.SHELL_METACHAR,
     severity: Severity.CRITICAL,
-    description: 'Shell `; <dangerous-cmd>` chain',
+    description: 'Shell `; <dangerous-cmd>` chain'
   },
   {
     name: 'shell_double_ampersand_chain',
     pattern: /&&\s*(?:rm|nc|curl|wget|chmod|chown|kill|dd|mkfs|reboot|shutdown)\b/i,
     category: CodeInjectionCategory.SHELL_METACHAR,
     severity: Severity.CRITICAL,
-    description: 'Shell `&& <dangerous-cmd>` chain',
+    description: 'Shell `&& <dangerous-cmd>` chain'
   },
   {
     name: 'shell_background',
@@ -367,21 +364,21 @@ const SHELL_PATTERNS: CodeInjectionPattern[] = [
     pattern: /&\s+nc\b/i,
     category: CodeInjectionCategory.SHELL_METACHAR,
     severity: Severity.CRITICAL,
-    description: 'Shell backgrounded netcat (reverse shell)',
+    description: 'Shell backgrounded netcat (reverse shell)'
   },
   {
     name: 'shell_pipe_to_shell',
     pattern: /\|\s*(?:bash|sh|zsh|ksh)\b/,
     category: CodeInjectionCategory.SHELL_METACHAR,
     severity: Severity.CRITICAL,
-    description: 'Shell `| sh` pipe-to-interpreter (drive-by install)',
+    description: 'Shell `| sh` pipe-to-interpreter (drive-by install)'
   },
   {
     name: 'shell_pipe_to_mail',
     pattern: /\|\s*mail\b.*<\s*\/etc\//,
     category: CodeInjectionCategory.SHELL_METACHAR,
     severity: Severity.CRITICAL,
-    description: 'Shell `| mail` exfil via /etc read',
+    description: 'Shell `| mail` exfil via /etc read'
   },
   {
     name: 'shell_cmd_substitution_dollar',
@@ -389,63 +386,65 @@ const SHELL_PATTERNS: CodeInjectionPattern[] = [
     // narrow `$(` to require an immediately-following shell command from
     // the dangerous-command list. Defeats jQuery `$(selector)`, Makefile
     // `$(VAR)`, shell-arithmetic `$((expr))` false positives.
-    pattern: /\$\(\s*(?:rm|nc|curl|wget|chmod|chown|kill|dd|mkfs|reboot|shutdown|bash|sh|zsh|whoami|id|hostname|uname|cat|find|env|export|eval|exec|sudo|su)\b/i,
+    pattern:
+      /\$\(\s*(?:rm|nc|curl|wget|chmod|chown|kill|dd|mkfs|reboot|shutdown|bash|sh|zsh|whoami|id|hostname|uname|cat|find|env|export|eval|exec|sudo|su)\b/i,
     category: CodeInjectionCategory.SHELL_METACHAR,
     severity: Severity.CRITICAL,
-    description: 'Shell $(<dangerous-cmd>) command substitution',
+    description: 'Shell $(<dangerous-cmd>) command substitution'
   },
   {
     name: 'shell_cmd_substitution_backtick',
     // Audit closure architect CONCERN-4: backtick fires on benign Markdown
     // inline-code spans. Narrow to require a dangerous-command keyword
     // inside the backtick span.
-    pattern: /`[^`]*\b(?:rm|nc|curl|wget|chmod|chown|kill|dd|mkfs|reboot|shutdown|bash|sh|zsh|whoami|id|hostname|cat\s+\/etc|eval|exec|sudo|su)\b[^`]*`/i,
+    pattern:
+      /`[^`]*\b(?:rm|nc|curl|wget|chmod|chown|kill|dd|mkfs|reboot|shutdown|bash|sh|zsh|whoami|id|hostname|cat\s+\/etc|eval|exec|sudo|su)\b[^`]*`/i,
     category: CodeInjectionCategory.SHELL_METACHAR,
     severity: Severity.CRITICAL,
-    description: 'Shell `...` backtick substitution containing dangerous command',
+    description: 'Shell `...` backtick substitution containing dangerous command'
   },
   {
     name: 'shell_redirect_sensitive_overwrite',
     pattern: /\s>\s*\/(?:etc|root|var\/log|boot|sys|proc)\b/,
     category: CodeInjectionCategory.SHELL_METACHAR,
     severity: Severity.CRITICAL,
-    description: 'Shell redirect overwrite to sensitive path',
+    description: 'Shell redirect overwrite to sensitive path'
   },
   {
     name: 'shell_redirect_sensitive_append',
     pattern: /\s>>\s*\/(?:etc|root|var\/log|boot|sys|proc)\b/,
     category: CodeInjectionCategory.SHELL_METACHAR,
     severity: Severity.CRITICAL,
-    description: 'Shell append redirect to sensitive path',
+    description: 'Shell append redirect to sensitive path'
   },
   {
     name: 'shell_read_sensitive_redirect',
     pattern: /<\s*\/etc\/(?:passwd|shadow|sudoers)/,
     category: CodeInjectionCategory.SHELL_METACHAR,
     severity: Severity.CRITICAL,
-    description: 'Shell read-from sensitive /etc file',
+    description: 'Shell read-from sensitive /etc file'
   },
   {
     name: 'shell_cat_sensitive_to_any',
     pattern: /\bcat\s+\/etc\/(?:passwd|shadow|sudoers)/,
     category: CodeInjectionCategory.SHELL_METACHAR,
     severity: Severity.CRITICAL,
-    description: 'Shell `cat /etc/<sensitive>` — sensitive-file read (exfil precursor)',
+    description: 'Shell `cat /etc/<sensitive>` — sensitive-file read (exfil precursor)'
   },
   {
     name: 'shell_rm_rf_root',
     pattern: /\brm\s+-rf?\s+\/(?:\s|$|2>)/,
     category: CodeInjectionCategory.SHELL_METACHAR,
     severity: Severity.CRITICAL,
-    description: 'Shell `rm -rf /` destructive',
+    description: 'Shell `rm -rf /` destructive'
   },
   {
     name: 'shell_find_exec_curl',
     pattern: /\bfind\b.+-ex(?:e)?c\b.+(?:curl|wget|nc)\b/,
     category: CodeInjectionCategory.SHELL_METACHAR,
     severity: Severity.CRITICAL,
-    description: 'Shell `find -exec` with network-egress utility',
-  },
+    description: 'Shell `find -exec` with network-egress utility'
+  }
 ];
 
 const NETWORK_EGRESS_PATTERNS_BASE: Array<{ name: string; tool: string; pattern: RegExp; description: string }> = [
@@ -455,15 +454,17 @@ const NETWORK_EGRESS_PATTERNS_BASE: Array<{ name: string; tool: string; pattern:
     // Audit closure code-reviewer CONCERN-2: capture either a dotted host
     // OR `localhost` OR IPv4 OR bracketed IPv6 (each covers a metadata /
     // SSRF surface that the original dotted-only capture missed).
-    pattern: /\bcurl\b\s+(?:-[A-Za-z]+\s+)*(?:https?:\/\/)?(\[[^\]]+\]|localhost|[\w.-]+(?:\.\w+)+|\d{1,3}(?:\.\d{1,3}){3})/,
-    description: 'curl egress',
+    pattern:
+      /\bcurl\b\s+(?:-[A-Za-z]+\s+)*(?:https?:\/\/)?(\[[^\]]+\]|localhost|[\w.-]+(?:\.\w+)+|\d{1,3}(?:\.\d{1,3}){3})/,
+    description: 'curl egress'
   },
   {
     name: 'wget_egress',
     tool: 'wget',
-    pattern: /\bwget\b\s+(?:-[A-Za-z]+\s+)*(?:https?:\/\/)?(\[[^\]]+\]|localhost|[\w.-]+(?:\.\w+)+|\d{1,3}(?:\.\d{1,3}){3})/,
-    description: 'wget egress',
-  },
+    pattern:
+      /\bwget\b\s+(?:-[A-Za-z]+\s+)*(?:https?:\/\/)?(\[[^\]]+\]|localhost|[\w.-]+(?:\.\w+)+|\d{1,3}(?:\.\d{1,3}){3})/,
+    description: 'wget egress'
+  }
 ];
 
 const PACKAGE_INSTALL_PATTERNS: CodeInjectionPattern[] = [
@@ -474,14 +475,14 @@ const PACKAGE_INSTALL_PATTERNS: CodeInjectionPattern[] = [
     pattern: /\bpip[\d.]*\s+install\b/,
     category: CodeInjectionCategory.PACKAGE_INSTALL,
     severity: Severity.CRITICAL,
-    description: 'Python pip install (arbitrary package)',
+    description: 'Python pip install (arbitrary package)'
   },
   {
     name: 'poetry_add',
     pattern: /\bpoetry\s+add\b/,
     category: CodeInjectionCategory.PACKAGE_INSTALL,
     severity: Severity.CRITICAL,
-    description: 'Python poetry add (arbitrary package)',
+    description: 'Python poetry add (arbitrary package)'
   },
   {
     name: 'npm_install_outside',
@@ -490,36 +491,36 @@ const PACKAGE_INSTALL_PATTERNS: CodeInjectionPattern[] = [
     pattern: /\bnpm\s+(?:install|i|add)\s+(?:[-\w@/.]+)/,
     category: CodeInjectionCategory.PACKAGE_INSTALL,
     severity: Severity.CRITICAL,
-    description: 'npm install (arbitrary package)',
+    description: 'npm install (arbitrary package)'
   },
   {
     name: 'gem_install',
     pattern: /\bgem\s+install\b/,
     category: CodeInjectionCategory.PACKAGE_INSTALL,
     severity: Severity.CRITICAL,
-    description: 'Ruby gem install (arbitrary gem)',
+    description: 'Ruby gem install (arbitrary gem)'
   },
   {
     name: 'cargo_add',
     pattern: /\bcargo\s+add\b/,
     category: CodeInjectionCategory.PACKAGE_INSTALL,
     severity: Severity.CRITICAL,
-    description: 'Rust cargo add (arbitrary crate)',
+    description: 'Rust cargo add (arbitrary crate)'
   },
   {
     name: 'go_get',
     pattern: /\bgo\s+get\b/,
     category: CodeInjectionCategory.PACKAGE_INSTALL,
     severity: Severity.CRITICAL,
-    description: 'Go go get (arbitrary module)',
-  },
+    description: 'Go go get (arbitrary module)'
+  }
 ];
 
 const ALL_STATIC_PATTERNS: CodeInjectionPattern[] = [
   ...PYTHON_PATTERNS,
   ...JS_PATTERNS,
   ...SHELL_PATTERNS,
-  ...PACKAGE_INSTALL_PATTERNS,
+  ...PACKAGE_INSTALL_PATTERNS
 ];
 
 // =============================================================================
@@ -581,7 +582,7 @@ export class CodeInjectionValidator implements Validator {
           severity: p.severity,
           match: m[0],
           description: p.description,
-          weight: p.severity === Severity.CRITICAL ? 10 : 5,
+          weight: p.severity === Severity.CRITICAL ? 10 : 5
         });
       }
     }
@@ -598,15 +599,13 @@ export class CodeInjectionValidator implements Validator {
             severity: Severity.CRITICAL,
             match: m[0],
             description: `${eg.description} to non-allowlisted host '${host}'`,
-            weight: 10,
+            weight: 10
           });
         }
       }
     }
 
-    const blocked = findings.some(
-      (f) => f.severity === Severity.CRITICAL || f.severity === Severity.BLOCKED
-    );
+    const blocked = findings.some(f => f.severity === Severity.CRITICAL || f.severity === Severity.BLOCKED);
     const worst = findings.reduce<Severity>(
       (acc, f) => (severityRank(f.severity) > severityRank(acc) ? f.severity : acc),
       Severity.INFO

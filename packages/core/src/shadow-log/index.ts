@@ -14,11 +14,7 @@
  *    `ShadowLogSourceTrust`, `ReadByRoomOptions`,
  *    `CreateShadowLogOptions`, `EvictionPolicy`.
  */
-export {
-  createShadowLog,
-  computeContentHash,
-  computeChainLinkHash,
-} from './shadow-log.js';
+export { createShadowLog, computeContentHash, computeChainLinkHash } from './shadow-log.js';
 
 export { createInMemoryShadowLogStorage } from './in-memory-adapter.js';
 
@@ -31,5 +27,5 @@ export type {
   ShadowLogEntry,
   ShadowLogSourceTrust,
   ShadowLogStorageAdapter,
-  VerifyChainResult,
+  VerifyChainResult
 } from './types.js';

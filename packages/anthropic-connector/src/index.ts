@@ -30,10 +30,6 @@
 
 export { createGuardedAnthropic, messagesToText } from './guarded-anthropic.js';
 
-export type {
-  GuardedAnthropicOptions,
-  GuardedMessageOptions,
-  GuardedMessage,
-} from './types.js';
+export type { GuardedAnthropicOptions, GuardedMessageOptions, GuardedMessage } from './types.js';
 
 export { StreamValidationError } from './types.js';

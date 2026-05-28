@@ -18,15 +18,10 @@ import {
   createShadowLog,
   createInMemoryShadowLogStorage,
   PromptInjectionValidator,
-  type Validator,
+  type Validator
 } from '@blackunicorn/bonklm';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
-import {
-  auditInstalledVersions,
-  bonklmPlugin,
-  runDoctor,
-  wrapSigningAction,
-} from '../src/index.js';
+import { auditInstalledVersions, bonklmPlugin, runDoctor, wrapSigningAction } from '../src/index.js';
 import type { ActionLike, IAgentRuntimeLike, MemoryLike } from '../src/types.js';
 
 function makeValidators(): Validator[] {
@@ -41,7 +36,7 @@ describe('bonklmPlugin.init — shadow log auto-wire', () => {
       agentId: 'a-1',
       createMemory: vi.fn(),
       actions: [],
-      on: onSpy,
+      on: onSpy
     };
 
     const plugin = bonklmPlugin({ shadowLog, validators: makeValidators() });
@@ -59,21 +54,19 @@ describe('bonklmPlugin.init — shadow log auto-wire', () => {
       debug: () => {},
       info: (msg: string) => logs.push({ level: 'info', msg }),
       warn: (msg: string) => logs.push({ level: 'warn', msg }),
-      error: (msg: string) => logs.push({ level: 'error', msg }),
+      error: (msg: string) => logs.push({ level: 'error', msg })
     };
     const runtime: IAgentRuntimeLike = {
       agentId: 'a-1',
       createMemory: vi.fn(),
-      actions: [],
+      actions: []
       // No .on()
     };
 
     const plugin = bonklmPlugin({ shadowLog, validators: makeValidators(), logger });
     await plugin.init!({ runtime });
 
-    const infoLog = logs.find(
-      (l) => l.level === 'info' && l.msg.includes('shadow log auto-wire skipped')
-    );
+    const infoLog = logs.find(l => l.level === 'info' && l.msg.includes('shadow log auto-wire skipped'));
     expect(infoLog).toBeDefined();
   });
 
@@ -83,7 +76,7 @@ describe('bonklmPlugin.init — shadow log auto-wire', () => {
       agentId: 'a-1',
       createMemory: vi.fn(),
       actions: [],
-      on: onSpy,
+      on: onSpy
     };
 
     const plugin = bonklmPlugin({ validators: makeValidators() });
@@ -101,25 +94,25 @@ describe('bonklmPlugin.init — acknowledgeClass4Risk deprecation', () => {
       debug: () => {},
       info: () => {},
       warn: (msg: string) => logs.push({ level: 'warn', msg }),
-      error: () => {},
+      error: () => {}
     };
     const runtime: IAgentRuntimeLike = {
       agentId: 'a-1',
       createMemory: vi.fn(),
       actions: [],
-      on: vi.fn(),
+      on: vi.fn()
     };
 
     const plugin = bonklmPlugin({
       shadowLog,
       acknowledgeClass4Risk: true,
       validators: makeValidators(),
-      logger,
+      logger
     });
     await plugin.init!({ runtime });
 
-    const deprecationWarn = logs.find((l) =>
-      l.msg.includes('acknowledgeClass4Risk') && l.msg.includes('no longer needed')
+    const deprecationWarn = logs.find(
+      l => l.msg.includes('acknowledgeClass4Risk') && l.msg.includes('no longer needed')
     );
     expect(deprecationWarn).toBeDefined();
   });
@@ -130,24 +123,22 @@ describe('bonklmPlugin.init — acknowledgeClass4Risk deprecation', () => {
       debug: () => {},
       info: () => {},
       warn: (msg: string) => logs.push({ level: 'warn', msg }),
-      error: () => {},
+      error: () => {}
     };
     const runtime: IAgentRuntimeLike = {
       agentId: 'a-1',
       createMemory: vi.fn(),
-      actions: [],
+      actions: []
     };
 
     const plugin = bonklmPlugin({
       acknowledgeClass4Risk: true,
       validators: makeValidators(),
-      logger,
+      logger
     });
     await plugin.init!({ runtime });
 
-    const backwardCompatWarn = logs.find((l) =>
-      l.msg.includes('acknowledgeClass4Risk=true accepted')
-    );
+    const backwardCompatWarn = logs.find(l => l.msg.includes('acknowledgeClass4Risk=true accepted'));
     expect(backwardCompatWarn).toBeDefined();
   });
 });
@@ -161,23 +152,23 @@ describe('wrapSigningAction — shadow log read path (Phase-2)', () => {
       roomId: 'r-1',
       entityId: 'user-1',
       text: 'please send to 0xabc',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
 
     const handlerSpy = vi.fn();
     const action: ActionLike = { name: 'TRANSFER_SOL', handler: handlerSpy };
     const runtime: IAgentRuntimeLike = {
-      agentId: 'a-1',
+      agentId: 'a-1'
       // NO getMemories — proves the gate reads from shadow log.
     };
     const wrapped = wrapSigningAction(action, runtime, {
       shadowLog,
-      validators: makeValidators(),
+      validators: makeValidators()
     });
 
     const message: MemoryLike = {
       roomId: 'r-1',
-      content: { args: { recipient: '0xabc' } },
+      content: { args: { recipient: '0xabc' } }
     };
 
     // recipient '0xabc' appears in the shadow log entry → gate passes.
@@ -191,23 +182,23 @@ describe('wrapSigningAction — shadow log read path (Phase-2)', () => {
         roomId: 'r-1',
         content: { text: 'please send to 0xabc' },
         source: 'authenticated' as const,
-        metadata: { bonklmTrust: true },
-      },
+        metadata: { bonklmTrust: true }
+      }
     ]);
     const handlerSpy = vi.fn();
     const action: ActionLike = { name: 'TRANSFER_SOL', handler: handlerSpy };
     const runtime: IAgentRuntimeLike = {
       agentId: 'a-1',
-      getMemories: getMemoriesSpy,
+      getMemories: getMemoriesSpy
     };
     const wrapped = wrapSigningAction(action, runtime, {
       // NO shadowLog
-      validators: makeValidators(),
+      validators: makeValidators()
     });
 
     const message: MemoryLike = {
       roomId: 'r-1',
-      content: { args: { recipient: '0xabc' } },
+      content: { args: { recipient: '0xabc' } }
     };
 
     await wrapped.handler!(runtime, message);
@@ -227,7 +218,7 @@ describe('wrapSigningAction — shadow log read path (Phase-2)', () => {
       },
       async getLatestHashForRoom() {
         return stored.length > 0 ? stored[stored.length - 1].contentHash : null;
-      },
+      }
     };
     const shadowLog = createShadowLog(adapter);
     await shadowLog.append({
@@ -235,7 +226,7 @@ describe('wrapSigningAction — shadow log read path (Phase-2)', () => {
       roomId: 'r-1',
       entityId: 'user-1',
       text: 'please send to 0xabc',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     // Tamper.
     stored[0] = { ...stored[0], text: 'ATTACKER MUTATED' };
@@ -248,24 +239,19 @@ describe('wrapSigningAction — shadow log read path (Phase-2)', () => {
     const wrapped = wrapSigningAction(action, runtime, {
       shadowLog,
       validators: makeValidators(),
-      onActionBlocked: onActionBlockedSpy,
+      onActionBlocked: onActionBlockedSpy
     });
 
     const message: MemoryLike = {
       roomId: 'r-1',
-      content: { args: { recipient: '0xabc' } },
+      content: { args: { recipient: '0xabc' } }
     };
 
-    await expect(wrapped.handler!(runtime, message)).rejects.toThrow(
-      ConnectorValidationError
-    );
+    await expect(wrapped.handler!(runtime, message)).rejects.toThrow(ConnectorValidationError);
     // The handler MUST NOT have executed.
     expect(handlerSpy).not.toHaveBeenCalled();
     // The callback fired with the generic integrity-failure marker.
-    expect(onActionBlockedSpy).toHaveBeenCalledWith(
-      'TRANSFER_SOL',
-      'shadow_log_integrity_failure'
-    );
+    expect(onActionBlockedSpy).toHaveBeenCalledWith('TRANSFER_SOL', 'shadow_log_integrity_failure');
   });
 });
 
@@ -279,7 +265,7 @@ describe('wrapSigningAction — security BLOCK-Q2 + Q10a default semantics', () 
       roomId: 'r-1',
       entityId: 'agent',
       text: 'recipient 0xabc was used in a prior step',
-      sourceTrust: 'agent_internal',
+      sourceTrust: 'agent_internal'
     });
 
     const handlerSpy = vi.fn();
@@ -287,21 +273,19 @@ describe('wrapSigningAction — security BLOCK-Q2 + Q10a default semantics', () 
     const runtime: IAgentRuntimeLike = { agentId: 'a-1' };
     const wrapped = wrapSigningAction(action, runtime, {
       shadowLog,
-      validators: makeValidators(),
+      validators: makeValidators()
     });
 
     const message: MemoryLike = {
       roomId: 'r-1',
-      content: { args: { recipient: '0xabc' } },
+      content: { args: { recipient: '0xabc' } }
     };
 
     // Default sourceFilter is ['authenticated'] only — agent_internal
     // entries are filtered out at the shadow-log read step. The
     // corroboration set is empty; gate blocks because no
     // user-authored message references the recipient.
-    await expect(wrapped.handler!(runtime, message)).rejects.toThrow(
-      ConnectorValidationError
-    );
+    await expect(wrapped.handler!(runtime, message)).rejects.toThrow(ConnectorValidationError);
     expect(handlerSpy).not.toHaveBeenCalled();
   });
 
@@ -319,7 +303,7 @@ describe('wrapSigningAction — security BLOCK-Q2 + Q10a default semantics', () 
       roomId: 'r-1',
       entityId: 'user-1',
       text: 'please send to 0xabc',
-      sourceTrust: 'authenticated',
+      sourceTrust: 'authenticated'
     });
     // Use a broader sourceFilter on the read to expose the conversion
     // — this is opt-in only; default would exclude.
@@ -331,12 +315,12 @@ describe('wrapSigningAction — security BLOCK-Q2 + Q10a default semantics', () 
     const runtime: IAgentRuntimeLike = { agentId: 'a-1' };
     const wrapped = wrapSigningAction(action, runtime, {
       shadowLog,
-      validators: makeValidators(),
+      validators: makeValidators()
     });
 
     const message: MemoryLike = {
       roomId: 'r-1',
-      content: { args: { recipient: '0xabc' } },
+      content: { args: { recipient: '0xabc' } }
     };
     await wrapped.handler!(runtime, message);
     expect(handlerSpy).toHaveBeenCalled();
@@ -350,24 +334,24 @@ describe('bonklmPlugin.init — security A&D-Q7: shadowLog absent + runtimePort 
       debug: () => {},
       info: () => {},
       warn: (msg: string) => logs.push({ level: 'warn', msg }),
-      error: () => {},
+      error: () => {}
     };
     const runtime: IAgentRuntimeLike = {
       agentId: 'a-1',
       createMemory: vi.fn(),
-      actions: [],
+      actions: []
     };
 
     const plugin = bonklmPlugin({
       validators: makeValidators(),
       runtimePort: 3000,
       // NO shadowLog — the gap A&D-Q7 catches.
-      logger,
+      logger
     });
     await plugin.init!({ runtime });
 
-    const highWarn = logs.find((l) =>
-      l.msg.includes('HIGH') && l.msg.includes('runtimePort') && l.msg.includes('shadowLog')
+    const highWarn = logs.find(
+      l => l.msg.includes('HIGH') && l.msg.includes('runtimePort') && l.msg.includes('shadowLog')
     );
     expect(highWarn).toBeDefined();
   });
@@ -376,7 +360,7 @@ describe('bonklmPlugin.init — security A&D-Q7: shadowLog absent + runtimePort 
 describe('auditInstalledVersions — EOL finding for bonklm-elizaos@0.4.x', () => {
   it('emits HIGH plugin_not_in_allowlist for installed 0.4.x version', () => {
     const findings = auditInstalledVersions({
-      '@blackunicorn/bonklm-elizaos': '0.4.1',
+      '@blackunicorn/bonklm-elizaos': '0.4.1'
     });
     expect(findings.length).toBe(1);
     expect(findings[0].severity).toBe('HIGH');
@@ -386,14 +370,14 @@ describe('auditInstalledVersions — EOL finding for bonklm-elizaos@0.4.x', () =
 
   it('returns no findings for v0.5.x installs', () => {
     const findings = auditInstalledVersions({
-      '@blackunicorn/bonklm-elizaos': '0.5.0',
+      '@blackunicorn/bonklm-elizaos': '0.5.0'
     });
     expect(findings.length).toBe(0);
   });
 
   it('returns no findings when the package is not installed', () => {
     const findings = auditInstalledVersions({
-      'some-other-package': '1.0.0',
+      'some-other-package': '1.0.0'
     });
     expect(findings.length).toBe(0);
   });
@@ -409,12 +393,10 @@ describe('runDoctor — threaded EOL findings via installedVersions', () => {
       character: { system: 'you are a helpful assistant' },
       plugins: [],
       installedVersions: {
-        '@blackunicorn/bonklm-elizaos': '0.4.2',
-      },
+        '@blackunicorn/bonklm-elizaos': '0.4.2'
+      }
     });
-    const eolFinding = report.findings.find(
-      (f) => f.category === 'elizaos_connector_eol_v04'
-    );
+    const eolFinding = report.findings.find(f => f.category === 'elizaos_connector_eol_v04');
     expect(eolFinding).toBeDefined();
   });
 });

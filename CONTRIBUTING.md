@@ -264,18 +264,24 @@ export function validatePromptInjection(content: string): ValidationResult {
 
 ## Pre-commit Hooks
 
-The repo uses **simple-git-hooks** (registered via the `prepare` npm script). Currently a single
-hook is installed:
+The repo uses **simple-git-hooks** (registered via the `prepare` npm script). The pre-commit hook
+runs:
 
 ```jsonc
 // package.json
 "simple-git-hooks": {
-  "pre-commit": "pnpm typecheck"
+  "pre-commit": "pnpm format:check && pnpm typecheck && bash scripts/check-version-pin.sh"
 }
 ```
 
-This runs `tsc --noEmit` across the workspace before every commit. The hook was added in Sprint 41
-(architect HIGH-5 closure) after `git mv`-induced import breakage was missed twice.
+Before every commit this checks Prettier formatting, runs `tsc --noEmit` across the workspace, and
+verifies the single-version pin. The `tsc` check was added in Sprint 41 (architect HIGH-5 closure)
+after `git mv`-induced import breakage was missed twice; `format:check` mirrors the CI `format` job
+so formatting cannot drift again.
+
+> After changing the `pre-commit` command in `package.json`, re-run `pnpm install` (or
+> `pnpm exec simple-git-hooks`) to reinstall the hook — the installed `.git/hooks/pre-commit` does
+> not update automatically.
 
 If the hook is missing, run:
 
@@ -380,6 +386,7 @@ Every PR must pass the `CI` workflow in `.github/workflows/ci.yml`:
 | Job                    | What it does                                                                     |
 | ---------------------- | -------------------------------------------------------------------------------- |
 | `lint`                 | `pnpm run lint`                                                                  |
+| `format`               | `pnpm run format:check` (Prettier, mirrors the pre-commit hook)                  |
 | `type-check`           | `pnpm exec tsc --noEmit`                                                         |
 | `audit`                | `pnpm audit --audit-level=high` (informational, non-blocking)                    |
 | `build`                | Builds all packages on Node 20 + 22                                              |

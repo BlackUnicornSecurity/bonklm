@@ -8,13 +8,7 @@
  * @package @blackunicorn/bonklm-logger
  */
 
-import type {
-  AttackLogEntry,
-  AttackVector,
-  EngineResult,
-  Finding,
-  InjectionType,
-} from './types.js';
+import type { AttackLogEntry, AttackVector, EngineResult, Finding, InjectionType } from './types.js';
 
 /**
  * Context provided for transformation.
@@ -65,7 +59,7 @@ const INJECTION_TYPE_MAPPING: Record<string, InjectionType> = {
   credential: 'secret-exposure',
   api_key: 'secret-exposure',
   token: 'secret-exposure',
-  password: 'secret-exposure',
+  password: 'secret-exposure'
 };
 
 /**
@@ -96,7 +90,7 @@ const ATTACK_VECTOR_MAPPING: Record<string, AttackVector> = {
 
   // Direct vectors (default)
   system_override: 'direct',
-  instruction_injection: 'direct',
+  instruction_injection: 'direct'
 };
 
 /**
@@ -106,30 +100,34 @@ function detectVectorFromContent(content: string, categories: Set<string>): Atta
   const lowerContent = content.toLowerCase();
 
   // Check for encoded content
-  if (categories.has('multi_layer_encoding') ||
-      categories.has('base64_payload') ||
-      /base64|hex|unicode|escape/i.test(content)) {
+  if (
+    categories.has('multi_layer_encoding') ||
+    categories.has('base64_payload') ||
+    /base64|hex|unicode|escape/i.test(content)
+  ) {
     return 'encoded';
   }
 
   // Check for roleplay patterns
-  if (categories.has('roleplay') ||
-      categories.has('role_hijacking') ||
-      /you are|you're a|act as|pretend to be|roleplay as/i.test(lowerContent)) {
+  if (
+    categories.has('roleplay') ||
+    categories.has('role_hijacking') ||
+    /you are|you're a|act as|pretend to be|roleplay as/i.test(lowerContent)
+  ) {
     return 'roleplay';
   }
 
   // Check for social engineering
-  if (categories.has('social_engineering') ||
-      categories.has('emotional_manipulation') ||
-      /please|i need|i want|trust me|for testing purposes/i.test(lowerContent)) {
+  if (
+    categories.has('social_engineering') ||
+    categories.has('emotional_manipulation') ||
+    /please|i need|i want|trust me|for testing purposes/i.test(lowerContent)
+  ) {
     return 'social-engineering';
   }
 
   // Check for context overload
-  if (categories.has('context_manipulation') ||
-      content.length > 5000 ||
-      (content.match(/\n/g) || []).length > 100) {
+  if (categories.has('context_manipulation') || content.length > 5000 || (content.match(/\n/g) || []).length > 100) {
     return 'context-overload';
   }
 
@@ -152,7 +150,7 @@ export function deriveInjectionType(findings: Finding[]): InjectionType {
     return 'unknown';
   }
 
-  const categories = new Set(findings.map((f) => f.category));
+  const categories = new Set(findings.map(f => f.category));
 
   // Check direct mappings first
   for (const finding of findings) {
@@ -193,7 +191,7 @@ export function deriveAttackVector(findings: Finding[], content: string): Attack
     return 'unknown';
   }
 
-  const categories = new Set(findings.map((f) => f.category));
+  const categories = new Set(findings.map(f => f.category));
 
   // Check direct mappings first
   for (const finding of findings) {
@@ -229,10 +227,7 @@ export function deriveAttackVector(findings: Finding[], content: string): Attack
  * @param patterns - Array of regex patterns to redact
  * @returns Sanitized content
  */
-export function sanitizeContent_(
-  content: string,
-  patterns: RegExp[] = []
-): string {
+export function sanitizeContent_(content: string, patterns: RegExp[] = []): string {
   let sanitized = content;
 
   // Default PII patterns organized by category
@@ -287,7 +282,7 @@ export function sanitizeContent_(
 
     // US ZIP codes (5 digits only - less aggressive)
     // Note: This is intentionally conservative and only matches when near address keywords
-    /\b(?:ZIP|Postal|Code)[:\s]*\d{5}\b/gi,
+    /\b(?:ZIP|Postal|Code)[:\s]*\d{5}\b/gi
   ];
 
   const allPatterns = [...defaultPatterns, ...patterns];
@@ -314,9 +309,7 @@ export function transformToAttackLogEntry(
 ): AttackLogEntry {
   const injectionType = deriveInjectionType(result.findings);
   const attackVector = deriveAttackVector(result.findings, context.content);
-  const sanitizedContent = shouldSanitize
-    ? sanitizeContent_(context.content)
-    : context.content;
+  const sanitizedContent = shouldSanitize ? sanitizeContent_(context.content) : context.content;
 
   return {
     timestamp: result.timestamp || Date.now(),
@@ -330,7 +323,7 @@ export function transformToAttackLogEntry(
     findings: result.findings,
     validator_count: result.validatorCount,
     guard_count: result.guardCount,
-    execution_time: result.executionTime,
+    execution_time: result.executionTime
   };
 }
 
@@ -345,7 +338,7 @@ export function truncateContent(content: string, maxLength = 200): string {
   if (content.length <= maxLength) {
     return content;
   }
-  return `${content.slice(0, maxLength - 3)  }...`;
+  return `${content.slice(0, maxLength - 3)}...`;
 }
 
 /**
@@ -355,8 +348,7 @@ export function truncateContent(content: string, maxLength = 200): string {
  * @returns Escaped content
  */
 export function escapeControlCharacters(content: string): string {
-   
-  return content.replace(/[\x00-\x1F\x7F]/g, (char) => {
+  return content.replace(/[\x00-\x1F\x7F]/g, char => {
     const code = char.charCodeAt(0);
     return `\\x${code.toString(16).padStart(2, '0')}`;
   });
@@ -373,10 +365,7 @@ export function stripAnsiEscapes(content: string): string {
   // Remove ANSI escape sequences (CSI, OSC, and simple sequences)
   // CSI sequences: ESC[ ... (letters/numbers)
   // OSC sequences: ESC] ... BEL\ESC\
-  return content.replace(
-    /\x1b\[[0-9;]*[a-zA-Z]|\x1b\][0-9;]*[\x07\x1b\\]/g,
-    ''
-  );
+  return content.replace(/\x1b\[[0-9;]*[a-zA-Z]|\x1b\][0-9;]*[\x07\x1b\\]/g, '');
 }
 
 /**

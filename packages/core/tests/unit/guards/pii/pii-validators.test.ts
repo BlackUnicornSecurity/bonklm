@@ -25,7 +25,7 @@ describe('PII Validators', () => {
       const validCards = [
         '4532015112830366', // Visa
         '5425233430109903', // Mastercard
-        '378282246310005',  // Amex (15 digits)
+        '378282246310005' // Amex (15 digits)
       ];
 
       for (const card of validCards) {
@@ -39,7 +39,7 @@ describe('PII Validators', () => {
       const validIBANs = [
         'GB82WEST12345698765432', // UK
         'DE89370400440532013000', // Germany
-        'FR1420041010050500013M02606', // France
+        'FR1420041010050500013M02606' // France
       ];
 
       for (const iban of validIBANs) {
@@ -317,7 +317,7 @@ describe('PII Validators', () => {
         const obj = {
           name: 'John Doe',
           ssn: '123-45-6789',
-          email: 'john@example.com',
+          email: 'john@example.com'
         };
         const redacted = validators.redactPIIInObject(obj);
         // redactPIIInObject doesn't use patterns, just passes through
@@ -332,9 +332,9 @@ describe('PII Validators', () => {
           user: {
             contact: {
               email: 'user@example.com',
-              phone: '555-123-4567',
-            },
-          },
+              phone: '555-123-4567'
+            }
+          }
         };
         const redacted = validators.redactPIIInObject(obj);
         expect(redacted).toHaveProperty('user');
@@ -343,7 +343,7 @@ describe('PII Validators', () => {
       it('should handle arrays', () => {
         const obj = {
           emails: ['user1@example.com', 'user2@example.com'],
-          names: ['John', 'Jane'],
+          names: ['John', 'Jane']
         };
         const redacted = validators.redactPIIInObject(obj);
         // Without patterns loaded, arrays pass through
@@ -355,7 +355,7 @@ describe('PII Validators', () => {
         const obj = {
           value: null,
           undef: undefined,
-          normal: 'test',
+          normal: 'test'
         };
         const redacted = validators.redactPIIInObject(obj as Record<string, unknown>);
         expect(redacted.value).toBeNull();

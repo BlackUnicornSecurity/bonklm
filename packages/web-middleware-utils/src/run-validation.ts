@@ -1,9 +1,5 @@
 import type { GuardrailEngine } from '@blackunicorn/bonklm';
-import {
-  WebMiddlewareBlockedError,
-  type WebMiddlewareBlockEvent,
-  type WebMiddlewarePhase,
-} from './errors.js';
+import { WebMiddlewareBlockedError, type WebMiddlewareBlockEvent, type WebMiddlewarePhase } from './errors.js';
 
 export interface RunValidationOptions {
   engine: GuardrailEngine;
@@ -30,10 +26,7 @@ export interface RunValidationResult {
  * Validate a raw request body string through the engine. Throws
  * `WebMiddlewareBlockedError` on BLOCK (unless `returnInsteadOfThrow`).
  */
-export async function runRequestValidation(
-  options: RunValidationOptions,
-  body: string
-): Promise<RunValidationResult> {
+export async function runRequestValidation(options: RunValidationOptions, body: string): Promise<RunValidationResult> {
   return runValidation('request', options, body);
 }
 
@@ -42,10 +35,7 @@ export async function runRequestValidation(
  * semantics as `runRequestValidation` but tags telemetry as
  * `phase: 'response'`.
  */
-export async function runResponseValidation(
-  options: RunValidationOptions,
-  body: string
-): Promise<RunValidationResult> {
+export async function runResponseValidation(options: RunValidationOptions, body: string): Promise<RunValidationResult> {
   return runValidation('response', options, body);
 }
 
@@ -55,9 +45,7 @@ async function runValidation(
   body: string
 ): Promise<RunValidationResult> {
   if (typeof body !== 'string') {
-    throw new TypeError(
-      'web-middleware-utils: body must be a string. Use getRequestBody(req, framework) first.'
-    );
+    throw new TypeError('web-middleware-utils: body must be a string. Use getRequestBody(req, framework) first.');
   }
   if (!options?.engine) {
     throw new TypeError('web-middleware-utils: options.engine is required.');
@@ -85,7 +73,7 @@ async function runValidation(
     reason: finding?.description ?? `${phase}_blocked`,
     category: finding?.category,
     severity: String(result.severity),
-    excerpt,
+    excerpt
   };
   safeOnBlock(options, event);
 
@@ -95,20 +83,16 @@ async function runValidation(
       reason: event.reason,
       category: event.category,
       severity: event.severity,
-      excerpt,
+      excerpt
     };
   }
-  throw new WebMiddlewareBlockedError(
-    `${phase} body blocked: ${event.reason}`,
-    phase,
-    { category: event.category, severity: event.severity }
-  );
+  throw new WebMiddlewareBlockedError(`${phase} body blocked: ${event.reason}`, phase, {
+    category: event.category,
+    severity: event.severity
+  });
 }
 
-function safeOnBlock(
-  options: RunValidationOptions,
-  ev: WebMiddlewareBlockEvent
-): void {
+function safeOnBlock(options: RunValidationOptions, ev: WebMiddlewareBlockEvent): void {
   if (!options.onBlock) return;
   try {
     options.onBlock(ev);

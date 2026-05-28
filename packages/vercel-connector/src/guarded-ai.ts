@@ -25,7 +25,7 @@ import {
   RiskLevel,
   sanitizeMeta,
   Severity,
-  validateWithTimeoutSecure,
+  validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
 import {
   ConnectorValidationError,
@@ -33,18 +33,10 @@ import {
   logValidationFailure,
   StreamValidationError,
   updateStreamValidatorState,
-  validateBufferBeforeAccumulation,
+  validateBufferBeforeAccumulation
 } from '@blackunicorn/bonklm/core/connector-utils';
-import type {
-  GuardedAIOptions,
-  GuardedGenerateTextOptions,
-  GuardedTextResult,
-} from './types.js';
-import {
-  DEFAULT_MAX_BUFFER_SIZE,
-  DEFAULT_VALIDATION_TIMEOUT,
-  VALIDATION_INTERVAL,
-} from './types.js';
+import type { GuardedAIOptions, GuardedGenerateTextOptions, GuardedTextResult } from './types.js';
+import { DEFAULT_MAX_BUFFER_SIZE, DEFAULT_VALIDATION_TIMEOUT, VALIDATION_INTERVAL } from './types.js';
 
 /**
  * Default logger instance.
@@ -78,7 +70,7 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  */
 export function messagesToText(messages: CoreMessage[]): string {
   return messages
-    .map((m) => {
+    .map(m => {
       const content = m.content;
 
       // Handle string content (most common case)
@@ -89,15 +81,15 @@ export function messagesToText(messages: CoreMessage[]): string {
       // Handle array content (SEC-006: structured data, images, etc.)
       if (Array.isArray(content)) {
         return content
-          .filter((c) => c.type === 'text') // Only extract text parts
-          .map((c) => (c.type === 'text' ? (c as { text: string }).text : ''))
+          .filter(c => c.type === 'text') // Only extract text parts
+          .map(c => (c.type === 'text' ? (c as { text: string }).text : ''))
           .join('\n');
       }
 
       // Handle other types (convert to string)
       return String(content);
     })
-    .filter((c) => c.length > 0)
+    .filter(c => c.length > 0)
     .join('\n');
 }
 
@@ -142,13 +134,13 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
     productionMode = process.env.NODE_ENV === 'production', // SEC-007
     validationTimeout = DEFAULT_VALIDATION_TIMEOUT, // SEC-008: Default 30s
     onBlocked,
-    onStreamBlocked,
+    onStreamBlocked
   } = options;
 
   const engine = new GuardrailEngine({
     validators,
     guards,
-    logger,
+    logger
   });
 
   /**
@@ -156,10 +148,7 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
    *
    * @internal
    */
-  const validateWithTimeout = async (
-    content: string,
-    context?: string,
-  ): Promise<EngineResult> => {
+  const validateWithTimeout = async (content: string, context?: string): Promise<EngineResult> => {
     const engineResult = await validateWithTimeoutSecure<EngineResult>({
       operation: () => engine.validate(content, context),
       timeoutMs: validationTimeout,
@@ -170,19 +159,21 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
         risk_level: RiskLevel.HIGH,
         risk_score: 30,
         reason: 'Validation timeout',
-        findings: [{
-          category: 'timeout',
-          severity: Severity.CRITICAL,
-          description: 'Validation timeout',
-          weight: 30,
-        }],
+        findings: [
+          {
+            category: 'timeout',
+            severity: Severity.CRITICAL,
+            description: 'Validation timeout',
+            weight: 30
+          }
+        ],
         results: [],
         validatorCount: validators.length,
         guardCount: guards.length,
         executionTime: validationTimeout,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       }),
-      logger,
+      logger
     });
     return engineResult;
   };
@@ -240,7 +231,7 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
         // Sprint 43 CWE-117 sweep: output-leg dev-mode throw.
         throw new ConnectorValidationError(
           productionMode ? 'Content blocked' : `Content blocked: ${sanitizeMeta(outputResult.reason)}`,
-          'validation_failed',
+          'validation_failed'
         );
       }
 
@@ -249,7 +240,7 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
         usage: result.usage,
         finishReason: result.finishReason,
         filtered: false,
-        raw: result,
+        raw: result
       };
     },
 
@@ -308,8 +299,8 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
                     const errorChunk = new TextEncoder().encode(
                       JSON.stringify({
                         type: 'error',
-                        error: 'Content filtered',
-                      }),
+                        error: 'Content filtered'
+                      })
                     );
                     controller.enqueue(errorChunk);
                   }
@@ -321,7 +312,7 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
                 const chunk = new TextDecoder().decode(value);
                 validateBufferBeforeAccumulation(streamState, chunk, {
                   maxBufferSize: maxStreamBufferSize,
-                  logger,
+                  logger
                 });
 
                 updateStreamValidatorState(streamState, chunk);
@@ -333,19 +324,15 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
                     logValidationFailure(logger, result.reason || 'Stream blocked', { context: 'stream_incremental' });
                     if (onStreamBlocked) onStreamBlocked(streamState.accumulated);
 
-                    throw new StreamValidationError(
-                      'Content blocked during streaming',
-                      'validation_failed',
-                      true,
-                    );
+                    throw new StreamValidationError('Content blocked during streaming', 'validation_failed', true);
                   }
                 }
 
                 // Pass through the chunk
                 controller.enqueue(value);
-              },
+              }
             });
-          },
+          }
         };
       }
 
@@ -380,8 +367,10 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
                       const errorChunk = new TextEncoder().encode(
                         JSON.stringify({
                           type: 'error',
-                          error: productionMode ? 'Content filtered' : `Content filtered: ${sanitizeMeta(result.reason)}`,
-                        }),
+                          error: productionMode
+                            ? 'Content filtered'
+                            : `Content filtered: ${sanitizeMeta(result.reason)}`
+                        })
                       );
                       controller.enqueue(errorChunk);
                     } else {
@@ -399,31 +388,26 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
                 const chunk = new TextDecoder().decode(value);
                 validateBufferBeforeAccumulation(streamState, chunk, {
                   maxBufferSize: maxStreamBufferSize,
-                  logger,
+                  logger
                 });
 
                 updateStreamValidatorState(streamState, chunk);
                 chunks.push(value);
-              },
+              }
             });
-          },
+          }
         };
       }
 
       return result;
-    },
+    }
   };
 }
 
 /**
  * Re-exports types for convenience.
  */
-export type {
-  GuardedAIOptions,
-  GuardedGenerateTextOptions,
-  GuardedStreamOptions,
-  GuardedTextResult,
-} from './types.js';
+export type { GuardedAIOptions, GuardedGenerateTextOptions, GuardedStreamOptions, GuardedTextResult } from './types.js';
 
 /**
  * Re-exports the messagesToText utility for external use.

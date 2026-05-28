@@ -12,7 +12,7 @@ export {
   isConnectorCategory,
   isTestResult,
   isConnectorDefinition,
-  type z,
+  type z
 } from './base.js';
 
 export {
@@ -21,7 +21,7 @@ export {
   getConnectorsByCategory,
   hasConnector,
   getConnectorIds,
-  getCategories,
+  getCategories
 } from './registry.js';
 
 // Export connector implementations

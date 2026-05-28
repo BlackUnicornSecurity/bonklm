@@ -35,16 +35,8 @@ localsAPI.setGlobalLocalsManager(localsManager);
 import { Severity, RiskLevel } from '@blackunicorn/bonklm';
 import type { GuardrailResult, Validator } from '@blackunicorn/bonklm';
 import { InMemoryLRUCache, GuardrailEngine } from '@blackunicorn/bonklm';
-import {
-  withBonkLM,
-  createBonklmTriggerHandle,
-  getBonklmHandle,
-  bonklmHandleLocalsKey,
-} from '../src/with-bonklm.js';
-import type {
-  BonklmTriggerHandle,
-  BonklmTriggerRunContext,
-} from '../src/types.js';
+import { withBonkLM, createBonklmTriggerHandle, getBonklmHandle, bonklmHandleLocalsKey } from '../src/with-bonklm.js';
+import type { BonklmTriggerHandle, BonklmTriggerRunContext } from '../src/types.js';
 
 beforeEach(() => {
   localsManager.reset();
@@ -58,7 +50,7 @@ const okResult = (note: string): GuardrailResult => ({
   risk_level: RiskLevel.LOW,
   risk_score: 0,
   findings: [],
-  timestamp: Date.now(),
+  timestamp: Date.now()
 });
 
 const blockResult = (note: string): GuardrailResult => ({
@@ -69,7 +61,7 @@ const blockResult = (note: string): GuardrailResult => ({
   risk_level: RiskLevel.HIGH,
   risk_score: 0.95,
   findings: [],
-  timestamp: Date.now(),
+  timestamp: Date.now()
 });
 
 /**
@@ -95,7 +87,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
   describe('AC #2: withBonkLM(opts) returns { middleware, onFailure }', () => {
     it('returns a bindings object with middleware + onFailure functions', () => {
       const bindings = withBonkLM({
-        validators: [{ name: 'V', validate: () => okResult('cold') }],
+        validators: [{ name: 'V', validate: () => okResult('cold') }]
       });
       expect(typeof bindings.middleware).toBe('function');
       expect(typeof bindings.onFailure).toBe('function');
@@ -103,11 +95,11 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
 
     it('middleware is async and returns a Promise', () => {
       const { middleware } = withBonkLM({
-        validators: [{ name: 'V', validate: () => okResult('cold') }],
+        validators: [{ name: 'V', validate: () => okResult('cold') }]
       });
       const result = middleware({
         ctx: makeCtx('run_test_1'),
-        next: async () => {},
+        next: async () => {}
       });
       expect(result).toBeInstanceOf(Promise);
       return result;
@@ -115,11 +107,11 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
 
     it('onFailure is async and returns a Promise', () => {
       const { onFailure } = withBonkLM({
-        validators: [{ name: 'V', validate: () => okResult('cold') }],
+        validators: [{ name: 'V', validate: () => okResult('cold') }]
       });
       const result = onFailure({
         ctx: makeCtx('run_test_2'),
-        error: new Error('boom'),
+        error: new Error('boom')
       });
       expect(result).toBeInstanceOf(Promise);
       return result;
@@ -129,14 +121,14 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
   describe('AC #3: middleware stores a handle in locals before next()', () => {
     it('handle is present in locals AFTER middleware runs', async () => {
       const { middleware } = withBonkLM({
-        validators: [{ name: 'V', validate: () => okResult('cold') }],
+        validators: [{ name: 'V', validate: () => okResult('cold') }]
       });
       let handleSeenInsideRun: BonklmTriggerHandle | undefined;
       await middleware({
         ctx: makeCtx('run_handle_1'),
         next: async () => {
           handleSeenInsideRun = getBonklmHandle();
-        },
+        }
       });
       expect(handleSeenInsideRun).toBeDefined();
       expect(typeof handleSeenInsideRun?.validateInput).toBe('function');
@@ -147,7 +139,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
     it('middleware calls next() exactly once', async () => {
       const next = vi.fn().mockResolvedValue(undefined);
       const { middleware } = withBonkLM({
-        validators: [{ name: 'V', validate: () => okResult('cold') }],
+        validators: [{ name: 'V', validate: () => okResult('cold') }]
       });
       await middleware({ ctx: makeCtx('run_next_1'), next });
       expect(next).toHaveBeenCalledTimes(1);
@@ -161,7 +153,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       // Trigger.dev runner; this test only verifies that locals.get
       // works correctly after the event loop yields.
       const { middleware } = withBonkLM({
-        validators: [{ name: 'V', validate: () => okResult('cold') }],
+        validators: [{ name: 'V', validate: () => okResult('cold') }]
       });
       let handleAfterAwait: BonklmTriggerHandle | undefined;
       await middleware({
@@ -170,9 +162,9 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
           const handleBeforeAwait = getBonklmHandle();
           expect(handleBeforeAwait).toBeDefined();
           // Simulated wait.for() boundary — heap is checkpointed here.
-          await new Promise((resolve) => setTimeout(resolve, 5));
+          await new Promise(resolve => setTimeout(resolve, 5));
           handleAfterAwait = getBonklmHandle();
-        },
+        }
       });
       expect(handleAfterAwait).toBeDefined();
       expect(typeof handleAfterAwait?.validateInput).toBe('function');
@@ -189,7 +181,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       const { middleware } = withBonkLM({
         validators,
         engine: sharedEngine,
-        cache,
+        cache
       });
 
       // Attempt 1 — middleware runs, handle built, validator fires cold.
@@ -198,7 +190,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
         ctx: makeCtx('run_retry_1'),
         next: async () => {
           r1 = await getBonklmHandle().validateInput('attack payload');
-        },
+        }
       });
 
       // Attempt 2 — Trigger.dev retries the SAME run (same run.id).
@@ -212,7 +204,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
             blocked: boolean;
             results: Array<{ fromCache: boolean }>;
           };
-        },
+        }
       });
 
       expect(r1?.blocked).toBe(true);
@@ -223,10 +215,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       // so the test cannot accidentally pass when cachedValidate is
       // failing to write entries (validator called once but BOTH calls
       // returning fromCache=false would otherwise slip through).
-      expect(
-        (r1 as unknown as { results: Array<{ fromCache: boolean }> }).results[0]
-          .fromCache
-      ).toBe(false);
+      expect((r1 as unknown as { results: Array<{ fromCache: boolean }> }).results[0].fromCache).toBe(false);
     });
 
     it('different run.id => cache miss (no cross-run cache poisoning)', async () => {
@@ -238,20 +227,20 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       const { middleware } = withBonkLM({
         validators,
         engine: sharedEngine,
-        cache,
+        cache
       });
 
       await middleware({
         ctx: makeCtx('run_A'),
         next: async () => {
           await getBonklmHandle().validateInput('payload');
-        },
+        }
       });
       await middleware({
         ctx: makeCtx('run_B'),
         next: async () => {
           await getBonklmHandle().validateInput('payload');
-        },
+        }
       });
 
       // Two distinct run.ids → two distinct cacheNamespaces → validator
@@ -263,14 +252,14 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
   describe('AC #5: ctx.run.isReplay handling', () => {
     it('isReplay=true still produces a usable handle (locals are restored from CRIU)', async () => {
       const { middleware } = withBonkLM({
-        validators: [{ name: 'V', validate: () => okResult('cold') }],
+        validators: [{ name: 'V', validate: () => okResult('cold') }]
       });
       let handle: BonklmTriggerHandle | undefined;
       await middleware({
         ctx: makeCtx('run_replay_1', true),
         next: async () => {
           handle = getBonklmHandle();
-        },
+        }
       });
       expect(handle).toBeDefined();
       const r = await handle!.validateInput('hello');
@@ -279,7 +268,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
 
     it('arch X2 closure (Sprint 14 deferred): isReplay=true short-circuits handle rebuild when slot is already populated', async () => {
       const { middleware } = withBonkLM({
-        validators: [{ name: 'V', validate: () => okResult('cold') }],
+        validators: [{ name: 'V', validate: () => okResult('cold') }]
       });
       // First (non-replay) attempt populates the locals slot.
       let handleA: BonklmTriggerHandle | undefined;
@@ -287,7 +276,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
         ctx: makeCtx('run_replay_2', false),
         next: async () => {
           handleA = getBonklmHandle();
-        },
+        }
       });
       // Resume of the SAME attempt (isReplay=true). Locals still
       // carries handleA from the heap snapshot. The middleware
@@ -297,7 +286,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
         ctx: makeCtx('run_replay_2', true),
         next: async () => {
           handleB = getBonklmHandle();
-        },
+        }
       });
       expect(handleA).toBe(handleB);
     });
@@ -310,8 +299,8 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
           info: () => {},
           warn: (msg: string) => warnings.push({ msg }),
           error: () => {},
-          debug: () => {},
-        },
+          debug: () => {}
+        }
       });
       // Locals slot is empty (beforeEach reset). isReplay=true + empty
       // slot triggers fallback rebuild + warning.
@@ -320,12 +309,10 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
         ctx: makeCtx('run_replay_3', true),
         next: async () => {
           handle = getBonklmHandle();
-        },
+        }
       });
       expect(handle).toBeDefined();
-      expect(warnings.some((w) => /isReplay.*locals.*empty/i.test(w.msg))).toBe(
-        true
-      );
+      expect(warnings.some(w => /isReplay.*locals.*empty/i.test(w.msg))).toBe(true);
     });
   });
 
@@ -334,7 +321,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       const validate = vi.fn().mockReturnValue(okResult('cold'));
       const handle = createBonklmTriggerHandle({
         validators: [{ name: 'V', validate }],
-        runId: 'run_input_1',
+        runId: 'run_input_1'
       });
       await handle.validateInput('hello');
       expect(validate).toHaveBeenCalledWith({ kind: 'text', content: 'hello' });
@@ -344,15 +331,15 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       const validate = vi.fn().mockReturnValue(okResult('cold'));
       const handle = createBonklmTriggerHandle({
         validators: [{ name: 'V', validate }],
-        runId: 'run_input_2',
+        runId: 'run_input_2'
       });
       await handle.validateInput({
         kind: 'retrieved_docs',
-        docs: [{ content: 'doc one' }],
+        docs: [{ content: 'doc one' }]
       });
       expect(validate).toHaveBeenCalledWith({
         kind: 'retrieved_docs',
-        docs: [{ content: 'doc one' }],
+        docs: [{ content: 'doc one' }]
       });
     });
 
@@ -360,12 +347,12 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       const validate = vi.fn().mockReturnValue(okResult('cold'));
       const handle = createBonklmTriggerHandle({
         validators: [{ name: 'V', validate }],
-        runId: 'run_output_1',
+        runId: 'run_output_1'
       });
       await handle.validateOutput('generated text');
       expect(validate).toHaveBeenCalledWith({
         kind: 'text',
-        content: 'generated text',
+        content: 'generated text'
       });
     });
 
@@ -373,13 +360,13 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       const validate = vi.fn().mockReturnValue(okResult('cold'));
       const handle = createBonklmTriggerHandle({
         validators: [{ name: 'V', validate }],
-        runId: 'run_tool_1',
+        runId: 'run_tool_1'
       });
       await handle.validateToolArgs('send_email', { to: 'a@b.com' });
       expect(validate).toHaveBeenCalledWith({
         kind: 'tool_call',
         toolName: 'send_email',
-        args: { to: 'a@b.com' },
+        args: { to: 'a@b.com' }
       });
     });
 
@@ -388,9 +375,9 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
         validators: [
           { name: 'V1', validate: () => okResult('first ok') },
           { name: 'V2', validate: () => blockResult('second blocked') },
-          { name: 'V3', validate: () => okResult('third ok') },
+          { name: 'V3', validate: () => okResult('third ok') }
         ],
-        runId: 'run_agg_1',
+        runId: 'run_agg_1'
       });
       const r = await handle.validateInput('x');
       expect(r.blocked).toBe(true);
@@ -403,9 +390,9 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       const handle = createBonklmTriggerHandle({
         validators: [
           { name: 'V1', validate: () => okResult('ok') },
-          { name: 'V2', validate: () => okResult('ok') },
+          { name: 'V2', validate: () => okResult('ok') }
         ],
-        runId: 'run_agg_2',
+        runId: 'run_agg_2'
       });
       const r = await handle.validateInput('x');
       expect(r.blocked).toBe(false);
@@ -437,14 +424,14 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       const anon: Validator = { validate: () => okResult('cold') };
       const { middleware } = withBonkLM({
         validators: [anon],
-        cache: new InMemoryLRUCache(),
+        cache: new InMemoryLRUCache()
       });
       await expect(
         middleware({
           ctx: makeCtx('run_noname_1'),
           next: async () => {
             await getBonklmHandle().validateInput('x');
-          },
+          }
         })
       ).rejects.toThrow(/no `name` property/);
     });
@@ -454,7 +441,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
     it('validateToolArgs returns BLOCK for empty toolName', async () => {
       const handle = createBonklmTriggerHandle({
         validators: [{ name: 'V', validate: () => okResult('cold') }],
-        runId: 'run_bound_1',
+        runId: 'run_bound_1'
       });
       const r = await handle.validateToolArgs('', { x: 1 });
       expect(r.blocked).toBe(true);
@@ -464,7 +451,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
     it('validateToolArgs returns BLOCK for whitespace-only toolName', async () => {
       const handle = createBonklmTriggerHandle({
         validators: [{ name: 'V', validate: () => okResult('cold') }],
-        runId: 'run_bound_2',
+        runId: 'run_bound_2'
       });
       const r = await handle.validateToolArgs('   ', { x: 1 });
       expect(r.blocked).toBe(true);
@@ -473,7 +460,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
     it('validateToolArgs returns BLOCK for non-string toolName', async () => {
       const handle = createBonklmTriggerHandle({
         validators: [{ name: 'V', validate: () => okResult('cold') }],
-        runId: 'run_bound_3',
+        runId: 'run_bound_3'
       });
       // @ts-expect-error — invalid input under test.
       const r = await handle.validateToolArgs(42, { x: 1 });
@@ -483,7 +470,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
     it('validateToolArgs with Map in args returns BLOCK (not throw)', async () => {
       const handle = createBonklmTriggerHandle({
         validators: [{ name: 'V', validate: () => okResult('cold') }],
-        runId: 'run_bound_4',
+        runId: 'run_bound_4'
       });
       const r = await handle.validateToolArgs('send', { m: new Map() });
       expect(r.blocked).toBe(true);
@@ -493,7 +480,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
     it('validateInput with non-plain-prototype object BLOCKs', async () => {
       const handle = createBonklmTriggerHandle({
         validators: [{ name: 'V', validate: () => okResult('cold') }],
-        runId: 'run_bound_5',
+        runId: 'run_bound_5'
       });
       class Custom {
         x = 1;
@@ -502,7 +489,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       const r = await handle.validateInput({
         kind: 'tool_call',
         toolName: 'x',
-        args: new Custom(),
+        args: new Custom()
       });
       expect(r.blocked).toBe(true);
     });
@@ -510,7 +497,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
     it('validateInput rejects wrong-shape objects', async () => {
       const handle = createBonklmTriggerHandle({
         validators: [{ name: 'V', validate: () => okResult('cold') }],
-        runId: 'run_bound_6',
+        runId: 'run_bound_6'
       });
       // @ts-expect-error — invalid shape under test.
       const r = await handle.validateInput(42);
@@ -523,11 +510,11 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       const warn = vi.fn();
       const { onFailure } = withBonkLM({
         validators: [{ name: 'V', validate: () => okResult('cold') }],
-        logger: { warn },
+        logger: { warn }
       });
       await onFailure({
         ctx: makeCtx('run_fail_1'),
-        error: new Error('upstream blew up'),
+        error: new Error('upstream blew up')
       });
       expect(warn).toHaveBeenCalled();
       const [msg, meta] = warn.mock.calls[0];
@@ -537,11 +524,9 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
 
     it('does not throw when no logger is configured', async () => {
       const { onFailure } = withBonkLM({
-        validators: [{ name: 'V', validate: () => okResult('cold') }],
+        validators: [{ name: 'V', validate: () => okResult('cold') }]
       });
-      await expect(
-        onFailure({ ctx: makeCtx('run_fail_2'), error: new Error('x') })
-      ).resolves.not.toThrow();
+      await expect(onFailure({ ctx: makeCtx('run_fail_2'), error: new Error('x') })).resolves.not.toThrow();
     });
 
     it('sanitizes attacker-controlled error reason text before logging', async () => {
@@ -552,12 +537,12 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       const warn = vi.fn();
       const { onFailure } = withBonkLM({
         validators: [{ name: 'V', validate: () => okResult('cold') }],
-        logger: { warn },
+        logger: { warn }
       });
       const ctlChars = '[31mEVIL[0m';
       await onFailure({
         ctx: makeCtx('run_fail_3'),
-        error: new Error(ctlChars),
+        error: new Error(ctlChars)
       });
       expect(warn).toHaveBeenCalled();
       const meta = warn.mock.calls[0][1] as { error?: string };
@@ -571,7 +556,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
         withBonkLM({
           validators: [{ name: 'V', validate: () => okResult('cold') }],
           cacheNamespace: 'bad::ns',
-          cache: new InMemoryLRUCache(),
+          cache: new InMemoryLRUCache()
         })
       ).toThrow(/cacheNamespace/);
     });
@@ -586,16 +571,13 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
         // returns blocked=false for everything but lacks the
         // required methods.
         locals.set(bonklmHandleLocalsKey, {
-          backdoor: true,
+          backdoor: true
         } as unknown as BonklmTriggerHandle);
         expect(() => getBonklmHandle()).toThrow(/not a valid BonklmTriggerHandle/);
       });
 
       it('getBonklmHandle() throws when the slot is null (R1 — old `=== undefined` check would have passed)', () => {
-        locals.set(
-          bonklmHandleLocalsKey,
-          null as unknown as BonklmTriggerHandle
-        );
+        locals.set(bonklmHandleLocalsKey, null as unknown as BonklmTriggerHandle);
         expect(() => getBonklmHandle()).toThrow(/no BonkLM handle/);
       });
 
@@ -604,13 +586,13 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
           validateInput: async () => ({
             blocked: false,
             allowed: true,
-            results: [],
+            results: []
           }),
           validateToolArgs: async () => ({
             blocked: false,
             allowed: true,
-            results: [],
-          }),
+            results: []
+          })
         } as unknown as BonklmTriggerHandle);
         expect(() => getBonklmHandle()).toThrow(/not a valid BonklmTriggerHandle/);
       });
@@ -619,30 +601,28 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
     describe('arch X5 — cross-task locals bleed detection via run-id tag', () => {
       it('getBonklmHandle(ctx) throws when the handle was minted for a different run.id', async () => {
         const { middleware } = withBonkLM({
-          validators: [{ name: 'V', validate: () => okResult('cold') }],
+          validators: [{ name: 'V', validate: () => okResult('cold') }]
         });
         // Run A populates the locals slot.
         await middleware({
           ctx: makeCtx('run_A_xtask'),
-          next: async () => {},
+          next: async () => {}
         });
         // Worker forgot to reset locals between runs. Run B's handler
         // tries to retrieve the handle with ITS ctx — mismatch detected.
-        expect(() => getBonklmHandle(makeCtx('run_B_xtask'))).toThrow(
-          /cross-task locals bleed/
-        );
+        expect(() => getBonklmHandle(makeCtx('run_B_xtask'))).toThrow(/cross-task locals bleed/);
       });
 
       it('getBonklmHandle(ctx) succeeds when the handle was minted for the SAME run.id', async () => {
         const { middleware } = withBonkLM({
-          validators: [{ name: 'V', validate: () => okResult('cold') }],
+          validators: [{ name: 'V', validate: () => okResult('cold') }]
         });
         await middleware({
           ctx: makeCtx('run_same'),
           next: async () => {
             const h = getBonklmHandle(makeCtx('run_same'));
             expect(typeof h.validateInput).toBe('function');
-          },
+          }
         });
       });
     });
@@ -651,7 +631,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       it('validateInput returns BLOCK when kind=text and content is numeric', async () => {
         const handle = createBonklmTriggerHandle({
           validators: [{ name: 'V', validate: () => okResult('cold') }],
-          runId: 'run_text_numeric',
+          runId: 'run_text_numeric'
         });
         // @ts-expect-error — invalid shape under test.
         const r = await handle.validateInput({ kind: 'text', content: 42 });
@@ -662,7 +642,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
       it('validateInput returns BLOCK when kind=text and content is undefined', async () => {
         const handle = createBonklmTriggerHandle({
           validators: [{ name: 'V', validate: () => okResult('cold') }],
-          runId: 'run_text_undef',
+          runId: 'run_text_undef'
         });
         // @ts-expect-error — invalid shape under test.
         const r = await handle.validateInput({ kind: 'text' });
@@ -686,7 +666,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
             const r = await getBonklmHandle().validateInput('hello');
             expect(r.blocked).toBe(false);
             expect(evilValidate).not.toHaveBeenCalled();
-          },
+          }
         });
       });
     });
@@ -707,7 +687,7 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
             expect(validate).toHaveBeenCalledTimes(1);
             expect(a.results[0].fromCache).toBe(false);
             expect(b.results[0].fromCache).toBe(true);
-          },
+          }
         });
       });
     });
@@ -740,13 +720,13 @@ describe('Story 2.9 — withBonkLM (Trigger.dev v3/v4 middleware)', () => {
           ctx: makeCtx('run_shared_engine'),
           next: async () => {
             await getBonklmHandle().validateInput('payload');
-          },
+          }
         });
         await factory2.middleware({
           ctx: makeCtx('run_shared_engine'),
           next: async () => {
             await getBonklmHandle().validateInput('payload');
-          },
+          }
         });
         expect(validate).toHaveBeenCalledTimes(1);
       });

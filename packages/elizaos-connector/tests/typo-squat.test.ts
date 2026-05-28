@@ -2,11 +2,7 @@
  * Story 2.1b-connectors — Levenshtein typo-squat detection tests.
  */
 import { describe, expect, it } from 'vitest';
-import {
-  levenshteinDistance,
-  detectTypoSquat,
-  detectTypoSquatBatch,
-} from '../src/typo-squat.js';
+import { levenshteinDistance, detectTypoSquat, detectTypoSquatBatch } from '../src/typo-squat.js';
 
 describe('levenshteinDistance', () => {
   it('returns 0 on identical strings', () => {
@@ -50,7 +46,7 @@ describe('detectTypoSquat', () => {
     expect(result.exactMatch).toBe(false);
     expect(result.nearestTypoSquat).toEqual({
       target: '@elizaos/plugin-solana',
-      distance: 1,
+      distance: 1
     });
   });
 
@@ -99,7 +95,7 @@ describe('detectTypoSquatBatch', () => {
         '@elizaos/plugin-solana', // exact — filtered
         '@elizaos/plugin-soIana', // typo-squat — kept
         '@unknown/plugin-foobar', // unknown-distant — filtered
-        '@elizaos/plugin-evm', // exact — filtered
+        '@elizaos/plugin-evm' // exact — filtered
       ],
       allowlist
     );

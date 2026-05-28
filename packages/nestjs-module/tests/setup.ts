@@ -6,4 +6,7 @@
 import 'reflect-metadata';
 
 // Verify reflect-metadata is loaded
-console.log('[test setup] reflect-metadata loaded:', typeof Reflect !== 'undefined' && typeof Reflect.getMetadata === 'function');
+console.log(
+  '[test setup] reflect-metadata loaded:',
+  typeof Reflect !== 'undefined' && typeof Reflect.getMetadata === 'function'
+);

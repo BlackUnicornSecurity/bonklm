@@ -47,11 +47,7 @@ export type BonklmTraceAction = 'allow' | 'block';
  * caller passes any of them via `bonklmTrace(...).tracer`.
  */
 export interface BonklmTracer {
-  startActiveSpan: <T>(
-    name: string,
-    options: BonklmSpanOptions,
-    fn: (span: BonklmSpan) => T
-  ) => T;
+  startActiveSpan: <T>(name: string, options: BonklmSpanOptions, fn: (span: BonklmSpan) => T) => T;
 }
 
 export interface BonklmSpanOptions {
@@ -96,10 +92,7 @@ export interface BonklmTraceOptions {
  * contract is frozen — bonklm will never instantiate its own SDK /
  * exporter / processor. Surface vocabulary (R2-10 locked) is frozen.
  */
-export function bonklmTrace<R extends GuardrailResult>(
-  result: R,
-  options: BonklmTraceOptions
-): R {
+export function bonklmTrace<R extends GuardrailResult>(result: R, options: BonklmTraceOptions): R {
   if (!options?.tracer) {
     throw new TypeError('bonklmTrace: options.tracer is required.');
   }
@@ -133,10 +126,10 @@ export function bonklmTrace<R extends GuardrailResult>(
     'bonklm.action': action,
     'bonklm.finding_count': findingCount,
     'bonklm.surface': options.surface,
-    ...(options.extraAttributes ?? {}),
+    ...(options.extraAttributes ?? {})
   };
 
-  options.tracer.startActiveSpan(spanName, { attributes }, (span) => {
+  options.tracer.startActiveSpan(spanName, { attributes }, span => {
     // Set attributes individually as well — some OTel implementations
     // ignore the constructor `attributes` field on activated spans.
     //
@@ -171,7 +164,7 @@ export function bonklmTrace<R extends GuardrailResult>(
         span.addEvent('bonklm.finding', {
           category: sanitizeMeta(finding.category ?? 'unknown'),
           severity: sanitizeMeta(finding.severity ?? severity),
-          description: sanitizeMeta(finding.description ?? ''),
+          description: sanitizeMeta(finding.description ?? '')
         });
       }
     }

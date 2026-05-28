@@ -16,9 +16,12 @@
 
 ## Overview
 
-The `@blackunicorn/bonklm-logger` package provides attack logging and security observability for BonkLM. It captures validation events, analyzes attack patterns, and provides visibility into security threats against your LLM applications.
+The `@blackunicorn/bonklm-logger` package provides attack logging and security observability for
+BonkLM. It captures validation events, analyzes attack patterns, and provides visibility into
+security threats against your LLM applications.
 
 This package contains:
+
 - **AttackLogger** - Main logger class for capturing validation events
 - **AttackLogStore** - In-memory storage with TTL and size limits
 - **Transform Utilities** - Content sanitization and type derivation
@@ -103,12 +106,12 @@ Main class for logging and managing attack entries.
 import { AttackLogger } from '@blackunicorn/bonklm-logger';
 
 const logger = new AttackLogger({
-  max_logs: 1000,        // Maximum entries to store
-  ttl: 3600000,          // Time-to-live in ms (1 hour)
-  enabled: true,         // Enable/disable logging
-  sanitize_pii: true,    // Redact PII in logs
+  max_logs: 1000, // Maximum entries to store
+  ttl: 3600000, // Time-to-live in ms (1 hour)
+  enabled: true, // Enable/disable logging
+  sanitize_pii: true, // Redact PII in logs
   origin_type: 'sessionId', // Origin tracking
-  custom_origin: 'api',  // Custom origin if origin_type='custom'
+  custom_origin: 'api', // Custom origin if origin_type='custom'
   max_content_size: 10000, // Max content size in bytes
   warn_before_ttl_clear: true
 });
@@ -128,16 +131,16 @@ const logger = new AttackLogger({
 
 Configuration options for AttackLogger.
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `max_logs` | `number` | `1000` | Maximum entries to store |
-| `ttl` | `number` | `2592000000` | Entry TTL in milliseconds (30 days) |
-| `enabled` | `boolean` | `true` | Enable/disable logging |
-| `sanitize_pii` | `boolean` | `true` | Redact PII in logs |
-| `origin_type` | `'sessionId' \| 'custom' \| 'none'` | `'sessionId'` | Origin tracking mode |
-| `custom_origin` | `string` | - | Custom origin identifier |
-| `max_content_size` | `number` | `1048576` | Max content size in bytes (1MB) |
-| `warn_before_ttl_clear` | `boolean` | `true` | Warn before clearing TTL entries |
+| Option                  | Type                                | Default       | Description                         |
+| ----------------------- | ----------------------------------- | ------------- | ----------------------------------- |
+| `max_logs`              | `number`                            | `1000`        | Maximum entries to store            |
+| `ttl`                   | `number`                            | `2592000000`  | Entry TTL in milliseconds (30 days) |
+| `enabled`               | `boolean`                           | `true`        | Enable/disable logging              |
+| `sanitize_pii`          | `boolean`                           | `true`        | Redact PII in logs                  |
+| `origin_type`           | `'sessionId' \| 'custom' \| 'none'` | `'sessionId'` | Origin tracking mode                |
+| `custom_origin`         | `string`                            | -             | Custom origin identifier            |
+| `max_content_size`      | `number`                            | `1048576`     | Max content size in bytes (1MB)     |
+| `warn_before_ttl_clear` | `boolean`                           | `true`        | Warn before clearing TTL entries    |
 
 ### LogFilter
 
@@ -145,14 +148,14 @@ Filter criteria for retrieving log entries.
 
 ```typescript
 interface LogFilter {
-  injection_type?: string | string[];  // Filter by type
-  vector?: string | string[];          // Filter by vector
+  injection_type?: string | string[]; // Filter by type
+  vector?: string | string[]; // Filter by vector
   risk_level?: 'LOW' | 'MEDIUM' | 'HIGH' | Array<RiskLevel>;
-  blocked?: boolean;                   // Filter by blocked status
-  since?: number;                      // Filter by start timestamp
-  until?: number;                      // Filter by end timestamp
-  origin?: string;                     // Filter by origin
-  limit?: number;                      // Limit results
+  blocked?: boolean; // Filter by blocked status
+  since?: number; // Filter by start timestamp
+  until?: number; // Filter by end timestamp
+  origin?: string; // Filter by origin
+  limit?: number; // Limit results
 }
 ```
 
@@ -177,11 +180,11 @@ File export paths are validated to prevent path traversal:
 
 ```typescript
 // These will be rejected:
-await logger.exportJSONToFile('../etc/passwd');  // Path traversal
-await logger.exportJSONToFile('/etc/attacks.json');  // Outside CWD
+await logger.exportJSONToFile('../etc/passwd'); // Path traversal
+await logger.exportJSONToFile('/etc/attacks.json'); // Outside CWD
 
 // This is allowed:
-await logger.exportJSONToFile('./logs/attacks.json');  // Relative path
+await logger.exportJSONToFile('./logs/attacks.json'); // Relative path
 ```
 
 ### Memory Protection
@@ -190,7 +193,7 @@ The logger enforces size limits to prevent memory exhaustion:
 
 ```typescript
 const logger = new AttackLogger({
-  max_logs: 1000,         // Maximum entries
+  max_logs: 1000, // Maximum entries
   max_content_size: 10000 // Max content size per entry
 });
 ```

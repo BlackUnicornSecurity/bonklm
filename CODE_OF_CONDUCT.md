@@ -22,8 +22,10 @@ We pledge to make participation in our project a harassment-free experience for 
 
 ## Enforcement
 
-Project maintainers are responsible for clarifying standards and may take action in response to unacceptable behavior.
+Project maintainers are responsible for clarifying standards and may take action in response to
+unacceptable behavior.
 
 ## Attribution
 
-This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org/), version 2.1.
+This Code of Conduct is adapted from the
+[Contributor Covenant](https://www.contributor-covenant.org/), version 2.1.

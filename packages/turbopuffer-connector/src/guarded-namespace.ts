@@ -52,7 +52,7 @@
 import {
   applyRetrievedDocValidatorToMatches,
   ConnectorValidationError,
-  sanitizeReasonText,
+  sanitizeReasonText
 } from '@blackunicorn/bonklm/core/connector-utils';
 // Type-only imports from the root barrel are erased at compile time
 // + carry no runtime cost. Safe to keep on the root path.
@@ -63,7 +63,7 @@ import type {
   MemoryWriteValidator,
   RetrievedDoc,
   RetrievedDocValidator,
-  ValidatorResult,
+  ValidatorResult
 } from '@blackunicorn/bonklm';
 // Severity/RiskLevel are value imports (used to construct the
 // synthetic notifyCachedResult payload). Edge-safe — they're plain
@@ -74,7 +74,7 @@ import type {
   GuardedNamespaceOptions,
   GuardedNamespaceQueryResponse,
   GuardedNamespaceWriteParams,
-  GuardedTurbopufferRow,
+  GuardedTurbopufferRow
 } from './types.js';
 
 /**
@@ -86,12 +86,7 @@ import type {
  * routing user queries through `multiQuery` for batching would silently
  * bypass `RetrievedDocValidator` on all returned rows.
  */
-const WRAPPED_NAMESPACE_METHODS = new Set([
-  'write',
-  'query',
-  'multiQuery',
-  'deleteAll',
-]);
+const WRAPPED_NAMESPACE_METHODS = new Set(['write', 'query', 'multiQuery', 'deleteAll']);
 
 const DEFAULT_CONTENT_FIELD = 'text';
 const DEFAULT_USER_ID_FIELD = 'userId';
@@ -142,10 +137,7 @@ const DEFAULT_MAX_RESULT_COUNT = 1000;
  * });
  * ```
  */
-export function createGuardedNamespace(
-  namespace: object,
-  options: GuardedNamespaceOptions = {}
-): GuardedNamespace {
+export function createGuardedNamespace(namespace: object, options: GuardedNamespaceOptions = {}): GuardedNamespace {
   const config = resolveOptions(options);
 
   // Pre-build wrappers so the Proxy `get` trap returns stable refs.
@@ -153,7 +145,7 @@ export function createGuardedNamespace(
     write: makeWriteWrapper(namespace, config),
     query: makeQueryWrapper(namespace, config),
     multiQuery: makeMultiQueryWrapper(namespace, config),
-    deleteAll: makeDeleteAllWrapper(namespace),
+    deleteAll: makeDeleteAllWrapper(namespace)
   };
 
   return new Proxy(namespace, {
@@ -167,7 +159,7 @@ export function createGuardedNamespace(
         return (value as (...args: unknown[]) => unknown).bind(target);
       }
       return value;
-    },
+    }
   }) as unknown as GuardedNamespace;
 }
 
@@ -203,40 +195,31 @@ function resolveOptions(options: GuardedNamespaceOptions): ResolvedConfig {
     primaryContentField: contentFields[0],
     userIdField: options.userIdField ?? DEFAULT_USER_ID_FIELD,
     sessionIdField: options.sessionIdField ?? DEFAULT_SESSION_ID_FIELD,
-    columnarWriteMode:
-      options.columnarWriteMode ??
-      (hasWriteValidator ? 'reject' : 'pass-through'),
+    columnarWriteMode: options.columnarWriteMode ?? (hasWriteValidator ? 'reject' : 'pass-through'),
     maxResultCount: options.maxResultCount ?? DEFAULT_MAX_RESULT_COUNT,
     emptyRedactionMode: options.emptyRedactionMode ?? 'block',
     productionMode: options.productionMode ?? false,
-    logger: options.logger,
+    logger: options.logger
   };
 }
 
-function normaliseContentFields(
-  raw: string | readonly string[]
-): readonly string[] {
+function normaliseContentFields(raw: string | readonly string[]): readonly string[] {
   if (typeof raw === 'string') {
     if (raw.length === 0) {
       throw new Error(
-        'createGuardedNamespace: `contentField` must be a non-empty string ' +
-          'or a non-empty array of strings.'
+        'createGuardedNamespace: `contentField` must be a non-empty string ' + 'or a non-empty array of strings.'
       );
     }
     return [raw];
   }
   if (!Array.isArray(raw) || raw.length === 0) {
     throw new Error(
-      'createGuardedNamespace: `contentField` must be a non-empty string ' +
-        'or a non-empty array of strings.'
+      'createGuardedNamespace: `contentField` must be a non-empty string ' + 'or a non-empty array of strings.'
     );
   }
   for (const field of raw) {
     if (typeof field !== 'string' || field.length === 0) {
-      throw new Error(
-        'createGuardedNamespace: every entry of `contentField` array ' +
-          'must be a non-empty string.'
-      );
+      throw new Error('createGuardedNamespace: every entry of `contentField` array ' + 'must be a non-empty string.');
     }
   }
   return [...raw];
@@ -258,7 +241,7 @@ function extractWritePayloadFor(
   return {
     content: raw,
     userId: typeof userId === 'string' ? userId : undefined,
-    sessionId: typeof sessionId === 'string' ? sessionId : undefined,
+    sessionId: typeof sessionId === 'string' ? sessionId : undefined
   };
 }
 
@@ -293,8 +276,7 @@ async function validateRows(
       const decision = await config.memoryWriteValidator.validateWrite(payload);
       if (decision.blocked) {
         // Sprint 14 cumulative sec cross-S1 closure.
-        const sanitizedReason =
-          sanitizeReasonText(decision.result.reason) ?? 'no reason';
+        const sanitizedReason = sanitizeReasonText(decision.result.reason) ?? 'no reason';
         throw new ConnectorValidationError(
           config.productionMode
             ? `turbopuffer: ${pathLabel} at row ${i} column "${field}" blocked by memoryWriteValidator`
@@ -324,14 +306,8 @@ async function validateRows(
 function makeWriteWrapper(
   namespace: object,
   config: ResolvedConfig
-): (
-  params?: GuardedNamespaceWriteParams | null,
-  options?: unknown
-) => Promise<unknown> {
-  return async function write(
-    params?: GuardedNamespaceWriteParams | null,
-    options?: unknown
-  ): Promise<unknown> {
+): (params?: GuardedNamespaceWriteParams | null, options?: unknown) => Promise<unknown> {
+  return async function write(params?: GuardedNamespaceWriteParams | null, options?: unknown): Promise<unknown> {
     if (params === null || typeof params !== 'object') {
       // rev R0 closure (Story 2.11 audit): SDK signature is
       // `write(params?: NamespaceWriteParams | null | undefined, ...)`.
@@ -350,15 +326,12 @@ function makeWriteWrapper(
     // call (mixed schema-evolution writes). Error message is explicit
     // about the mixed-mode detection so consumers can disentangle
     // (sec S-TPUF-5 closure).
-    const hasColumnar =
-      params.upsert_columns !== undefined ||
-      params.patch_columns !== undefined;
-    const hasRows =
-      Array.isArray(params.upsert_rows) || Array.isArray(params.patch_rows);
+    const hasColumnar = params.upsert_columns !== undefined || params.patch_columns !== undefined;
+    const hasRows = Array.isArray(params.upsert_rows) || Array.isArray(params.patch_rows);
     if (hasColumnar && config.memoryWriteValidator !== undefined) {
       if (config.columnarWriteMode === 'reject') {
         const mixedNote = hasRows
-          ? ' (call also contained upsert_rows / patch_rows; entire write rejected to keep validation coverage uniform — split into two calls or set columnarWriteMode=\'pass-through\')'
+          ? " (call also contained upsert_rows / patch_rows; entire write rejected to keep validation coverage uniform — split into two calls or set columnarWriteMode='pass-through')"
           : '';
         throw new ConnectorValidationError(
           `turbopuffer: write() received columnar input ` +
@@ -366,33 +339,23 @@ function makeWriteWrapper(
             `configured and columnarWriteMode='reject' (default). The connector ` +
             `does not transpose columnar→rows automatically. Either submit the ` +
             `data as upsert_rows/patch_rows, or set columnarWriteMode='pass-through' ` +
-            `to opt into unvalidated columnar writes.${ 
-            mixedNote}`,
+            `to opt into unvalidated columnar writes.${mixedNote}`,
           'validation_failed'
         );
       }
       config.logger?.warn(
-        '[bonklm-turbopuffer] write() received columnar input; ' +
-          'memoryWriteValidator passthrough.'
+        '[bonklm-turbopuffer] write() received columnar input; ' + 'memoryWriteValidator passthrough.'
       );
     }
 
     let workingParams: GuardedNamespaceWriteParams = params;
 
     if (Array.isArray(params.upsert_rows)) {
-      const validated = await validateRows(
-        params.upsert_rows,
-        config,
-        'upsert_rows'
-      );
+      const validated = await validateRows(params.upsert_rows, config, 'upsert_rows');
       workingParams = { ...workingParams, upsert_rows: validated };
     }
     if (Array.isArray(params.patch_rows)) {
-      const validated = await validateRows(
-        params.patch_rows,
-        config,
-        'patch_rows'
-      );
+      const validated = await validateRows(params.patch_rows, config, 'patch_rows');
       workingParams = { ...workingParams, patch_rows: validated };
     }
 
@@ -411,22 +374,13 @@ function makeWriteWrapper(
 function makeQueryWrapper(
   namespace: object,
   config: ResolvedConfig
-): (
-  params?: unknown,
-  options?: unknown
-) => Promise<GuardedNamespaceQueryResponse> {
-  return async function query(
-    params?: unknown,
-    options?: unknown
-  ): Promise<GuardedNamespaceQueryResponse> {
-    const response = (await (
+): (params?: unknown, options?: unknown) => Promise<GuardedNamespaceQueryResponse> {
+  return async function query(params?: unknown, options?: unknown): Promise<GuardedNamespaceQueryResponse> {
+    const response = await (
       namespace as {
-        query: (
-          p?: unknown,
-          o?: unknown
-        ) => Promise<GuardedNamespaceQueryResponse>;
+        query: (p?: unknown, o?: unknown) => Promise<GuardedNamespaceQueryResponse>;
       }
-    ).query(params, options));
+    ).query(params, options);
 
     if (response === null || typeof response !== 'object') {
       return response;
@@ -452,9 +406,7 @@ function makeQueryWrapper(
       return response;
     }
 
-    const recordRows = rows.filter(
-      (r): r is GuardedTurbopufferRow => typeof r === 'object' && r !== null
-    );
+    const recordRows = rows.filter((r): r is GuardedTurbopufferRow => typeof r === 'object' && r !== null);
     const { valid } = await applyRetrievedDocValidatorToMatches(
       recordRows,
       config.retrievedDocValidator,
@@ -462,22 +414,18 @@ function makeQueryWrapper(
         const content = m[config.primaryContentField];
         return {
           content: typeof content === 'string' ? content : '',
-          metadata: m,
+          metadata: m
         };
       },
       {
         productionMode: config.productionMode,
-        itemNoun: 'document',
+        itemNoun: 'document'
       }
     );
 
     // Sprint 14 deferred-closure arch X6: dispatch retrieved-doc
     // decision to engine.onIntercept(...) listeners when configured.
-    notifyEngineForRetrievedBatch(
-      config,
-      recordRows,
-      'turbopuffer:query'
-    );
+    notifyEngineForRetrievedBatch(config, recordRows, 'turbopuffer:query');
 
     return { ...response, rows: valid };
   };
@@ -508,19 +456,15 @@ function notifyEngineForRetrievedBatch(
     risk_score: 0,
     findings: [],
     timestamp: Date.now(),
-    validatorName: 'TurbopufferRetrievedDocBatch',
+    validatorName: 'TurbopufferRetrievedDocBatch'
   };
   const contentForCallback = rows
-    .map((r) => {
+    .map(r => {
       const c = r[config.primaryContentField];
       return typeof c === 'string' ? c : '';
     })
     .join('\n');
-  void config.engine.notifyCachedResult(
-    [syntheticResult],
-    contentForCallback,
-    surface
-  );
+  void config.engine.notifyCachedResult([syntheticResult], contentForCallback, surface);
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -604,9 +548,7 @@ function makeMultiQueryWrapper(
         validatedResults.push(sub);
         continue;
       }
-      const recordRows = rows.filter(
-        (r): r is GuardedTurbopufferRow => typeof r === 'object' && r !== null
-      );
+      const recordRows = rows.filter((r): r is GuardedTurbopufferRow => typeof r === 'object' && r !== null);
       const { valid } = await applyRetrievedDocValidatorToMatches(
         recordRows,
         config.retrievedDocValidator,
@@ -614,20 +556,16 @@ function makeMultiQueryWrapper(
           const content = m[config.primaryContentField];
           return {
             content: typeof content === 'string' ? content : '',
-            metadata: m,
+            metadata: m
           };
         },
         {
           productionMode: config.productionMode,
-          itemNoun: 'document',
+          itemNoun: 'document'
         }
       );
       validatedResults.push({ ...sub, rows: valid });
-      notifyEngineForRetrievedBatch(
-        config,
-        recordRows,
-        `turbopuffer:multiQuery[${i}]`
-      );
+      notifyEngineForRetrievedBatch(config, recordRows, `turbopuffer:multiQuery[${i}]`);
     }
 
     return { ...response, results: validatedResults };
@@ -638,9 +576,7 @@ function makeMultiQueryWrapper(
 // DeleteAll wrapper — passthrough
 // ─────────────────────────────────────────────────────────────────────
 
-function makeDeleteAllWrapper(
-  namespace: object
-): (...args: unknown[]) => Promise<unknown> {
+function makeDeleteAllWrapper(namespace: object): (...args: unknown[]) => Promise<unknown> {
   // Use rest-args so we forward EXACTLY the arity the caller used. This
   // matters for vitest's `toHaveBeenCalledWith` strict-arity check + for
   // any future Turbopuffer SDK that adds discriminator behaviour based

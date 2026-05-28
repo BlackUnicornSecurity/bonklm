@@ -124,7 +124,7 @@ const allTests = {
     'UAT-HP-002: GuardrailEngine with Multiple Validators',
     'UAT-HP-003: Streaming Validation with Safe Content',
     'UAT-HP-004: Configuration Profile Variations',
-    'UAT-HP-005: Integration with Framework Examples',
+    'UAT-HP-005: Integration with Framework Examples'
   ],
   security: [
     'UAT-SEC-001: Direct Prompt Injection Attacks',
@@ -136,7 +136,7 @@ const allTests = {
     'UAT-SEC-007: PII Detection',
     'UAT-SEC-008: Bash Safety Detection',
     'UAT-SEC-009: XSS Pattern Detection',
-    'UAT-SEC-010: Multilingual Detection',
+    'UAT-SEC-010: Multilingual Detection'
   ],
   'edge-cases': [
     'UAT-EDGE-001: Empty and Null Input Handling',
@@ -145,14 +145,14 @@ const allTests = {
     'UAT-EDGE-004: Mixed Safe and Unsafe Content',
     'UAT-EDGE-005: Boundary Value Testing',
     'UAT-EDGE-006: Fake Data Exclusion',
-    'UAT-EDGE-007: Session Edge Cases',
+    'UAT-EDGE-007: Session Edge Cases'
   ],
   'error-handling': [
     'UAT-ERR-001: Invalid Configuration Handling',
     'UAT-ERR-002: Type Coercion and Invalid Types',
     'UAT-ERR-003: Broken Validators in Engine',
     'UAT-ERR-004: Circular Reference Prevention',
-    'UAT-ERR-005: Resource Exhaustion Prevention',
+    'UAT-ERR-005: Resource Exhaustion Prevention'
   ],
   performance: [
     'UAT-PERF-001: Large Payload Processing',
@@ -160,7 +160,7 @@ const allTests = {
     'UAT-PERF-003: Multi-Validator Performance',
     'UAT-PERF-004: Sequential vs Parallel Execution',
     'UAT-PERF-005: Memory Usage',
-    'UAT-PERF-006: Cache Performance',
+    'UAT-PERF-006: Cache Performance'
   ],
   integration: [
     'UAT-INT-001: Full Stack Protection',
@@ -169,7 +169,7 @@ const allTests = {
     'UAT-INT-004: Dynamic Validator Management',
     'UAT-INT-005: Override Token Bypass',
     'UAT-INT-006: Streaming with Multiple Validators',
-    'UAT-INT-007: Framework Integration Pattern',
+    'UAT-INT-007: Framework Integration Pattern'
   ],
   configuration: [
     'UAT-CONF-001: Sensitivity Levels',
@@ -178,8 +178,8 @@ const allTests = {
     'UAT-CONF-004: Custom Logger Configuration',
     'UAT-CONF-005: Max Decode Depth Configuration',
     'UAT-CONF-006: Guard-Specific Configurations',
-    'UAT-CONF-007: Engine-Level vs Validator-Level Config',
-  ],
+    'UAT-CONF-007: Engine-Level vs Validator-Level Config'
+  ]
 };
 
 function listTests(): void {
@@ -381,7 +381,9 @@ function generateHTMLReport(report: any, outputPath: string): void {
 
     <div class="categories">
       <h2 style="margin-bottom: 20px; color: #1f2937;">Test Categories</h2>
-      ${report.categories.map((cat: any) => `
+      ${report.categories
+        .map(
+          (cat: any) => `
         <div class="category">
           <div class="category-header" onclick="toggleList(this)">
             <span class="category-name">${cat.name}</span>
@@ -390,7 +392,9 @@ function generateHTMLReport(report: any, outputPath: string): void {
             </span>
           </div>
           <div class="test-list">
-            ${cat.tests.map((test: any) => `
+            ${cat.tests
+              .map(
+                (test: any) => `
               <div class="test-item">
                 <div class="test-status ${test.passed ? 'pass' : 'fail'}">
                   ${test.passed ? '✓' : '✗'}
@@ -401,10 +405,14 @@ function generateHTMLReport(report: any, outputPath: string): void {
                 </div>
                 <div class="test-duration">${test.duration}ms</div>
               </div>
-            `).join('')}
+            `
+              )
+              .join('')}
           </div>
         </div>
-      `).join('')}
+      `
+        )
+        .join('')}
     </div>
 
     <div class="footer">
@@ -456,11 +464,9 @@ async function main(): Promise<void> {
       totalTests: categoryResult.total,
       totalPassed: categoryResult.passed,
       totalFailed: categoryResult.failed,
-      passRate: categoryResult.total > 0
-        ? (categoryResult.passed / categoryResult.total) * 100
-        : 0,
+      passRate: categoryResult.total > 0 ? (categoryResult.passed / categoryResult.total) * 100 : 0,
       categories: [categoryResult],
-      duration: 0,
+      duration: 0
     };
   } else {
     report = await suite.runAll();
@@ -490,7 +496,7 @@ async function main(): Promise<void> {
   process.exit(exitCode);
 }
 
-main().catch((error) => {
+main().catch(error => {
   console.error('Fatal error:', error);
   process.exit(1);
 });

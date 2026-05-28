@@ -31,7 +31,7 @@ describe('LangChain Connector', () => {
   describe('Config Schema', () => {
     it('should accept boolean blockOnFlag', () => {
       const result = langchainConnector.configSchema.safeParse({
-        blockOnFlag: true,
+        blockOnFlag: true
       });
       expect(result.success).toBe(true);
     });
@@ -43,7 +43,7 @@ describe('LangChain Connector', () => {
 
     it('should accept optional blockOnFlag', () => {
       const result = langchainConnector.configSchema.safeParse({
-        blockOnFlag: undefined,
+        blockOnFlag: undefined
       });
       expect(result.success).toBe(true);
     });
@@ -58,7 +58,7 @@ describe('LangChain Connector', () => {
 
     it('should succeed with any config', async () => {
       const result = await langchainConnector.test({
-        blockOnFlag: true,
+        blockOnFlag: true
       });
       expect(result.connection).toBe(true);
       expect(result.validation).toBe(true);

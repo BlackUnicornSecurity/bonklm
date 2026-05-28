@@ -39,7 +39,7 @@ export {
   truncateContent,
   escapeControlCharacters,
   stripAnsiEscapes,
-  sanitizeForJSON,
+  sanitizeForJSON
 } from './transform.js';
 
 // Types
@@ -58,5 +58,5 @@ export type {
   AttackSummary,
   InterceptCallback,
   EngineResult,
-  ValidatorResult,
+  ValidatorResult
 } from './types.js';

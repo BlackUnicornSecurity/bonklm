@@ -13,7 +13,7 @@ export const expressConnector: ConnectorDefinition = {
   name: 'Express',
   category: 'framework',
   detection: {
-    packageJson: ['express'],
+    packageJson: ['express']
   },
 
   test: async (_config, _signal) => {
@@ -21,11 +21,12 @@ export const expressConnector: ConnectorDefinition = {
     // They are detected through package.json
     return {
       connection: true,
-      validation: true,
+      validation: true
     };
   },
 
-  generateSnippet: () => `
+  generateSnippet: () =>
+    `
 import { GuardrailEngine } from '@blackunicorn/bonklm';
 import { expressMiddleware } from '@blackunicorn/bonklm/express-middleware';
 import express from 'express';
@@ -52,6 +53,6 @@ app.listen(3000);
   `.trim(),
 
   configSchema: z.object({
-    validateOnRequest: z.boolean().optional(),
-  }),
+    validateOnRequest: z.boolean().optional()
+  })
 };

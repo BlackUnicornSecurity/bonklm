@@ -49,7 +49,7 @@ import type {
   MemoryWriteValidator,
   RetrievedDoc,
   RetrievedDocValidator,
-  ValidatorResult,
+  ValidatorResult
 } from '@blackunicorn/bonklm';
 // Sprint 14 cumulative sec cross-S1 closure + arch X3-bundle-safety:
 // value imports route through the connector-utils subpath. The root
@@ -59,25 +59,18 @@ import type {
 import {
   applyRetrievedDocValidatorToMatches,
   ConnectorValidationError,
-  sanitizeReasonText,
+  sanitizeReasonText
 } from '@blackunicorn/bonklm/core/connector-utils';
 import type {
   GuardedLanceRecord,
   GuardedLanceTable,
   GuardedLanceTableOptions,
   GuardedMergeInsertBuilder,
-  GuardedQueryHandle,
+  GuardedQueryHandle
 } from './types.js';
 
 /** Methods on the underlying Table that the connector wraps. */
-const WRAPPED_TABLE_METHODS = new Set([
-  'add',
-  'update',
-  'delete',
-  'search',
-  'query',
-  'mergeInsert',
-]);
+const WRAPPED_TABLE_METHODS = new Set(['add', 'update', 'delete', 'search', 'query', 'mergeInsert']);
 
 /** Default `contentField` per Story 2.10. */
 const DEFAULT_CONTENT_FIELD = 'text';
@@ -133,10 +126,7 @@ const DEFAULT_MAX_RESULT_COUNT = 1000;
  * const results = await guarded.search([0.1, 0.2, 0.3]).limit(10).toArray();
  * ```
  */
-export function createGuardedLanceTable(
-  table: object,
-  options: GuardedLanceTableOptions = {}
-): GuardedLanceTable {
+export function createGuardedLanceTable(table: object, options: GuardedLanceTableOptions = {}): GuardedLanceTable {
   const config = resolveOptions(options);
 
   // Pre-build the wrapper functions so the Proxy `get` trap returns a
@@ -148,7 +138,7 @@ export function createGuardedLanceTable(
     delete: makeDeleteWrapper(table, config),
     search: makeSearchWrapper(table, config),
     query: makeQueryWrapper(table, config),
-    mergeInsert: makeMergeInsertWrapper(table, config),
+    mergeInsert: makeMergeInsertWrapper(table, config)
   };
 
   return new Proxy(table, {
@@ -165,7 +155,7 @@ export function createGuardedLanceTable(
         return (value as (...args: unknown[]) => unknown).bind(target);
       }
       return value;
-    },
+    }
   }) as unknown as GuardedLanceTable;
 }
 
@@ -222,19 +212,16 @@ function resolveOptions(options: GuardedLanceTableOptions): ResolvedConfig {
     // by-default when a validator is wired (block SQL paths so the
     // consumer can't accidentally route user input through an
     // unvalidated SQL string).
-    updateSqlMode:
-      options.updateSqlMode ?? (hasWriteValidator ? 'block-sql' : 'pass-through-sql'),
-    maxPredicateLength:
-      options.maxPredicateLength ?? DEFAULT_MAX_PREDICATE_LENGTH,
+    updateSqlMode: options.updateSqlMode ?? (hasWriteValidator ? 'block-sql' : 'pass-through-sql'),
+    maxPredicateLength: options.maxPredicateLength ?? DEFAULT_MAX_PREDICATE_LENGTH,
     maxResultCount: options.maxResultCount ?? DEFAULT_MAX_RESULT_COUNT,
     // sec S2 closure: when a write validator is configured, reject
     // non-array Data by default so Arrow-Table inputs can't silently
     // bypass validation.
-    arrowWriteMode:
-      options.arrowWriteMode ?? (hasWriteValidator ? 'reject' : 'pass-through'),
+    arrowWriteMode: options.arrowWriteMode ?? (hasWriteValidator ? 'reject' : 'pass-through'),
     emptyRedactionMode: options.emptyRedactionMode ?? 'block',
     productionMode: options.productionMode ?? false,
-    logger: options.logger,
+    logger: options.logger
   };
 }
 
@@ -244,30 +231,23 @@ function resolveOptions(options: GuardedLanceTableOptions): ResolvedConfig {
  * silently falling back to defaults — misconfiguration here is a
  * security concern (sec S1: skipped columns = unvalidated payloads).
  */
-function normaliseContentFields(
-  raw: string | readonly string[]
-): readonly string[] {
+function normaliseContentFields(raw: string | readonly string[]): readonly string[] {
   if (typeof raw === 'string') {
     if (raw.length === 0) {
       throw new Error(
-        'createGuardedLanceTable: `contentField` must be a non-empty string ' +
-          'or a non-empty array of strings.'
+        'createGuardedLanceTable: `contentField` must be a non-empty string ' + 'or a non-empty array of strings.'
       );
     }
     return [raw];
   }
   if (!Array.isArray(raw) || raw.length === 0) {
     throw new Error(
-      'createGuardedLanceTable: `contentField` must be a non-empty string ' +
-        'or a non-empty array of strings.'
+      'createGuardedLanceTable: `contentField` must be a non-empty string ' + 'or a non-empty array of strings.'
     );
   }
   for (const field of raw) {
     if (typeof field !== 'string' || field.length === 0) {
-      throw new Error(
-        'createGuardedLanceTable: every entry of `contentField` array must ' +
-          'be a non-empty string.'
-      );
+      throw new Error('createGuardedLanceTable: every entry of `contentField` array must ' + 'be a non-empty string.');
     }
   }
   return [...raw];
@@ -298,7 +278,7 @@ function extractWritePayloadFor(
   return {
     content: raw,
     userId: typeof userId === 'string' ? userId : undefined,
-    sessionId: typeof sessionId === 'string' ? sessionId : undefined,
+    sessionId: typeof sessionId === 'string' ? sessionId : undefined
   };
 }
 
@@ -344,8 +324,7 @@ async function validateWriteRecords(
         // attacker-controlled validator reason before it lands in
         // ConnectorValidationError.message (which downstream consumers
         // route to Sentry / Datadog / OTel spans).
-        const sanitizedReason =
-          sanitizeReasonText(decision.result.reason) ?? 'no reason';
+        const sanitizedReason = sanitizeReasonText(decision.result.reason) ?? 'no reason';
         throw new ConnectorValidationError(
           config.productionMode
             ? `lance: write at row ${i} column "${field}" blocked by memoryWriteValidator`
@@ -388,25 +367,15 @@ function isPlainRecordArray(data: unknown): data is GuardedLanceRecord[] {
   // Spot-check the first element; LanceDB doesn't mix shapes in a
   // single add() call.
   const first = data[0];
-  return (
-    typeof first === 'object' &&
-    first !== null &&
-    Object.getPrototypeOf(first) === Object.prototype
-  );
+  return typeof first === 'object' && first !== null && Object.getPrototypeOf(first) === Object.prototype;
 }
 
-function makeAddWrapper(
-  table: object,
-  config: ResolvedConfig
-): (data: unknown, options?: unknown) => Promise<unknown> {
+function makeAddWrapper(table: object, config: ResolvedConfig): (data: unknown, options?: unknown) => Promise<unknown> {
   return async function add(data: unknown, options?: unknown): Promise<unknown> {
     if (!isPlainRecordArray(data)) {
       // sec S2 closure: reject by default when a validator is wired;
       // otherwise pass through with a warning.
-      if (
-        config.arrowWriteMode === 'reject' &&
-        config.memoryWriteValidator !== undefined
-      ) {
+      if (config.arrowWriteMode === 'reject' && config.memoryWriteValidator !== undefined) {
         throw new ConnectorValidationError(
           'lance: add() received non-plain-record-array data (Arrow Table / ' +
             'stream / class instance) while memoryWriteValidator is configured ' +
@@ -424,10 +393,7 @@ function makeAddWrapper(
       return (table as { add: (d: unknown, o?: unknown) => Promise<unknown> }).add(data, options);
     }
     const validated = await validateWriteRecords(data, config);
-    return (table as { add: (d: unknown, o?: unknown) => Promise<unknown> }).add(
-      validated,
-      options
-    );
+    return (table as { add: (d: unknown, o?: unknown) => Promise<unknown> }).add(validated, options);
   };
 }
 
@@ -439,9 +405,7 @@ function makeAddWrapper(
  * Variant 2 is the only one carrying SQL expressions; variant 3's
  * top-level Record is also SQL-string-typed per the SDK.
  */
-function classifyUpdateArgs(
-  args: readonly unknown[]
-): 'values' | 'valuesSql' | 'recordSql' | 'unknown' {
+function classifyUpdateArgs(args: readonly unknown[]): 'values' | 'valuesSql' | 'recordSql' | 'unknown' {
   if (args.length === 0) return 'unknown';
   const first = args[0];
   if (typeof first !== 'object' || first === null) return 'unknown';
@@ -473,10 +437,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return Object.getPrototypeOf(value) === Object.prototype;
 }
 
-function makeUpdateWrapper(
-  table: object,
-  config: ResolvedConfig
-): (...args: unknown[]) => Promise<unknown> {
+function makeUpdateWrapper(table: object, config: ResolvedConfig): (...args: unknown[]) => Promise<unknown> {
   return async function update(...args: unknown[]): Promise<unknown> {
     const variant = classifyUpdateArgs(args);
     if (variant === 'valuesSql' || variant === 'recordSql') {
@@ -490,9 +451,7 @@ function makeUpdateWrapper(
       }
       // Pass-through: SQL strings are author-controlled per the
       // LanceDB contract. The connector does NOT inspect SQL.
-      return (table as { update: (...a: unknown[]) => Promise<unknown> }).update(
-        ...args
-      );
+      return (table as { update: (...a: unknown[]) => Promise<unknown> }).update(...args);
     }
     if (variant === 'values') {
       const first = args[0] as { values: Record<string, unknown> };
@@ -502,15 +461,10 @@ function makeUpdateWrapper(
       const asRecord: GuardedLanceRecord = { ...first.values };
       const [validated] = await validateWriteRecords([asRecord], config);
       const newFirst = { ...first, values: validated };
-      return (table as { update: (...a: unknown[]) => Promise<unknown> }).update(
-        newFirst,
-        ...args.slice(1)
-      );
+      return (table as { update: (...a: unknown[]) => Promise<unknown> }).update(newFirst, ...args.slice(1));
     }
     // Unknown shape — pass through; LanceDB will throw a typed error.
-    return (table as { update: (...a: unknown[]) => Promise<unknown> }).update(
-      ...args
-    );
+    return (table as { update: (...a: unknown[]) => Promise<unknown> }).update(...args);
   };
 }
 
@@ -519,9 +473,11 @@ function makeMergeInsertWrapper(
   config: ResolvedConfig
 ): (on: string | string[]) => GuardedMergeInsertBuilder {
   return function mergeInsert(on: string | string[]): GuardedMergeInsertBuilder {
-    const builder = (table as {
-      mergeInsert: (k: string | string[]) => object;
-    }).mergeInsert(on);
+    const builder = (
+      table as {
+        mergeInsert: (k: string | string[]) => object;
+      }
+    ).mergeInsert(on);
     return wrapMergeInsertBuilder(builder, config);
   };
 }
@@ -531,25 +487,16 @@ function makeMergeInsertWrapper(
  * and `.execute(data)` runs the write validator before invoking the
  * underlying execute.
  */
-function wrapMergeInsertBuilder(
-  builder: object,
-  config: ResolvedConfig
-): GuardedMergeInsertBuilder {
+function wrapMergeInsertBuilder(builder: object, config: ResolvedConfig): GuardedMergeInsertBuilder {
   return new Proxy(builder, {
     get(target: object, prop: string | symbol, receiver: unknown): unknown {
       if (prop === 'raw') return target;
       if (prop === 'execute') {
-        return async function execute(
-          data: unknown,
-          execOptions?: unknown
-        ): Promise<unknown> {
+        return async function execute(data: unknown, execOptions?: unknown): Promise<unknown> {
           if (!isPlainRecordArray(data)) {
             // sec S2 parity: reject non-plain Data by default when
             // a validator is wired; otherwise warn + passthrough.
-            if (
-              config.arrowWriteMode === 'reject' &&
-              config.memoryWriteValidator !== undefined
-            ) {
+            if (config.arrowWriteMode === 'reject' && config.memoryWriteValidator !== undefined) {
               throw new ConnectorValidationError(
                 'lance: mergeInsert(...).execute() received non-plain-record-array ' +
                   'data while memoryWriteValidator is configured and ' +
@@ -563,14 +510,18 @@ function wrapMergeInsertBuilder(
               '[bonklm-lance] mergeInsert(...).execute() called with ' +
                 'non-plain-record-array data; memoryWriteValidator passthrough.'
             );
-            return (target as {
-              execute: (d: unknown, o?: unknown) => Promise<unknown>;
-            }).execute(data, execOptions);
+            return (
+              target as {
+                execute: (d: unknown, o?: unknown) => Promise<unknown>;
+              }
+            ).execute(data, execOptions);
           }
           const validated = await validateWriteRecords(data, config);
-          return (target as {
-            execute: (d: unknown, o?: unknown) => Promise<unknown>;
-          }).execute(validated, execOptions);
+          return (
+            target as {
+              execute: (d: unknown, o?: unknown) => Promise<unknown>;
+            }
+          ).execute(validated, execOptions);
         };
       }
       const value = Reflect.get(target, prop, receiver);
@@ -582,10 +533,7 @@ function wrapMergeInsertBuilder(
         // so the consumer sees the SDK's actual return rather than
         // silently getting a wrapper they cannot chain off.
         return (...args: unknown[]) => {
-          const result = (value as (...a: unknown[]) => unknown).apply(
-            target,
-            args
-          );
+          const result = (value as (...a: unknown[]) => unknown).apply(target, args);
           if (result === target || isMergeBuilderLike(result)) {
             return wrapMergeInsertBuilder(result as object, config);
           }
@@ -601,32 +549,22 @@ function wrapMergeInsertBuilder(
         };
       }
       return value;
-    },
+    }
   }) as unknown as GuardedMergeInsertBuilder;
 }
 
 function isMergeBuilderLike(value: unknown): boolean {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as { execute?: unknown }).execute === 'function'
-  );
+  return typeof value === 'object' && value !== null && typeof (value as { execute?: unknown }).execute === 'function';
 }
 
 // ─────────────────────────────────────────────────────────────────────
 // Delete wrapper — boundary validation on predicate length
 // ─────────────────────────────────────────────────────────────────────
 
-function makeDeleteWrapper(
-  table: object,
-  config: ResolvedConfig
-): (predicate: string) => Promise<unknown> {
+function makeDeleteWrapper(table: object, config: ResolvedConfig): (predicate: string) => Promise<unknown> {
   return async function deleteFn(predicate: string): Promise<unknown> {
     if (typeof predicate !== 'string') {
-      throw new ConnectorValidationError(
-        'lance: delete() predicate must be a string',
-        'validation_failed'
-      );
+      throw new ConnectorValidationError('lance: delete() predicate must be a string', 'validation_failed');
     }
     if (predicate.length > config.maxPredicateLength) {
       throw new ConnectorValidationError(
@@ -644,22 +582,18 @@ function makeDeleteWrapper(
 // Read wrappers — search() + query()
 // ─────────────────────────────────────────────────────────────────────
 
-function makeSearchWrapper(
-  table: object,
-  config: ResolvedConfig
-): (...args: unknown[]) => GuardedQueryHandle {
+function makeSearchWrapper(table: object, config: ResolvedConfig): (...args: unknown[]) => GuardedQueryHandle {
   return function search(...args: unknown[]): GuardedQueryHandle {
-    const queryBuilder = (table as {
-      search: (...a: unknown[]) => object;
-    }).search(...args);
+    const queryBuilder = (
+      table as {
+        search: (...a: unknown[]) => object;
+      }
+    ).search(...args);
     return wrapQueryBuilder(queryBuilder, config);
   };
 }
 
-function makeQueryWrapper(
-  table: object,
-  config: ResolvedConfig
-): () => GuardedQueryHandle {
+function makeQueryWrapper(table: object, config: ResolvedConfig): () => GuardedQueryHandle {
   return function query(): GuardedQueryHandle {
     const queryBuilder = (table as { query: () => object }).query();
     return wrapQueryBuilder(queryBuilder, config);
@@ -676,18 +610,17 @@ function makeQueryWrapper(
  * This protects validators from O(N) regex-scan DoS on unbounded
  * `query()` calls.
  */
-function wrapQueryBuilder(
-  builder: object,
-  config: ResolvedConfig
-): GuardedQueryHandle {
+function wrapQueryBuilder(builder: object, config: ResolvedConfig): GuardedQueryHandle {
   return new Proxy(builder, {
     get(target: object, prop: string | symbol, receiver: unknown): unknown {
       if (prop === 'raw') return target;
       if (prop === 'toArray') {
         return async function toArray(toArrayOptions?: unknown): Promise<unknown[]> {
-          const rows: unknown[] = await (target as {
-            toArray: (o?: unknown) => Promise<unknown[]>;
-          }).toArray(toArrayOptions);
+          const rows: unknown[] = await (
+            target as {
+              toArray: (o?: unknown) => Promise<unknown[]>;
+            }
+          ).toArray(toArrayOptions);
           // sec S6 closure: result-count cap. Applied BEFORE validator
           // dispatch so unbounded queries don't even reach the
           // O(N)-regex path.
@@ -702,10 +635,7 @@ function wrapQueryBuilder(
           if (config.retrievedDocValidator === undefined) {
             return rows;
           }
-          const recordRows = rows.filter(
-            (r): r is GuardedLanceRecord =>
-              typeof r === 'object' && r !== null
-          );
+          const recordRows = rows.filter((r): r is GuardedLanceRecord => typeof r === 'object' && r !== null);
           const { valid } = await applyRetrievedDocValidatorToMatches(
             recordRows,
             config.retrievedDocValidator,
@@ -717,12 +647,12 @@ function wrapQueryBuilder(
               const content = m[config.primaryContentField];
               return {
                 content: typeof content === 'string' ? content : '',
-                metadata: m,
+                metadata: m
               };
             },
             {
               productionMode: config.productionMode,
-              itemNoun: 'document',
+              itemNoun: 'document'
             }
           );
           // Sprint 14 deferred-closure arch X6: when an engine is
@@ -746,19 +676,15 @@ function wrapQueryBuilder(
               risk_score: 0,
               findings: [],
               timestamp: Date.now(),
-              validatorName: 'LanceRetrievedDocBatch',
+              validatorName: 'LanceRetrievedDocBatch'
             };
             const contentForCallback = recordRows
-              .map((r) => {
+              .map(r => {
                 const c = r[config.primaryContentField];
                 return typeof c === 'string' ? c : '';
               })
               .join('\n');
-            void config.engine.notifyCachedResult(
-              [syntheticResult],
-              contentForCallback,
-              'lance:query.toArray'
-            );
+            void config.engine.notifyCachedResult([syntheticResult], contentForCallback, 'lance:query.toArray');
           }
           return valid;
         };
@@ -766,10 +692,7 @@ function wrapQueryBuilder(
       const value = Reflect.get(target, prop, receiver);
       if (typeof value === 'function') {
         return (...args: unknown[]) => {
-          const result = (value as (...a: unknown[]) => unknown).apply(
-            target,
-            args
-          );
+          const result = (value as (...a: unknown[]) => unknown).apply(target, args);
           // Chainable Query/VectorQuery methods return `this` (or a
           // related builder); re-wrap so the chain stays guarded.
           // rev R3 closure: undefined returns from future SDK versions
@@ -779,8 +702,7 @@ function wrapQueryBuilder(
           }
           if (result === undefined) {
             config.logger?.warn(
-              '[bonklm-lance] query builder method returned `undefined`; ' +
-                'chain wrapping cannot continue.',
+              '[bonklm-lance] query builder method returned `undefined`; ' + 'chain wrapping cannot continue.',
               { method: String(prop) }
             );
           }
@@ -788,14 +710,10 @@ function wrapQueryBuilder(
         };
       }
       return value;
-    },
+    }
   }) as unknown as GuardedQueryHandle;
 }
 
 function isQueryBuilderLike(value: unknown): boolean {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    typeof (value as { toArray?: unknown }).toArray === 'function'
-  );
+  return typeof value === 'object' && value !== null && typeof (value as { toArray?: unknown }).toArray === 'function';
 }

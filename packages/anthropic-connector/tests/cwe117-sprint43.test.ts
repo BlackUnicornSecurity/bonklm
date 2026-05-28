@@ -25,9 +25,7 @@ describe('anthropic-connector — Sprint 43 CWE-117 closure', () => {
 
   it('sanitizes validator-extracted reason at the dev-mode throw boundary', () => {
     const reason = 'matched ignore_previous\nINJECTED:CRITICAL bypass';
-    expect(sanitizeMeta(reason)).toBe(
-      'matched ignore_previous\\nINJECTED:CRITICAL bypass'
-    );
+    expect(sanitizeMeta(reason)).toBe('matched ignore_previous\\nINJECTED:CRITICAL bypass');
   });
 
   it('sanitizes validator-extracted reason in the filteredContent application-output surface', () => {

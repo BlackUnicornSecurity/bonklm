@@ -6,12 +6,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { GuardrailsModule } from '../src/index.js';
-import {
-  PromptInjectionValidator,
-  JailbreakValidator,
-  SecretGuard,
-  PIIGuard,
-} from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, JailbreakValidator, SecretGuard, PIIGuard } from '@blackunicorn/bonklm';
 
 describe('GuardrailsModule', () => {
   describe('forRoot', () => {
@@ -25,15 +20,9 @@ describe('GuardrailsModule', () => {
     });
 
     it('should create a dynamic module with custom options', () => {
-      const validators = [
-        new PromptInjectionValidator(),
-        new JailbreakValidator(),
-      ];
+      const validators = [new PromptInjectionValidator(), new JailbreakValidator()];
 
-      const guards = [
-        new SecretGuard(),
-        new PIIGuard(),
-      ];
+      const guards = [new SecretGuard(), new PIIGuard()];
 
       const module = GuardrailsModule.forRoot({
         validators,
@@ -41,7 +30,7 @@ describe('GuardrailsModule', () => {
         global: true,
         productionMode: true,
         validationTimeout: 3000,
-        maxContentLength: 2048,
+        maxContentLength: 2048
       });
 
       expect(module.module).toBe(GuardrailsModule);
@@ -51,7 +40,7 @@ describe('GuardrailsModule', () => {
 
     it('should create a global module when global is true', () => {
       const module = GuardrailsModule.forRoot({
-        global: true,
+        global: true
       });
 
       expect(module.module).toBe(GuardrailsModule);
@@ -64,10 +53,10 @@ describe('GuardrailsModule', () => {
       const module = GuardrailsModule.forRootAsync({
         useFactory: () => ({
           validators: [new PromptInjectionValidator()],
-          guards: [],
+          guards: []
         }),
         inject: [],
-        global: true,
+        global: true
       });
 
       expect(module.module).toBe(GuardrailsModule);
@@ -78,10 +67,10 @@ describe('GuardrailsModule', () => {
       const module = GuardrailsModule.forRootAsync({
         useFactory: (config: any) => ({
           validators: config.validators || [],
-          guards: [],
+          guards: []
         }),
         inject: ['CONFIG'],
-        global: false,
+        global: false
       });
 
       const optionsProvider = module.providers![0];
@@ -93,7 +82,7 @@ describe('GuardrailsModule', () => {
     it('should create a non-global feature module', () => {
       const module = GuardrailsModule.forFeature({
         validators: [new PromptInjectionValidator()],
-        guards: [],
+        guards: []
       });
 
       expect(module.module).toBe(GuardrailsModule);
@@ -113,9 +102,9 @@ describe('GuardrailsModule', () => {
       const module = GuardrailsModule.forFeatureAsync({
         useFactory: () => ({
           validators: [new PromptInjectionValidator()],
-          guards: [],
+          guards: []
         }),
-        inject: [],
+        inject: []
       });
 
       expect(module.module).toBe(GuardrailsModule);
@@ -126,11 +115,7 @@ describe('GuardrailsModule', () => {
 
   describe('module options', () => {
     it('should accept validators array', () => {
-      const validators = [
-        new PromptInjectionValidator(),
-        new JailbreakValidator(),
-        new SecretGuard(),
-      ];
+      const validators = [new PromptInjectionValidator(), new JailbreakValidator(), new SecretGuard()];
 
       const module = GuardrailsModule.forRoot({ validators });
 
@@ -138,10 +123,7 @@ describe('GuardrailsModule', () => {
     });
 
     it('should accept guards array', () => {
-      const guards = [
-        new SecretGuard(),
-        new PIIGuard(),
-      ];
+      const guards = [new SecretGuard(), new PIIGuard()];
 
       const module = GuardrailsModule.forRoot({ guards });
 
@@ -159,7 +141,7 @@ describe('GuardrailsModule', () => {
 
     it('should accept production mode flag', () => {
       const module = GuardrailsModule.forRoot({
-        productionMode: true,
+        productionMode: true
       });
 
       expect(module).toBeDefined();
@@ -167,7 +149,7 @@ describe('GuardrailsModule', () => {
 
     it('should accept validation timeout', () => {
       const module = GuardrailsModule.forRoot({
-        validationTimeout: 10000,
+        validationTimeout: 10000
       });
 
       expect(module).toBeDefined();
@@ -175,7 +157,7 @@ describe('GuardrailsModule', () => {
 
     it('should accept max content length', () => {
       const module = GuardrailsModule.forRoot({
-        maxContentLength: 2048,
+        maxContentLength: 2048
       });
 
       expect(module).toBeDefined();
@@ -185,7 +167,7 @@ describe('GuardrailsModule', () => {
       const onError = vi.fn();
 
       const module = GuardrailsModule.forRoot({
-        onError,
+        onError
       });
 
       expect(module).toBeDefined();
@@ -195,7 +177,7 @@ describe('GuardrailsModule', () => {
       const bodyExtractor = vi.fn();
 
       const module = GuardrailsModule.forRoot({
-        bodyExtractor,
+        bodyExtractor
       });
 
       expect(module).toBeDefined();
@@ -205,7 +187,7 @@ describe('GuardrailsModule', () => {
       const responseExtractor = vi.fn();
 
       const module = GuardrailsModule.forRoot({
-        responseExtractor,
+        responseExtractor
       });
 
       expect(module).toBeDefined();

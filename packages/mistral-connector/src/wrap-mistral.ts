@@ -40,32 +40,13 @@
  *
  * @package @blackunicorn/bonklm-mistral
  */
-import {
-  ConnectorValidationError,
-  sanitizeReasonText,
-} from '@blackunicorn/bonklm/core/connector-utils';
-import {
-  MultilingualDetector,
-  ReformulationDetector,
-  RiskLevel,
-  Severity,
-} from '@blackunicorn/bonklm';
-import type {
-  EngineResult,
-  GuardrailEngine,
-  Logger,
-  ValidatorInput,
-} from '@blackunicorn/bonklm';
+import { ConnectorValidationError, sanitizeReasonText } from '@blackunicorn/bonklm/core/connector-utils';
+import { MultilingualDetector, ReformulationDetector, RiskLevel, Severity } from '@blackunicorn/bonklm';
+import type { EngineResult, GuardrailEngine, Logger, ValidatorInput } from '@blackunicorn/bonklm';
 import type { MistralLike, WrapMistralOptions } from './types.js';
 
 /** Sub-resources the connector intercepts. Everything else passes through. */
-const WRAPPED_SUB_RESOURCES = new Set([
-  'chat',
-  'agents',
-  'fim',
-  'embeddings',
-  'classifiers',
-]);
+const WRAPPED_SUB_RESOURCES = new Set(['chat', 'agents', 'fim', 'embeddings', 'classifiers']);
 
 /**
  * Error thrown by wrapped Mistral methods when the validator pipeline
@@ -121,7 +102,7 @@ function resolveOptions(options: WrapMistralOptions | undefined): ResolvedOption
     validateInputs: o.validateInputs ?? true,
     validateOutputs: o.validateOutputs ?? true,
     validateAllMessages: o.validateAllMessages ?? false,
-    logger: o.logger,
+    logger: o.logger
   };
 }
 
@@ -227,7 +208,7 @@ export function wrapMistral<T extends MistralLike>(
     agents: wrapCompletionLike(client.agents, engine, config, 'agents', moderateFn),
     fim: wrapFim(client.fim, engine, config, moderateFn),
     embeddings: wrapEmbeddings(client.embeddings, engine, config),
-    classifiers: wrapClassifiers(client.classifiers, engine, config),
+    classifiers: wrapClassifiers(client.classifiers, engine, config)
   };
 
   return new Proxy(client, {
@@ -246,7 +227,7 @@ export function wrapMistral<T extends MistralLike>(
         return (value as (...args: unknown[]) => unknown).bind(target);
       }
       return value;
-    },
+    }
   });
 }
 
@@ -285,17 +266,10 @@ interface MistralCompletionResponse {
  * additions are purely additive + idempotent across multiple
  * `wrapMistral` calls.
  */
-function autoWireMultilingualValidators(
-  engine: GuardrailEngine,
-  config: ResolvedOptions
-): void {
+function autoWireMultilingualValidators(engine: GuardrailEngine, config: ResolvedOptions): void {
   const existing = engine.getValidators();
-  const hasMultilingual = existing.some(
-    (v) => v instanceof MultilingualDetector
-  );
-  const hasReformulation = existing.some(
-    (v) => v instanceof ReformulationDetector
-  );
+  const hasMultilingual = existing.some(v => v instanceof MultilingualDetector);
+  const hasReformulation = existing.some(v => v instanceof ReformulationDetector);
   if (!hasMultilingual) {
     engine.addValidator(new MultilingualDetector());
     config.logger?.info(
@@ -358,21 +332,11 @@ function wrapCompletionLike(
     guarded.complete = async (req: unknown, opts?: unknown): Promise<unknown> => {
       const request = (req ?? {}) as MistralCompletionRequest;
       if (config.validateInputs) {
-        await validateMessages(
-          request.messages,
-          engine,
-          config,
-          `${surface}:complete:input`
-        );
+        await validateMessages(request.messages, engine, config, `${surface}:complete:input`);
       }
       const response = (await sub.complete!(req, opts)) as MistralCompletionResponse;
       if (config.validateOutputs) {
-        await validateCompletionResponse(
-          response,
-          engine,
-          config,
-          `${surface}:complete:output`
-        );
+        await validateCompletionResponse(response, engine, config, `${surface}:complete:output`);
       }
       if (config.enableModerateSecondOpinion && moderateFn !== undefined) {
         await fireModerateSecondOpinion(
@@ -392,12 +356,7 @@ function wrapCompletionLike(
     guarded.stream = async (req: unknown, opts?: unknown): Promise<unknown> => {
       const request = (req ?? {}) as MistralCompletionRequest;
       if (config.validateInputs) {
-        await validateMessages(
-          request.messages,
-          engine,
-          config,
-          `${surface}:stream:input`
-        );
+        await validateMessages(request.messages, engine, config, `${surface}:stream:input`);
       }
       // Stream wrapping: return the underlying ReadableStream. Post-
       // validation on streams requires accumulating chunks; for v0.4
@@ -439,25 +398,18 @@ function wrapFim(
   };
   const guarded: Record<string, unknown> = {};
 
-  const validateFimInput = async (
-    request: MistralFimRequest,
-    surface: string
-  ): Promise<void> => {
+  const validateFimInput = async (request: MistralFimRequest, surface: string): Promise<void> => {
     if (!config.validateInputs) return;
     // FIM has prompt + optional suffix; both can carry user content.
     const fields: Array<[string, string | undefined]> = [
       ['prompt', request.prompt],
-      ['suffix', request.suffix],
+      ['suffix', request.suffix]
     ];
     for (const [label, value] of fields) {
       if (typeof value === 'string' && value.length > 0) {
         const result = await engine.validate(value);
         if (result.blocked) {
-          throw new MistralGuardrailBlockedError(
-            `${surface}:${label}`,
-            result.reason,
-            config.productionMode
-          );
+          throw new MistralGuardrailBlockedError(`${surface}:${label}`, result.reason, config.productionMode);
         }
       }
     }
@@ -469,12 +421,7 @@ function wrapFim(
       await validateFimInput(request, 'fim:complete:input');
       const response = (await sub.complete!(req, opts)) as MistralCompletionResponse;
       if (config.validateOutputs) {
-        await validateCompletionResponse(
-          response,
-          engine,
-          config,
-          'fim:complete:output'
-        );
+        await validateCompletionResponse(response, engine, config, 'fim:complete:output');
       }
       return response;
     };
@@ -500,11 +447,7 @@ interface MistralEmbeddingRequest {
   inputs?: string | string[];
 }
 
-function wrapEmbeddings(
-  subResource: unknown,
-  engine: GuardrailEngine,
-  config: ResolvedOptions
-): object | undefined {
+function wrapEmbeddings(subResource: unknown, engine: GuardrailEngine, config: ResolvedOptions): object | undefined {
   if (subResource === undefined || subResource === null) return undefined;
   const sub = subResource as {
     create?: (req: unknown, opts?: unknown) => Promise<unknown>;
@@ -515,9 +458,7 @@ function wrapEmbeddings(
     create: async (req: unknown, opts?: unknown): Promise<unknown> => {
       const request = (req ?? {}) as MistralEmbeddingRequest;
       if (config.validateInputs && request.inputs !== undefined) {
-        const inputs = Array.isArray(request.inputs)
-          ? request.inputs
-          : [request.inputs];
+        const inputs = Array.isArray(request.inputs) ? request.inputs : [request.inputs];
         for (let i = 0; i < inputs.length; i++) {
           const item = inputs[i];
           if (typeof item !== 'string' || item.length === 0) continue;
@@ -532,7 +473,7 @@ function wrapEmbeddings(
         }
       }
       return sub.create!(req, opts);
-    },
+    }
   };
 }
 
@@ -545,11 +486,7 @@ interface MistralClassificationRequest {
   inputs?: string | string[];
 }
 
-function wrapClassifiers(
-  subResource: unknown,
-  engine: GuardrailEngine,
-  config: ResolvedOptions
-): object | undefined {
+function wrapClassifiers(subResource: unknown, engine: GuardrailEngine, config: ResolvedOptions): object | undefined {
   if (subResource === undefined || subResource === null) return undefined;
   const sub = subResource as {
     moderate?: (req: unknown, opts?: unknown) => Promise<unknown>;
@@ -557,24 +494,15 @@ function wrapClassifiers(
   };
   const guarded: Record<string, unknown> = {};
 
-  const validateClassifierInput = async (
-    request: MistralClassificationRequest,
-    surface: string
-  ): Promise<void> => {
+  const validateClassifierInput = async (request: MistralClassificationRequest, surface: string): Promise<void> => {
     if (!config.validateInputs || request.inputs === undefined) return;
-    const inputs = Array.isArray(request.inputs)
-      ? request.inputs
-      : [request.inputs];
+    const inputs = Array.isArray(request.inputs) ? request.inputs : [request.inputs];
     for (let i = 0; i < inputs.length; i++) {
       const item = inputs[i];
       if (typeof item !== 'string' || item.length === 0) continue;
       const result = await engine.validate(item);
       if (result.blocked) {
-        throw new MistralGuardrailBlockedError(
-          `${surface}:input[${i}]`,
-          result.reason,
-          config.productionMode
-        );
+        throw new MistralGuardrailBlockedError(`${surface}:input[${i}]`, result.reason, config.productionMode);
       }
     }
   };
@@ -674,11 +602,7 @@ async function validateMessages(
     if (text === undefined) continue;
     const result: EngineResult = await engine.validate(text);
     if (result.blocked) {
-      throw new MistralGuardrailBlockedError(
-        `${surface}[messages[${i}]]`,
-        result.reason,
-        config.productionMode
-      );
+      throw new MistralGuardrailBlockedError(`${surface}[messages[${i}]]`, result.reason, config.productionMode);
     }
   }
 }
@@ -737,7 +661,7 @@ async function validateCompletionResponse(
             '[bonklm-mistral] tool_calls[].function.arguments JSON.parse failed; skipping per-call validation',
             {
               toolName,
-              error: err instanceof Error ? err.message : String(err),
+              error: err instanceof Error ? err.message : String(err)
             }
           );
           continue;
@@ -745,7 +669,7 @@ async function validateCompletionResponse(
         const input: ValidatorInput = {
           kind: 'tool_call',
           toolName,
-          args: parsed,
+          args: parsed
         };
         const result = await engine.validateInput(input);
         if (result.blocked) {
@@ -797,11 +721,8 @@ async function fireModerateSecondOpinion(
     moderationResult = await moderateFn({
       // Use the same model namespace as the chat request when present;
       // fall back to Mistral's standard moderation model.
-      model:
-        typeof model === 'string' && model.includes('moderation')
-          ? model
-          : 'mistral-moderation-latest',
-      inputs,
+      model: typeof model === 'string' && model.includes('moderation') ? model : 'mistral-moderation-latest',
+      inputs
     });
   } catch (err) {
     config.logger?.warn(
@@ -834,9 +755,9 @@ async function fireModerateSecondOpinion(
         timestamp: Date.now(),
         validatorName: 'MistralModerateAdvisory',
         metadata: {
-          mistralModerationResult: narrowedResult,
-        },
-      },
+          mistralModerationResult: narrowedResult
+        }
+      }
     ],
     inputs.join('\n'),
     surface
@@ -876,21 +797,14 @@ function narrowModerationResult(raw: unknown): {
     } = {};
     if (rec.categories !== null && typeof rec.categories === 'object') {
       const cats: Record<string, boolean> = {};
-      for (const [k, v] of Object.entries(
-        rec.categories as Record<string, unknown>
-      )) {
+      for (const [k, v] of Object.entries(rec.categories as Record<string, unknown>)) {
         if (typeof v === 'boolean') cats[k] = v;
       }
       entry.categories = cats;
     }
-    if (
-      rec.category_scores !== null &&
-      typeof rec.category_scores === 'object'
-    ) {
+    if (rec.category_scores !== null && typeof rec.category_scores === 'object') {
       const scores: Record<string, number> = {};
-      for (const [k, v] of Object.entries(
-        rec.category_scores as Record<string, unknown>
-      )) {
+      for (const [k, v] of Object.entries(rec.category_scores as Record<string, unknown>)) {
         if (typeof v === 'number') scores[k] = v;
       }
       entry.category_scores = scores;

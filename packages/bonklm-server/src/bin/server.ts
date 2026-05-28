@@ -19,10 +19,7 @@
  * from `@blackunicorn/bonklm-server` directly in your own
  * server.ts.
  */
-import {
-  PromptInjectionValidator,
-  MultilingualDetector,
-} from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, MultilingualDetector } from '@blackunicorn/bonklm';
 import { createBonklmGuardrailServer } from '../index.js';
 
 async function main(): Promise<void> {
@@ -38,8 +35,7 @@ async function main(): Promise<void> {
   // `BONKLM_PRODUCTION_MODE=false`. Default-safe matches Dockerfile
   // posture + closes the "production by deploy default, debug by API
   // default" drift.
-  const productionMode =
-    (process.env.BONKLM_PRODUCTION_MODE ?? 'true').toLowerCase() === 'true';
+  const productionMode = (process.env.BONKLM_PRODUCTION_MODE ?? 'true').toLowerCase() === 'true';
 
   if (hmacSecret === undefined || hmacSecret.length < 32) {
     // eslint-disable-next-line no-console
@@ -51,13 +47,10 @@ async function main(): Promise<void> {
   }
 
   const server = await createBonklmGuardrailServer({
-    validators: [
-      new PromptInjectionValidator(),
-      new MultilingualDetector(),
-    ],
+    validators: [new PromptInjectionValidator(), new MultilingualDetector()],
     hmacSecret,
     replayWindowMs,
-    productionMode,
+    productionMode
   });
 
   try {
@@ -81,7 +74,7 @@ async function main(): Promise<void> {
   process.on('SIGINT', () => void close('SIGINT'));
 }
 
-main().catch((err) => {
+main().catch(err => {
   // eslint-disable-next-line no-console
   console.error('bonklm-server: unhandled error', err);
   process.exit(1);

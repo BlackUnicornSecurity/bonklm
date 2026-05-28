@@ -43,14 +43,7 @@
  * @package @blackunicorn/eslint-plugin-edge
  */
 import type { Rule } from 'eslint';
-import type {
-  ChainExpression,
-  Expression,
-  Identifier,
-  MemberExpression,
-  Node,
-  UnaryExpression,
-} from 'estree';
+import type { ChainExpression, Expression, Identifier, MemberExpression, Node, UnaryExpression } from 'estree';
 
 interface RuleOptions {
   allow?: string[];
@@ -100,11 +93,7 @@ function propertyIsName(me: { computed: boolean; property: Node }, name: string)
   if (!me.computed && prop.type === 'Identifier' && (prop as Identifier).name === name) {
     return true;
   }
-  if (
-    me.computed &&
-    prop.type === 'Literal' &&
-    (prop as { value: unknown }).value === name
-  ) {
+  if (me.computed && prop.type === 'Literal' && (prop as { value: unknown }).value === name) {
     return true;
   }
   return false;
@@ -117,10 +106,7 @@ function propertyIsName(me: { computed: boolean; property: Node }, name: string)
  */
 function isGlobalThisReference(node: Node): boolean {
   const inner = unwrapChain(node);
-  return (
-    inner.type === 'Identifier' &&
-    (inner.name === 'globalThis' || inner.name === 'global')
-  );
+  return inner.type === 'Identifier' && (inner.name === 'globalThis' || inner.name === 'global');
 }
 
 /**
@@ -136,11 +122,7 @@ function isGlobalThisReference(node: Node): boolean {
  */
 function isProcessEnvReference(node: Node): boolean {
   const inner = unwrapChain(node);
-  return (
-    inner.type === 'MemberExpression' &&
-    isProcessReference(inner.object as Node) &&
-    propertyIsName(inner, 'env')
-  );
+  return inner.type === 'MemberExpression' && isProcessReference(inner.object as Node) && propertyIsName(inner, 'env');
 }
 
 /**
@@ -219,7 +201,7 @@ export const noBareProcessEnvRule: Rule.RuleModule = {
         'Use `GuardrailEngineConfig.envBindings` injection or guard with `typeof process !== "undefined"`. ' +
         'NOTE: alias chains (`const p = process; p.env.X`) and IfStatement guards are NOT detected; ' +
         'use the inline `&&` guard form.',
-      recommended: true,
+      recommended: true
     },
     messages: {
       bareProcessEnv:
@@ -227,8 +209,7 @@ export const noBareProcessEnvRule: Rule.RuleModule = {
         'injection or guard with `typeof process !== "undefined"`. See ' +
         'docs/user/migration/edge-string-handlers.md#envbindings-migration-from-v0-3',
       bareProcessEnvWhole:
-        '`process.env` (full reference) is not edge-safe. Read individual keys via ' +
-        '`envBindings` instead.',
+        '`process.env` (full reference) is not edge-safe. Read individual keys via ' + '`envBindings` instead.'
     },
     schema: [
       {
@@ -237,12 +218,12 @@ export const noBareProcessEnvRule: Rule.RuleModule = {
           allow: {
             type: 'array',
             items: { type: 'string' },
-            uniqueItems: true,
-          },
+            uniqueItems: true
+          }
         },
-        additionalProperties: false,
-      },
-    ],
+        additionalProperties: false
+      }
+    ]
   },
 
   create(context) {
@@ -254,17 +235,13 @@ export const noBareProcessEnvRule: Rule.RuleModule = {
      * Report a violation, deriving the env-var key name when possible.
      * Honours the `allow` allowlist on a per-key basis.
      */
-    function reportViolation(
-      reportNode: Node,
-      key: string | null,
-      ancestors: Node[]
-    ): void {
+    function reportViolation(reportNode: Node, key: string | null, ancestors: Node[]): void {
       if (isInsideTypeofProcessGuard(reportNode, ancestors)) return;
       if (key !== null && allow.has(key)) return;
       context.report({
         node: reportNode,
         messageId: 'bareProcessEnv',
-        data: { key: key ?? '<unknown>' },
+        data: { key: key ?? '<unknown>' }
       });
     }
 
@@ -289,10 +266,7 @@ export const noBareProcessEnvRule: Rule.RuleModule = {
           let key: string | null = null;
           if (me.computed === false && me.property.type === 'Identifier') {
             key = (me.property as Identifier).name;
-          } else if (
-            me.property.type === 'Literal' &&
-            typeof (me.property as { value: unknown }).value === 'string'
-          ) {
+          } else if (me.property.type === 'Literal' && typeof (me.property as { value: unknown }).value === 'string') {
             key = (me.property as { value: string }).value;
           }
           // Report on the inner `process.env` node so the typeof-guard
@@ -329,7 +303,7 @@ export const noBareProcessEnvRule: Rule.RuleModule = {
           }
           reportWholeEnv(node, ancestors);
         }
-      },
+      }
     };
-  },
+  }
 };

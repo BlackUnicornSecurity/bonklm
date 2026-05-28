@@ -39,7 +39,7 @@ import type { GuardrailEngine, Validator, ValidatorInput } from '@blackunicorn/b
 import {
   adaptValidatorToUniversalInput,
   assertNotWrapped,
-  markWrapped,
+  markWrapped
 } from '@blackunicorn/bonklm/core/connector-utils';
 import {
   type AgentLike,
@@ -48,7 +48,7 @@ import {
   CloudflareAgentBlockedError,
   type CloudflareAgentBlockEvent,
   type SqlStorageLike,
-  type WrappedSqlStorageLike,
+  type WrappedSqlStorageLike
 } from './types.js';
 
 /**
@@ -57,10 +57,7 @@ import {
  * the discriminated-kind their `.validate(input)` looks for. Without
  * this shaping the validators return instant-ALLOW for raw strings.
  */
-function buildValidatorInput(
-  surface: BonklmAgentHookContext['surface'],
-  text: string
-): ValidatorInput {
+function buildValidatorInput(surface: BonklmAgentHookContext['surface'], text: string): ValidatorInput {
   if (surface === 'setState') {
     return { kind: 'memory_write', payload: { content: text } };
   }
@@ -108,14 +105,9 @@ const BONKLM_WIRED = Symbol.for('bonklm.cloudflare-agent.wired');
  * `Agent` class (cannot use composition because Agents SDK requires
  * the export be a class for Durable Object binding registration).
  */
-export function withBonklmAgent<S, Base extends AgentClassLike<S>>(
-  BaseAgent: Base,
-  config: BonklmAgentConfig
-): Base {
+export function withBonklmAgent<S, Base extends AgentClassLike<S>>(BaseAgent: Base, config: BonklmAgentConfig): Base {
   if (typeof BaseAgent !== 'function') {
-    throw new TypeError(
-      'withBonklmAgent: BaseAgent must be the Agent class from `agents`.'
-    );
+    throw new TypeError('withBonklmAgent: BaseAgent must be the Agent class from `agents`.');
   }
   if (!config?.engine) {
     throw new TypeError('withBonklmAgent: config.engine is required.');
@@ -135,12 +127,11 @@ export function withBonklmAgent<S, Base extends AgentClassLike<S>>(
   // buildValidatorInput JSDoc). Legacy text validators like
   // PromptInjection need the adapter; envelope-aware validators pass
   // through cleanly.
-  const memoryWriteValidators = (config.memoryWriteValidators ?? []);
-  const retrievedDocValidators = (config.retrievedDocValidators ?? []).map(
-    (v: Validator) => adaptValidatorToUniversalInput(v, 'withBonklmAgent.retrievedDocValidators')
+  const memoryWriteValidators = config.memoryWriteValidators ?? [];
+  const retrievedDocValidators = (config.retrievedDocValidators ?? []).map((v: Validator) =>
+    adaptValidatorToUniversalInput(v, 'withBonklmAgent.retrievedDocValidators')
   );
 
-   
   const Mixed = class BonklmAgent extends (BaseAgent as any) {
     // Cached wrapped sql tag — built lazily so the underlying Agent's
     // ctor finishes its own sql initialization first.
@@ -157,15 +148,14 @@ export function withBonklmAgent<S, Base extends AgentClassLike<S>>(
           stringifyForValidation(next),
           {
             surface: 'setState',
-            broadcast: true,
+            broadcast: true
           },
           config
         );
       }
       // Delegate to base; preserve return-type semantics (Agents
       // SDK setState may be sync or async depending on version).
-      const baseRes = (BaseAgent.prototype as { setState?: (n: S) => unknown })
-        .setState?.call(this, next);
+      const baseRes = (BaseAgent.prototype as { setState?: (n: S) => unknown }).setState?.call(this, next);
       if (baseRes && typeof (baseRes as Promise<unknown>).then === 'function') {
         await baseRes;
       }
@@ -209,8 +199,7 @@ export function withBonklmAgent<S, Base extends AgentClassLike<S>>(
       // When no validators are configured, preserve the underlying
       // sync sql contract (no wrap, return raw).
       if (retrievedDocValidators.length === 0) {
-        const passthrough: SqlStorageLike = (strings, ...values) =>
-          baseSql(strings, ...values);
+        const passthrough: SqlStorageLike = (strings, ...values) => baseSql(strings, ...values);
         this._bonklmWrappedSql = passthrough;
         return passthrough;
       }
@@ -276,8 +265,8 @@ export function withBonklmAgent<S, Base extends AgentClassLike<S>>(
             }
             return filtered;
           },
-          getAlarm: () => storage.getAlarm(),
-        },
+          getAlarm: () => storage.getAlarm()
+        }
       };
     }
   };
@@ -368,7 +357,7 @@ async function runValidators(
           hookContext.broadcast,
           {
             category: result.findings[0]?.category,
-            severity: String(result.severity),
+            severity: String(result.severity)
           }
         );
       }
@@ -391,7 +380,7 @@ function fireBlock(
     reason: finding?.description ?? `${hookContext.surface}_blocked`,
     broadcast: hookContext.broadcast,
     category: finding?.category,
-    severity: result.severity ? String(result.severity) : undefined,
+    severity: result.severity ? String(result.severity) : undefined
   };
   try {
     config.onBlock?.(event);
@@ -423,18 +412,11 @@ function safeOnError(config: BonklmAgentConfig, err: unknown): void {
  *      `get sql() { ... }` on a prototype.
  *   3. Return undefined if neither finds a function value.
  */
-function findBaseSql(
-  instance: object,
-  BaseAgent: { prototype: object }
-): SqlStorageLike | undefined {
+function findBaseSql(instance: object, BaseAgent: { prototype: object }): SqlStorageLike | undefined {
   return findBaseProperty<SqlStorageLike>(instance, BaseAgent, 'sql');
 }
 
-function findBaseProperty<T>(
-  instance: object,
-  BaseAgent: { prototype: object },
-  propertyName: string
-): T | undefined {
+function findBaseProperty<T>(instance: object, BaseAgent: { prototype: object }, propertyName: string): T | undefined {
   // 1. Instance-property check (real Cloudflare Agents SDK shape).
   //    We can't read `instance[propertyName]` directly because that
   //    re-enters our override getter. Instead, walk OWN keys and

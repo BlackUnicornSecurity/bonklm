@@ -24,15 +24,9 @@ export type EkoRunTask = string | { task: string; [k: string]: unknown };
  * the browser-agents-core event union.
  */
 export interface EkoBrowserAgentLike {
-  act?(
-    action: string | { action: string; [k: string]: unknown }
-  ): Promise<unknown>;
-  extract?<T = unknown>(
-    options: string | { instruction: string; schema?: unknown; [k: string]: unknown }
-  ): Promise<T>;
-  observe?(
-    options: string | { instruction: string; [k: string]: unknown }
-  ): Promise<unknown>;
+  act?(action: string | { action: string; [k: string]: unknown }): Promise<unknown>;
+  extract?<T = unknown>(options: string | { instruction: string; schema?: unknown; [k: string]: unknown }): Promise<T>;
+  observe?(options: string | { instruction: string; [k: string]: unknown }): Promise<unknown>;
 }
 
 /**
@@ -54,11 +48,7 @@ export interface EkoFileAgentLike {
  * allow/deny rules can match.
  */
 export interface EkoMcpClientLike {
-  callTool?(
-    server: string,
-    tool: string,
-    args?: Record<string, unknown>
-  ): Promise<unknown>;
+  callTool?(server: string, tool: string, args?: Record<string, unknown>): Promise<unknown>;
 }
 
 /**
@@ -123,8 +113,4 @@ export interface WrapEkoOptions {
 /**
  * Convenience signature export.
  */
-export type WrapEkoSignature = <T extends EkoLike>(
-  client: T,
-  engine: GuardrailEngine,
-  options?: WrapEkoOptions
-) => T;
+export type WrapEkoSignature = <T extends EkoLike>(client: T, engine: GuardrailEngine, options?: WrapEkoOptions) => T;

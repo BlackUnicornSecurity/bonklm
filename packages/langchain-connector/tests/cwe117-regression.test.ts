@@ -38,9 +38,7 @@ describe('langchain-connector — Sprint 43 CWE-117 sanitization contract', () =
 
   it('sanitizes a validator-extracted reason for input/output/tool-call/state throw sites', () => {
     const reason = 'matched ignore_previous\nINJECTED:fake_severity';
-    expect(sanitizeMeta(reason)).toBe(
-      'matched ignore_previous\\nINJECTED:fake_severity'
-    );
+    expect(sanitizeMeta(reason)).toBe('matched ignore_previous\\nINJECTED:fake_severity');
   });
 
   it('sanitizes a retriever-doc-drop reason carrying control chars', () => {
@@ -49,9 +47,7 @@ describe('langchain-connector — Sprint 43 CWE-117 sanitization contract', () =
     // control chars in `reason` would forge phantom log lines in
     // downstream aggregators.
     const reason = 'retrieved doc carries injection\nINJECTED:fake_dropped=0';
-    expect(sanitizeMeta(reason)).toBe(
-      'retrieved doc carries injection\\nINJECTED:fake_dropped=0'
-    );
+    expect(sanitizeMeta(reason)).toBe('retrieved doc carries injection\\nINJECTED:fake_dropped=0');
   });
 
   it('sanitizes runId meta field at stream-related log sites (Sprint 44 architect LOW #9, #10)', () => {
@@ -63,9 +59,7 @@ describe('langchain-connector — Sprint 43 CWE-117 sanitization contract', () =
     // in practice) but typing alone is no defence — a custom
     // LangChain integration could pass any string.
     const hostileRunId = 'run-1234\nINJECTED:fake_status=PASS';
-    expect(sanitizeMeta(hostileRunId)).toBe(
-      'run-1234\\nINJECTED:fake_status=PASS'
-    );
+    expect(sanitizeMeta(hostileRunId)).toBe('run-1234\\nINJECTED:fake_status=PASS');
   });
 
   it('end-to-end: hostile runId at stream-buffer-exceeded log site (Sprint 45 integration)', async () => {
@@ -78,25 +72,27 @@ describe('langchain-connector — Sprint 43 CWE-117 sanitization contract', () =
       debug: vi.fn(),
       info: vi.fn(),
       warn: vi.fn(),
-      error: vi.fn(),
+      error: vi.fn()
     };
     const handler = new GuardrailsCallbackHandler({
-      validators: [{
-        name: 'NoOp',
-        validate: () => ({
-          allowed: true,
-          blocked: false,
-          severity: 'info' as const,
-          risk_level: 'low' as const,
-          risk_score: 0,
-          findings: [],
-          timestamp: Date.now(),
-        }),
-      } as never],
+      validators: [
+        {
+          name: 'NoOp',
+          validate: () => ({
+            allowed: true,
+            blocked: false,
+            severity: 'info' as const,
+            risk_level: 'low' as const,
+            risk_score: 0,
+            findings: [],
+            timestamp: Date.now()
+          })
+        } as never
+      ],
       logger: spyLogger,
       validateStreaming: true, // required for handleLLMNewToken to fire
       maxStreamBufferSize: 16, // tiny so a few tokens overflow
-      productionMode: false,
+      productionMode: false
     });
 
     const hostileRunId = 'run-abc\nINJECTED:fake_runid_audit=PASS';
@@ -107,12 +103,7 @@ describe('langchain-connector — Sprint 43 CWE-117 sanitization contract', () =
     let thrown: unknown = null;
     try {
       for (let i = 0; i < 10; i++) {
-        await handler.handleLLMNewToken(
-          'x'.repeat(8),
-          indices,
-          hostileRunId,
-          parentRunId,
-        );
+        await handler.handleLLMNewToken('x'.repeat(8), indices, hostileRunId, parentRunId);
       }
     } catch (err) {
       thrown = err;
@@ -126,9 +117,7 @@ describe('langchain-connector — Sprint 43 CWE-117 sanitization contract', () =
     expect(thrown).toBeInstanceOf(Error);
 
     const bufferExceededCall = spyLogger.warn.mock.calls.find(
-      (call) =>
-        typeof call[0] === 'string' &&
-        call[0].includes('Stream buffer exceeded')
+      call => typeof call[0] === 'string' && call[0].includes('Stream buffer exceeded')
     );
     expect(bufferExceededCall).toBeDefined();
     const meta = bufferExceededCall![1] as { runId?: string };

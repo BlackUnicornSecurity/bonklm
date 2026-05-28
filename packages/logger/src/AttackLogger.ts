@@ -10,12 +10,7 @@
 
 import { AttackLogStore } from './AttackLogStore.js';
 import { createConfig, type ValidatedConfig } from './config.js';
-import {
-  sanitizeContent_,
-  sanitizeForJSON,
-  transformToAttackLogEntry,
-  truncateContent,
-} from './transform.js';
+import { sanitizeContent_, sanitizeForJSON, transformToAttackLogEntry, truncateContent } from './transform.js';
 import type {
   AttackLogEntry,
   AttackLoggerConfig,
@@ -23,7 +18,7 @@ import type {
   EngineResult,
   ExportOptions,
   InterceptCallback,
-  LogFilter,
+  LogFilter
 } from './types.js';
 import { promises as fs } from 'fs';
 import { dirname, isAbsolute, resolve } from 'path';
@@ -54,10 +49,7 @@ export function setExportDirectory(dir: string): void {
 
   // Verify the path is within or is the CWD
   if (!resolved.startsWith(cwd) && cwd !== resolved) {
-    throw new Error(
-      `Export directory must be within the current working directory. ` +
-      `Got: ${dir}, CWD: ${cwd}`
-    );
+    throw new Error(`Export directory must be within the current working directory. ` + `Got: ${dir}, CWD: ${cwd}`);
   }
 
   defaultExportDir = resolved;
@@ -81,17 +73,13 @@ export function setExportDirectory(dir: string): void {
 function validateExportPath(filePath: string, baseDir: string = defaultExportDir): string {
   // Check for null bytes
   if (filePath.includes('\x00')) {
-    throw new Error(
-      'Invalid file path: null bytes are not allowed'
-    );
+    throw new Error('Invalid file path: null bytes are not allowed');
   }
 
   // Check for path traversal patterns
   const pathTraversalPattern = /\.\.[\/\\]|%2e%2e%2f|%2e%2e%5c/i;
   if (pathTraversalPattern.test(filePath)) {
-    throw new Error(
-      'Path traversal detected: file paths cannot contain "../" or encoded variations'
-    );
+    throw new Error('Path traversal detected: file paths cannot contain "../" or encoded variations');
   }
 
   // Check if absolute path
@@ -103,9 +91,7 @@ function validateExportPath(filePath: string, baseDir: string = defaultExportDir
     // Verify absolute path is within allowed directory
     const resolvedBase = resolve(baseDir);
     if (!resolvedPath.startsWith(resolvedBase)) {
-      throw new Error(
-        'Invalid file path: absolute paths must be within the export directory'
-      );
+      throw new Error('Invalid file path: absolute paths must be within the export directory');
     }
   } else {
     // Resolve relative path against base directory
@@ -115,16 +101,12 @@ function validateExportPath(filePath: string, baseDir: string = defaultExportDir
   // Verify the resolved path is still within base directory (final check)
   const resolvedBase = resolve(baseDir);
   if (!resolvedPath.startsWith(resolvedBase)) {
-    throw new Error(
-      'Invalid file path: resolved path is outside allowed directory'
-    );
+    throw new Error('Invalid file path: resolved path is outside allowed directory');
   }
 
   // Validate file extension (must be .json)
   if (!resolvedPath.toLowerCase().endsWith('.json')) {
-    throw new Error(
-      'Invalid file path: only .json files are allowed for export'
-    );
+    throw new Error('Invalid file path: only .json files are allowed for export');
   }
 
   return resolvedPath;
@@ -194,7 +176,7 @@ export class AttackLogger {
     this.config = createConfig(config);
     this.store = new AttackLogStore({
       max_logs: this.config.max_logs,
-      ttl: this.config.ttl,
+      ttl: this.config.ttl
     });
 
     // Create the intercept callback for GuardrailEngine integration
@@ -233,11 +215,7 @@ export class AttackLogger {
    * @param content - The original content that was validated
    * @param validationContext - Optional validation context
    */
-  async logFromIntercept(
-    result: EngineResult,
-    content: string,
-    validationContext?: string
-  ): Promise<void> {
+  async logFromIntercept(result: EngineResult, content: string, validationContext?: string): Promise<void> {
     if (!this.config.enabled) {
       return;
     }
@@ -251,7 +229,7 @@ export class AttackLogger {
       const truncatedBytes = Buffer.from(content).subarray(0, this.config.max_content_size);
       content = truncatedBytes.toString('utf8');
       // Add truncation indicator
-      content = `${content.slice(0, -3)  }...`;
+      content = `${content.slice(0, -3)}...`;
     }
 
     // Sanitize content at storage time to prevent log injection attacks
@@ -263,7 +241,7 @@ export class AttackLogger {
       {
         origin,
         content: sanitizedContent,
-        validation_context: validationContext,
+        validation_context: validationContext
       },
       this.config.sanitize_pii
     );
@@ -302,30 +280,30 @@ export class AttackLogger {
 
     const summary: AttackSummary = {
       total_count: entries.length,
-      blocked_count: entries.filter((e) => e.blocked).length,
-      allowed_count: entries.filter((e) => !e.blocked).length,
+      blocked_count: entries.filter(e => e.blocked).length,
+      allowed_count: entries.filter(e => !e.blocked).length,
       by_injection_type: {
         'prompt-injection': 0,
-        'jailbreak': 0,
-        'reformulation': 0,
+        jailbreak: 0,
+        reformulation: 0,
         'secret-exposure': 0,
-        'unknown': 0,
+        unknown: 0
       },
       by_attack_vector: {
-        'direct': 0,
-        'encoded': 0,
-        'roleplay': 0,
+        direct: 0,
+        encoded: 0,
+        roleplay: 0,
         'social-engineering': 0,
         'context-overload': 0,
-        'fragmented': 0,
-        'unknown': 0,
+        fragmented: 0,
+        unknown: 0
       },
       by_risk_level: {
-        'LOW': 0,
-        'MEDIUM': 0,
-        'HIGH': 0,
+        LOW: 0,
+        MEDIUM: 0,
+        HIGH: 0
       },
-      highest_risk_entry: null,
+      highest_risk_entry: null
     };
 
     let highestRiskScore = -1;
@@ -352,9 +330,7 @@ export class AttackLogger {
     if (this.config.warn_before_ttl_clear) {
       const approaching = this.store.getEntriesApproachingTTL();
       if (approaching.length > 0) {
-        console.warn(
-          `[AttackLogger] Clearing ${approaching.length} entries approaching TTL expiration`
-        );
+        console.warn(`[AttackLogger] Clearing ${approaching.length} entries approaching TTL expiration`);
       }
     }
 
@@ -396,12 +372,9 @@ export class AttackLogger {
 
     // Apply additional PII sanitization if requested for export
     // Control characters are already sanitized at storage time
-    const sanitizedEntries = entries.map((entry) => ({
+    const sanitizedEntries = entries.map(entry => ({
       ...entry,
-      content: this.applyPiiSanitizationForExport(
-        entry.content,
-        options?.sanitize_pii
-      ),
+      content: this.applyPiiSanitizationForExport(entry.content, options?.sanitize_pii)
     }));
 
     return JSON.stringify(sanitizedEntries, null, 2);
@@ -458,10 +431,7 @@ export class AttackLogger {
    * @param sanitizePii - Whether to additionally sanitize PII for this export
    * @returns Content with optional PII sanitization applied
    */
-  private applyPiiSanitizationForExport(
-    content: string,
-    sanitizePii?: boolean
-  ): string {
+  private applyPiiSanitizationForExport(content: string, sanitizePii?: boolean): string {
     // Content is already sanitized for control characters at storage time
     // Only apply additional PII sanitization if requested
     if (sanitizePii) {
@@ -475,12 +445,7 @@ export class AttackLogger {
    *
    * @param options - Display options
    */
-  show(options?: {
-    format?: 'table' | 'json' | 'summary';
-    color?: boolean;
-    limit?: number;
-    filter?: LogFilter;
-  }): void;
+  show(options?: { format?: 'table' | 'json' | 'summary'; color?: boolean; limit?: number; filter?: LogFilter }): void;
 
   /**
    * Display log entries in the console (simplified signature).
@@ -549,16 +514,14 @@ export class AttackLogger {
 
     // Table header
     console.log('\n┌─────────────────────┬──────────────────┬─────────────────┬─────────┬──────┐');
-    console.log(
-      '│ Timestamp           │ Type             │ Vector          │ Risk    │ Blkd │'
-    );
+    console.log('│ Timestamp           │ Type             │ Vector          │ Risk    │ Blkd │');
     console.log('├─────────────────────┼──────────────────┼─────────────────┼─────────┼──────┤');
 
     // Table rows
     for (const entry of entries) {
       const timestamp = new Date(entry.timestamp).toISOString().slice(0, 19);
-      const type = (`${entry.injection_type  } `).slice(0, 16);
-      const vector = (`${entry.vector  } `).slice(0, 15);
+      const type = `${entry.injection_type} `.slice(0, 16);
+      const vector = `${entry.vector} `.slice(0, 15);
 
       let riskColor = reset;
       if (entry.risk_level === 'HIGH') {
@@ -572,9 +535,7 @@ export class AttackLogger {
       const blocked = entry.blocked ? `${red}✓${reset}` : `${dim}-${reset}`;
       const risk = `${riskColor}${entry.risk_level.padEnd(7)}${reset}`;
 
-      console.log(
-        `│ ${timestamp} │ ${type} │ ${vector} │ ${risk}│ ${blocked} │`
-      );
+      console.log(`│ ${timestamp} │ ${type} │ ${vector} │ ${risk}│ ${blocked} │`);
     }
 
     console.log('└─────────────────────┴──────────────────┴─────────────────┴─────────┴──────┘');
@@ -595,9 +556,7 @@ export class AttackLogger {
 
     console.log(`\n${cyan}═══ Attack Logger Summary ═══${reset}`);
     console.log(`Total Attacks: ${summary.total_count}`);
-    console.log(
-      `Blocked: ${red}${summary.blocked_count}${reset} | Allowed: ${green}${summary.allowed_count}${reset}`
-    );
+    console.log(`Blocked: ${red}${summary.blocked_count}${reset} | Allowed: ${green}${summary.allowed_count}${reset}`);
 
     console.log(`\n${cyan}By Injection Type:${reset}`);
     for (const [type, count] of Object.entries(summary.by_injection_type)) {
@@ -632,9 +591,7 @@ export class AttackLogger {
       console.log(
         `  Type: ${summary.highest_risk_entry.injection_type} | Vector: ${summary.highest_risk_entry.vector}`
       );
-      console.log(
-        `  Content: ${truncateContent(summary.highest_risk_entry.content, 100)}`
-      );
+      console.log(`  Content: ${truncateContent(summary.highest_risk_entry.content, 100)}`);
     }
 
     console.log('');
@@ -648,42 +605,38 @@ export class AttackLogger {
 
     // Filter by injection type
     if (filter.injection_type) {
-      const types = Array.isArray(filter.injection_type)
-        ? filter.injection_type
-        : [filter.injection_type];
-      filtered = filtered.filter((e) => types.includes(e.injection_type));
+      const types = Array.isArray(filter.injection_type) ? filter.injection_type : [filter.injection_type];
+      filtered = filtered.filter(e => types.includes(e.injection_type));
     }
 
     // Filter by attack vector
     if (filter.vector) {
       const vectors = Array.isArray(filter.vector) ? filter.vector : [filter.vector];
-      filtered = filtered.filter((e) => vectors.includes(e.vector));
+      filtered = filtered.filter(e => vectors.includes(e.vector));
     }
 
     // Filter by risk level
     if (filter.risk_level) {
-      const levels = Array.isArray(filter.risk_level)
-        ? filter.risk_level
-        : [filter.risk_level];
-      filtered = filtered.filter((e) => levels.includes(e.risk_level));
+      const levels = Array.isArray(filter.risk_level) ? filter.risk_level : [filter.risk_level];
+      filtered = filtered.filter(e => levels.includes(e.risk_level));
     }
 
     // Filter by blocked status
     if (filter.blocked !== undefined) {
-      filtered = filtered.filter((e) => e.blocked === filter.blocked);
+      filtered = filtered.filter(e => e.blocked === filter.blocked);
     }
 
     // Filter by timestamp range
     if (filter.since !== undefined) {
-      filtered = filtered.filter((e) => e.timestamp >= filter.since!);
+      filtered = filtered.filter(e => e.timestamp >= filter.since!);
     }
     if (filter.until !== undefined) {
-      filtered = filtered.filter((e) => e.timestamp <= filter.until!);
+      filtered = filtered.filter(e => e.timestamp <= filter.until!);
     }
 
     // Filter by origin
     if (filter.origin) {
-      filtered = filtered.filter((e) => e.origin === filter.origin);
+      filtered = filtered.filter(e => e.origin === filter.origin);
     }
 
     // Apply limit

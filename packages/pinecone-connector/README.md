@@ -1,6 +1,7 @@
 # @blackunicorn/bonklm-pinecone
 
-Pinecone vector database connector for BonkLM - Provides security validation for vector queries and retrieval.
+Pinecone vector database connector for BonkLM - Provides security validation for vector queries and
+retrieval.
 
 ## Installation
 
@@ -48,19 +49,19 @@ console.log('Vectors blocked:', results.vectorsBlocked);
 
 ### GuardedPineconeOptions
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `validators` | `Validator[]` | `[]` | Validators for queries |
-| `guards` | `Guard[]` | `[]` | Guards for content filtering |
-| `logger` | `Logger` | `console` | Logger instance |
-| `validateRetrievedVectors` | `boolean` | `true` | Validate retrieved vectors |
-| `onBlockedVector` | `'filter' \| 'abort'` | `'filter'` | Action when vector is blocked |
-| `productionMode` | `boolean` | `NODE_ENV === 'production'` | Generic errors in production |
-| `validationTimeout` | `number` | `30000` | Validation timeout in ms |
-| `maxTopK` | `number` | `100` | Maximum topK value |
-| `sanitizeMetadataFilters` | `boolean` | `true` | Sanitize filter expressions |
-| `onQueryBlocked` | `(result) => void` | - | Callback when query is blocked |
-| `onVectorBlocked` | `(id, result) => void` | - | Callback when vector is blocked |
+| Option                     | Type                   | Default                     | Description                     |
+| -------------------------- | ---------------------- | --------------------------- | ------------------------------- |
+| `validators`               | `Validator[]`          | `[]`                        | Validators for queries          |
+| `guards`                   | `Guard[]`              | `[]`                        | Guards for content filtering    |
+| `logger`                   | `Logger`               | `console`                   | Logger instance                 |
+| `validateRetrievedVectors` | `boolean`              | `true`                      | Validate retrieved vectors      |
+| `onBlockedVector`          | `'filter' \| 'abort'`  | `'filter'`                  | Action when vector is blocked   |
+| `productionMode`           | `boolean`              | `NODE_ENV === 'production'` | Generic errors in production    |
+| `validationTimeout`        | `number`               | `30000`                     | Validation timeout in ms        |
+| `maxTopK`                  | `number`               | `100`                       | Maximum topK value              |
+| `sanitizeMetadataFilters`  | `boolean`              | `true`                      | Sanitize filter expressions     |
+| `onQueryBlocked`           | `(result) => void`     | -                           | Callback when query is blocked  |
+| `onVectorBlocked`          | `(id, result) => void` | -                           | Callback when vector is blocked |
 
 ## Security Features
 

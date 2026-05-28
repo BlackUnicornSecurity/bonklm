@@ -7,7 +7,7 @@ import {
   validateApiKeySecure,
   clearValidationCache,
   getRateLimitStatus,
-  type SecureValidationConfig,
+  type SecureValidationConfig
 } from './validation.js';
 import { WizardError } from './error.js';
 
@@ -21,7 +21,7 @@ describe('Secure API Validation Protocol', () => {
     sendInHeader: true,
     testEndpoint: 'https://api.example.com/v1/test',
     timeout: 5000,
-    logLevel: 'none',
+    logLevel: 'none'
   };
 
   beforeEach(() => {
@@ -40,7 +40,7 @@ describe('Secure API Validation Protocol', () => {
       it('should return true for valid API key (200 OK)', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         const result = await validateApiKeySecure('sk-validkey123', validConfig);
@@ -52,8 +52,8 @@ describe('Secure API Validation Protocol', () => {
           expect.objectContaining({
             method: 'GET',
             headers: {
-              'Authorization': 'Bearer sk-validkey123',
-            },
+              Authorization: 'Bearer sk-validkey123'
+            }
           })
         );
       });
@@ -61,7 +61,7 @@ describe('Secure API Validation Protocol', () => {
       it('should return false for invalid API key (401 Unauthorized)', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
-          status: 401,
+          status: 401
         });
 
         const result = await validateApiKeySecure('sk-invalidkey', validConfig);
@@ -72,7 +72,7 @@ describe('Secure API Validation Protocol', () => {
       it('should return false for forbidden API key (403 Forbidden)', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
-          status: 403,
+          status: 403
         });
 
         const result = await validateApiKeySecure('sk-forbiddenkey', validConfig);
@@ -83,20 +83,20 @@ describe('Secure API Validation Protocol', () => {
       it('should send key in Authorization header when sendInHeader is true', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         await validateApiKeySecure('sk-testkey', {
           ...validConfig,
-          sendInHeader: true,
+          sendInHeader: true
         });
 
         expect(mockFetch).toHaveBeenCalledWith(
           expect.any(String),
           expect.objectContaining({
             headers: {
-              'Authorization': 'Bearer sk-testkey',
-            },
+              Authorization: 'Bearer sk-testkey'
+            }
           })
         );
       });
@@ -104,12 +104,12 @@ describe('Secure API Validation Protocol', () => {
       it('should not send Authorization header when sendInHeader is false', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         await validateApiKeySecure('sk-testkey', {
           ...validConfig,
-          sendInHeader: false,
+          sendInHeader: false
         });
 
         const callArgs = mockFetch.mock.calls[0];
@@ -120,18 +120,18 @@ describe('Secure API Validation Protocol', () => {
       it('should support HEAD method', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         await validateApiKeySecure('sk-testkey', {
           ...validConfig,
-          method: 'HEAD',
+          method: 'HEAD'
         });
 
         expect(mockFetch).toHaveBeenCalledWith(
           expect.any(String),
           expect.objectContaining({
-            method: 'HEAD',
+            method: 'HEAD'
           })
         );
       });
@@ -139,18 +139,18 @@ describe('Secure API Validation Protocol', () => {
       it('should support OPTIONS method', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         await validateApiKeySecure('sk-testkey', {
           ...validConfig,
-          method: 'OPTIONS',
+          method: 'OPTIONS'
         });
 
         expect(mockFetch).toHaveBeenCalledWith(
           expect.any(String),
           expect.objectContaining({
-            method: 'OPTIONS',
+            method: 'OPTIONS'
           })
         );
       });
@@ -172,12 +172,10 @@ describe('Secure API Validation Protocol', () => {
 
         const shortTimeoutConfig = {
           ...validConfig,
-          timeout: 100, // 100ms timeout
+          timeout: 100 // 100ms timeout
         };
 
-        await expect(
-          validateApiKeySecure('sk-testkey', shortTimeoutConfig)
-        ).rejects.toThrow(WizardError);
+        await expect(validateApiKeySecure('sk-testkey', shortTimeoutConfig)).rejects.toThrow(WizardError);
       });
 
       it('should include timeout error details', async () => {
@@ -193,7 +191,7 @@ describe('Secure API Validation Protocol', () => {
 
         const shortTimeoutConfig = {
           ...validConfig,
-          timeout: 100,
+          timeout: 100
         };
 
         try {
@@ -214,13 +212,13 @@ describe('Secure API Validation Protocol', () => {
       it('should clear timeout on successful response', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         const startTime = Date.now();
         await validateApiKeySecure('sk-testkey', {
           ...validConfig,
-          timeout: 5000,
+          timeout: 5000
         });
         const endTime = Date.now();
 
@@ -233,7 +231,7 @@ describe('Secure API Validation Protocol', () => {
       it('should cache successful validation results', async () => {
         mockFetch.mockResolvedValue({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         // First call - should hit fetch
@@ -248,7 +246,7 @@ describe('Secure API Validation Protocol', () => {
       it('should cache failed validation results', async () => {
         mockFetch.mockResolvedValue({
           ok: false,
-          status: 401,
+          status: 401
         });
 
         // First call
@@ -263,7 +261,7 @@ describe('Secure API Validation Protocol', () => {
       it('should enforce rate limit after max validations', async () => {
         mockFetch.mockResolvedValue({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         // Make 5 successful validations (the limit)
@@ -272,15 +270,13 @@ describe('Secure API Validation Protocol', () => {
         }
 
         // The 6th validation should throw rate limit error
-        await expect(
-          validateApiKeySecure('sk-key6', validConfig)
-        ).rejects.toThrow(WizardError);
+        await expect(validateApiKeySecure('sk-key6', validConfig)).rejects.toThrow(WizardError);
       });
 
       it('should include rate limit error details', async () => {
         mockFetch.mockResolvedValue({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         // Fill up rate limit
@@ -306,7 +302,7 @@ describe('Secure API Validation Protocol', () => {
       it('should reset rate limit after cache TTL expires', async () => {
         mockFetch.mockResolvedValue({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         // Fill up rate limit
@@ -315,9 +311,7 @@ describe('Secure API Validation Protocol', () => {
         }
 
         // Should be rate limited
-        await expect(
-          validateApiKeySecure('sk-key6', validConfig)
-        ).rejects.toThrow(WizardError);
+        await expect(validateApiKeySecure('sk-key6', validConfig)).rejects.toThrow(WizardError);
 
         // Clear cache to simulate TTL expiration
         clearValidationCache();
@@ -325,7 +319,7 @@ describe('Secure API Validation Protocol', () => {
         // Should now work
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         const result = await validateApiKeySecure('sk-key7', validConfig);
@@ -335,7 +329,7 @@ describe('Secure API Validation Protocol', () => {
       it('should not rate limit cached keys', async () => {
         mockFetch.mockResolvedValue({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         // Use same key 10 times - should only fetch once
@@ -353,36 +347,30 @@ describe('Secure API Validation Protocol', () => {
       it('should throw WizardError for network errors', async () => {
         mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-        await expect(
-          validateApiKeySecure('sk-testkey', validConfig)
-        ).rejects.toThrow(Error);
+        await expect(validateApiKeySecure('sk-testkey', validConfig)).rejects.toThrow(Error);
       });
 
       it('should throw WizardError for unexpected status codes', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: false,
-          status: 500,
+          status: 500
         });
 
-        await expect(
-          validateApiKeySecure('sk-testkey', validConfig)
-        ).rejects.toThrow('Unexpected response status: 500');
+        await expect(validateApiKeySecure('sk-testkey', validConfig)).rejects.toThrow(
+          'Unexpected response status: 500'
+        );
       });
 
       it('should handle DNS errors', async () => {
         mockFetch.mockRejectedValueOnce(new Error('ENOTFOUND'));
 
-        await expect(
-          validateApiKeySecure('sk-testkey', validConfig)
-        ).rejects.toThrow();
+        await expect(validateApiKeySecure('sk-testkey', validConfig)).rejects.toThrow();
       });
 
       it('should handle connection refused', async () => {
         mockFetch.mockRejectedValueOnce(new Error('ECONNREFUSED'));
 
-        await expect(
-          validateApiKeySecure('sk-testkey', validConfig)
-        ).rejects.toThrow();
+        await expect(validateApiKeySecure('sk-testkey', validConfig)).rejects.toThrow();
       });
     });
 
@@ -390,7 +378,7 @@ describe('Secure API Validation Protocol', () => {
       it('should use SecureCredential for memory safety', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         // This test verifies that the function completes successfully
@@ -403,7 +391,7 @@ describe('Secure API Validation Protocol', () => {
       it('should handle empty API keys', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         const result = await validateApiKeySecure('', validConfig);
@@ -413,7 +401,7 @@ describe('Secure API Validation Protocol', () => {
       it('should handle special characters in API keys', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         const specialKey = 'sk-test.key_with-special/chars+=';
@@ -423,8 +411,8 @@ describe('Secure API Validation Protocol', () => {
           expect.any(String),
           expect.objectContaining({
             headers: {
-              'Authorization': `Bearer ${specialKey}`,
-            },
+              Authorization: `Bearer ${specialKey}`
+            }
           })
         );
       });
@@ -432,7 +420,7 @@ describe('Secure API Validation Protocol', () => {
       it('should not log credentials', async () => {
         mockFetch.mockResolvedValueOnce({
           ok: true,
-          status: 200,
+          status: 200
         });
 
         // Spy on console to ensure nothing is logged
@@ -453,7 +441,7 @@ describe('Secure API Validation Protocol', () => {
     it('should clear all cached entries', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        status: 200,
+        status: 200
       });
 
       // Add some entries to cache
@@ -473,7 +461,7 @@ describe('Secure API Validation Protocol', () => {
     it('should reset rate limit after clearing', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        status: 200,
+        status: 200
       });
 
       // Fill up rate limit
@@ -482,9 +470,7 @@ describe('Secure API Validation Protocol', () => {
       }
 
       // Should be rate limited
-      await expect(
-        validateApiKeySecure('sk-key6', validConfig)
-      ).rejects.toThrow(WizardError);
+      await expect(validateApiKeySecure('sk-key6', validConfig)).rejects.toThrow(WizardError);
 
       // Clear cache
       clearValidationCache();
@@ -507,7 +493,7 @@ describe('Secure API Validation Protocol', () => {
     it('should return correct usage after validations', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        status: 200,
+        status: 200
       });
 
       // Perform 3 validations
@@ -532,7 +518,7 @@ describe('Secure API Validation Protocol', () => {
     it('should track maximum validations correctly', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        status: 200,
+        status: 200
       });
 
       // Perform max validations
@@ -551,7 +537,7 @@ describe('Secure API Validation Protocol', () => {
     it('should clear timeout on successful response', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        status: 200,
+        status: 200
       });
 
       // Use a short timeout to verify it doesn't actually fire
@@ -567,9 +553,7 @@ describe('Secure API Validation Protocol', () => {
 
       const config = { ...validConfig, timeout: 100 };
 
-      await expect(
-        validateApiKeySecure('sk-testkey', config)
-      ).rejects.toThrow('Network error');
+      await expect(validateApiKeySecure('sk-testkey', config)).rejects.toThrow('Network error');
     });
 
     it('should abort request on timeout', async () => {
@@ -585,9 +569,7 @@ describe('Secure API Validation Protocol', () => {
 
       const config = { ...validConfig, timeout: 50 };
 
-      await expect(
-        validateApiKeySecure('sk-testkey', config)
-      ).rejects.toThrow(WizardError);
+      await expect(validateApiKeySecure('sk-testkey', config)).rejects.toThrow(WizardError);
     });
   });
 });

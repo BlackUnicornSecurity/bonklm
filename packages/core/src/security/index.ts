@@ -16,7 +16,7 @@ export {
   type OverrideTokenConfig,
   type OverrideTokenConfigString,
   type TokenValidationResult,
-  type TokenUsage,
+  type TokenUsage
 } from './override-token.js';
 
 // S016-003: Rate limiting exports
@@ -26,5 +26,5 @@ export {
   CommonRateLimiters,
   type RateLimiterConfig,
   type RateLimitResult,
-  DEFAULT_RATE_LIMIT,
+  DEFAULT_RATE_LIMIT
 } from './rate-limiter.js';

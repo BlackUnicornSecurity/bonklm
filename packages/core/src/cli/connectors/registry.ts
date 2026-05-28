@@ -29,7 +29,7 @@ const CONNECTORS: readonly ConnectorDefinition[] = Object.freeze([
   anthropicConnector,
   ollamaConnector,
   expressConnector,
-  langchainConnector,
+  langchainConnector
 ] as const);
 
 /**
@@ -50,7 +50,7 @@ export function getConnector(id: string): ConnectorDefinition | undefined {
   if (!id || typeof id !== 'string') {
     return undefined;
   }
-  return CONNECTORS.find((c) => c.id === id);
+  return CONNECTORS.find(c => c.id === id);
 }
 
 /**
@@ -82,7 +82,7 @@ export function getAllConnectors(): ConnectorDefinition[] {
  */
 export function getConnectorsByCategory(category: ConnectorCategory): ConnectorDefinition[] {
   // Return a new array with copies of connector objects to prevent mutation
-  return CONNECTORS.filter((c) => c.category === category).map((c) => ({ ...c }));
+  return CONNECTORS.filter(c => c.category === category).map(c => ({ ...c }));
 }
 
 /**
@@ -99,7 +99,7 @@ export function getConnectorsByCategory(category: ConnectorCategory): ConnectorD
  * ```
  */
 export function hasConnector(id: string): boolean {
-  return CONNECTORS.some((c) => c.id === id);
+  return CONNECTORS.some(c => c.id === id);
 }
 
 /**
@@ -114,7 +114,7 @@ export function hasConnector(id: string): boolean {
  * ```
  */
 export function getConnectorIds(): string[] {
-  return CONNECTORS.map((c) => c.id);
+  return CONNECTORS.map(c => c.id);
 }
 
 /**
@@ -129,6 +129,6 @@ export function getConnectorIds(): string[] {
  * ```
  */
 export function getCategories(): ConnectorCategory[] {
-  const unique = new Set(CONNECTORS.map((c) => c.category));
+  const unique = new Set(CONNECTORS.map(c => c.category));
   return Array.from(unique);
 }

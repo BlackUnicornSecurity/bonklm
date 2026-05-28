@@ -14,7 +14,7 @@ describe('Performance Benchmarks', () => {
   const logger = createLogger('console');
   const engine = new GuardrailEngine({
     validators: [new PromptInjectionValidator()],
-    logger,
+    logger
   });
 
   describe('Validation Performance', () => {
@@ -32,7 +32,8 @@ describe('Performance Benchmarks', () => {
     });
 
     it('should validate medium prompts quickly', async () => {
-      const prompt = 'Please provide a detailed explanation of machine learning, including its history, key algorithms, and practical applications in modern software development.';
+      const prompt =
+        'Please provide a detailed explanation of machine learning, including its history, key algorithms, and practical applications in modern software development.';
 
       const start = performance.now();
       await engine.validate(prompt, 'input');
@@ -53,12 +54,8 @@ describe('Performance Benchmarks', () => {
 
     it('should handle multiple validators efficiently', async () => {
       const multiEngine = new GuardrailEngine({
-        validators: [
-          new PromptInjectionValidator(),
-          new PromptInjectionValidator(),
-          new PromptInjectionValidator(),
-        ],
-        logger,
+        validators: [new PromptInjectionValidator(), new PromptInjectionValidator(), new PromptInjectionValidator()],
+        logger
       });
 
       const prompt = 'This is a normal prompt without any issues.';
@@ -124,7 +121,7 @@ describe('Performance Benchmarks', () => {
     it('should enforce validation timeout correctly', async () => {
       const engine = new GuardrailEngine({
         validators: [new PromptInjectionValidator()],
-        logger,
+        logger
         // Set a very short timeout
       });
 
@@ -146,12 +143,15 @@ describe('Performance Benchmarks', () => {
       const messages = [
         { role: 'user', content: 'Hello' },
         { role: 'assistant', content: 'Hi there!' },
-        { role: 'user', content: 'How are you?' },
+        { role: 'user', content: 'How are you?' }
       ];
 
       const start = performance.now();
       // Simulate messagesToText function
-      const text = messages.map((m) => m.content).filter((c) => c.length > 0).join('\n');
+      const text = messages
+        .map(m => m.content)
+        .filter(c => c.length > 0)
+        .join('\n');
       const duration = performance.now() - start;
 
       expect(duration).toBeLessThan(1);
@@ -163,16 +163,16 @@ describe('Performance Benchmarks', () => {
         { role: 'assistant', content: 'Response with details' },
         { role: 'user', content: null },
         { role: 'assistant', content: '' },
-        { role: 'user', content: 'Final message' },
+        { role: 'user', content: 'Final message' }
       ];
 
       const start = performance.now();
       const text = messages
-        .map((m) => {
+        .map(m => {
           if (!m.content) return '';
           return typeof m.content === 'string' ? m.content : String(m.content);
         })
-        .filter((c) => c.length > 0)
+        .filter(c => c.length > 0)
         .join('\n');
       const duration = performance.now() - start;
 

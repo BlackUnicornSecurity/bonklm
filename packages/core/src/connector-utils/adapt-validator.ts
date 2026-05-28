@@ -63,14 +63,14 @@ export function adaptValidatorToUniversalInput(v: Validator, callerLabel: string
 
   return {
     name,
-    validate: async (input) => {
+    validate: async input => {
       if (capability === 'string') {
         const content = extractStringContent(input);
         return v.validate(content);
       }
       // 'envelope' OR 'both' — pass through.
       return v.validate(input);
-    },
+    }
   };
 }
 
@@ -89,7 +89,7 @@ export function extractStringContent(input: string | ValidatorInput): string {
     case 'memory_write':
       return input.payload.content;
     case 'retrieved_docs':
-      return input.docs.map((d) => d.content).join('\n\n');
+      return input.docs.map(d => d.content).join('\n\n');
     case 'tool_call':
       try {
         return typeof input.args === 'string' ? input.args : JSON.stringify(input.args);

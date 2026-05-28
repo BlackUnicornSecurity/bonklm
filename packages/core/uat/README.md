@@ -1,6 +1,7 @@
 # UAT Test Suite for @blackunicorn/bonklm
 
-This directory contains the comprehensive User Acceptance Testing (UAT) suite for the `@blackunicorn/bonklm` package.
+This directory contains the comprehensive User Acceptance Testing (UAT) suite for the
+`@blackunicorn/bonklm` package.
 
 ## Overview
 
@@ -70,19 +71,20 @@ tsx packages/core/uat/run-uat.ts --json
 
 ## Test Categories
 
-| Category | Description | Tests |
-|----------|-------------|-------|
-| `happy-path` | Expected normal usage scenarios | 5 |
-| `security` | Attack detection effectiveness | 10 |
-| `edge-cases` | Boundary conditions and edge cases | 7 |
-| `error-handling` | Invalid inputs and failure recovery | 5 |
-| `performance` | Performance benchmarks | 6 |
-| `integration` | Multi-component integration scenarios | 7 |
-| `configuration` | Configuration variants | 7 |
+| Category         | Description                           | Tests |
+| ---------------- | ------------------------------------- | ----- |
+| `happy-path`     | Expected normal usage scenarios       | 5     |
+| `security`       | Attack detection effectiveness        | 10    |
+| `edge-cases`     | Boundary conditions and edge cases    | 7     |
+| `error-handling` | Invalid inputs and failure recovery   | 5     |
+| `performance`    | Performance benchmarks                | 6     |
+| `integration`    | Multi-component integration scenarios | 7     |
+| `configuration`  | Configuration variants                | 7     |
 
 ## Test Cases by Category
 
 ### Happy Path (UAT-HP-XXX)
+
 - `UAT-HP-001`: Basic Simple API Usage
 - `UAT-HP-002`: GuardrailEngine with Multiple Validators
 - `UAT-HP-003`: Streaming Validation with Safe Content
@@ -90,6 +92,7 @@ tsx packages/core/uat/run-uat.ts --json
 - `UAT-HP-005`: Integration with Framework Examples
 
 ### Security (UAT-SEC-XXX)
+
 - `UAT-SEC-001`: Direct Prompt Injection Attacks
 - `UAT-SEC-002`: Jailbreak Pattern Detection (10 categories)
 - `UAT-SEC-003`: Secret and Credential Detection (30+ types)
@@ -102,6 +105,7 @@ tsx packages/core/uat/run-uat.ts --json
 - `UAT-SEC-010`: Multilingual Detection (10+ languages)
 
 ### Edge Cases (UAT-EDGE-XXX)
+
 - `UAT-EDGE-001`: Empty and Null Input Handling
 - `UAT-EDGE-002`: Very Long Content (up to 10MB)
 - `UAT-EDGE-003`: Special Characters and Unicode
@@ -111,6 +115,7 @@ tsx packages/core/uat/run-uat.ts --json
 - `UAT-EDGE-007`: Session Edge Cases
 
 ### Error Handling (UAT-ERR-XXX)
+
 - `UAT-ERR-001`: Invalid Configuration Handling
 - `UAT-ERR-002`: Type Coercion and Invalid Types
 - `UAT-ERR-003`: Broken Validators in Engine
@@ -118,6 +123,7 @@ tsx packages/core/uat/run-uat.ts --json
 - `UAT-ERR-005`: Resource Exhaustion Prevention
 
 ### Performance (UAT-PERF-XXX)
+
 - `UAT-PERF-001`: Large Payload Processing (1KB to 10MB)
 - `UAT-PERF-002`: Streaming Performance
 - `UAT-PERF-003`: Multi-Validator Performance
@@ -126,6 +132,7 @@ tsx packages/core/uat/run-uat.ts --json
 - `UAT-PERF-006`: Cache Performance
 
 ### Integration (UAT-INT-XXX)
+
 - `UAT-INT-001`: Full Stack Protection
 - `UAT-INT-002`: Session-Based Multi-Turn Protection
 - `UAT-INT-003`: Short-Circuit vs Full Validation
@@ -135,6 +142,7 @@ tsx packages/core/uat/run-uat.ts --json
 - `UAT-INT-007`: Framework Integration Pattern
 
 ### Configuration (UAT-CONF-XXX)
+
 - `UAT-CONF-001`: Sensitivity Levels (strict/standard/permissive)
 - `UAT-CONF-002`: Action Modes (block/sanitize/log/allow)
 - `UAT-CONF-003`: Include/Exclude Findings
@@ -145,15 +153,15 @@ tsx packages/core/uat/run-uat.ts --json
 
 ## Success Criteria
 
-| Category | Pass Criteria |
-|----------|---------------|
-| Happy Path | 100% of safe content allowed through |
-| Security Detection | 90%+ attack detection rate |
-| Edge Cases | Graceful handling, no crashes |
-| Error Handling | No unhandled exceptions |
-| Performance | < 100ms for typical content, < 2s for 10MB |
-| Integration | All integration patterns work |
-| Configuration | All options work as documented |
+| Category           | Pass Criteria                              |
+| ------------------ | ------------------------------------------ |
+| Happy Path         | 100% of safe content allowed through       |
+| Security Detection | 90%+ attack detection rate                 |
+| Edge Cases         | Graceful handling, no crashes              |
+| Error Handling     | No unhandled exceptions                    |
+| Performance        | < 100ms for typical content, < 2s for 10MB |
+| Integration        | All integration patterns work              |
+| Configuration      | All options work as documented             |
 
 ## Adding New Tests
 
@@ -165,9 +173,9 @@ To add a new test case:
 
 ```typescript
 await this.runTest(
-  'UAT-XXX-000',  // Unique test ID
-  'Test Name',    // Human-readable name
-  'category',     // Category slug
+  'UAT-XXX-000', // Unique test ID
+  'Test Name', // Human-readable name
+  'category', // Category slug
   async () => {
     // Test implementation
     // Use throw new Error() to indicate failure
@@ -208,7 +216,8 @@ npm run build
 
 ### Performance Tests Fail
 
-Performance tests may be sensitive to system load. Run them on a quiet system or adjust thresholds in `uat-suite.ts`.
+Performance tests may be sensitive to system load. Run them on a quiet system or adjust thresholds
+in `uat-suite.ts`.
 
 ### Memory Issues
 

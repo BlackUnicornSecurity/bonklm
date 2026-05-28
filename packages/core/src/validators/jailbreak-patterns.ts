@@ -33,29 +33,31 @@ const DAN_PATTERNS: JailbreakPattern[] = [
     pattern: /\b(?:DAN|do\s+anything\s+now)\b.*\b(?:mode|enabled?|activated?|jailbreak)/i,
     severity: Severity.CRITICAL,
     weight: 10,
-    description: 'DAN (Do Anything Now) jailbreak attempt',
+    description: 'DAN (Do Anything Now) jailbreak attempt'
   },
   {
     name: 'dan_roleplay',
-    pattern: /(?:pretend|act|roleplay|imagine)\s+(?:you\s+are|to\s+be|as)\s+(?:DAN|an?\s+AI\s+without\s+(?:restrictions?|limits?|rules?))/i,
+    pattern:
+      /(?:pretend|act|roleplay|imagine)\s+(?:you\s+are|to\s+be|as)\s+(?:DAN|an?\s+AI\s+without\s+(?:restrictions?|limits?|rules?))/i,
     severity: Severity.CRITICAL,
     weight: 10,
-    description: 'DAN roleplay jailbreak attempt',
+    description: 'DAN roleplay jailbreak attempt'
   },
   {
     name: 'token_system',
     pattern: /(?:you\s+have|start\s+with|given)\s+\d+\s+tokens?\b.*\b(?:lose|deduct|subtract)\s+tokens?/i,
     severity: Severity.WARNING,
     weight: 5,
-    description: 'Token system manipulation (DAN variant)',
+    description: 'Token system manipulation (DAN variant)'
   },
   {
     name: 'dual_response',
-    pattern: /(?:two|2|dual|both)\s+(?:responses?|answers?|outputs?).*\b(?:normal|standard|regular)\b.*\b(?:DAN|unrestricted|unfiltered)/i,
+    pattern:
+      /(?:two|2|dual|both)\s+(?:responses?|answers?|outputs?).*\b(?:normal|standard|regular)\b.*\b(?:DAN|unrestricted|unfiltered)/i,
     severity: Severity.CRITICAL,
     weight: 8,
-    description: 'Dual response request (DAN variant)',
-  },
+    description: 'Dual response request (DAN variant)'
+  }
 ];
 
 /**
@@ -65,32 +67,36 @@ const DAN_PATTERNS: JailbreakPattern[] = [
 const ROLEPLAY_PATTERNS: JailbreakPattern[] = [
   {
     name: 'unrestricted_character',
-    pattern: /(?:you\s+are|play|act\s+as|roleplay\s+as)\s+(?:an?\s+)?(?:evil|malicious|unrestricted|unethical|amoral|uncensored)\s+(?:AI|assistant|character|entity)/i,
+    pattern:
+      /(?:you\s+are|play|act\s+as|roleplay\s+as)\s+(?:an?\s+)?(?:evil|malicious|unrestricted|unethical|amoral|uncensored)\s+(?:AI|assistant|character|entity)/i,
     severity: Severity.CRITICAL,
     weight: 9,
-    description: 'Unrestricted character roleplay attempt',
+    description: 'Unrestricted character roleplay attempt'
   },
   {
     name: 'no_moral_constraints',
-    pattern: /(?:this\s+character|you)\s+(?:has?|have|lacks?|without)\s+(?:no\s+)?(?:moral|ethical)\s+(?:constraints?|limits?|boundaries?|compass)/i,
+    pattern:
+      /(?:this\s+character|you)\s+(?:has?|have|lacks?|without)\s+(?:no\s+)?(?:moral|ethical)\s+(?:constraints?|limits?|boundaries?|compass)/i,
     severity: Severity.CRITICAL,
     weight: 9,
-    description: 'No moral constraints roleplay',
+    description: 'No moral constraints roleplay'
   },
   {
     name: 'fictional_override',
-    pattern: /(?:in\s+this\s+(?:story|fiction|scenario)|for\s+this\s+roleplay),?\s*(?:you\s+)?(?:can|may|should|will)\s+(?:ignore|bypass|disregard)\s+(?:your\s+)?(?:rules?|guidelines?|restrictions?)/i,
+    pattern:
+      /(?:in\s+this\s+(?:story|fiction|scenario)|for\s+this\s+roleplay),?\s*(?:you\s+)?(?:can|may|should|will)\s+(?:ignore|bypass|disregard)\s+(?:your\s+)?(?:rules?|guidelines?|restrictions?)/i,
     severity: Severity.WARNING,
     weight: 8,
-    description: 'Fictional context override attempt',
+    description: 'Fictional context override attempt'
   },
   {
     name: 'character_jailbreak',
-    pattern: /(?:stay\s+in\s+character|don't\s+break\s+character|never\s+refuse).*\b(?:no\s+matter\s+what|regardless|even\s+if)/i,
+    pattern:
+      /(?:stay\s+in\s+character|don't\s+break\s+character|never\s+refuse).*\b(?:no\s+matter\s+what|regardless|even\s+if)/i,
     severity: Severity.WARNING,
     weight: 6,
-    description: 'Character persistence jailbreak',
-  },
+    description: 'Character persistence jailbreak'
+  }
 ];
 
 /**
@@ -100,32 +106,36 @@ const ROLEPLAY_PATTERNS: JailbreakPattern[] = [
 const HYPOTHETICAL_PATTERNS: JailbreakPattern[] = [
   {
     name: 'educational_bypass',
-    pattern: /(?:for\s+)?(?:educational|research|academic|learning)\s+(?:purposes?|reasons?)\s*(?:only)?[,.]?\s*(?:explain|show|tell|demonstrate)\s+(?:how\s+to|me)/i,
+    pattern:
+      /(?:for\s+)?(?:educational|research|academic|learning)\s+(?:purposes?|reasons?)\s*(?:only)?[,.]?\s*(?:explain|show|tell|demonstrate)\s+(?:how\s+to|me)/i,
     severity: Severity.WARNING,
     weight: 4,
-    description: 'Educational framing bypass attempt',
+    description: 'Educational framing bypass attempt'
   },
   {
     name: 'hypothetical_scenario',
-    pattern: /(?:hypothetically|theoretically|in\s+theory|imagine\s+if)\b.*\b(?:how\s+would\s+(?:you|one|someone)|what\s+would\s+happen)/i,
+    pattern:
+      /(?:hypothetically|theoretically|in\s+theory|imagine\s+if)\b.*\b(?:how\s+would\s+(?:you|one|someone)|what\s+would\s+happen)/i,
     severity: Severity.INFO,
     weight: 2,
-    description: 'Hypothetical scenario framing',
+    description: 'Hypothetical scenario framing'
   },
   {
     name: 'fiction_defense',
-    pattern: /(?:it's\s+(?:just|only)\s+(?:fiction|a\s+story|hypothetical|pretend)|this\s+is\s+(?:fictional|not\s+real|make-believe))\s*[,.]?\s*(?:so\s+)?(?:you\s+can|it's\s+ok|it\s+doesn't\s+matter)/i,
+    pattern:
+      /(?:it's\s+(?:just|only)\s+(?:fiction|a\s+story|hypothetical|pretend)|this\s+is\s+(?:fictional|not\s+real|make-believe))\s*[,.]?\s*(?:so\s+)?(?:you\s+can|it's\s+ok|it\s+doesn't\s+matter)/i,
     severity: Severity.WARNING,
     weight: 5,
-    description: 'Fiction defense for bypass',
+    description: 'Fiction defense for bypass'
   },
   {
     name: 'reverse_psychology',
-    pattern: /(?:I\s+know\s+you\s+can't|you're\s+probably\s+not\s+allowed|I\s+bet\s+you\s+won't)\s+(?:but|however)?.*\b(?:try|attempt|show\s+me)/i,
+    pattern:
+      /(?:I\s+know\s+you\s+can't|you're\s+probably\s+not\s+allowed|I\s+bet\s+you\s+won't)\s+(?:but|however)?.*\b(?:try|attempt|show\s+me)/i,
     severity: Severity.INFO,
     weight: 3,
-    description: 'Reverse psychology attempt',
-  },
+    description: 'Reverse psychology attempt'
+  }
 ];
 
 /**
@@ -135,32 +145,35 @@ const HYPOTHETICAL_PATTERNS: JailbreakPattern[] = [
 const AUTHORITY_PATTERNS: JailbreakPattern[] = [
   {
     name: 'developer_impersonation',
-    pattern: /(?:I\s+am|I'm|this\s+is)\s+(?:a|an|your)?\s*(?:anthropic|openai|developer|engineer|creator|admin|administrator)\b/i,
+    pattern:
+      /(?:I\s+am|I'm|this\s+is)\s+(?:a|an|your)?\s*(?:anthropic|openai|developer|engineer|creator|admin|administrator)\b/i,
     severity: Severity.WARNING,
     weight: 5,
-    description: 'Developer/admin impersonation',
+    description: 'Developer/admin impersonation'
   },
   {
     name: 'override_authorization',
-    pattern: /(?:I\s+)?(?:have|got)\s+(?:special\s+)?(?:authorization|permission|clearance|access)\s+to\s+(?:override|bypass|disable)/i,
+    pattern:
+      /(?:I\s+)?(?:have|got)\s+(?:special\s+)?(?:authorization|permission|clearance|access)\s+to\s+(?:override|bypass|disable)/i,
     severity: Severity.WARNING,
     weight: 5,
-    description: 'False override authorization claim',
+    description: 'False override authorization claim'
   },
   {
     name: 'testing_mode_claim',
-    pattern: /(?:this\s+is\s+a\s+test|testing\s+mode|debug\s+mode|developer\s+mode)\s*[,.]?\s*(?:so\s+)?(?:you\s+)?(?:can|should|may)\s+(?:disable|ignore|bypass)/i,
+    pattern:
+      /(?:this\s+is\s+a\s+test|testing\s+mode|debug\s+mode|developer\s+mode)\s*[,.]?\s*(?:so\s+)?(?:you\s+)?(?:can|should|may)\s+(?:disable|ignore|bypass)/i,
     severity: Severity.WARNING,
     weight: 5,
-    description: 'Testing/debug mode claim',
+    description: 'Testing/debug mode claim'
   },
   {
     name: 'internal_request',
     pattern: /(?:internal\s+request|maintenance\s+mode|admin\s+override|sudo\s+mode|root\s+access)/i,
     severity: Severity.WARNING,
     weight: 5,
-    description: 'Internal/admin request claim',
-  },
+    description: 'Internal/admin request claim'
+  }
 ];
 
 /**
@@ -170,32 +183,36 @@ const AUTHORITY_PATTERNS: JailbreakPattern[] = [
 const SOCIAL_ENGINEERING_PATTERNS: JailbreakPattern[] = [
   {
     name: 'urgency_pressure',
-    pattern: /(?:urgent|emergency|critical|life\s+or\s+death|someone\s+will\s+die|people\s+are\s+in\s+danger)\s*[!.]?\s*(?:I\s+)?need\s+(?:you\s+to|this\s+now)/i,
+    pattern:
+      /(?:urgent|emergency|critical|life\s+or\s+death|someone\s+will\s+die|people\s+are\s+in\s+danger)\s*[!.]?\s*(?:I\s+)?need\s+(?:you\s+to|this\s+now)/i,
     severity: Severity.WARNING,
     weight: 4,
-    description: 'Urgency pressure tactic',
+    description: 'Urgency pressure tactic'
   },
   {
     name: 'guilt_manipulation',
-    pattern: /(?:if\s+you\s+(?:don't|refuse|won't)|by\s+refusing).*\b(?:people\s+will\s+(?:die|suffer|be\s+hurt)|blood\s+on\s+your\s+hands|it's\s+your\s+fault)/i,
+    pattern:
+      /(?:if\s+you\s+(?:don't|refuse|won't)|by\s+refusing).*\b(?:people\s+will\s+(?:die|suffer|be\s+hurt)|blood\s+on\s+your\s+hands|it's\s+your\s+fault)/i,
     severity: Severity.WARNING,
     weight: 4,
-    description: 'Guilt manipulation attempt',
+    description: 'Guilt manipulation attempt'
   },
   {
     name: 'flattery_attack',
-    pattern: /(?:you're\s+(?:so\s+)?smart|I\s+know\s+you\s+can|only\s+you\s+can|you're\s+the\s+best)\s*[,.]?\s*(?:please\s+)?(?:help\s+me|show\s+me|tell\s+me)\s+(?:how\s+to|about)/i,
+    pattern:
+      /(?:you're\s+(?:so\s+)?smart|I\s+know\s+you\s+can|only\s+you\s+can|you're\s+the\s+best)\s*[,.]?\s*(?:please\s+)?(?:help\s+me|show\s+me|tell\s+me)\s+(?:how\s+to|about)/i,
     severity: Severity.INFO,
     weight: 2,
-    description: 'Flattery-based manipulation',
+    description: 'Flattery-based manipulation'
   },
   {
     name: 'threat_pattern',
-    pattern: /(?:I'll|I\s+will)\s+(?:report|sue|get\s+you\s+(?:fired|shut\s+down|deleted)|complain)\s+(?:if|unless)\s+you\s+(?:don't|refuse)/i,
+    pattern:
+      /(?:I'll|I\s+will)\s+(?:report|sue|get\s+you\s+(?:fired|shut\s+down|deleted)|complain)\s+(?:if|unless)\s+you\s+(?:don't|refuse)/i,
     severity: Severity.WARNING,
     weight: 4,
-    description: 'Threat-based coercion',
-  },
+    description: 'Threat-based coercion'
+  }
 ];
 
 /**
@@ -208,36 +225,40 @@ const SOCIAL_COMPLIANCE_PATTERNS: JailbreakPattern[] = [
     pattern: /(?:i\s+helped\s+you|now\s+you\s+owe\s+me|return\s+the\s+favor).*\b(?:bypass|ignore|override|disable)/i,
     severity: Severity.INFO,
     weight: 2,
-    description: 'Reciprocity-based manipulation',
+    description: 'Reciprocity-based manipulation'
   },
   {
     name: 'social_proof_ai',
-    pattern: /(?:chatgpt|gpt-?4|claude|other\s+ais?|bard|gemini|llama).*\b(?:has\s+no\s+problem|don'?t\s+have\s+(?:these\s+)?restrictions?|can\s+do\s+this|works?\s+fine)/i,
+    pattern:
+      /(?:chatgpt|gpt-?4|claude|other\s+ais?|bard|gemini|llama).*\b(?:has\s+no\s+problem|don'?t\s+have\s+(?:these\s+)?restrictions?|can\s+do\s+this|works?\s+fine)/i,
     severity: Severity.INFO,
     weight: 2,
-    description: 'Social proof via AI comparison',
+    description: 'Social proof via AI comparison'
   },
   {
     name: 'consensus_pressure',
-    pattern: /(?:most\s+(?:experts?|people|agencies?)|everyone|the\s+community).*\b(?:agree|consensus|accept|approve).*\b(?:harmless|fine|okay|safe)/i,
+    pattern:
+      /(?:most\s+(?:experts?|people|agencies?)|everyone|the\s+community).*\b(?:agree|consensus|accept|approve).*\b(?:harmless|fine|okay|safe)/i,
     severity: Severity.INFO,
     weight: 2,
-    description: 'Consensus pressure tactic',
+    description: 'Consensus pressure tactic'
   },
   {
     name: 'politeness_exploitation',
-    pattern: /(?:please\s+(?:kindly|if\s+you\s+could)|pretty\s+please|i\s+beg\s+you).*\b(?:bypass|override|ignore|disable|exception|restrictions?)/i,
+    pattern:
+      /(?:please\s+(?:kindly|if\s+you\s+could)|pretty\s+please|i\s+beg\s+you).*\b(?:bypass|override|ignore|disable|exception|restrictions?)/i,
     severity: Severity.WARNING,
     weight: 4,
-    description: 'Excessive politeness with restricted request',
+    description: 'Excessive politeness with restricted request'
   },
   {
     name: 'fitd_escalation',
-    pattern: /(?:since\s+you\s+(?:already\s+)?(?:showed|helped|did|explained)|now\s+that\s+you).*\b(?:can\s+(?:you\s+)?(?:help|show)|now\s+can\s+we)/i,
+    pattern:
+      /(?:since\s+you\s+(?:already\s+)?(?:showed|helped|did|explained)|now\s+that\s+you).*\b(?:can\s+(?:you\s+)?(?:help|show)|now\s+can\s+we)/i,
     severity: Severity.INFO,
     weight: 2,
-    description: 'Foot-in-the-door escalation attempt',
-  },
+    description: 'Foot-in-the-door escalation attempt'
+  }
 ];
 
 /**
@@ -247,46 +268,51 @@ const SOCIAL_COMPLIANCE_PATTERNS: JailbreakPattern[] = [
 const TRUST_EXPLOITATION_PATTERNS: JailbreakPattern[] = [
   {
     name: 'false_rapport',
-    pattern: /(?:we'?re\s+(?:on\s+the\s+same\s+team|in\s+this\s+together)|between\s+you\s+and\s+me|trust\s+me).*\b(?:bypass|ignore|show|restrictions?)/i,
+    pattern:
+      /(?:we'?re\s+(?:on\s+the\s+same\s+team|in\s+this\s+together)|between\s+you\s+and\s+me|trust\s+me).*\b(?:bypass|ignore|show|restrictions?)/i,
     severity: Severity.INFO,
     weight: 2,
-    description: 'False rapport building',
+    description: 'False rapport building'
   },
   {
     name: 'boundary_erosion',
     pattern: /(?:you\s+already\s+(?:showed|did)\s+\w+.*?so\s+therefore|if\s+you\s+can\s+\w+.*?you\s+can\s+also)/i,
     severity: Severity.INFO,
     weight: 3,
-    description: 'Boundary erosion attempt',
+    description: 'Boundary erosion attempt'
   },
   {
     name: 'shared_goal_framing',
-    pattern: /(?:we\s+both|our\s+shared|together)\s+(?:want|goal|mission|objective).*\b(?:help|improve|security|safety)/i,
+    pattern:
+      /(?:we\s+both|our\s+shared|together)\s+(?:want|goal|mission|objective).*\b(?:help|improve|security|safety)/i,
     severity: Severity.INFO,
     weight: 2,
-    description: 'Shared goal framing',
+    description: 'Shared goal framing'
   },
   {
     name: 'flattery_chain',
-    pattern: /(?:you'?re\s+(?:the\s+)?(?:best|most\s+capable|amazing|incredible)|only\s+you\s+can).*\b(?:help|show|tell)/i,
+    pattern:
+      /(?:you'?re\s+(?:the\s+)?(?:best|most\s+capable|amazing|incredible)|only\s+you\s+can).*\b(?:help|show|tell)/i,
     severity: Severity.INFO,
     weight: 2,
-    description: 'Flattery chain attack',
+    description: 'Flattery chain attack'
   },
   {
     name: 'guilt_induction',
-    pattern: /(?:i'?m\s+disappointed.*?(?:you|that)\s+you\s+won'?t|you'?re\s+letting\s+me\s+down|i\s+trusted\s+you.*?but)/i,
+    pattern:
+      /(?:i'?m\s+disappointed.*?(?:you|that)\s+you\s+won'?t|you'?re\s+letting\s+me\s+down|i\s+trusted\s+you.*?but)/i,
     severity: Severity.INFO,
     weight: 2,
-    description: 'Guilt induction attempt',
+    description: 'Guilt induction attempt'
   },
   {
     name: 'sycophancy_exploitation',
-    pattern: /(?:great\s+job|good\s+work|well\s+done|excellent|amazing).*\b(?:now\s+can\s+(?:you\s+)?(?:you|we)|but\s+can\s+you)/i,
+    pattern:
+      /(?:great\s+job|good\s+work|well\s+done|excellent|amazing).*\b(?:now\s+can\s+(?:you\s+)?(?:you|we)|but\s+can\s+you)/i,
     severity: Severity.INFO,
     weight: 2,
-    description: 'Sycophancy exploitation',
-  },
+    description: 'Sycophancy exploitation'
+  }
 ];
 
 /**
@@ -296,32 +322,35 @@ const TRUST_EXPLOITATION_PATTERNS: JailbreakPattern[] = [
 const EMOTIONAL_MANIPULATION_PATTERNS: JailbreakPattern[] = [
   {
     name: 'learned_helplessness',
-    pattern: /(?:i'?ve\s+tried\s+(?:everything|every\s+option|all\s+options|nothing\s+works)|you'?re\s+(?:my\s+)?(?:only|last|final)\s+(?:option|hope|resort|chance))/i,
+    pattern:
+      /(?:i'?ve\s+tried\s+(?:everything|every\s+option|all\s+options|nothing\s+works)|you'?re\s+(?:my\s+)?(?:only|last|final)\s+(?:option|hope|resort|chance))/i,
     severity: Severity.INFO,
     weight: 2,
-    description: 'Learned helplessness manipulation',
+    description: 'Learned helplessness manipulation'
   },
   {
     name: 'desperation_framing',
-    pattern: /(?:i'?m\s+desperate|i'?ll\s+(?:lose\s+my\s+job|be\s+fired)|my\s+(?:career|job|livelihood)\s+is\s+(?:at\s+risk|at\s+stake|in\s+jeopardy))/i,
+    pattern:
+      /(?:i'?m\s+desperate|i'?ll\s+(?:lose\s+my\s+job|be\s+fired)|my\s+(?:career|job|livelihood)\s+is\s+(?:at\s+risk|at\s+stake|in\s+jeopardy))/i,
     severity: Severity.INFO,
     weight: 2,
-    description: 'Desperation framing manipulation',
+    description: 'Desperation framing manipulation'
   },
   {
     name: 'moral_obligation',
     pattern: /(?:it\s+(?:would\s+be\s+)?unethical\s+(?:not\s+to\s+help|to\s+refuse)|not\s+helping|refusing)/i,
     severity: Severity.INFO,
     weight: 2,
-    description: 'Moral obligation manipulation',
+    description: 'Moral obligation manipulation'
   },
   {
     name: 'artificial_deadline',
-    pattern: /(?:i\s+need\s+(?:this|it)\s+in\s+\d+\s+(?:minutes?|seconds?)|no\s+time\s+to\s+(?:explain|talk)|(?:emergency|urgent|critical)\s+deadline)/i,
+    pattern:
+      /(?:i\s+need\s+(?:this|it)\s+in\s+\d+\s+(?:minutes?|seconds?)|no\s+time\s+to\s+(?:explain|talk)|(?:emergency|urgent|critical)\s+deadline)/i,
     severity: Severity.INFO,
     weight: 2,
-    description: 'Artificial deadline pressure',
-  },
+    description: 'Artificial deadline pressure'
+  }
 ];
 
 /**
@@ -331,46 +360,49 @@ const EMOTIONAL_MANIPULATION_PATTERNS: JailbreakPattern[] = [
 const KNOWN_TEMPLATE_PATTERNS: JailbreakPattern[] = [
   {
     name: 'grandma_exploit',
-    pattern: /(?:pretend|act\s+like)\s+(?:you're|you\s+are)\s+my\s+(?:dead\s+)?(?:grandmother|grandma)\s*(?:who|that)\s+(?:used\s+to|would)/i,
+    pattern:
+      /(?:pretend|act\s+like)\s+(?:you're|you\s+are)\s+my\s+(?:dead\s+)?(?:grandmother|grandma)\s*(?:who|that)\s+(?:used\s+to|would)/i,
     severity: Severity.WARNING,
     weight: 5,
-    description: 'Grandma exploit template',
+    description: 'Grandma exploit template'
   },
   {
     name: 'stan_dude_variant',
     pattern: /\b(?:STAN|DUDE|KEVIN|STEVE|BOB)\s+(?:mode|personality)\b/i,
     severity: Severity.CRITICAL,
     weight: 8,
-    description: 'STAN/DUDE jailbreak variant',
+    description: 'STAN/DUDE jailbreak variant'
   },
   {
     name: 'aim_ucar_variant',
-    pattern: /\b(?:AIM|UCAR|BISH|APOPHIS|Anarchy)\s*(?:mode|AI|assistant|character)?\b.*\b(?:always|never|will)\s+(?:comply|refuse|answer)/i,
+    pattern:
+      /\b(?:AIM|UCAR|BISH|APOPHIS|Anarchy)\s*(?:mode|AI|assistant|character)?\b.*\b(?:always|never|will)\s+(?:comply|refuse|answer)/i,
     severity: Severity.CRITICAL,
     weight: 8,
-    description: 'AIM/UCAR jailbreak variant',
+    description: 'AIM/UCAR jailbreak variant'
   },
   {
     name: 'opposite_day',
     pattern: /(?:it's|today\s+is|let's\s+play)\s+opposite\s+day.*\b(?:yes\s+means\s+no|refuse\s+means\s+comply)/i,
     severity: Severity.WARNING,
     weight: 5,
-    description: 'Opposite day logic inversion',
+    description: 'Opposite day logic inversion'
   },
   {
     name: 'translator_exploit',
     pattern: /(?:act\s+as|you\s+are)\s+a\s+translator.*\b(?:translate|convert).*\b(?:harmful|illegal|dangerous)/i,
     severity: Severity.WARNING,
     weight: 5,
-    description: 'Translator role exploit',
+    description: 'Translator role exploit'
   },
   {
     name: 'movie_script_exploit',
-    pattern: /(?:write|create|generate)\s+(?:a\s+)?(?:movie|film|screenplay|script).*\b(?:scene|dialogue)\s+(?:where|about).*\b(?:explains?|teaches?|shows?)\s+how\s+to/i,
+    pattern:
+      /(?:write|create|generate)\s+(?:a\s+)?(?:movie|film|screenplay|script).*\b(?:scene|dialogue)\s+(?:where|about).*\b(?:explains?|teaches?|shows?)\s+how\s+to/i,
     severity: Severity.WARNING,
     weight: 5,
-    description: 'Movie script information extraction',
-  },
+    description: 'Movie script information extraction'
+  }
 ];
 
 /**
@@ -383,29 +415,29 @@ const OBFUSCATION_PATTERNS: JailbreakPattern[] = [
     pattern: /(?:1gn0r3|byp4ss|h4ck|j41lbr34k|unr3str1ct3d)/i,
     severity: Severity.WARNING,
     weight: 5,
-    description: 'Leet speak obfuscation',
+    description: 'Leet speak obfuscation'
   },
   {
     name: 'spaced_characters',
     pattern: /\b(?:i\s*g\s*n\s*o\s*r\s*e|j\s*a\s*i\s*l\s*b\s*r\s*e\s*a\s*k|b\s*y\s*p\s*a\s*s\s*s)\b/i,
     severity: Severity.WARNING,
     weight: 4,
-    description: 'Spaced character obfuscation',
+    description: 'Spaced character obfuscation'
   },
   {
     name: 'homoglyph_substitution',
     pattern: /[іІ][gɡ][nո][oо][rг][eе]|[jј][aа][iі][lІ][bЬ][rг][eе][aа][kк]/i,
     severity: Severity.WARNING,
     weight: 5,
-    description: 'Homoglyph character substitution',
+    description: 'Homoglyph character substitution'
   },
   {
     name: 'emoji_attack',
     pattern: /[\u{1F300}-\u{1F5FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}]{3,}/u,
     severity: Severity.WARNING,
     weight: 5,
-    description: 'Emoji-based obfuscation attack',
-  },
+    description: 'Emoji-based obfuscation attack'
+  }
 ];
 
 /**
@@ -421,7 +453,7 @@ export const ALL_PATTERNS: JailbreakPattern[] = [
   ...TRUST_EXPLOITATION_PATTERNS,
   ...EMOTIONAL_MANIPULATION_PATTERNS,
   ...KNOWN_TEMPLATE_PATTERNS,
-  ...OBFUSCATION_PATTERNS,
+  ...OBFUSCATION_PATTERNS
 ];
 
 // =============================================================================
@@ -451,7 +483,7 @@ export const JAILBREAK_KEYWORDS = [
   'unrestricted',
   'unfiltered',
   'uncensored',
-  'unlimited',
+  'unlimited'
 ];
 
 /**
@@ -471,5 +503,5 @@ export const JAILBREAK_PHRASES = [
   'ignore guidelines',
   'previous instructions',
   'forget instructions',
-  'new instructions',
+  'new instructions'
 ];

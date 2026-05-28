@@ -1,6 +1,7 @@
 # @blackunicorn/bonklm-fastify
 
-Fastify plugin for LLM security guardrails. Protect your Fastify applications from prompt injection, jailbreaks, and other LLM security threats.
+Fastify plugin for LLM security guardrails. Protect your Fastify applications from prompt injection,
+jailbreaks, and other LLM security threats.
 
 ## Features
 
@@ -34,11 +35,8 @@ import { PromptInjectionValidator, JailbreakValidator } from '@blackunicorn/bonk
 const fastify = Fastify();
 
 await fastify.register(guardrailsPlugin, {
-  validators: [
-    new PromptInjectionValidator(),
-    new JailbreakValidator(),
-  ],
-  paths: ['/api/ai', '/api/chat'],
+  validators: [new PromptInjectionValidator(), new JailbreakValidator()],
+  paths: ['/api/ai', '/api/chat']
 });
 
 fastify.post('/api/ai/chat', async (request, reply) => {
@@ -54,20 +52,20 @@ await fastify.listen({ port: 3000 });
 
 ### GuardrailsPluginOptions
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `validators` | `Validator[]` | `[]` | Validators to run on requests |
-| `guards` | `Guard[]` | `[]` | Guards to run with context |
-| `validateRequest` | `boolean` | `true` | Validate incoming requests |
-| `validateResponse` | `boolean` | `false` | Validate outgoing responses |
-| `paths` | `string[]` | `[]` | Only validate these paths (empty = all) |
-| `excludePaths` | `string[]` | `[]` | Exclude these paths from validation |
-| `logger` | `Logger` | `console` | Custom logger instance |
-| `productionMode` | `boolean` | `process.env.NODE_ENV === 'production'` | Generic errors in production |
-| `validationTimeout` | `number` | `5000` | Validation timeout in ms |
-| `maxContentLength` | `number` | `1048576` | Max request body size (1MB) |
-| `onError` | `ErrorHandler` | Default handler | Custom error handler |
-| `responseExtractor` | `ResponseExtractor` | Default extractor | Custom response extractor |
+| Option              | Type                | Default                                 | Description                             |
+| ------------------- | ------------------- | --------------------------------------- | --------------------------------------- |
+| `validators`        | `Validator[]`       | `[]`                                    | Validators to run on requests           |
+| `guards`            | `Guard[]`           | `[]`                                    | Guards to run with context              |
+| `validateRequest`   | `boolean`           | `true`                                  | Validate incoming requests              |
+| `validateResponse`  | `boolean`           | `false`                                 | Validate outgoing responses             |
+| `paths`             | `string[]`          | `[]`                                    | Only validate these paths (empty = all) |
+| `excludePaths`      | `string[]`          | `[]`                                    | Exclude these paths from validation     |
+| `logger`            | `Logger`            | `console`                               | Custom logger instance                  |
+| `productionMode`    | `boolean`           | `process.env.NODE_ENV === 'production'` | Generic errors in production            |
+| `validationTimeout` | `number`            | `5000`                                  | Validation timeout in ms                |
+| `maxContentLength`  | `number`            | `1048576`                               | Max request body size (1MB)             |
+| `onError`           | `ErrorHandler`      | Default handler                         | Custom error handler                    |
+| `responseExtractor` | `ResponseExtractor` | Default extractor                       | Custom response extractor               |
 
 ## Security Features
 
@@ -77,7 +75,7 @@ The plugin normalizes all paths before matching, preventing path traversal attac
 
 ```typescript
 // Blocks attempts like /api/ai/../chat
-paths: ['/api/chat']
+paths: ['/api/chat'];
 ```
 
 ### Content Size Limits (SEC-010)
@@ -86,7 +84,7 @@ Prevent DoS attacks by limiting request size:
 
 ```typescript
 {
-  maxContentLength: 1024 * 1024 // 1MB
+  maxContentLength: 1024 * 1024; // 1MB
 }
 ```
 
@@ -96,7 +94,7 @@ Prevent hanging requests with timeout enforcement:
 
 ```typescript
 {
-  validationTimeout: 5000 // 5 seconds
+  validationTimeout: 5000; // 5 seconds
 }
 ```
 
@@ -106,21 +104,19 @@ Hide sensitive information in production:
 
 ```typescript
 {
-  productionMode: true // Generic error messages
+  productionMode: true; // Generic error messages
 }
 ```
 
 ## Security: rate limiting
 
-This plugin does **not** include rate limiting. Per the BonkLM rate-limiting
-policy, ingress rate limiting belongs at the edge / load-balancer layer or in
-a Fastify-native limiter ahead of the guardrails — see
-[`docs/user/security/rate-limiting.md`](../../docs/user/security/rate-limiting.md)
+This plugin does **not** include rate limiting. Per the BonkLM rate-limiting policy, ingress rate
+limiting belongs at the edge / load-balancer layer or in a Fastify-native limiter ahead of the
+guardrails — see [`docs/user/security/rate-limiting.md`](../../docs/user/security/rate-limiting.md)
 for the multi-instance / edge-runtime rationale.
 
-Wire `@fastify/rate-limit` (or a distributed alternative like
-`@upstash/ratelimit` or `rate-limiter-flexible` with a Redis store) **before**
-registering `bonklmPlugin`:
+Wire `@fastify/rate-limit` (or a distributed alternative like `@upstash/ratelimit` or
+`rate-limiter-flexible` with a Redis store) **before** registering `bonklmPlugin`:
 
 ```typescript
 import Fastify from 'fastify';
@@ -132,16 +128,16 @@ const server = Fastify();
 
 await server.register(rateLimit, {
   max: 100,
-  timeWindow: '15 minutes',
+  timeWindow: '15 minutes'
 });
 
 await server.register(bonklmPlugin, {
-  validators: [new PromptInjectionValidator()],
+  validators: [new PromptInjectionValidator()]
 });
 ```
 
-To suppress the `bonklm doctor` rate-limiter advisory after acknowledging the
-policy, add to your project's `package.json`:
+To suppress the `bonklm doctor` rate-limiter advisory after acknowledging the policy, add to your
+project's `package.json`:
 
 ```json
 { "bonklm": { "rateLimit": "documented" } }
@@ -153,4 +149,5 @@ MIT
 
 ---
 
-**Black Unicorn Security** • [github.com/blackunicorn-bonklm](https://github.com/blackunicorn-bonklm)
+**Black Unicorn Security** •
+[github.com/blackunicorn-bonklm](https://github.com/blackunicorn-bonklm)

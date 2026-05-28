@@ -33,13 +33,13 @@ if (!result.allowed) {
 
 Integrate guardrails with your favorite frameworks and platforms:
 
-| Category | Connectors |
-|----------|------------|
-| [Framework Middleware](./connectors/framework-middleware.md) | Express, Fastify, NestJS |
-| [AI SDKs](./connectors/ai-sdks.md) | OpenAI, Anthropic, Vercel AI SDK, MCP |
-| [LLM Providers](./connectors/llm-providers.md) | LangChain, Ollama |
-| [Emerging Frameworks](./connectors/emerging-frameworks.md) | Mastra, Genkit, CopilotKit |
-| [RAG & Vector Stores](./connectors/rag-vector-stores.md) | LlamaIndex, Pinecone, ChromaDB, Weaviate, Qdrant, HuggingFace |
+| Category                                                     | Connectors                                                    |
+| ------------------------------------------------------------ | ------------------------------------------------------------- |
+| [Framework Middleware](./connectors/framework-middleware.md) | Express, Fastify, NestJS                                      |
+| [AI SDKs](./connectors/ai-sdks.md)                           | OpenAI, Anthropic, Vercel AI SDK, MCP                         |
+| [LLM Providers](./connectors/llm-providers.md)               | LangChain, Ollama                                             |
+| [Emerging Frameworks](./connectors/emerging-frameworks.md)   | Mastra, Genkit, CopilotKit                                    |
+| [RAG & Vector Stores](./connectors/rag-vector-stores.md)     | LlamaIndex, Pinecone, ChromaDB, Weaviate, Qdrant, HuggingFace |
 
 ### Guides
 
@@ -118,17 +118,17 @@ npm install @blackunicorn/bonklm-mcp
 
 ## Core Features
 
-| Feature | Description |
-|---------|-------------|
+| Feature                        | Description                                                          |
+| ------------------------------ | -------------------------------------------------------------------- |
 | **Prompt Injection Detection** | 35+ patterns across 6 categories with multi-layer encoding detection |
-| **Jailbreak Detection** | 44 patterns across 10 categories |
-| **Secret Guard** | Detects 30+ types of API keys and credentials |
-| **PII Guard** | Personal information detection and redaction |
-| **Reformulation Detection** | Code format, encoding, and context overload |
-| **Bash Safety Guard** | Command injection detection |
-| **XSS Safety Guard** | Cross-site scripting pattern detection |
-| **GuardrailEngine** | Orchestrate multiple validators |
-| **Hook System** | Extensible middleware for custom logic |
+| **Jailbreak Detection**        | 44 patterns across 10 categories                                     |
+| **Secret Guard**               | Detects 30+ types of API keys and credentials                        |
+| **PII Guard**                  | Personal information detection and redaction                         |
+| **Reformulation Detection**    | Code format, encoding, and context overload                          |
+| **Bash Safety Guard**          | Command injection detection                                          |
+| **XSS Safety Guard**           | Cross-site scripting pattern detection                               |
+| **GuardrailEngine**            | Orchestrate multiple validators                                      |
+| **Hook System**                | Extensible middleware for custom logic                               |
 
 ---
 
@@ -144,9 +144,12 @@ import { PromptInjectionValidator } from '@blackunicorn/bonklm';
 const app = express();
 app.use(express.json());
 
-app.use('/api/ai', createGuardrailsMiddleware({
-  validators: [new PromptInjectionValidator()],
-}));
+app.use(
+  '/api/ai',
+  createGuardrailsMiddleware({
+    validators: [new PromptInjectionValidator()]
+  })
+);
 
 app.post('/api/ai/chat', async (req, res) => {
   const response = await callLLM(req.body.message);
@@ -162,12 +165,12 @@ import { createGuardedOpenAI } from '@blackunicorn/bonklm-openai';
 
 const openai = new OpenAI();
 const guardedOpenAI = createGuardedOpenAI(openai, {
-  validators: [new PromptInjectionValidator()],
+  validators: [new PromptInjectionValidator()]
 });
 
 const response = await guardedOpenAI.chat.completions.create({
   model: 'gpt-4',
-  messages: [{ role: 'user', content: userInput }],
+  messages: [{ role: 'user', content: userInput }]
 });
 ```
 
@@ -177,7 +180,7 @@ const response = await guardedOpenAI.chat.completions.create({
 import { createGuardedQueryEngine } from '@blackunicorn/bonklm-llamaindex';
 
 const guardedEngine = createGuardedQueryEngine(queryEngine, {
-  validators: [new PromptInjectionValidator()],
+  validators: [new PromptInjectionValidator()]
 });
 
 const response = await guardedEngine.query({ query: userInput });

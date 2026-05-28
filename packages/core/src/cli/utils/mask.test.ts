@@ -312,11 +312,7 @@ describe('edge cases', () => {
 
 describe('security properties', () => {
   it('should never reveal more than 6 characters of original value in maskKey', () => {
-    const values = [
-      'sk-1234567890abcdef',
-      'a'.repeat(100),
-      'sk-ant-api03-1234567890abcdef',
-    ];
+    const values = ['sk-1234567890abcdef', 'a'.repeat(100), 'sk-ant-api03-1234567890abcdef'];
 
     for (const value of values) {
       if (value.length > 8) {

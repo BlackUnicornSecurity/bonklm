@@ -8,11 +8,7 @@
  *
  * @package @blackunicorn/bonklm-lance
  */
-import type {
-  Logger,
-  MemoryWriteValidator,
-  RetrievedDocValidator,
-} from '@blackunicorn/bonklm';
+import type { Logger, MemoryWriteValidator, RetrievedDocValidator } from '@blackunicorn/bonklm';
 
 /**
  * Configuration for `createGuardedLanceTable`.

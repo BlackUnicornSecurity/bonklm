@@ -34,19 +34,14 @@
  * pipelines (Story 3.11 OTel) can correlate decisions to the surface.
  */
 import type { Validator, ValidatorInput } from '../engine/GuardrailEngine.types.js';
-import {
-  createResult,
-  type Finding,
-  type GuardrailResult,
-  Severity,
-} from '../base/GuardrailResult.js';
+import { createResult, type Finding, type GuardrailResult, Severity } from '../base/GuardrailResult.js';
 import type { Logger } from '../base/GenericLogger.js';
 import {
   applyRedaction,
   maxSeverity,
   riskFromScore,
   runValidatorChain,
-  VALIDATOR_ERROR_CATEGORIES,
+  VALIDATOR_ERROR_CATEGORIES
 } from './validator-utils.js';
 export type { RedactingValidator } from './validator-utils.js';
 
@@ -143,13 +138,9 @@ export interface RetrievedDocValidator extends Validator {
  * // filteredCount counts dropped or redact-modified docs
  * ```
  */
-export function createRetrievedDocValidator(
-  config: RetrievedDocValidatorConfig
-): RetrievedDocValidator {
+export function createRetrievedDocValidator(config: RetrievedDocValidatorConfig): RetrievedDocValidator {
   if (config.validators.length === 0) {
-    throw new Error(
-      'createRetrievedDocValidator requires at least one underlying validator.'
-    );
+    throw new Error('createRetrievedDocValidator requires at least one underlying validator.');
   }
   const mode: PerDocFailureMode = config.onPerDocFailure ?? 'drop';
   const replacement = config.redactReplacement ?? DEFAULT_REDACT_REPLACEMENT;
@@ -181,9 +172,9 @@ export function createRetrievedDocValidator(
               category: 'retrieved_doc_not_scanned',
               severity: Severity.INFO,
               description: 'Doc not scanned: block-all already fired earlier in the batch.',
-              weight: 0,
-            },
-          ]),
+              weight: 0
+            }
+          ])
         });
         continue;
       }
@@ -221,16 +212,11 @@ export function createRetrievedDocValidator(
       }
       if (mode === 'redact') {
         filteredCount++;
-        const redactedContent = applyRedaction(
-          doc.content,
-          leafResult.findings,
-          config.validators,
-          replacement
-        );
+        const redactedContent = applyRedaction(doc.content, leafResult.findings, config.validators, replacement);
         survivingDocs.push({ ...doc, content: redactedContent });
         logger?.info('[RetrievedDocValidator] redacted doc', {
           key,
-          findings: leafResult.findings.length,
+          findings: leafResult.findings.length
         });
         continue;
       }
@@ -238,7 +224,7 @@ export function createRetrievedDocValidator(
       filteredCount++;
       logger?.info('[RetrievedDocValidator] dropped doc', {
         key,
-        reason: leafResult.reason,
+        reason: leafResult.reason
       });
     }
 
@@ -254,10 +240,10 @@ export function createRetrievedDocValidator(
           risk_score: aggregateScore,
           findings: allFindings,
           subResults,
-          timestamp: Date.now(),
+          timestamp: Date.now()
         },
         docs: [],
-        filteredCount: docs.length,
+        filteredCount: docs.length
       };
     }
 
@@ -270,10 +256,10 @@ export function createRetrievedDocValidator(
         risk_score: aggregateScore,
         findings: allFindings,
         subResults,
-        timestamp: Date.now(),
+        timestamp: Date.now()
       },
       docs: survivingDocs,
-      filteredCount,
+      filteredCount
     };
   };
 
@@ -288,6 +274,6 @@ export function createRetrievedDocValidator(
       const batch = await validateBatch(input.docs);
       return batch.result;
     },
-    validateBatch,
+    validateBatch
   };
 }

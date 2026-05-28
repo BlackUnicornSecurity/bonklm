@@ -72,7 +72,7 @@ describe('Timeout Wrapper', () => {
       // Create a function that takes longer than the timeout
       const fn = vi.fn(
         () =>
-          new Promise((resolve) => {
+          new Promise(resolve => {
             // This will take 500ms but timeout is 10ms
             setTimeout(() => resolve('result'), 500);
           })
@@ -98,7 +98,7 @@ describe('Timeout Wrapper', () => {
       // Create a function that takes longer than the timeout
       const fn = vi.fn(
         () =>
-          new Promise((resolve) => {
+          new Promise(resolve => {
             // This will take 500ms but timeout is 10ms
             setTimeout(() => resolve('result'), 500);
           })
@@ -145,7 +145,7 @@ describe('Timeout Wrapper', () => {
       // The promise should not reject within 20ms
       const result = await Promise.race([
         promise.catch(() => 'timeout'),
-        new Promise<string>((resolve) => setTimeout(() => resolve('not rejected'), 20)),
+        new Promise<string>(resolve => setTimeout(() => resolve('not rejected'), 20))
       ]);
 
       // The setTimeout should resolve before the timeout promise
@@ -163,7 +163,7 @@ describe('Timeout Wrapper', () => {
       controller.abort();
 
       // Wait a bit to ensure the timeout doesn't fire
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise(resolve => setTimeout(resolve, 50));
 
       // The timeout should have been cleared without rejecting
       expect(controller.signal.aborted).toBe(true);
@@ -232,7 +232,7 @@ describe('Timeout Wrapper', () => {
     it('should use Promise.race to race between function and timeout', async () => {
       const fn = vi.fn(
         () =>
-          new Promise((resolve) => {
+          new Promise(resolve => {
             // This will take 500ms but timeout is 10ms
             setTimeout(() => resolve('result'), 500);
           })
@@ -261,7 +261,7 @@ describe('Timeout Wrapper', () => {
       expect(result).toBe('quick');
 
       // Wait a bit to ensure timeout doesn't fire
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise(resolve => setTimeout(resolve, 50));
       // If we get here without timeout firing, cleanup worked
     }, 200);
 
@@ -269,13 +269,11 @@ describe('Timeout Wrapper', () => {
       const fn = vi.fn().mockResolvedValue('result');
 
       // Make multiple rapid calls - each should get its own controller
-      const promises = Array.from({ length: 10 }, () =>
-        detectWithTimeout(fn, 100, 'services')
-      );
+      const promises = Array.from({ length: 10 }, () => detectWithTimeout(fn, 100, 'services'));
 
       const results = await Promise.all(promises);
       expect(results).toHaveLength(10);
-      expect(results.every((r) => r === 'result')).toBe(true);
+      expect(results.every(r => r === 'result')).toBe(true);
     }, 500);
 
     it('should not cause memory leaks with rapid sequential calls', async () => {

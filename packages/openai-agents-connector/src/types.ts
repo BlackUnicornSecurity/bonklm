@@ -40,11 +40,7 @@ export interface GuardedAgentsOptions {
   /** Callback fired when a tool call's args / output is blocked. */
   onToolBlocked?: (toolName: string, reason: string, result: GuardrailResult) => void;
   /** Callback fired when a handoff input is blocked. */
-  onHandoffBlocked?: (
-    sourceAgentName: string | undefined,
-    targetAgentName: string | undefined,
-    reason: string
-  ) => void;
+  onHandoffBlocked?: (sourceAgentName: string | undefined, targetAgentName: string | undefined, reason: string) => void;
 }
 
 /**

@@ -19,11 +19,7 @@
  * });
  * ```
  */
-import {
-  bonklmTrace,
-  type BonklmTracer,
-  type BonklmTraceSurface,
-} from '@blackunicorn/bonklm';
+import { bonklmTrace, type BonklmTracer, type BonklmTraceSurface } from '@blackunicorn/bonklm';
 import type { GuardrailResult } from '@blackunicorn/bonklm';
 
 export interface EmitVoltOpsSpanOptions {
@@ -46,10 +42,7 @@ export interface EmitVoltOpsSpanOptions {
  * of the standard R2-10 attribute set so VoltOps dashboards can
  * pivot by scanner name (alongside `bonklm.validator`).
  */
-export function emitVoltOpsSpan<R extends GuardrailResult>(
-  result: R,
-  options: EmitVoltOpsSpanOptions
-): R {
+export function emitVoltOpsSpan<R extends GuardrailResult>(result: R, options: EmitVoltOpsSpanOptions): R {
   if (!options?.scanner || typeof options.scanner !== 'string') {
     throw new TypeError('emitVoltOpsSpan: options.scanner (non-empty string) is required.');
   }
@@ -60,8 +53,8 @@ export function emitVoltOpsSpan<R extends GuardrailResult>(
     spanName: options.spanName,
     extraAttributes: {
       'bonklm.scanner': options.scanner,
-      ...(options.extraAttributes ?? {}),
-    },
+      ...(options.extraAttributes ?? {})
+    }
   });
 }
 
@@ -72,5 +65,5 @@ export {
   type BonklmSpan,
   type BonklmSpanOptions,
   type BonklmTraceAction,
-  type BonklmTraceOptions,
+  type BonklmTraceOptions
 } from '@blackunicorn/bonklm';

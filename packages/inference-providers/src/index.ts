@@ -20,30 +20,21 @@ import type { OpenAICompatibleClient, WrapInferenceOptions } from './types.js';
  * const response = await client.chat.completions.create({ ... });
  * ```
  */
-export function wrapGroq<C extends OpenAICompatibleClient>(
-  client: C,
-  options: WrapInferenceOptions
-): C {
+export function wrapGroq<C extends OpenAICompatibleClient>(client: C, options: WrapInferenceOptions): C {
   return wrapOpenAICompatibleClient(client, options, 'groq');
 }
 
 /**
  * Wrap a Cerebras SDK client.
  */
-export function wrapCerebras<C extends OpenAICompatibleClient>(
-  client: C,
-  options: WrapInferenceOptions
-): C {
+export function wrapCerebras<C extends OpenAICompatibleClient>(client: C, options: WrapInferenceOptions): C {
   return wrapOpenAICompatibleClient(client, options, 'cerebras');
 }
 
 /**
  * Wrap a Together SDK client.
  */
-export function wrapTogether<C extends OpenAICompatibleClient>(
-  client: C,
-  options: WrapInferenceOptions
-): C {
+export function wrapTogether<C extends OpenAICompatibleClient>(client: C, options: WrapInferenceOptions): C {
   return wrapOpenAICompatibleClient(client, options, 'together');
 }
 
@@ -56,5 +47,5 @@ export {
   type OpenAIStreamChunk,
   type WrapInferenceOptions,
   type InferenceProviderName,
-  type InferenceProviderBlockEvent,
+  type InferenceProviderBlockEvent
 } from './types.js';

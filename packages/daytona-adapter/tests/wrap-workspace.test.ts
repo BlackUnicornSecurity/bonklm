@@ -28,7 +28,7 @@ function makeMockWorkspace(): DaytonaWorkspaceLike & {
     [RN]: vi.fn(async (cmd: string, opts?: unknown) => {
       calls.push({ method: 'process.run', args: [cmd, opts] });
       return { stdout: 'mock' };
-    }),
+    })
   } as unknown as DaytonaWorkspaceLike['process'];
   return {
     _calls: calls,
@@ -48,15 +48,13 @@ function makeMockWorkspace(): DaytonaWorkspaceLike & {
         calls.push({ method: 'fs.listFiles', args: [p, opts] });
         return [];
       }),
-      replaceInFiles: vi.fn(
-        async (paths: string[], search: string, replace: string, opts?: unknown) => {
-          calls.push({
-            method: 'fs.replaceInFiles',
-            args: [paths, search, replace, opts],
-          });
-        }
-      ),
-    },
+      replaceInFiles: vi.fn(async (paths: string[], search: string, replace: string, opts?: unknown) => {
+        calls.push({
+          method: 'fs.replaceInFiles',
+          args: [paths, search, replace, opts]
+        });
+      })
+    }
   };
 }
 
@@ -88,9 +86,7 @@ describe('wrapWorkspace — process.exec', () => {
   it('blocks pip install', async () => {
     const ws = makeMockWorkspace();
     const w = wrapWorkspace(ws);
-    await expect(w.process[EX as 'exec']('pip install evil-pkg')).rejects.toBeInstanceOf(
-      DaytonaGuardrailBlockedError
-    );
+    await expect(w.process[EX as 'exec']('pip install evil-pkg')).rejects.toBeInstanceOf(DaytonaGuardrailBlockedError);
     expect(ws._calls).toHaveLength(0);
   });
 
@@ -99,9 +95,7 @@ describe('wrapWorkspace — process.exec', () => {
     const ws = makeMockWorkspace();
     const w = wrapWorkspace(ws, { onBlock });
     await expect(w.process[EX as 'exec']('pip install evil')).rejects.toThrow();
-    expect(onBlock).toHaveBeenCalledWith(
-      expect.objectContaining({ surface: 'process.exec' })
-    );
+    expect(onBlock).toHaveBeenCalledWith(expect.objectContaining({ surface: 'process.exec' }));
   });
 });
 
@@ -109,9 +103,7 @@ describe('wrapWorkspace — process.run', () => {
   it('blocks dynamic call sink', async () => {
     const ws = makeMockWorkspace();
     const w = wrapWorkspace(ws);
-    await expect(w.process[RN as 'run']!(`${EX}('rm -rf /')`)).rejects.toBeInstanceOf(
-      DaytonaGuardrailBlockedError
-    );
+    await expect(w.process[RN as 'run']!(`${EX}('rm -rf /')`)).rejects.toBeInstanceOf(DaytonaGuardrailBlockedError);
   });
 
   it('omits process.run proxy when source workspace lacks it', () => {
@@ -133,17 +125,15 @@ describe('wrapWorkspace — fs.writeFile', () => {
   it('blocks `..` path even with benign content', async () => {
     const ws = makeMockWorkspace();
     const w = wrapWorkspace(ws, { cwd: '/srv/app' });
-    await expect(
-      w.fs.writeFile('../etc/passwd', 'hello')
-    ).rejects.toBeInstanceOf(DaytonaGuardrailBlockedError);
+    await expect(w.fs.writeFile('../etc/passwd', 'hello')).rejects.toBeInstanceOf(DaytonaGuardrailBlockedError);
   });
 
   it('blocks dynamic-exec content with safe path', async () => {
     const ws = makeMockWorkspace();
     const w = wrapWorkspace(ws, { cwd: '/srv/app' });
-    await expect(
-      w.fs.writeFile('data/x.py', `${EX}('import os')`)
-    ).rejects.toBeInstanceOf(DaytonaGuardrailBlockedError);
+    await expect(w.fs.writeFile('data/x.py', `${EX}('import os')`)).rejects.toBeInstanceOf(
+      DaytonaGuardrailBlockedError
+    );
   });
 
   it('passes binary content (validator does not see bytes)', async () => {
@@ -157,23 +147,17 @@ describe('wrapWorkspace — fs.writeFile', () => {
 describe('wrapWorkspace — fs.{readFile,deleteFile,listFiles} path-only', () => {
   it('blocks read traversal', async () => {
     const w = wrapWorkspace(makeMockWorkspace(), { cwd: '/srv/app' });
-    await expect(w.fs.readFile('../etc/passwd')).rejects.toBeInstanceOf(
-      DaytonaGuardrailBlockedError
-    );
+    await expect(w.fs.readFile('../etc/passwd')).rejects.toBeInstanceOf(DaytonaGuardrailBlockedError);
   });
 
   it('blocks delete traversal', async () => {
     const w = wrapWorkspace(makeMockWorkspace(), { cwd: '/srv/app' });
-    await expect(w.fs.deleteFile('../etc/passwd')).rejects.toBeInstanceOf(
-      DaytonaGuardrailBlockedError
-    );
+    await expect(w.fs.deleteFile('../etc/passwd')).rejects.toBeInstanceOf(DaytonaGuardrailBlockedError);
   });
 
   it('blocks list traversal', async () => {
     const w = wrapWorkspace(makeMockWorkspace(), { cwd: '/srv/app' });
-    await expect(w.fs.listFiles!('../etc')).rejects.toBeInstanceOf(
-      DaytonaGuardrailBlockedError
-    );
+    await expect(w.fs.listFiles!('../etc')).rejects.toBeInstanceOf(DaytonaGuardrailBlockedError);
   });
 });
 
@@ -181,26 +165,26 @@ describe('wrapWorkspace — fs.replaceInFiles double-validation (Story 3.5 AC)',
   it('blocks when any filePath fails path validation', async () => {
     const ws = makeMockWorkspace();
     const w = wrapWorkspace(ws, { cwd: '/srv/app' });
-    await expect(
-      w.fs.replaceInFiles!(['data/a.py', '../etc/passwd'], 'foo', 'bar')
-    ).rejects.toBeInstanceOf(DaytonaGuardrailBlockedError);
+    await expect(w.fs.replaceInFiles!(['data/a.py', '../etc/passwd'], 'foo', 'bar')).rejects.toBeInstanceOf(
+      DaytonaGuardrailBlockedError
+    );
     expect(ws._calls).toHaveLength(0);
   });
 
   it('blocks when search is a dynamic-exec sink', async () => {
     const ws = makeMockWorkspace();
     const w = wrapWorkspace(ws, { cwd: '/srv/app' });
-    await expect(
-      w.fs.replaceInFiles!(['data/a.py'], `${EX}('rm -rf /')`, 'safe')
-    ).rejects.toBeInstanceOf(DaytonaGuardrailBlockedError);
+    await expect(w.fs.replaceInFiles!(['data/a.py'], `${EX}('rm -rf /')`, 'safe')).rejects.toBeInstanceOf(
+      DaytonaGuardrailBlockedError
+    );
   });
 
   it('blocks when replace is a dynamic-exec sink', async () => {
     const ws = makeMockWorkspace();
     const w = wrapWorkspace(ws, { cwd: '/srv/app' });
-    await expect(
-      w.fs.replaceInFiles!(['data/a.py'], 'foo', `${EX}('rm -rf /')`)
-    ).rejects.toBeInstanceOf(DaytonaGuardrailBlockedError);
+    await expect(w.fs.replaceInFiles!(['data/a.py'], 'foo', `${EX}('rm -rf /')`)).rejects.toBeInstanceOf(
+      DaytonaGuardrailBlockedError
+    );
   });
 
   it('passes benign replace through', async () => {
@@ -213,18 +197,14 @@ describe('wrapWorkspace — fs.replaceInFiles double-validation (Story 3.5 AC)',
   it('rejects non-array filePaths', async () => {
     const ws = makeMockWorkspace();
     const w = wrapWorkspace(ws, { cwd: '/srv/app' });
-    await expect(
-      w.fs.replaceInFiles!('not-array' as unknown as string[], 'a', 'b')
-    ).rejects.toThrow(TypeError);
+    await expect(w.fs.replaceInFiles!('not-array' as unknown as string[], 'a', 'b')).rejects.toThrow(TypeError);
   });
 });
 
 describe('wrapWorkspace — fail-CLOSED on validator error', () => {
   it('blocks on validator timeout (default)', async () => {
     const w = wrapWorkspace(makeMockWorkspace(), { cwd: '/srv/app', timeoutMs: 0 });
-    await expect(w.process[EX as 'exec']('ls')).rejects.toBeInstanceOf(
-      DaytonaGuardrailBlockedError
-    );
+    await expect(w.process[EX as 'exec']('ls')).rejects.toBeInstanceOf(DaytonaGuardrailBlockedError);
   });
 
   it('passes on validator timeout with onSandboxError=allow', async () => {
@@ -232,7 +212,7 @@ describe('wrapWorkspace — fail-CLOSED on validator error', () => {
     const w = wrapWorkspace(ws, {
       cwd: '/srv/app',
       timeoutMs: 0,
-      onSandboxError: 'allow',
+      onSandboxError: 'allow'
     });
     await w.process[EX as 'exec']('ls');
     expect(ws._calls).toHaveLength(1);
@@ -246,13 +226,13 @@ describe('wrapWorkspace — per-wrapper AAD-4 WARN isolation', () => {
       timeoutMs: 0,
       onSandboxError: 'allow',
       nodeEnv: 'production',
-      warn,
+      warn
     });
     const w2 = wrapWorkspace(makeMockWorkspace(), {
       timeoutMs: 0,
       onSandboxError: 'allow',
       nodeEnv: 'production',
-      warn,
+      warn
     });
     await w1.process[EX as 'exec']('ls');
     await w1.process[EX as 'exec']('cat foo');
@@ -268,11 +248,9 @@ describe('wrapWorkspace — fireBlock telemetry routing', () => {
       onBlock: () => {
         throw new Error('telemetry bug');
       },
-      onError,
+      onError
     });
-    await expect(w.process[EX as 'exec']('pip install evil')).rejects.toBeInstanceOf(
-      DaytonaGuardrailBlockedError
-    );
+    await expect(w.process[EX as 'exec']('pip install evil')).rejects.toBeInstanceOf(DaytonaGuardrailBlockedError);
     expect(onError).toHaveBeenCalled();
   });
 });

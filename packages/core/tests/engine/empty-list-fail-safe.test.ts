@@ -34,7 +34,7 @@ function captureLogger(): Logger & { calls: { level: string; msg: string; meta?:
     info: (msg, meta) => calls.push({ level: 'info', msg, meta }),
     warn: (msg, meta) => calls.push({ level: 'warn', msg, meta }),
     error: (msg, meta) => calls.push({ level: 'error', msg, meta }),
-    calls,
+    calls
   } as Logger & { calls: { level: string; msg: string; meta?: unknown }[] };
 }
 
@@ -44,9 +44,7 @@ describe('GuardrailEngine — empty-list fail-safe (Story 0.1 / R2-7)', () => {
   });
 
   it('throws when both validators and guards are explicit empty arrays', () => {
-    expect(
-      () => new GuardrailEngine({ validators: [], guards: [] })
-    ).toThrow(EMPTY_LIST_ERROR);
+    expect(() => new GuardrailEngine({ validators: [], guards: [] })).toThrow(EMPTY_LIST_ERROR);
   });
 
   it('throws when validators omitted and guards is empty', () => {
@@ -58,9 +56,7 @@ describe('GuardrailEngine — empty-list fail-safe (Story 0.1 / R2-7)', () => {
   });
 
   it('does not throw when at least one validator is supplied', () => {
-    expect(
-      () => new GuardrailEngine({ validators: [new PromptInjectionValidator()] })
-    ).not.toThrow();
+    expect(() => new GuardrailEngine({ validators: [new PromptInjectionValidator()] })).not.toThrow();
   });
 
   // Renamed + inverted in Story 0.1 corrections PR 3 (spec-strict flip):
@@ -70,15 +66,11 @@ describe('GuardrailEngine — empty-list fail-safe (Story 0.1 / R2-7)', () => {
   // true`; a future story can add a dedicated `allowGuardsOnlyValidation`
   // hatch if real users surface.
   it('throws when validators is empty even if at least one guard is supplied', () => {
-    expect(
-      () => new GuardrailEngine({ guards: [new SecretGuard()] })
-    ).toThrow(EMPTY_LIST_ERROR);
+    expect(() => new GuardrailEngine({ guards: [new SecretGuard()] })).toThrow(EMPTY_LIST_ERROR);
   });
 
   it('does not throw when at least one validator is supplied even with no guards', () => {
-    expect(
-      () => new GuardrailEngine({ validators: [new PromptInjectionValidator()] })
-    ).not.toThrow();
+    expect(() => new GuardrailEngine({ validators: [new PromptInjectionValidator()] })).not.toThrow();
   });
 
   it('does not throw when both lists are populated', () => {
@@ -86,16 +78,14 @@ describe('GuardrailEngine — empty-list fail-safe (Story 0.1 / R2-7)', () => {
       () =>
         new GuardrailEngine({
           validators: [new PromptInjectionValidator()],
-          guards: [new SecretGuard()],
+          guards: [new SecretGuard()]
         })
     ).not.toThrow();
   });
 
   describe('allowEmptyForTesting escape hatch', () => {
     it('does not throw when allowEmptyForTesting: true is set', () => {
-      expect(
-        () => new GuardrailEngine({ allowEmptyForTesting: true })
-      ).not.toThrow();
+      expect(() => new GuardrailEngine({ allowEmptyForTesting: true })).not.toThrow();
     });
 
     it('does not throw when allowEmptyForTesting: true with explicit empty arrays', () => {
@@ -104,7 +94,7 @@ describe('GuardrailEngine — empty-list fail-safe (Story 0.1 / R2-7)', () => {
           new GuardrailEngine({
             validators: [],
             guards: [],
-            allowEmptyForTesting: true,
+            allowEmptyForTesting: true
           })
       ).not.toThrow();
     });
@@ -119,7 +109,7 @@ describe('GuardrailEngine — empty-list fail-safe (Story 0.1 / R2-7)', () => {
           new GuardrailEngine({
             validators: [],
             guards: [new SecretGuard()],
-            allowEmptyForTesting: true,
+            allowEmptyForTesting: true
           })
       ).not.toThrow();
     });
@@ -129,11 +119,9 @@ describe('GuardrailEngine — empty-list fail-safe (Story 0.1 / R2-7)', () => {
       new GuardrailEngine({
         guards: [new SecretGuard()],
         allowEmptyForTesting: true,
-        logger,
+        logger
       });
-      const criticalWarnings = logger.calls.filter(
-        (c) => c.level === 'warn' && /CRITICAL/i.test(c.msg)
-      );
+      const criticalWarnings = logger.calls.filter(c => c.level === 'warn' && /CRITICAL/i.test(c.msg));
       expect(criticalWarnings).toHaveLength(1);
       const msg = criticalWarnings[0].msg;
       expect(msg).toMatch(/no validator-layer checks/i);
@@ -149,10 +137,7 @@ describe('GuardrailEngine — empty-list fail-safe (Story 0.1 / R2-7)', () => {
       // guards" under the BOTH-empty check). Spec-strict flip: validators
       // are the primary protective layer, so the warning is precise.
       const criticalWarnings = logger.calls.filter(
-        (c) =>
-          c.level === 'warn' &&
-          /CRITICAL/i.test(c.msg) &&
-          /no validators/i.test(c.msg)
+        c => c.level === 'warn' && /CRITICAL/i.test(c.msg) && /no validators/i.test(c.msg)
       );
       expect(criticalWarnings).toHaveLength(1);
     });
@@ -161,14 +146,11 @@ describe('GuardrailEngine — empty-list fail-safe (Story 0.1 / R2-7)', () => {
       const logger = captureLogger();
       new GuardrailEngine({
         validators: [new PromptInjectionValidator()],
-        logger,
+        logger
       });
 
       const criticalWarnings = logger.calls.filter(
-        (c) =>
-          c.level === 'warn' &&
-          /CRITICAL/i.test(c.msg) &&
-          /no validators/i.test(c.msg)
+        c => c.level === 'warn' && /CRITICAL/i.test(c.msg) && /no validators/i.test(c.msg)
       );
       expect(criticalWarnings).toHaveLength(0);
     });
@@ -178,12 +160,10 @@ describe('GuardrailEngine — empty-list fail-safe (Story 0.1 / R2-7)', () => {
       new GuardrailEngine({
         validators: [new PromptInjectionValidator()],
         allowEmptyForTesting: false,
-        logger,
+        logger
       });
 
-      const criticalWarnings = logger.calls.filter(
-        (c) => c.level === 'warn' && /CRITICAL/i.test(c.msg)
-      );
+      const criticalWarnings = logger.calls.filter(c => c.level === 'warn' && /CRITICAL/i.test(c.msg));
       expect(criticalWarnings).toHaveLength(0);
     });
   });
@@ -238,8 +218,8 @@ describe('GuardrailEngine — empty-list fail-safe (Story 0.1 / R2-7)', () => {
       [{ validators: [], guards: [], allowEmptyForTesting: false }],
       // Spec-strict (PR 3): guards alone without validators MUST throw.
       [{ guards: [new SecretGuard()] }],
-      [{ validators: [], guards: [new SecretGuard()] }],
-    ])('throws on unsafe config shape: %j', (cfg) => {
+      [{ validators: [], guards: [new SecretGuard()] }]
+    ])('throws on unsafe config shape: %j', cfg => {
       expect(() => new GuardrailEngine(cfg)).toThrow();
     });
 

@@ -12,7 +12,7 @@ import {
   AudioStreamValidator,
   CodeInjectionValidator,
   PathTraversalValidator,
-  MultilingualDetector,
+  MultilingualDetector
 } from '../../src/validators/index.js';
 
 describe('validator-name sentinel — every core validator declares .name', () => {

@@ -10,24 +10,19 @@
 
 export { createGuardedMCP } from './guarded-mcp.js';
 
-export type {
-  GuardedMCPOptions,
-  ToolCallOptions,
-  ToolCallResult,
-  ToolInfo,
-} from './types.js';
+export type { GuardedMCPOptions, ToolCallOptions, ToolCallResult, ToolInfo } from './types.js';
 
 // S012-011: Export error classes from core connector-utils for standardization
 export {
   StreamValidationError,
   ConnectorValidationError,
   ConnectorConfigurationError,
-  ConnectorTimeoutError,
+  ConnectorTimeoutError
 } from '@blackunicorn/bonklm/core/connector-utils';
 
 export {
   DEFAULT_MAX_ARGUMENT_SIZE,
   DEFAULT_VALIDATION_TIMEOUT,
   VALID_TOOL_NAME_PATTERN,
-  MAX_TOOL_NAME_LENGTH,
+  MAX_TOOL_NAME_LENGTH
 } from './types.js';

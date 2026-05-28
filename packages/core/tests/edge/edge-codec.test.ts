@@ -19,7 +19,7 @@ import {
   base64DecodeToUtf8,
   hexDecodeToUtf8,
   utf8ByteLength,
-  portableRandomUUID,
+  portableRandomUUID
 } from '../../src/common/edge-codec.js';
 import { PromptInjectionValidator } from '../../src/validators/prompt-injection.js';
 
@@ -32,7 +32,7 @@ describe('edge-codec: base64DecodeToUtf8 vs Buffer.from corpus identity', () => 
     '🚀 emoji + multi-byte: αβγδ + 日本語 + русский',
     'sk-proj-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
     'A'.repeat(1000),
-    '{"json": "with \\"quotes\\" and \\n newlines"}',
+    '{"json": "with \\"quotes\\" and \\n newlines"}'
   ];
 
   for (const input of corpus) {
@@ -85,9 +85,7 @@ describe('edge-codec: utf8ByteLength vs Buffer.byteLength corpus identity', () =
 describe('edge-codec: portableRandomUUID shape + uniqueness', () => {
   it('matches RFC 4122 v4 shape', () => {
     const uuid = portableRandomUUID();
-    expect(uuid).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-    );
+    expect(uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
   });
 
   it('produces distinct values across 1000 calls', () => {
