@@ -17,6 +17,13 @@ team/
 *.d.ts
 *.generated.*
 
+# Tool-generated docs (owned by changesets — do not hand-format)
+CHANGELOG.md
+.changeset/README.md
+
+# Local demo evidence (untracked run output / transcripts — not hand-authored)
+demo/
+
 # Package lock files
 package-lock.json
 pnpm-lock.yaml
