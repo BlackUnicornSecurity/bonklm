@@ -431,4 +431,4 @@ for await (const result of streamResult) {
 
 ## License
 
-MIT © Black Unicorn <security@blackunicorn.tech>
+MIT © Black Unicorn <info@blackunicorn.tech>

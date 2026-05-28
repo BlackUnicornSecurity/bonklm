@@ -37,7 +37,7 @@
     "ai-safety",
     "bonklm"
   ],
-  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "author": "Black Unicorn <info@blackunicorn.tech>",
   "license": "MIT",
   "dependencies": {
     "@blackunicorn/bonklm": "workspace:*"

@@ -241,3 +241,80 @@ export const colors = {
   cyan: (text: string) => colorize(text, 36),
   gray: (text: string) => colorize(text, 90),
 } as const;
+
+/**
+ * BonkLM brand palette.
+ *
+ * RECONSTRUCTED 2026-05-28: the original working-tree edit that introduced this
+ * export was lost when the audit-loop-1 `git filter-repo` history rewrite reset
+ * the working tree. This implementation is rebuilt to satisfy the
+ * `brand palette` test contract in `terminal.test.ts`.
+ *
+ * Confidence per code:
+ * - Level-3 (truecolor) RGB triples for cyan/yellow/amber/red/muted: EXACT
+ *   (pinned verbatim by the test assertions).
+ * - Level-2 (256-color) + level-1 (16-color) fallbacks for cyan/yellow/red:
+ *   EXACT (pinned by the test assertions).
+ * - Level-2 + level-1 fallbacks for `amber` + `muted`: NOT asserted by any
+ *   test — chosen here as nearest-palette approximations. VERIFY against the
+ *   original brand spec if it is recoverable from another source.
+ *
+ * Brand axiom hexes (locked): cyan #1cf5f5 (28,245,245), yellow #f5f51c
+ * (245,245,28). Amber #f5c41c (245,196,28), brand red (255,80,80), muted
+ * slate (107,133,144).
+ */
+interface BrandColorCodes {
+  /** 24-bit truecolor SGR parameters (color level 3) */
+  truecolor: string;
+  /** 256-color SGR parameters (color level 2) */
+  ansi256: string;
+  /** 16-color SGR parameters (color level 1) */
+  ansi16: string;
+}
+
+/**
+ * Renders text with the level-appropriate brand escape, or plain text when the
+ * terminal has no color support (level 0). Keys off the FORCE_COLOR-aware
+ * effective color level from {@link getDetailedTerminalCapabilities}.
+ */
+function brandColorize(text: string, codes: BrandColorCodes): string {
+  const { colorLevel } = getDetailedTerminalCapabilities();
+
+  switch (colorLevel) {
+    case 3:
+      return `\x1b[${codes.truecolor}m${text}\x1b[0m`;
+    case 2:
+      return `\x1b[${codes.ansi256}m${text}\x1b[0m`;
+    case 1:
+      return `\x1b[${codes.ansi16}m${text}\x1b[0m`;
+    default:
+      return text;
+  }
+}
+
+const BRAND_CYAN: BrandColorCodes = { truecolor: '38;2;28;245;245', ansi256: '38;5;51', ansi16: '96' };
+const BRAND_YELLOW: BrandColorCodes = { truecolor: '38;2;245;245;28', ansi256: '38;5;226', ansi16: '93' };
+// amber ansi256/ansi16 are reconstructed approximations (not test-pinned).
+const BRAND_AMBER: BrandColorCodes = { truecolor: '38;2;245;196;28', ansi256: '38;5;214', ansi16: '33' };
+const BRAND_RED: BrandColorCodes = { truecolor: '38;2;255;80;80', ansi256: '38;5;203', ansi16: '91' };
+// muted ansi256/ansi16 are reconstructed approximations (not test-pinned).
+const BRAND_MUTED: BrandColorCodes = { truecolor: '38;2;107;133;144', ansi256: '38;5;245', ansi16: '90' };
+
+/**
+ * BonkLM brand-colored text helpers + semantic verdict aliases.
+ *
+ * - `cyan` / `yellow` / `amber` / `red` / `muted` — direct palette colors.
+ * - `ok` → cyan, `block` → yellow, `warn` → amber, `crit` → red — semantic
+ *   aliases for guardrail verdict rendering.
+ */
+export const brand = {
+  cyan: (text: string) => brandColorize(text, BRAND_CYAN),
+  yellow: (text: string) => brandColorize(text, BRAND_YELLOW),
+  amber: (text: string) => brandColorize(text, BRAND_AMBER),
+  red: (text: string) => brandColorize(text, BRAND_RED),
+  muted: (text: string) => brandColorize(text, BRAND_MUTED),
+  ok: (text: string) => brandColorize(text, BRAND_CYAN),
+  block: (text: string) => brandColorize(text, BRAND_YELLOW),
+  warn: (text: string) => brandColorize(text, BRAND_AMBER),
+  crit: (text: string) => brandColorize(text, BRAND_RED),
+} as const;

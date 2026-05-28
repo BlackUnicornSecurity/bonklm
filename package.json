@@ -36,7 +36,7 @@
     "validation",
     "openclaw"
   ],
-  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "author": "Black Unicorn <info@blackunicorn.tech>",
   "license": "MIT",
   "devDependencies": {
     "@changesets/cli": "^2.31.0",

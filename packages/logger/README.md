@@ -356,4 +356,4 @@ const critical = logger.getLogs({
 
 ## License
 
-MIT © Black Unicorn <security@blackunicorn.tech>
+MIT © Black Unicorn <info@blackunicorn.tech>

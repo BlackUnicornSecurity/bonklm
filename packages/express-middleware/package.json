@@ -35,7 +35,7 @@
     "jailbreak",
     "ai-safety"
   ],
-  "author": "Black Unicorn <security@blackunicorn.tech>",
+  "author": "Black Unicorn <info@blackunicorn.tech>",
   "license": "MIT",
   "dependencies": {
     "@blackunicorn/bonklm": "workspace:*",

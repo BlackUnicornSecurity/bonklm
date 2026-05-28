@@ -376,4 +376,4 @@ This connector supports Weaviate v4.x clients using the `weaviate-client` packag
 
 ## License
 
-MIT © Black Unicorn <security@blackunicorn.tech>
+MIT © Black Unicorn <info@blackunicorn.tech>

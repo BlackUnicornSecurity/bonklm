@@ -289,4 +289,4 @@ const guardedCollection = createGuardedCollection(collection, {
 
 ## License
 
-MIT © Black Unicorn <security@blackunicorn.tech>
+MIT © Black Unicorn <info@blackunicorn.tech>
