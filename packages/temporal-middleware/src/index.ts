@@ -10,7 +10,8 @@
  *     this on your Temporal worker as an activity. Validators run
  *     here (network I/O OK).
  *   - `guardrailGate(activityResult)` — call from inside a workflow
- *     after awaiting the activity. Throws on BLOCK.
+ *     after awaiting the activity. Throws a terminal, non-retryable
+ *     `ApplicationFailure` on BLOCK.
  */
 export {
   createValidateInputActivity,

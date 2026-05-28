@@ -81,7 +81,7 @@ function emitExperimentalWarnOnce(): void {
  * Usage in workflow:
  *   const { validateInput } = proxyActivities<typeof activities>({...});
  *   const r = await validateInput({ content: input });
- *   if (r.blocked) throw new TemporalGuardrailBlockedError(r);
+ *   guardrailGate(r); // on BLOCK: throws a terminal ApplicationFailure
  */
 export function createValidateInputActivity(
   config: ValidatorActivityConfig

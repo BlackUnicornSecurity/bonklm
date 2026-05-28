@@ -10,7 +10,7 @@ against an embedded Temporal server).
 ## Install
 
 ```bash
-pnpm add @blackunicorn/bonklm @blackunicorn/bonklm-temporal @temporalio/worker
+pnpm add @blackunicorn/bonklm @blackunicorn/bonklm-temporal @temporalio/worker @temporalio/workflow
 ```
 
 ## Quick start
@@ -45,11 +45,19 @@ const { validateInput } = proxyActivities<{
 
 export async function chatWorkflow(userInput: string): Promise<string> {
   const r = await validateInput({ content: userInput });
-  guardrailGate(r); // throws TemporalGuardrailBlockedError on BLOCK
+  guardrailGate(r); // on BLOCK: fails the workflow terminally (see below)
   // ... safe to proceed
   return `Echo: ${userInput}`;
 }
 ```
+
+On a BLOCK decision, `guardrailGate` throws a **terminal, non-retryable `ApplicationFailure`**
+(`type: 'TemporalGuardrailBlockedError'`), so the workflow fails deterministically instead of
+retrying. A client awaiting the workflow receives a `WorkflowFailedError` whose `.cause` is that
+`ApplicationFailure` — its `details[0]` carries `{ validatorName, category, severity, reason }`, and
+the public `TemporalGuardrailBlockedError` class is attached as the failure `cause` for in-process
+callers. Note: `reason` may include a fragment of the offending input, so treat it as untrusted when
+logging it or surfacing it to end users.
 
 ## License
 

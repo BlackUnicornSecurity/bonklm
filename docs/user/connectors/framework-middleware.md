@@ -463,7 +463,7 @@ they only call the activity and throw on BLOCK via `guardrailGate`.
 ### Installation
 
 ```bash
-npm install @blackunicorn/bonklm-temporal @blackunicorn/bonklm @temporalio/worker
+npm install @blackunicorn/bonklm-temporal @blackunicorn/bonklm @temporalio/worker @temporalio/workflow
 ```
 
 ### Activity Registration
@@ -504,10 +504,18 @@ const { validateInput } = proxyActivities<typeof activitiesType>({
 
 export async function chatWorkflow(input: string) {
   const result = await validateInput({ input });
-  guardrailGate(result); // throws TemporalGuardrailBlockedError on BLOCK
+  guardrailGate(result); // on BLOCK: fails the workflow terminally (see below)
   return `Echo: ${input}`;
 }
 ```
+
+On a BLOCK decision, `guardrailGate` throws a terminal, non-retryable `ApplicationFailure`
+(`type: 'TemporalGuardrailBlockedError'`) so the workflow fails deterministically rather than
+retrying the workflow task. A client awaiting the workflow gets a `WorkflowFailedError` whose
+`.cause` is that `ApplicationFailure`; the guardrail diagnostics (`validatorName`, `category`,
+`severity`, `reason`) ride in `details[0]`, and the public `TemporalGuardrailBlockedError` class is
+attached as the failure `cause` for direct in-process callers. Note: `reason` may include a fragment
+of the offending input, so treat it as untrusted when logging it or surfacing it to end users.
 
 ---
 
