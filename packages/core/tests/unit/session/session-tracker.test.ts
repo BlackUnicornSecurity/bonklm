@@ -21,8 +21,8 @@ import {
   DECAY_HALF_LIFE_MS,
   ACCUMULATION_THRESHOLD,
   CATEGORY_REPEAT_THRESHOLD,
-  SESSION_TIMEOUT_MS,
-} from '../../../dist/session/SessionTracker.js';
+  SESSION_TIMEOUT_MS
+} from '../../../src/session/SessionTracker.js';
 
 describe('SessionTracker', () => {
   beforeEach(() => {
@@ -32,9 +32,7 @@ describe('SessionTracker', () => {
   describe('Session Management', () => {
     it('ST-001: should create new session', () => {
       const sessionId = 'test-session-1';
-      const findings: SessionPatternFinding[] = [
-        { category: 'test', weight: 10 },
-      ];
+      const findings: SessionPatternFinding[] = [{ category: 'test', weight: 10 }];
       updateSessionState(sessionId, findings);
       const state = getSessionState(sessionId);
       expect(state).toBeDefined();

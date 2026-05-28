@@ -11,8 +11,8 @@ import {
   CommonRateLimiters,
   DEFAULT_RATE_LIMIT,
   type RateLimiterConfig,
-  type RateLimitResult,
-} from '../../../dist/security/rate-limiter.js';
+  type RateLimitResult
+} from '../../../src/security/rate-limiter.js';
 
 describe('RateLimiter (S016-003)', () => {
   let limiter: RateLimiter;
@@ -82,7 +82,7 @@ describe('RateLimiter (S016-003)', () => {
       expect(blocked.allowed).toBe(false);
 
       // Wait for window to slide past first request
-      await new Promise((resolve) => setTimeout(resolve, 110));
+      await new Promise(resolve => setTimeout(resolve, 110));
 
       // First request should have fallen out of window
       const result = limiter.checkLimit(key);
@@ -98,7 +98,7 @@ describe('RateLimiter (S016-003)', () => {
       for (let i = 0; i < 5; i++) {
         const result = limiter.checkLimit(key);
         expect(result.allowed).toBe(true);
-        await new Promise((resolve) => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       // After 500ms window, earlier requests may have fallen out
@@ -176,7 +176,7 @@ describe('RateLimiter (S016-003)', () => {
       const customLimiter = new RateLimiter({
         maxRequests: 100,
         windowMs: 60000,
-        enabled: true,
+        enabled: true
       });
 
       for (let i = 0; i < 100; i++) {
@@ -312,7 +312,7 @@ describe('RateLimiter (S016-003)', () => {
         results.push(limiter.checkLimit('rapid'));
       }
 
-      const allowed = results.filter((r) => r.allowed).length;
+      const allowed = results.filter(r => r.allowed).length;
       expect(allowed).toBe(5); // Only first 5 should be allowed
     });
 
