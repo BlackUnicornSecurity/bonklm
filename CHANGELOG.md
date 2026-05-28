@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Sprint 52 Day 2 — Gate 2 unblocking + Gate 5.8 reproducibility:
 
+### Changed
+
+- **`check-version-pin.sh` moved to the tracked `scripts/` directory so the pre-commit hook works in every checkout.** The version-pin check previously lived under the gitignored `team/` tree, so the `simple-git-hooks` `pre-commit` hook (`bash team/qa/scripts/check-version-pin.sh`) failed with "No such file or directory" in fresh clones and in any `git worktree` — the exact environments the worktree-per-PR workflow relies on. The script now lives at the tracked `scripts/check-version-pin.sh` (beside `quality-gate.sh`), and the hook invokes that tracked path. Contributor-tooling only — no runtime or library change.
+
 ### Fixed
 
 - **D-007: eslint-plugin-edge `prepublishOnly` chain failure resolved.** Added local `tools/eslint-plugin-bonklm-edge/vitest.config.ts` (11 lines) mirroring the 20 connector packages' convention. Without it, `vitest` walked up to the workspace-root config whose include patterns (`packages/**/*.test.ts`, `tools/**/*.test.ts`) resolved relative to the plugin CWD found zero files and exited 1. Verified: `npm test` from plugin dir now passes 32/32 tests across 3 test files; `pnpm publish -r --dry-run` from repo root now iterates the full workspace (53 publishables clean, was 2 before fix). Architect advisory at `team/qa/1.0.0/evidence/gate-2/ST-02-001/D-007-ADVISORY.md`.
