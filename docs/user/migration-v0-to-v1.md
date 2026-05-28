@@ -80,8 +80,7 @@ before logging).
   requires a major version bump. Adding **OPTIONAL** properties is additive (minor bump).
 
 - **INTERNAL** (may change in any minor / patch):
-  - Symbols prefixed with `_` (e.g. `_testOnlyClearSentinel`, `_resetFailOpenWarnState`,
-    `_defaultCodeValidator`).
+  - Symbols prefixed with `_` (e.g. `_resetFailOpenWarnState`, `_defaultCodeValidator`).
   - Symbols NOT re-exported from a published barrel (deep imports into `dist/*` subpaths).
   - Internal utilities like `RegexCache`, raw `pattern-engine.ts` arrays, `validateBytes`,
     `analyze*` family on individual validators.
@@ -327,7 +326,6 @@ We now prefix all `@internal` exports with a leading underscore. If you imported
 are reaching INTO unstable surface:
 
 ```
-_testOnlyClearSentinel          (connector-utils)
 _resetFailOpenWarnState         (sandbox-utils, voice-webhooks)
 _defaultCodeValidator           (sandbox-utils)
 ```

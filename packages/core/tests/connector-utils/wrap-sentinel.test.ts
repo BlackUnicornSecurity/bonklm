@@ -9,12 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import {
-  assertNotWrapped,
-  markWrapped,
-  ensureWrappedOnce,
-  _testOnlyClearSentinel
-} from '../../src/connector-utils/wrap-sentinel.js';
+import { assertNotWrapped, markWrapped, ensureWrappedOnce } from '../../src/connector-utils/wrap-sentinel.js';
 
 const SYM = Symbol.for('bonklm.test.wired');
 
@@ -76,6 +71,18 @@ describe('markWrapped', () => {
     expect(target[SYM]).toBe(true);
   });
 
+  it('places a non-configurable marker that cannot be redefined (no attacker clear-before-rewrap)', () => {
+    const target = {} as Record<symbol, unknown>;
+    markWrapped(target, SYM);
+    // configurable:false is a security property — redefining a non-configurable
+    // property always throws, so an attacker cannot clear the marker (even via
+    // Object.defineProperty with a fresh descriptor) before re-wrapping.
+    expect(() => Object.defineProperty(target, SYM, { value: false, configurable: true })).toThrow(
+      /Cannot redefine property/
+    );
+    expect(target[SYM]).toBe(true);
+  });
+
   it('throws TypeError on null', () => {
     expect(() => markWrapped(null, SYM)).toThrow(TypeError);
   });
@@ -102,39 +109,5 @@ describe('ensureWrappedOnce', () => {
     const target = {};
     ensureWrappedOnce(target, SYM, 'wrap');
     expect(() => ensureWrappedOnce(target, SYM, 'wrap')).toThrow(/already wrapped/);
-  });
-});
-
-describe('_testOnlyClearSentinel', () => {
-  it('places a cleared (false) marker on an unmarked target, leaving it un-wrapped', () => {
-    const target = {};
-    _testOnlyClearSentinel(target, SYM);
-    // A `false` marker is not `=== true`, so the target is still considered fresh.
-    expect(() => assertNotWrapped(target, SYM, 'wrap')).not.toThrow();
-    expect((target as Record<symbol, unknown>)[SYM]).toBe(false);
-  });
-
-  it('leaves the cleared marker configurable so a real wrap can follow', () => {
-    const target = {};
-    _testOnlyClearSentinel(target, SYM);
-    // markWrapped re-defines the (now configurable) property — must not throw.
-    expect(() => markWrapped(target, SYM)).not.toThrow();
-    expect(() => assertNotWrapped(target, SYM, 'wrap')).toThrow(/already wrapped/);
-  });
-
-  it('cannot redefine a marker placed by markWrapped (non-configurable security descriptor)', () => {
-    // CHARACTERIZATION: markWrapped uses configurable:false so an attacker
-    // cannot clear the marker before re-wrapping. A consequence is that
-    // _testOnlyClearSentinel cannot reset a real marker — it throws. This
-    // locks the security descriptor's non-configurability; if it ever
-    // regresses to configurable:true, this test flips and flags it.
-    const target = {};
-    markWrapped(target, SYM);
-    expect(() => _testOnlyClearSentinel(target, SYM)).toThrow(/Cannot redefine property/);
-  });
-
-  it('is a no-op on a primitive or null (no throw)', () => {
-    expect(() => _testOnlyClearSentinel('str', SYM)).not.toThrow();
-    expect(() => _testOnlyClearSentinel(null, SYM)).not.toThrow();
   });
 });
