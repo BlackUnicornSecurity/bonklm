@@ -13,6 +13,12 @@ import {
   isExpectedSecretFile,
   sanitizeLogString,
 } from '../../../src/common/index.js';
+import { fileURLToPath } from 'node:url';
+
+// This test file's own absolute path — exercises readFileContent against a
+// file guaranteed to exist in any checkout (including CI), instead of a
+// machine-specific hardcoded path.
+const selfPath = fileURLToPath(import.meta.url);
 
 describe('calculateEntropy', () => {
   it('should return 0 for empty string', () => {
@@ -186,13 +192,13 @@ describe('readFileContent', () => {
   });
 
   it('should read existing file', () => {
-    const content = readFileContent('/Users/paultinp/LLM-Guardrails/packages/core/tests/unit/common/index.test.ts');
+    const content = readFileContent(selfPath);
     expect(content).toContain('describe');
   });
 
   it('should resolve relative paths', () => {
     // Use an absolute path to ensure the test works
-    const content = readFileContent('/Users/paultinp/LLM-Guardrails/packages/core/tests/unit/common/index.test.ts');
+    const content = readFileContent(selfPath);
     expect(content).toContain('describe');
   });
 });
