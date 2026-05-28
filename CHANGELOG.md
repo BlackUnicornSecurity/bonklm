@@ -59,7 +59,7 @@ Test baseline:
 
 - `exports` map added to 8 connectors (chroma, huggingface, llamaindex, pinecone, qdrant, vercel, weaviate, wizard); strict-TS consumer resolves under `bundler`/`node16`/`nodenext`. CJS dist confirmed at runtime — uses `require`+`default`+`types` conditions.
 - LICENSE file added to 25 previously-missing publishable packages (MIT, root-copied).
-- LICENSE refreshed on 2 stale per-package copies (anthropic-connector, vercel-connector) from `(c) 2025 Black Unicorn` to root `(c) 2026 Black Unicorn <security@blackunicorn.tech>`. All 52 publishable now byte-identical.
+- LICENSE refreshed on 2 stale per-package copies (anthropic-connector, vercel-connector) from `(c) 2025 Black Unicorn` to root `(c) 2026 Black Unicorn <info@blackunicorn.tech>`. All 52 publishable now byte-identical.
 - Engines floor normalized to Node 20.4 across 24 packages (was 20.0).
 - `@opentelemetry/api ^1.9.0` declared as optional `peerDependency` of `@blackunicorn/bonklm-voltops-otel` (consumer brings via tracer SDK; pin reflects structural-typing compatibility).
 - CHANGELOG duplicate `## [Unreleased]` heading at line 978 collapsed; 70 bullets relocated to `## [0.5.0]` section (correct destination — they were v0.5.0 in-flight, not v1.0.0). Single `## [Unreleased]` heading remains.
