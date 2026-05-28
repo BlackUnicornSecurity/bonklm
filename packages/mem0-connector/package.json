@@ -27,6 +27,7 @@
     "dev": "tsc --watch",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
+    "test:types": "tsd",
     "clean": "rm -rf dist"
   },
   "keywords": [
