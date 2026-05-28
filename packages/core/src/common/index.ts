@@ -141,8 +141,8 @@ export function sanitizeLogString(input: string, maxLen: number = DEFAULT_MAX_LO
   // treat TAB as a column delimiter — leaving it unencoded allows a
   // CWE-117 column-injection attack where an attacker's error
   // message contains `\t` to spawn a phantom column.
-  // eslint-disable-next-line no-control-regex
   const stripped = input.replace(
+    // eslint-disable-next-line no-control-regex
     /[\x00-\x09\x0b-\x1f\x7f]/g,
     c => `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`
   );
