@@ -33,6 +33,8 @@ export default tseslint.config(
       // Test files — excluded from tsconfig.json, linting separately
       '**/*.test.ts',
       '**/*.spec.ts',
+      // tsd type-assertion suites — type-checked by `tsd`, not in any tsconfig project
+      'packages/*/test-d/**',
       // Compiled .js sitting next to .ts source (legacy stragglers)
       'packages/core/src/**/*.js',
       // Per-package vitest configs not part of root tsconfig project
