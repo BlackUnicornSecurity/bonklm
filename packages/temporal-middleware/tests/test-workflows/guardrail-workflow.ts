@@ -15,10 +15,12 @@
  *   1. `@temporalio/workflow` — the workflow runtime API
  *      (`proxyActivities`).
  *   2. `../../src/workflow.js` — `guardrailGate`, a pure
- *      function-plus-Error-class that inspects an activity result.
- *      The src module's only runtime import is the `Error` subclass;
- *      `ValidateInputActivityResult` is imported as a TYPE only and
- *      gets erased by `tsc` so the workflow bundle stays clean.
+ *      function-plus-Error-class that inspects an activity result. Its
+ *      only runtime imports are workflow-safe: `ApplicationFailure` from
+ *      `@temporalio/workflow` (thrown on BLOCK to fail the workflow
+ *      terminally) plus the local `Error` subclass. `ValidateInputActivityResult`
+ *      is imported as a TYPE only and gets erased by `tsc` so the
+ *      workflow bundle stays clean.
  *
  * The activity (`validateInput`) is registered against the worker at
  * test-setup time; the workflow only proxies the call shape.
@@ -50,8 +52,8 @@ const { validateInput } = proxyActivities<{
  * Canonical guardrails-protected workflow shape:
  *
  *   1. Workflow calls `validateInput` ACTIVITY on its input content.
- *   2. `guardrailGate(result)` throws `TemporalGuardrailBlockedError`
- *      on BLOCK; the workflow fails deterministically.
+ *   2. `guardrailGate(result)` throws a terminal, non-retryable
+ *      `ApplicationFailure` on BLOCK; the workflow fails deterministically.
  *   3. On ALLOW the workflow continues with the validated content.
  *
  * Real-world workflows would do additional work in step 3 — call
