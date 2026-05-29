@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:types": "pnpm -r --if-present test:types",
+    "test:pack": "vitest run --config vitest.pack.config.ts",
     "benchmark": "vitest bench --config vitest.config.ts packages/core/benchmarks/benchmark.bench.ts",
     "lint": "eslint .",
     "format": "prettier --write \"**/*.{ts,js,mjs,cjs,json,md,yaml,yml}\"",

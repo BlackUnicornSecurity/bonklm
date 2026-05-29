@@ -26,6 +26,7 @@ export default tseslint.config(
       // TS files not in any tsconfig project (parse errors)
       '.claude/',
       'vitest.config.ts',
+      'vitest.pack.config.ts',
       // Lock files & build manifests
       'pnpm-lock.yaml',
       'package-lock.json',

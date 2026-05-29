@@ -13,7 +13,11 @@ export default defineConfig({
       '**/node_modules/**',
       'team/backups/**',
       // Reference directory — external openclaw reference, has missing peer deps
-      'reference/**'
+      'reference/**',
+      // Tarball-drift snapshots (ST-04-300..351) need the built (gitignored)
+      // dist/, absent in this pre-build pass. They run post-build via
+      // `pnpm test:pack` (vitest.pack.config.ts) instead.
+      'packages/**/tests/tarball-drift.test.ts'
     ],
     coverage: {
       provider: 'istanbul',

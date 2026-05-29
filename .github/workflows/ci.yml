@@ -118,6 +118,34 @@ jobs:
       - name: Run type-surface tests (tsd)
         run: pnpm run test:types
 
+  tarball-drift:
+    name: Tarball Drift (npm pack)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Build first: `npm pack` snapshots each package's built, gitignored
+      # dist/. Without a build the shipped file set is missing all dist files
+      # and every snapshot mismatches.
+      - name: Build packages
+        run: pnpm run build
+
+      - name: Run tarball-drift snapshot tests
+        run: pnpm run test:pack
+
   audit:
     name: Security Audit (informational)
     runs-on: ubuntu-latest
