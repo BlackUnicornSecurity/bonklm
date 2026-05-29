@@ -21,7 +21,8 @@
     "build": "tsc",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test:types": "tsd"
   },
   "keywords": [
     "genkit",
