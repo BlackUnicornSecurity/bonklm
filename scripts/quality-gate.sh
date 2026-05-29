@@ -142,6 +142,11 @@ if [ "$FAST" -eq 0 ]; then
   # published `types` entry (dist/*.d.ts), so the workspace must be built first.
   run_gate "test:types" pnpm test:types
 
+  # ---- Tarball-drift snapshots (ST-04-300..351) --------------------------
+  # Runs after build: `npm pack` snapshots each package's built dist/, which is
+  # gitignored and absent before the build step above.
+  run_gate "test:pack" pnpm test:pack
+
   # ---- End-to-end + perf -------------------------------------------------
   run_gate "uat" pnpm uat
   run_gate "benchmark" pnpm benchmark
