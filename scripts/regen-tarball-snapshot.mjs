@@ -33,6 +33,11 @@ function packagesWithDriftTest() {
 }
 
 function packedFileList(packageRoot) {
+  // dist/ is gitignored and absent until `pnpm build`. Fail loudly rather than
+  // silently writing a snapshot that omits the (unbuilt) dist files.
+  if (!existsSync(path.join(packageRoot, 'dist'))) {
+    throw new Error(`dist/ missing in ${packageRoot} — run \`pnpm build\` before regenerating snapshots.`);
+  }
   // No positional package arg: npm packs the cwd. Passing a path makes npm
   // (inside the pnpm workspace) treat it as a package spec and attempt a git
   // resolve. `--loglevel=error` keeps stdout pure JSON and silences notices.
@@ -41,13 +46,24 @@ function packedFileList(packageRoot) {
     encoding: 'utf8'
   });
   const report = JSON.parse(stdout);
-  return report[0].files.map(entry => entry.path).sort();
+  const files = report[0]?.files;
+  if (!Array.isArray(files)) {
+    throw new Error(`Unexpected \`npm pack --json\` output for ${packageRoot}: ${stdout.slice(0, 300)}`);
+  }
+  return files.map(entry => entry.path).sort();
 }
 
+const packagesDir = path.join(repoRoot, 'packages');
 const args = process.argv.slice(2).map(arg => path.resolve(repoRoot, arg));
 const packageRoots = args.length > 0 ? args : packagesWithDriftTest();
 
 for (const packageRoot of packageRoots) {
+  // Containment guard: only ever write a snapshot inside packages/<pkg>. A
+  // user-supplied path arg is resolved against the repo root, so refuse any
+  // target that escapes packages/ before touching the filesystem.
+  if (!packageRoot.startsWith(packagesDir + path.sep)) {
+    throw new Error(`Refusing to write outside packages/: ${packageRoot}`);
+  }
   const snapshotPath = path.join(packageRoot, 'tests', 'tarball-snapshot.txt');
   const files = packedFileList(packageRoot);
   writeFileSync(snapshotPath, `${files.join('\n')}\n`);

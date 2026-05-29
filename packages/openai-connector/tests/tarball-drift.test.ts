@@ -22,7 +22,7 @@
  * See `docs/contributing/tarball-drift.md`.
  */
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -32,16 +32,24 @@ const packageRoot = path.resolve(testDir, '..');
 const snapshotPath = path.join(testDir, 'tarball-snapshot.txt');
 
 function packedFileList(): string[] {
-  // No positional package arg: npm packs the cwd. Passing a path here makes npm
-  // (inside the pnpm workspace) treat it as a package spec and attempt a git
-  // resolve. `--loglevel=error` keeps stdout pure JSON and silences workspace
-  // notices so the parse and the CI log stay clean.
+  // dist/ is gitignored and absent until `pnpm build`. Fail loudly with the fix
+  // rather than as a confusing "snapshot has dist files, actual has none" diff.
+  if (!existsSync(path.join(packageRoot, 'dist'))) {
+    throw new Error(`dist/ missing in ${packageRoot} — run \`pnpm build\` before \`pnpm test:pack\`.`);
+  }
+  // No positional package arg: npm packs the cwd. A path arg makes npm (inside
+  // the pnpm workspace) treat it as a package spec and attempt a git resolve.
+  // `--loglevel=error` keeps stdout pure JSON and silences workspace notices.
   const stdout = execFileSync('npm', ['pack', '--dry-run', '--json', '--loglevel=error'], {
     cwd: packageRoot,
     encoding: 'utf8'
   });
-  const report = JSON.parse(stdout) as Array<{ files: Array<{ path: string }> }>;
-  return report[0].files.map(entry => entry.path).sort();
+  const report = JSON.parse(stdout) as Array<{ files?: Array<{ path: string }> }>;
+  const files = report[0]?.files;
+  if (!Array.isArray(files)) {
+    throw new Error(`Unexpected \`npm pack --json\` output: ${stdout.slice(0, 300)}`);
+  }
+  return files.map(entry => entry.path).sort();
 }
 
 function snapshotFileList(): string[] {
@@ -54,6 +62,9 @@ function snapshotFileList(): string[] {
 
 describe('tarball drift — @blackunicorn/bonklm-openai', () => {
   it('publishes exactly the snapshotted file set', () => {
-    expect(packedFileList()).toEqual(snapshotFileList());
+    const packed = packedFileList();
+    // Floor guards against a silently-empty pack: LICENSE + README + package.json + >=1 dist file.
+    expect(packed.length).toBeGreaterThan(3);
+    expect(packed).toEqual(snapshotFileList());
   });
 });

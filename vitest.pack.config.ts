@@ -11,14 +11,18 @@ import { defineConfig } from 'vitest/config';
  * their only runner.
  *
  * Deliberately minimal: no coverage (the published file set is the assertion,
- * not executed code). Each test is independent (its own `npm pack`), so the
- * default file parallelism is safe.
+ * not executed code). Each test is independent (its own `npm pack`), so running
+ * them concurrently is correct; the `maxWorkers` cap below bounds resource use
+ * (one npm-pack subprocess per test), not correctness.
  */
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
     include: ['packages/**/tests/tarball-drift.test.ts'],
+    // Each test spawns an `npm pack` subprocess; bound concurrency so the full
+    // 52-connector run does not spike memory/IO on CI runners.
+    maxWorkers: 4,
     testTimeout: 60000,
     hookTimeout: 60000
   },
