@@ -64,6 +64,7 @@
     "build": "tsc && chmod +x dist/bin/run.js",
     "dev": "tsc --watch",
     "test": "vitest",
+    "test:types": "tsd",
     "lint": "eslint src",
     "clean": "rm -rf dist"
   },
