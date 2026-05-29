@@ -23,7 +23,8 @@
     "dev": "tsc --watch",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test:types": "tsd"
   },
   "keywords": [
     "daytona",
