@@ -32,6 +32,7 @@
     "dev": "tsc --watch",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
+    "test:types": "tsd",
     "clean": "rm -rf dist",
     "docker:build": "docker build -t blackunicorn/bonklm-server:$(node -p \"require('./package.json').version\") ."
   },
