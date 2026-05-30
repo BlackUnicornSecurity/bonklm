@@ -1,0 +1,15 @@
+LICENSE
+README.md
+dist/guarded-weaviate.d.ts
+dist/guarded-weaviate.d.ts.map
+dist/guarded-weaviate.js
+dist/guarded-weaviate.js.map
+dist/index.d.ts
+dist/index.d.ts.map
+dist/index.js
+dist/index.js.map
+dist/types.d.ts
+dist/types.d.ts.map
+dist/types.js
+dist/types.js.map
+package.json
