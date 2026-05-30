@@ -370,3 +370,42 @@ describe('sanitizeLogString — bidi-override regression corpus', () => {
     expect(result).toContain('\\u2069');
   });
 });
+
+// ---------------------------------------------------------------------------
+// sanitizeLogString C1 control-range hex-escape (Sprint 54 audit, adversarial #1)
+// C0 + DEL were already escaped; C1 (U+0080..U+009F) lives above 0x7F and was
+// passing through raw. 8-bit terminals read U+009B as CSI (= ESC [) and U+0085
+// (NEL) is a line terminator for several SIEM ingestors — the same CWE-117/
+// CWE-1007 surface as C0 ESC. Source uses String.fromCharCode so no raw control
+// byte is embedded in this test file.
+// ---------------------------------------------------------------------------
+describe('sanitizeLogString — C1 control-range regression', () => {
+  it('hex-escapes U+009B (8-bit CSI) and U+0085 (NEL)', () => {
+    const csi = String.fromCharCode(0x9b);
+    const nel = String.fromCharCode(0x85);
+    const result = sanitizeLogString(`plugin @evil/${csi}31mRED${nel}forged`);
+    expect(result).toContain('\\x9b');
+    expect(result).toContain('\\x85');
+    expect(result).not.toContain(csi);
+    expect(result).not.toContain(nel);
+  });
+
+  it('hex-escapes every code point across the full C1 range U+0080..U+009F', () => {
+    for (let code = 0x80; code <= 0x9f; code++) {
+      const ch = String.fromCharCode(code);
+      const result = sanitizeLogString(`x${ch}y`);
+      expect(result).not.toContain(ch);
+      expect(result).toContain(`\\x${code.toString(16)}`);
+    }
+  });
+
+  it('still escapes C0 ESC and leaves printable ASCII (incl. hyphen) intact', () => {
+    const esc = String.fromCharCode(0x1b);
+    const result = sanitizeLogString(`a${esc}[31m-b_c.d`);
+    expect(result).toContain('\\x1b');
+    expect(result).not.toContain(esc);
+    // Regression guard: the C1 fix must keep the literal hyphen (an earlier
+    // buggy character-class edit stripped every `-`).
+    expect(result).toContain('-b_c.d');
+  });
+});

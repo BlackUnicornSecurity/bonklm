@@ -2,7 +2,7 @@
 
 ElizaOS connector for BonkLM — flagship web3-agent guardrails. Wraps `runtime.createMemory` with a
 sealed `Object.defineProperty`, intercepts every web3-signing action handler with the
-`ToolCallArgsValidator` + two-condition recipient gate, and ships a `bonklm doctor` static-audit
+`ToolCallArgsValidator` + two-condition recipient gate, and ships a `bonklm-doctor` static-audit
 CLI.
 
 ## Install
@@ -76,20 +76,29 @@ The recipient gate reads `runtime.getMemories(...)`. If the persistence layer is
 unauthenticated upstream PATCH route, BonkLM reads attacker-controlled data. **Story 2.4a (Sprint
 12, v0.5.0)** closes the gap via a shadow-log read primitive (Story 1.3b).
 
-## Construct D — `bonklm doctor` static audit
+## Construct D — `bonklm-doctor` static audit
+
+The `bonklm-doctor` CLI (shipped as a package `bin`) statically audits an ElizaOS character file and
+an optional plugin list:
 
 ```bash
-npx bonklm-doctor character.json plugins.json
+npx bonklm-doctor <character.json> [plugins.json] [--json]
 ```
 
 Static analysis covers:
 
 - Plaintext-looking secrets in character fields (CRITICAL).
 - Weak / missing identity anchor in character system prompt (MEDIUM).
-- Plugins not in `VERIFIED_PUBLISHER_ALLOWLIST` (MEDIUM).
+- Plugins not in `VERIFIED_PUBLISHER_ALLOWLIST` — an exact-match miss (MEDIUM) or a
+  Levenshtein-distance ≤ 2 typo-squat impersonation (CRITICAL).
 
-`exitCode === 1` whenever any CRITICAL finding is present. CI scripts MUST surface non-zero exit
-codes — `|| true` is the documented anti-pattern (audit-loop BC4).
+`--json` emits the report as machine-readable JSON; `--help` / `--version` behave conventionally.
+The runtime HTTP probe already exists as the exported `runDoctorRuntime` library function; wiring it
+as a `--runtime` CLI flag is a Phase-2 follow-up.
+
+Exit codes: `0` (no CRITICAL findings), `1` (at least one CRITICAL finding), `2` (could not run —
+bad usage, or unreadable / invalid input). CI scripts MUST surface the non-zero exit code —
+`|| true` is the documented anti-pattern (audit-loop BC4).
 
 ## Phase-2 follow-ups (Story 1.8 backlog + Story 2.4a)
 

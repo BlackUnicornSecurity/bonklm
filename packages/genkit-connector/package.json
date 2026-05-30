@@ -55,6 +55,9 @@
     "typescript": "^5.3.0",
     "vitest": "^4.1.7"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20.4.0"
   }

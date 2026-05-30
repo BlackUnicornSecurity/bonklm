@@ -4,6 +4,14 @@ dist/als-context.d.ts
 dist/als-context.d.ts.map
 dist/als-context.js
 dist/als-context.js.map
+dist/bin/doctor.d.ts
+dist/bin/doctor.d.ts.map
+dist/bin/doctor.js
+dist/bin/doctor.js.map
+dist/doctor-cli.d.ts
+dist/doctor-cli.d.ts.map
+dist/doctor-cli.js
+dist/doctor-cli.js.map
 dist/doctor.d.ts
 dist/doctor.d.ts.map
 dist/doctor.js
