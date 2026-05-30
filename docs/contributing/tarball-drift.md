@@ -7,7 +7,7 @@ drift (a stray build artifact, a dropped declaration file, an edited `files` whi
 reaches npm.
 
 The rollout is staged across batches under the story allocation block ST-04-300 … ST-04-351 (one
-story per publishable package); not every package has a drift test yet.
+story per publishable package) and is now complete — every package in that block ships a drift test.
 
 ## How it runs
 
