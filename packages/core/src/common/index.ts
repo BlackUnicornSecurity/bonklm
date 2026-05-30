@@ -141,9 +141,15 @@ export function sanitizeLogString(input: string, maxLen: number = DEFAULT_MAX_LO
   // treat TAB as a column delimiter — leaving it unencoded allows a
   // CWE-117 column-injection attack where an attacker's error
   // message contains `\t` to spawn a phantom column.
+  // Sprint 54 audit (adversarial #1): include the C1 control range
+  // (U+0080..U+009F) alongside C0 + DEL. C1 lives above 0x7F so the prior class
+  // missed it, yet 8-bit-clean terminals (xterm/VTE in UTF-8) interpret U+009B
+  // as the Control Sequence Introducer (= `ESC [`) and U+0085 (NEL) as a line
+  // terminator in several SIEM ingestors — the same CWE-117/CWE-1007 injection
+  // surface as C0 ESC, which was already escaped. Hex-escape the whole range.
   const stripped = input.replace(
     // eslint-disable-next-line no-control-regex
-    /[\x00-\x09\x0b-\x1f\x7f]/g,
+    /[\x00-\x09\x0b-\x1f\x7f-\x9f]/g,
     c => `\\x${c.charCodeAt(0).toString(16).padStart(2, '0')}`
   );
   // Replace newlines/CRs (most common injection vector) with literal markers.

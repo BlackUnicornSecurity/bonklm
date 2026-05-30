@@ -27,7 +27,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && chmod +x dist/bin/doctor.js",
     "dev": "tsc --watch",
     "test": "vitest",
     "test:coverage": "vitest --coverage",
@@ -49,7 +49,8 @@
   "author": "Black Unicorn <info@blackunicorn.tech>",
   "license": "MIT",
   "dependencies": {
-    "@blackunicorn/bonklm": "workspace:*"
+    "@blackunicorn/bonklm": "workspace:*",
+    "secure-json-parse": "^2.5.0"
   },
   "peerDependencies": {
     "@elizaos/core": ">=1.7.0 <3.0.0"
