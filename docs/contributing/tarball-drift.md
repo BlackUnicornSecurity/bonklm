@@ -66,6 +66,6 @@ pnpm build
 node scripts/regen-tarball-snapshot.mjs packages/<connector>
 ```
 
-Run with no arguments to regenerate every drift-tested package. Regenerate under the Node version CI
-uses (Node 22) so the recorded file set matches the `tarball-drift` job. A snapshot diff must be
+Run with no arguments to regenerate every drift-tested package. Regenerate under the same Node major
+the CI `tarball-drift` job uses, so the recorded file set matches that job. A snapshot diff must be
 reviewer-approved — an unexplained change is exactly the drift these tests exist to catch.

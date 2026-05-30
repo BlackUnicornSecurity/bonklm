@@ -1,7 +1,7 @@
 /**
  * Tarball-drift snapshot test — `@blackunicorn/bonklm-chroma` (ST-04-313).
  *
- * Locks the exact set of files `npm pack` would publish for this connector
+ * Locks the exact set of files `npm pack` would publish for this package
  * against the committed `tarball-snapshot.txt`. A file added to or removed from
  * the shipped tarball (a stray dist artifact, a dropped declaration file, an
  * edited `files` whitelist) fails this test — catching packaging drift across
