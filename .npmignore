@@ -1,6 +1,19 @@
-# .npmignore — Defense-in-depth exclusion list
-# Primary gating: package.json "files" allowlist
-# This file provides secondary protection if "files" is ever removed
+# .npmignore — monorepo ROOT. Has NO effect on any package we publish today.
+#
+# Why it's inert: every publishable workspace package declares a `package.json`
+# "files" allowlist, and an allowlist wins — npm builds the tarball from "files"
+# and no longer narrows it with `.npmignore`/`.gitignore` rules (npm-packlist
+# `filterEntries`). So none of the patterns below ever take effect for us.
+#
+# This file is NOT unreachable, though: when packing a workspace member, npm walks
+# the directories between the monorepo root and the package and DOES read their
+# `.npmignore` (npm-packlist `readOutOfTreeIgnoreFiles`) — the "files" allowlist is
+# what neutralizes it. A package published WITHOUT a "files" allowlist would have
+# its shipped set governed by the patterns here, so always give a new package its
+# own "files" allowlist instead of relying on (or fighting) this root file.
+#
+# Kept for historical reference only; the patterns below do NOT reflect what
+# actually ships (published tarballs include dist/**, source maps, and some src/).
 
 # Test files
 tests/
