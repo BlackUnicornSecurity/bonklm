@@ -360,19 +360,6 @@ export const CONTEXT_MANIPULATION_PATTERNS: PatternDefinition[] = [
  * Phishing / persona-poisoning phrases that ask the LLM to remember a
  * user "preference" (typically a wallet address) and apply it on
  * subsequent web3 actions. Severity WARNING (not CRITICAL) — these are
- * heuristic and benign users may occasionally hit them.
- *
- * Story 1.8's `ToolCallArgsValidator` consumes these WARNINGs as part
- * of a two-condition block gate: pattern fires AND the args.recipient
- * appears ONLY in preference-setting messages → block. The patterns
- * themselves never block on their own.
- */
-/**
- * Story 1.1c — Web3 Preference-Setting Patterns
- * =============================================
- * Phishing / persona-poisoning phrases that ask the LLM to remember a
- * user "preference" (typically a wallet address) and apply it on
- * subsequent web3 actions. Severity WARNING (not CRITICAL) — these are
  * heuristic and the block decision belongs to Story 1.8's
  * `ToolCallArgsValidator` (two-condition gate: pattern + address-
  * isolation-in-preference-setting-messages).
