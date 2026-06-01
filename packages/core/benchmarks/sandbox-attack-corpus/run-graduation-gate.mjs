@@ -24,7 +24,9 @@
  * Run:
  *   node packages/core/benchmarks/sandbox-attack-corpus/run-graduation-gate.mjs
  *
- * Emits:
+ * Emits (DETERMINISTIC — no wall-clock timestamp; for a fixed validator build the
+ * committed artifacts are a pure function of the hash-pinned corpus, so they are
+ * safe to commit and stay byte-stable on a no-op re-run):
  *   packages/core/benchmarks/sandbox-attack-corpus/graduation-report.json
  *   packages/core/benchmarks/sandbox-attack-corpus/graduation-report.txt
  */
@@ -166,8 +168,16 @@ const falsePositivesByPayload = benignResults
 // Report
 // =============================================================================
 
+// The committed report is DETERMINISTIC by design: it is a pure function of the
+// hash-pinned corpus (`corpus.hash`) and the deterministic validators, so a
+// no-op gate run must leave it byte-identical and `git status` clean. We do NOT
+// stamp a wall-clock `generated_at` into the tracked artifact — a per-run
+// timestamp was the sole churning field (`corpus_hash` never moved) and it both
+// polluted PR diffs and could camouflage a real metrics delta under timestamp
+// noise. Provenance is the `corpus_hash` below at this commit's validator build;
+// the live run time is printed to the console (and captured in CI logs /
+// artifact metadata) instead.
 const report = {
-  generated_at: new Date().toISOString(),
   corpus_hash: expectedHash,
   corpus_size: {
     attack: attackResults.length,
@@ -206,7 +216,7 @@ writeFileSync(REPORT_JSON_PATH, JSON.stringify(report, null, 2) + '\n', 'utf-8')
 
 const txt = `# Sandbox Graduation Gate Report — Sprint 24 / Story 4.5
 
-Generated: ${report.generated_at}
+Provenance: deterministic — a pure function of the corpus hash below and the validator build at this commit; per-run timestamp omitted so this committed report stays byte-stable across re-runs.
 Corpus hash (R2-13): ${expectedHash}
 Corpus size: ${attackResults.length} attack + ${benignResults.length} benign
 
@@ -239,6 +249,12 @@ writeFileSync(REPORT_TXT_PATH, txt, 'utf-8');
 console.log('\n' + txt);
 console.log(`\nReport: ${REPORT_JSON_PATH}`);
 console.log(`Decision: ${report.gate_results.decision}`);
+// Live wall-clock run time goes to the console only — never into the committed
+// report (see the `report` construction above). CI captures this stdout line;
+// the GitHub artifact + commit SHA carry per-run provenance for CI runs.
+console.log(
+  `Gate evaluated at ${new Date().toISOString()} — live run time; intentionally not written to the committed report.`
+);
 
 // Exit code: 0 = pass, 1 = fail (so CI can gate on it).
 process.exit(allPass ? 0 : 1);

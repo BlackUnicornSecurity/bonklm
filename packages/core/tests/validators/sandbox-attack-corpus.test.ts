@@ -96,6 +96,58 @@ describe('sandbox-attack-corpus — composition + hash integrity', () => {
   });
 });
 
+describe('sandbox-attack-corpus — committed graduation report is deterministic', () => {
+  /**
+   * Regression guard for the de-timestamp fix. The gate's committed report MUST
+   * be a pure function of the hash-pinned corpus + deterministic validators, so
+   * a no-op `pnpm quality-gate` run leaves `git status` clean. A wall-clock
+   * `generated_at` (JSON) / `Generated:` line (txt) was the sole churning field
+   * (`corpus_hash` never moved); it polluted PR diffs and could camouflage a
+   * real metrics delta under timestamp noise. These are a fast unit-level
+   * denylist; the authoritative, format-agnostic backstop is the post-gate
+   * byte-stability check in `scripts/quality-gate.sh`
+   * (`check_grad_reports_clean`), which fails on ANY churn — including
+   * renamed/epoch/locale values a key denylist cannot enumerate. See the Report
+   * section of `run-graduation-gate.mjs`.
+   */
+  it('graduation-report.json carries no per-run timestamp / run-id field', () => {
+    const report = JSON.parse(readFileSync(join(corpusDir, 'graduation-report.json'), 'utf-8')) as Record<
+      string,
+      unknown
+    >;
+    // Assert KEYS only — never scan the serialized body for a datetime substring:
+    // gate-FAIL reports embed corpus payloads that could legitimately contain a
+    // date and trip a body scan. This denylist is a fast signal, not the
+    // backstop (see the block comment above).
+    for (const key of [
+      'generated_at',
+      'generatedAt',
+      'timestamp',
+      'built_at',
+      'builtAt',
+      'date',
+      'time',
+      'run_id',
+      'runId'
+    ]) {
+      expect(report).not.toHaveProperty(key);
+    }
+  });
+
+  it('graduation-report.txt has no per-run "Generated:" timestamp line', () => {
+    const txt = readFileSync(join(corpusDir, 'graduation-report.txt'), 'utf-8');
+    expect(txt).not.toMatch(/^Generated:/m);
+  });
+
+  it('committed report is anchored to the pinned corpus hash (deterministic provenance)', () => {
+    const report = JSON.parse(readFileSync(join(corpusDir, 'graduation-report.json'), 'utf-8')) as {
+      corpus_hash?: string;
+    };
+    const pinned = readFileSync(join(corpusDir, 'corpus.hash'), 'utf-8').trim();
+    expect(report.corpus_hash).toBe(pinned);
+  });
+});
+
 describe('sandbox-attack-corpus — Sprint 16 recall baseline', () => {
   it('CodeInjectionValidator + PathTraversalValidator recall ≥ 80% across the full corpus', async () => {
     const ci = new CodeInjectionValidator();

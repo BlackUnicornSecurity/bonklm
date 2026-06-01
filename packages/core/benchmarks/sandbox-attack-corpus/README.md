@@ -81,3 +81,10 @@ measured against a separate benign corpus.
 This corpus is FROZEN at Sprint 16 close. Any mutation (add, remove, edit) bumps the hash and
 triggers Story 4.5 graduation re-run. Treat the file as append-only in pre-v0.7 development;
 mutations land via a separate "corpus refresh" PR labelled `corpus-rev: 1+`.
+
+The graduation gate's committed reports (`graduation-report.json` / `.txt`) are **deterministic**:
+for a fixed validator build they are a pure function of this hash-pinned corpus, carry **no per-run
+timestamp**, and are regenerated in place by `run-graduation-gate.mjs` (the live run time is printed
+to the console only). A no-op gate run therefore leaves `git status` clean; the full
+`pnpm quality-gate` run enforces this locally and fails if a gate run leaves the committed reports
+changed. Do **not** reintroduce a wall-clock field into the committed reports.

@@ -1,6 +1,6 @@
 # Performance & Benchmarks
 
-Last updated: 2026-05-25
+Last updated: 2026-06-01
 
 BonkLM is a deterministic pattern + structural guardrail engine. This document covers the engine's
 performance budgets, the in-repo benchmark corpus, the CI gates that enforce performance
@@ -69,8 +69,9 @@ benchmark CI job uploads `.last-run.log` as an artifact (`benchmark-output`, 7-d
 - **`sandbox-attack-corpus/`** — R2-13 hash-pinned 50-pattern corpus consumed by the Story 4.5
   sandbox-connector graduation gate. Composition: 60 % `CODE_INJECTION`, 20 % `PACKAGE_INSTALL`, 10
   % `PATH_TRAVERSAL`, 10 % `SHELL_METACHAR`. `patterns.json` is hashed to `corpus.hash` and any
-  drift fails CI. Latest reported metrics (`graduation-report.txt`, 2026-05-24): recall 100 %
-  (threshold ≥ 95 %), FPR 0 % (threshold ≤ 5 %), precision 100 % (threshold ≥ 80 %).
+  drift fails CI. Latest reported metrics (`graduation-report.txt`, deterministic for a fixed
+  validator build): recall 100 % (threshold ≥ 95 %), FPR 0 % (threshold ≤ 5 %), precision 100 %
+  (threshold ≥ 80 %).
 - **`multilingual-corpus/`** — per-language TP (20) + TN (20) corpora for `MultilingualDetector`
   per-language recall and FPR measurement. Status table in the folder README; current Tier-2
   measured baselines are `bn` 75 % recall / 0 % FPR, `ur` 80 % recall / 0 % FPR; Tier-1 languages do
