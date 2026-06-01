@@ -1,6 +1,6 @@
 # Sandbox Graduation Gate Report — Sprint 24 / Story 4.5
 
-Generated: 2026-05-24T11:08:45.024Z
+Provenance: deterministic — a pure function of the corpus hash below and the validator build at this commit; per-run timestamp omitted so this committed report stays byte-stable across re-runs.
 Corpus hash (R2-13): db9c1986a01ae0d4f5281c74a038b0392415132d21e38aac80b6aacea778fff4
 Corpus size: 50 attack + 50 benign
 

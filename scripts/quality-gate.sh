@@ -107,6 +107,36 @@ skip_gate() {
   log_both "==== SKIP: $1 ($2) ===="
 }
 
+# check_grad_reports_clean — enforces the de-timestamp determinism contract.
+# The sandbox-gate REGENERATES its two tracked reports on every run; for a fixed
+# validator build they are a pure function of the hash-pinned corpus, so a gate
+# run MUST leave them byte-identical to the committed copies. This is the
+# authoritative, format-agnostic backstop for "a no-op gate run leaves git
+# status clean": it catches ANY reintroduced non-determinism (a timestamp of any
+# shape, an epoch int, a run-id, a key reorder) — not just the historical
+# `generated_at` ISO string the unit-test denylist covers — and also fails
+# loudly if a corpus/validator change shifted the metrics and the regenerated
+# report was not re-committed.
+check_grad_reports_clean() {
+  local reports=(
+    "packages/core/benchmarks/sandbox-attack-corpus/graduation-report.json"
+    "packages/core/benchmarks/sandbox-attack-corpus/graduation-report.txt"
+  )
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "not inside a git work tree — cannot verify graduation-report determinism"
+    return 0
+  fi
+  if git diff --quiet HEAD -- "${reports[@]}"; then
+    echo "graduation reports byte-identical to committed copies (deterministic)"
+    return 0
+  fi
+  echo "sandbox-gate regenerated graduation report(s) that DIFFER from the committed copies."
+  echo "Cause: non-determinism reintroduced into run-graduation-gate.mjs, OR a corpus/validator"
+  echo "change shifted the metrics and the regenerated report was not re-committed."
+  git --no-pager diff --stat HEAD -- "${reports[@]}"
+  return 1
+}
+
 {
   echo "BonkLM quality gate"
   echo "version:   ${VERSION} (base ${BASE_VERSION})"
@@ -118,7 +148,7 @@ skip_gate() {
 
 if [ "$FAST" -eq 1 ]; then
   log_both ""
-  log_both ">>> FAST MODE: skipping build, uat, benchmark, sandbox-gate, security-regression, audit."
+  log_both ">>> FAST MODE: skipping build, uat, benchmark, sandbox-gate, sandbox-report-determinism, security-regression, audit."
   log_both ">>> This output is for the inner loop only and is NOT valid PR evidence."
 fi
 
@@ -155,6 +185,11 @@ if [ "$FAST" -eq 0 ]; then
   SANDBOX_GATE="packages/core/benchmarks/sandbox-attack-corpus/run-graduation-gate.mjs"
   if [ -f "$SANDBOX_GATE" ]; then
     run_gate "sandbox-gate (R2-13)" node "$SANDBOX_GATE"
+    # Enforce the de-timestamp determinism contract: the gate just regenerated
+    # its two tracked reports, which MUST be byte-identical to the committed
+    # copies (see check_grad_reports_clean). Format-agnostic backstop for the
+    # "no-op gate run leaves git status clean" guarantee.
+    run_gate "sandbox-report-determinism" check_grad_reports_clean
   else
     skip_gate "sandbox-gate (R2-13)" "runner not found at $SANDBOX_GATE"
   fi
