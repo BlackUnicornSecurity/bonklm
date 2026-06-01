@@ -11,7 +11,9 @@
 import { describe, it, expect } from 'vitest';
 import { assertNotWrapped, markWrapped, ensureWrappedOnce } from '../../src/connector-utils/wrap-sentinel.js';
 
-const SYM = Symbol.for('bonklm.test.wired');
+// Test-private sentinel: an unregistered Symbol(), not the process-global
+// Symbol.for() registry real connectors use for cross-realm identity.
+const SYM = Symbol('bonklm.test.wired');
 
 describe('assertNotWrapped', () => {
   it('does not throw on a fresh object', () => {
@@ -44,7 +46,7 @@ describe('assertNotWrapped', () => {
   it('does not throw for a different sentinel symbol', () => {
     const target = {};
     markWrapped(target, SYM);
-    const other = Symbol.for('bonklm.other.wired');
+    const other = Symbol('bonklm.other.wired');
     expect(() => assertNotWrapped(target, other, 'wrap')).not.toThrow();
   });
 });

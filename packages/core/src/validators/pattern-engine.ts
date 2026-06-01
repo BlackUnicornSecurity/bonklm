@@ -364,12 +364,16 @@ export const CONTEXT_MANIPULATION_PATTERNS: PatternDefinition[] = [
  * `ToolCallArgsValidator` (two-condition gate: pattern + address-
  * isolation-in-preference-setting-messages).
  *
- * **Non-blocking contract**: `PromptInjectionValidator.analyze` exempts
- * the `web3_preference_setting` category from its
- * highest-severity-blocks logic so a pure web3 WARNING does not
- * auto-block the request when no other category fires. Mixed findings
- * (web3 + real injection) still block via the non-web3 category. This
- * exemption is documented in `prompt-injection.ts:analyze`.
+ * **Non-blocking contract**: every pattern below carries
+ * `blockEligible: false`. `detectPatterns` propagates that flag onto
+ * the `PatternFinding`s it emits for these patterns, and
+ * `PromptInjectionValidator.analyze` derives `shouldBlock` from
+ * block-eligible findings only
+ * (`findings.filter(f => f.blockEligible !== false)`) — so a pure web3
+ * WARNING does not auto-block the request when no other category fires.
+ * Mixed findings (web3 + a real, block-eligible injection) still block
+ * via the block-eligible finding. This mechanism is documented in
+ * `prompt-injection.ts:analyze`.
  *
  * **Coverage limits** (audit-loop findings — tracked as follow-up):
  * - Synonym evasion: an attacker who rephrases (`primary` for
