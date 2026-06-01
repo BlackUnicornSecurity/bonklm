@@ -124,7 +124,6 @@ telemetry sinks.
 
 ### INTERNAL — may change without notice
 
-- `_testOnlyClearSentinel` (function) — test-only sentinel reset.
 - `_resetFailOpenWarnState` (function) — test-only WARN-state reset.
 - `_defaultCodeValidator`, `_defaultCodeWrapperKey` (lazy singletons).
 - `RegexCache` (class) — internal regex compilation cache.

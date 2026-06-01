@@ -81,7 +81,7 @@ export {
 // wrap-sentinel for double-wrap defence across connectors. Replaces
 // the 5x verbatim Symbol-watermark copy across livekit-connector +
 // document-ingest + cloudflare-agents-connector + inference-providers.
-export { assertNotWrapped, markWrapped, ensureWrappedOnce, _testOnlyClearSentinel } from './wrap-sentinel.js';
+export { assertNotWrapped, markWrapped, ensureWrappedOnce } from './wrap-sentinel.js';
 
 // Logger utilities
 export {

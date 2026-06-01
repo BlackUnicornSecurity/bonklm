@@ -95,27 +95,3 @@ export function ensureWrappedOnce<T>(target: T, sentinel: symbol, label: string)
   markWrapped(target as unknown as object, sentinel);
   return target;
 }
-
-/**
- * Test-only: clear the sentinel from a target so subsequent wraps
- * succeed. Useful for unit tests that re-use the same mock client
- * across `wrap...()` calls.
- *
- * Defensive: this is a HARD reset that bypasses the immutable
- * descriptor by re-defining with `configurable: true`. Operators
- * must NOT call this in production — it disables the double-wrap
- * defence.
- *
- * @internal — may change without notice in any minor/patch (v1.0-RC1
- * API freeze policy). The leading `_` prefix marks INTERNAL surface.
- */
-export function _testOnlyClearSentinel(target: unknown, sentinel: symbol): void {
-  if (target !== null && (typeof target === 'object' || typeof target === 'function')) {
-    Object.defineProperty(target, sentinel, {
-      value: false,
-      enumerable: false,
-      writable: true,
-      configurable: true
-    });
-  }
-}
