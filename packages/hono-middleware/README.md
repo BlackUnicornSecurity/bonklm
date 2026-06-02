@@ -1,6 +1,6 @@
 # @blackunicorn/bonklm-hono
 
-Hono middleware for BonkLM — edge-runtime-native LLM security guardrails.
+Hono middleware for BonkLM — edge-targeted LLM security guardrails.
 
 ## Installation
 
@@ -19,16 +19,20 @@ intentionally tight to `4.12.x`; v5 ABI changes will require a range bump.
 
 ## Runtime support
 
-The exports map ships `workerd`, `edge-light`, `deno`, `bun`, and `import` conditions all resolving
-to the same edge-safe bundle. Internally the connector imports from `@blackunicorn/bonklm/edge`, so
-it runs on:
+The exports map ships `workerd`, `deno`, `bun`, and `import` conditions all resolving to the same
+bundle. Internally the connector builds on BonkLM core APIs (which use Node built-ins), so it runs
+on:
 
 - Node `>=20.4.0` (declared `engines` field)
 - Cloudflare Workers (workerd) — `nodejs_compat` flag required (see
   [edge-string-handlers.md](../../docs/user/migration/edge-string-handlers.md#cloudflare-workers-required-setup))
-- Vercel Edge Functions (edge-light)
 - Deno Deploy
 - Bun
+
+> Not strictly Vercel Edge Runtime (`edge-light`) safe — the BonkLM core this connector builds on
+> transitively uses Node built-ins (`node:fs`/`node:path`/`node:crypto`), which `workerd`
+> (`nodejs_compat`), Deno, and Bun provide but `edge-light` does not, so the `edge-light` export
+> condition is not declared.
 
 ## Quick start
 

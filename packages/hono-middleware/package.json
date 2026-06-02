@@ -1,7 +1,7 @@
 {
   "name": "@blackunicorn/bonklm-hono",
   "version": "1.0.0-rc.4",
-  "description": "Hono middleware for BonkLM — edge-runtime-native LLM security guardrails",
+  "description": "Hono middleware for BonkLM — edge-targeted LLM security guardrails",
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.js",
@@ -9,7 +9,6 @@
   "exports": {
     ".": {
       "workerd": "./dist/index.js",
-      "edge-light": "./dist/index.js",
       "deno": "./dist/index.js",
       "bun": "./dist/index.js",
       "import": "./dist/index.js",

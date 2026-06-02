@@ -22,8 +22,9 @@ surface — you do not need to install the SDK to build, only at runtime.
 
 ## Runtime support
 
-Edge-only. Exports map ships `workerd`, `edge-light`, and `import` conditions. Internally imports
-from `@blackunicorn/bonklm/edge` exclusively.
+Edge-targeted. Exports map ships `workerd` and `import` conditions (the `edge-light` condition is
+intentionally not declared — the BonkLM core APIs this connector builds on use Node built-ins and
+need `workerd`'s `nodejs_compat`).
 
 - Cloudflare Workers (workerd) with Durable Objects — `nodejs_compat` flag required (see
   [edge-string-handlers.md](../../docs/user/migration/edge-string-handlers.md#cloudflare-workers-required-setup))

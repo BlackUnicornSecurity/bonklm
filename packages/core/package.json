@@ -47,7 +47,6 @@
     },
     "./edge": {
       "workerd": "./dist/edge/index.js",
-      "edge-light": "./dist/edge/index.js",
       "deno": "./dist/edge/index.js",
       "bun": "./dist/edge/index.js",
       "import": "./dist/edge/index.js",

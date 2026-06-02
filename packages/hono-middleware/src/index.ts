@@ -1,7 +1,7 @@
 /**
  * @blackunicorn/bonklm-hono
  * ========================
- * Hono middleware for BonkLM — edge-runtime-native LLM security guardrails.
+ * Hono middleware for BonkLM — edge-targeted LLM security guardrails.
  *
  * Public surface:
  *  - `honoGuardrails(engine, options?)` — canonical-shape MiddlewareHandler
@@ -11,8 +11,9 @@
  *  - `HonoGuardrailsOptions` / `HonoGuardrailsErrorResponse` — public types.
  *
  * Peer dependencies: `hono ^4.12.0`.
- * Edge runtimes: Workerd / edge-light / Deno / Bun all supported via the
- * `@blackunicorn/bonklm/edge` subpath consumed internally.
+ * Edge runtimes: Workerd (`nodejs_compat`) / Deno / Bun supported (the
+ * connector builds on BonkLM core, which uses Node built-ins) — not
+ * strict Vercel `edge-light`.
  */
 export { honoGuardrails, ConnectorValidationError } from './hono-guardrails.js';
 export { extractBody, type ExtractedBody } from './body-extractor.js';

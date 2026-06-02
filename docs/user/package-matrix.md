@@ -5,11 +5,11 @@ v1.0.0-rc.3 release surface. 31 publishable workspace packages + 19 internal/inf
 
 ## Bundle target legend
 
-| Tag     | Meaning                                                  |
-| ------- | -------------------------------------------------------- |
-| 🟢 NODE | Node 20+ only (uses `node:fs`, native crypto, etc.)      |
-| 🟡 EDGE | Edge runtime (Workerd, Vercel Edge, Cloudflare) + Node   |
-| 🟣 ISO  | Isomorphic — Node + Edge + browser via Web standard APIs |
+| Tag     | Meaning                                                                                                                                       |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 🟢 NODE | Node 20+ only (uses `node:fs`, native crypto, etc.)                                                                                           |
+| 🟡 EDGE | Edge runtimes (Workerd/Cloudflare with `nodejs_compat`, Deno, Bun) + Node; strict Vercel Edge (`edge-light`) only where a package declares it |
+| 🟣 ISO  | Isomorphic — Node + Edge + browser via Web standard APIs                                                                                      |
 
 ## Core
 
@@ -17,7 +17,7 @@ v1.0.0-rc.3 release surface. 31 publishable workspace packages + 19 internal/inf
 | ------------------------------------------ | ---------------------------------------- | -------- | ------ |
 | `@blackunicorn/bonklm`                     | 🟢 NODE / 🟡 EDGE (via `./edge` subpath) | —        | STABLE |
 | `@blackunicorn/bonklm-logger`              | 🟣 ISO                                   | —        | STABLE |
-| `@blackunicorn/bonklm-memory-utils`        | 🟣 ISO                                   | —        | STABLE |
+| `@blackunicorn/bonklm-memory-utils`        | 🟡 EDGE                                  | —        | STABLE |
 | `@blackunicorn/bonklm-browser-agents-core` | 🟣 ISO                                   | —        | STABLE |
 
 ## Voice + realtime
@@ -76,7 +76,7 @@ R2-13 hash-pinned 50-pattern corpus + 50-pattern benign corpus. Full attestation
 | `@blackunicorn/bonklm-express`              | 🟢 NODE | `express ^4.18.0 ‖ ^5.0.0`             | STABLE |
 | `@blackunicorn/bonklm-fastify`              | 🟢 NODE | `fastify ^4.0.0 ‖ ^5.0.0`              | STABLE |
 | `@blackunicorn/bonklm-nestjs`               | 🟢 NODE | `@nestjs/common ^10.0.0 ‖ ^11.0.0`     | STABLE |
-| `@blackunicorn/bonklm-hono`                 | 🟣 ISO  | `hono ^4.12.0`                         | STABLE |
+| `@blackunicorn/bonklm-hono`                 | 🟡 EDGE | `hono ^4.12.0`                         | STABLE |
 | `@blackunicorn/bonklm-vercel`               | 🟣 ISO  | `ai ^3.0.0 ‖ ^4.0.0 ‖ ^5.0.0 ‖ ^6.0.0` | STABLE |
 | `@blackunicorn/bonklm-elysia`               | 🟣 ISO  | `elysia ^1.4.0` (optional)             | STABLE |
 | `@blackunicorn/bonklm-nextjs`               | 🟣 ISO  | `next ^16.0.0` (optional)              | STABLE |

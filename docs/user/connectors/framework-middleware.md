@@ -247,10 +247,11 @@ export class MyService {
 
 ---
 
-## Hono Middleware (edge-native)
+## Hono Middleware
 
-`honoGuardrails(engine, options?)` is the canonical-shape `MiddlewareHandler` factory.
-Edge-runtime-native — the connector imports exclusively from `@blackunicorn/bonklm/edge`.
+`honoGuardrails(engine, options?)` is the canonical-shape `MiddlewareHandler` factory. Edge-targeted
+— the connector builds on BonkLM core APIs that use Node built-ins, so it needs Workerd
+`nodejs_compat` (or another Node-compatible edge runtime); it is not strict Vercel `edge-light`.
 
 ### Installation
 
@@ -262,9 +263,13 @@ npm install @blackunicorn/bonklm-hono @blackunicorn/bonklm
 
 - Node `>=20.4.0` (declared `engines` field)
 - Cloudflare Workers (workerd) — `nodejs_compat` flag required
-- Vercel Edge Functions (edge-light)
 - Deno Deploy
 - Bun
+
+> Not strict Vercel Edge Runtime (`edge-light`): the BonkLM core this connector builds on uses Node
+> built-ins (`node:fs`/`node:path`/`node:crypto`), so it needs `nodejs_compat` (Cloudflare) or a
+> Node-compatible edge runtime. See the
+> [edge migration guide](../migration/edge-string-handlers.md).
 
 Pre-1.0 the Hono peer range is intentionally tight to `4.12.x`; v5 ABI changes will require a range
 bump.
@@ -631,14 +636,14 @@ durable-execution guarantees.
 
 ## Choosing a Web Framework Connector
 
-| If you...                                            | Use                                  |
-| ---------------------------------------------------- | ------------------------------------ |
-| Run Node + Express in production                     | `bonklm-express`                     |
-| Run Node + Fastify                                   | `bonklm-fastify`                     |
-| Run NestJS                                           | `bonklm-nestjs` (decorator + module) |
-| Target Cloudflare Workers / Vercel Edge / Deno / Bun | `bonklm-hono`                        |
-| Run Bun + Elysia                                     | `bonklm-elysia`                      |
-| Build a Next.js app (App Router)                     | `bonklm-nextjs`                      |
+| If you...                                                | Use                                  |
+| -------------------------------------------------------- | ------------------------------------ |
+| Run Node + Express in production                         | `bonklm-express`                     |
+| Run Node + Fastify                                       | `bonklm-fastify`                     |
+| Run NestJS                                               | `bonklm-nestjs` (decorator + module) |
+| Target Cloudflare Workers (`nodejs_compat`) / Deno / Bun | `bonklm-hono`                        |
+| Run Bun + Elysia                                         | `bonklm-elysia`                      |
+| Build a Next.js app (App Router)                         | `bonklm-nextjs`                      |
 
 ## Choosing a Durable-Execution Connector
 

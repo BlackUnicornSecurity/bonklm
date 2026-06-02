@@ -18,10 +18,10 @@ pnpm add @blackunicorn/bonklm-memory-utils @blackunicorn/bonklm
 
 ## Peer Dependencies
 
-| Package                | Version       | Notes                                                                                            |
-| ---------------------- | ------------- | ------------------------------------------------------------------------------------------------ |
-| `@blackunicorn/bonklm` | `workspace:*` | Direct dependency (not a peer).                                                                  |
-| Node.js                | `>=20.4.0`    | Edge-runtime conditions (`workerd`, `edge-light`, `deno`, `bun`) all resolve to the same bundle. |
+| Package                | Version       | Notes                                                                                                                                                                       |
+| ---------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@blackunicorn/bonklm` | `workspace:*` | Direct dependency (not a peer).                                                                                                                                             |
+| Node.js                | `>=20.4.0`    | Edge-runtime conditions (`workerd`, `deno`, `bun`) resolve to the same bundle. Not `edge-light` — the BonkLM core it builds on uses Node built-ins (needs `nodejs_compat`). |
 
 ## Quick Start (writing a new vendor connector)
 
