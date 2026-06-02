@@ -161,10 +161,11 @@ string config) because the sealing path must be tamper-resistant.
   `dist/edge/index.js`.
 - `packages/core/src/edge/index.ts` exports the portable subset: engine, base types, all primary
   validators (`PromptInjectionValidator`, `JailbreakValidator`, `ReformulationDetector`,
-  `BoundaryDetector`, `MultilingualDetector`), all four composites, all guards, `StreamValidator`,
-  `BufferedReleaseGate`, the connector-utils error classes + log helpers, the portable codec helpers
-  (`base64DecodeToUtf8`, `hexDecodeToUtf8`, `portableRandomUUID`), and `EdgeHookManager` +
-  `assertAsyncLocalStorageHealthy`.
+  `BoundaryDetector`, `MultilingualDetector`), all four composites, all content guards except
+  `ProductionGuard` (whose `isProductionEnvironment` / `isTestEnvironment` helpers are exported
+  instead), `StreamValidator`, `BufferedReleaseGate`, the connector-utils error classes + log
+  helpers, the portable codec helpers (`base64DecodeToUtf8`, `hexDecodeToUtf8`,
+  `portableRandomUUID`), and `EdgeHookManager` + `assertAsyncLocalStorageHealthy`.
 - **NOT available on edge**: `HookSandbox` (uses `node:vm`), `OverrideToken` HMAC validator (uses
   `node:crypto.timingSafeEqual`). Edge consumers wanting custom hooks use `EdgeHookManager` with
   **function** handlers only — string handlers throw `ConnectorValidationError`
@@ -238,7 +239,7 @@ Asymmetry: vector-DB write-path BLOCKs throw synchronously instead of firing the
   - NODE — Node 20.4+ only, uses `node:fs` / `node:vm` / native crypto.
   - EDGE — Workerd / Vercel Edge / Cloudflare + Node (with `nodejs_compat`).
   - ISO — Node + Edge + browser via Web standard APIs.
-- **Engine requirement**: Node `>=20.4.0` (`packages/core/package.json:101`).
+- **Engine requirement**: Node `>=20.4.0` (`packages/core/package.json:111`).
 - **CI gates** (`.github/workflows/ci.yml`): lint, `tsc --noEmit`, build on Node 20 + 22, test on
   Node 20 + 22 with coverage upload, UAT harness, performance benchmark (NaN/Infinity/`[ERROR]`
   regex guard), R2-13 sandbox graduation gate (recall ≥ 95% / FPR ≤ 5% / precision ≥ 80% on the
