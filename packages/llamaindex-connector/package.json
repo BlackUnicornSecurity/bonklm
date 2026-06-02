@@ -2,12 +2,13 @@
   "name": "@blackunicorn/bonklm-llamaindex",
   "version": "1.0.0-rc.4",
   "description": "LlamaIndex.TS connector for BonkLM - RAG query and retrieval validation",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "require": "./dist/index.js",
+      "import": "./dist/index.js",
       "default": "./dist/index.js"
     }
   },
