@@ -15,9 +15,10 @@
  *   4. On pass: calls `next()` — the application's route handler runs
  *      as normal.
  *
- * **Edge-native**: this connector imports from `@blackunicorn/bonklm/edge`
- * (NOT the root package), so it ships clean on Workerd / edge-light /
- * Deno / Bun in addition to Node. Engine construction is the caller's
+ * **Edge-targeted**: this connector builds on BonkLM core APIs that use
+ * Node built-ins, so it ships on Workerd (`nodejs_compat`) / Deno / Bun
+ * in addition to Node — but not on strict Vercel `edge-light`. Engine
+ * construction is the caller's
  * responsibility — Workerd consumers MUST call
  * `assertAsyncLocalStorageHealthy(AlsCtor)` from
  * `@blackunicorn/bonklm/edge` before constructing the engine (the

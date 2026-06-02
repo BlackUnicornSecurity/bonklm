@@ -86,8 +86,8 @@ export interface BonklmAgentHookContext {
 export interface BonklmAgentConfig {
   /**
    * GuardrailEngine instance. Must be constructed with validators
-   * that work in Workerd (edge-light). The connector uses the
-   * `@blackunicorn/bonklm/edge` entry exclusively.
+   * that work in Workerd (with `nodejs_compat`); the connector builds
+   * on BonkLM core APIs that use Node built-ins.
    */
   engine: GuardrailEngine;
   /**

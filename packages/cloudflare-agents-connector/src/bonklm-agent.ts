@@ -26,8 +26,8 @@
  *      validation, call `engine.validate(text)` directly before
  *      dispatching the message in your override.
  *
- * **Edge-only**: imports from `@blackunicorn/bonklm/edge` exclusively.
- * Workerd `nodejs_compat` flag required for cachedValidate's hash.
+ * **Edge-targeted**: builds on BonkLM core APIs that use Node built-ins.
+ * Workerd `nodejs_compat` flag required.
  *
  * Sprint 22 audit-pattern application (Sprint 21+20 closures):
  *   - Telemetry events carry `kind: 'cf-agent'` (forward-compat with

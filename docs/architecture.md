@@ -14,11 +14,12 @@ BonkLM is a **deterministic, framework-agnostic, provider-agnostic Node.js libra
 application security**. It composes pattern + structural validators (`Validator`) and content guards
 (`Guard`) behind a single orchestrator (`GuardrailEngine`) and ships 31 publishable connector
 packages that wire that orchestrator into specific SDKs (OpenAI, Anthropic, LangChain, Vercel AI
-SDK, ElizaOS, LiveKit, E2B, Pinecone, …). The core engine is Node-first; an isomorphic subset
-(`@blackunicorn/bonklm/edge`) runs on Workerd / Vercel Edge / Deno / Bun via Web standard APIs.
-BonkLM is **NOT** an ML model, **NOT** a WAF, **NOT** a sandbox — it is a deterministic in-process
-detection + redaction layer that runs in your call path BEFORE the LLM and (optionally) on the way
-back. See `packages/core/src/index.ts` and `README.md`.
+SDK, ElizaOS, LiveKit, E2B, Pinecone, …). The core engine is Node-first; a portable subset
+(`@blackunicorn/bonklm/edge`) runs on Workerd (with `nodejs_compat`) / Deno / Bun — Node-compatible
+edge runtimes, not strict Vercel Edge (`edge-light`); see §6. BonkLM is **NOT** an ML model, **NOT**
+a WAF, **NOT** a sandbox — it is a deterministic in-process detection + redaction layer that runs in
+your call path BEFORE the LLM and (optionally) on the way back. See `packages/core/src/index.ts` and
+`README.md`.
 
 ## 2. The 7-surface model
 
@@ -156,9 +157,12 @@ string config) because the sealing path must be tamper-resistant.
 
 ## 6. Edge vs Node runtime split
 
-- `package.json` for `@blackunicorn/bonklm` declares an `./edge` subpath with workerd / edge-light /
-  deno / bun conditional exports (`packages/core/package.json:42-50`). All four runtimes resolve to
-  `dist/edge/index.js`.
+- `package.json` for `@blackunicorn/bonklm` declares an `./edge` subpath with workerd / deno / bun
+  conditional exports (plus `import` for Node). All three edge runtimes resolve to
+  `dist/edge/index.js`. The `edge-light` (strict Vercel Edge) condition is intentionally not
+  declared — the edge surface transitively uses Node built-ins
+  (`node:fs`/`node:path`/`node:crypto`), so it requires a Node-compatible edge runtime (`workerd`
+  with `nodejs_compat`, Deno, Bun).
 - `packages/core/src/edge/index.ts` exports the portable subset: engine, base types, all primary
   validators (`PromptInjectionValidator`, `JailbreakValidator`, `ReformulationDetector`,
   `BoundaryDetector`, `MultilingualDetector`), all four composites, all content guards except
@@ -237,9 +241,10 @@ Asymmetry: vector-DB write-path BLOCKs throw synchronously instead of firing the
   `bonklm-wizard` is in the `ignore` list.
 - **Bundle targets** (per package-matrix.md):
   - NODE — Node 20.4+ only, uses `node:fs` / `node:vm` / native crypto.
-  - EDGE — Workerd / Vercel Edge / Cloudflare + Node (with `nodejs_compat`).
+  - EDGE — Workerd/Cloudflare (with `nodejs_compat`) / Deno / Bun + Node; strict Vercel Edge
+    (`edge-light`) only where a package declares it.
   - ISO — Node + Edge + browser via Web standard APIs.
-- **Engine requirement**: Node `>=20.4.0` (`packages/core/package.json:111`).
+- **Engine requirement**: Node `>=20.4.0` (`packages/core/package.json` `engines.node`).
 - **CI gates** (`.github/workflows/ci.yml`): lint, `tsc --noEmit`, build on Node 20 + 22, test on
   Node 20 + 22 with coverage upload, UAT harness, performance benchmark (NaN/Infinity/`[ERROR]`
   regex guard), R2-13 sandbox graduation gate (recall ≥ 95% / FPR ≤ 5% / precision ≥ 80% on the

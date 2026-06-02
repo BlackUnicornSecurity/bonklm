@@ -2,15 +2,28 @@
  * `@blackunicorn/bonklm/edge` — Edge-Runtime Surface
  * ===================================================
  * Story 2.1 Phase-1 ships the portable subset of BonkLM's core API
- * that runs identically on Workerd / edge-light / Deno / Bun in
- * addition to Node. Imports through this subpath are guaranteed to
- * use only Web Standard APIs (no `Buffer`, no `node:crypto`, no
- * Node `EventEmitter`).
+ * for Node-compatible edge runtimes — Cloudflare Workers (`workerd`)
+ * with the `nodejs_compat` flag, Deno, and Bun — in addition to Node.
+ *
+ * Runtime-support caveat (important): this surface is NOT loadable on
+ * the strict Vercel Edge Runtime (`edge-light`). Its codecs and most
+ * validators use only Web Standard APIs, but the surface transitively
+ * pulls a few Node built-ins:
+ * - `node:fs` + `node:path` — via `common/index` (file-read /
+ *   secret-detection + log helpers) and the bash-safety guard.
+ * - `node:crypto` + `Buffer` — `GuardrailEngine` imports the internal
+ *   `override-token` module (for `hashContent` / config parsing), which
+ *   uses `createHmac` / `timingSafeEqual`.
+ * Those built-ins are provided by `workerd` (`nodejs_compat`), Deno,
+ * and Bun, but not by `edge-light`, so the `edge-light` export
+ * condition is intentionally NOT declared for this subpath. A
+ * genuinely Web-only (zero Node built-ins) edge surface is tracked for
+ * a future release.
  *
  * Subpath usage:
  *
  * ```ts
- * // Cloudflare Worker / Vercel Edge Function / Deno Deploy / Bun:
+ * // Cloudflare Worker (nodejs_compat) / Deno Deploy / Bun:
  * import {
  *   GuardrailEngine,
  *   PromptInjectionValidator,
@@ -20,11 +33,10 @@
  *
  * **What's exported**: every validator + guard + composite factory
  * + connector-utils helper that does NOT depend on Node-specific
- * APIs. The 5-condition exports map in `package.json` ensures
- * Workerd / edge-light / Deno / Bun resolve to this file
- * automatically; Node consumers can opt in to the same edge-safe
- * subset by importing from `@blackunicorn/bonklm/edge` explicitly
- * for portability testing.
+ * APIs. The exports map (`workerd` / `deno` / `bun` / `import`) ensures
+ * Workerd / Deno / Bun resolve to this file automatically; Node
+ * consumers can opt in to the same edge subset by importing from
+ * `@blackunicorn/bonklm/edge` explicitly for portability testing.
  *
  * **What's NOT exported** (Node-only, deferred to Phase-2):
  * - `HookSandbox` — uses `node:vm` + Node `EventEmitter`. Workerd
@@ -32,12 +44,15 @@
  *   Phase-2.
  * - `OverrideToken` HMAC validator — uses `node:crypto`'s `timingSafeEqual`
  *   + `Buffer`. The HMAC unified-async migration lands in Phase-2
- *   alongside the `validateToken` sync→async deprecation.
+ *   alongside the `validateToken` sync→async deprecation. (The
+ *   validator symbol is not exported here, but `GuardrailEngine` still
+ *   imports the `override-token` module internally, so `node:crypto` is
+ *   present in the bundle — see the runtime-support caveat above.)
  *
  * @package @blackunicorn/bonklm/edge
  */
 
-// Core engine + types (Node-portable; no Buffer / no node:crypto).
+// Core engine + types.
 export { GuardrailEngine } from '../engine/GuardrailEngine.js';
 export type {
   GuardrailEngineConfig,

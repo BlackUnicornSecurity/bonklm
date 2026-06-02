@@ -9,7 +9,6 @@
   "exports": {
     ".": {
       "workerd": "./dist/index.js",
-      "edge-light": "./dist/index.js",
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"

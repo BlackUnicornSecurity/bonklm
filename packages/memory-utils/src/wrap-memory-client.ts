@@ -20,8 +20,10 @@
  *      what's RETURNED, not what's INVOKED.
  *   5. If `surface === null`: pass-through.
  *
- * Edge-native — uses ALS-managed ambient context via the engine, no
- * Node-only imports.
+ * Edge-targeted — uses ALS-managed ambient context via the engine. Builds
+ * on BonkLM core APIs that use Node built-ins, so it needs a Node-compatible
+ * edge runtime (`workerd` with `nodejs_compat`, Deno, Bun) — not strict
+ * Vercel `edge-light`.
  *
  * @package @blackunicorn/bonklm-memory-utils
  */

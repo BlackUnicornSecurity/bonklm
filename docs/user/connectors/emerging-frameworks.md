@@ -501,8 +501,8 @@ The `withBonklmAgent(Agent, config)` mixin wraps Cloudflare's `Agent<Env, S>` wi
 npm install @blackunicorn/bonklm-cloudflare-agents @blackunicorn/bonklm agents
 ```
 
-**Edge-only.** Uses `@blackunicorn/bonklm/edge` exclusively. Workerd `nodejs_compat` flag required
-(for cachedValidate's SHA-256 canonical-JSON key derivation).
+**Edge-targeted.** Builds on BonkLM core APIs that use Node built-ins. Workerd `nodejs_compat` flag
+required.
 
 ### Basic Usage
 

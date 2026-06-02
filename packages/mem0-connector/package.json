@@ -9,7 +9,6 @@
   "exports": {
     ".": {
       "workerd": "./dist/index.js",
-      "edge-light": "./dist/index.js",
       "deno": "./dist/index.js",
       "bun": "./dist/index.js",
       "import": "./dist/index.js",

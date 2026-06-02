@@ -7,8 +7,8 @@
  * `TextDecoder` but NOT Node's `Buffer`.
  *
  * These helpers are pure-portable JS and work identically on Node
- * (LTS >=20) and every edge runtime listed in the 5-condition
- * `exports['./edge']` map.
+ * (LTS >=20) and every edge runtime in the `exports['./edge']` map
+ * (`workerd` / `deno` / `bun`).
  *
  * @package @blackunicorn/bonklm/common
  */

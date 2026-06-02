@@ -1,9 +1,11 @@
 # Migrating to `@blackunicorn/bonklm/edge`
 
 Story 2.1 Phase-1 ships an edge-runtime-compatible subpath of the BonkLM core. Cloudflare Workers
-(workerd), Vercel Edge Functions (edge-light), Deno Deploy, and Bun resolve `@blackunicorn/bonklm`
-imports through this subpath automatically via the 5-condition exports map in
-`packages/core/package.json`.
+(workerd, with `nodejs_compat`), Deno Deploy, and Bun resolve `@blackunicorn/bonklm` imports through
+this subpath automatically via the exports map in `packages/core/package.json`. The subpath is NOT
+strictly Vercel-Edge (`edge-light`) safe — it transitively uses Node built-ins
+(`node:fs`/`node:path`/`node:crypto`), so the `edge-light` condition is not declared (see the
+runtime caveat in `packages/core/src/edge/index.ts`).
 
 ## TL;DR
 
@@ -11,14 +13,14 @@ imports through this subpath automatically via the 5-condition exports map in
 // Before (Node-only):
 import { GuardrailEngine, PromptInjectionValidator } from '@blackunicorn/bonklm';
 
-// After (works on Node + Workerd + edge-light + Deno + Bun):
+// After (works on Node + Workerd (nodejs_compat) + Deno + Bun):
 import { GuardrailEngine, PromptInjectionValidator } from '@blackunicorn/bonklm/edge';
 ```
 
 Or rely on automatic resolution — at deploy time the bundler picks the right path:
 
 ```ts
-// Single import, works everywhere via the 5-condition exports map:
+// Single import; the bundler picks the right path per the exports map:
 import { GuardrailEngine, PromptInjectionValidator } from '@blackunicorn/bonklm';
 ```
 
@@ -29,6 +31,12 @@ import { GuardrailEngine, PromptInjectionValidator } from '@blackunicorn/bonklm'
 - `ConnectorValidationError` + log helpers
 - `applyRetrievedDocValidatorToMatches` connector helper
 - Engine + types
+
+> **Caveat (see the header above):** "edge-safe" here means these APIs avoid `Buffer` / `node:vm` at
+> their own call sites. The `/edge` subpath as a whole still transitively pulls `node:fs` /
+> `node:path` (via `common/index`) and `node:crypto` / `Buffer` (via `GuardrailEngine` → the
+> internal `override-token` module), so it requires a Node-compatible edge runtime (Cloudflare
+> `workerd` with `nodejs_compat`, Deno, Bun) — NOT the strict Vercel Edge Runtime (`edge-light`).
 
 Internal swaps (transparent to consumers):
 
@@ -41,6 +49,12 @@ Internal swaps (transparent to consumers):
 
 Imports through `@blackunicorn/bonklm/edge` deliberately omit these constructs. Edge consumers MUST
 NOT import them; Node consumers can continue using them via the standard root import.
+
+> **End-to-end edge-light is still Phase-2.** Packages that declare the `edge-light` condition (e.g.
+> `-elysia`, `-nextjs`, `-web-middleware-utils`) are edge-light-safe only as packages — actually
+> running them requires constructing a `GuardrailEngine`, which transitively uses Node built-ins
+> (`node:crypto` / `node:fs`, as noted in the caveat above). A fully Web-only engine for strict
+> Vercel Edge is the remaining Phase-2 work.
 
 ### `HookSandbox` (Node-only)
 

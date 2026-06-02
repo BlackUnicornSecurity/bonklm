@@ -20,9 +20,8 @@
  * }
  * ```
  *
- * **Edge-only**. Uses `@blackunicorn/bonklm/edge` entry exclusively.
- * Workerd `nodejs_compat` flag required (for the cachedValidate
- * SHA-256 canonical-JSON key derivation).
+ * **Edge-targeted**. Builds on BonkLM core APIs that use Node built-ins.
+ * Workerd `nodejs_compat` flag required.
  */
 export { withBonklmAgent } from './bonklm-agent.js';
 export {
