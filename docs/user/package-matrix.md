@@ -1,6 +1,6 @@
 # BonkLM Package Compatibility Matrix
 
-v1.0.0-rc.3 release surface. 31 publishable workspace packages + 19 internal/infrastructure packages
+v1.0.0-rc.4 release surface. 31 publishable workspace packages + 19 internal/infrastructure packages
 = 54 total.
 
 ## Bundle target legend
@@ -182,4 +182,4 @@ Changesets `linked` config. Major-version peer deps are listed disjunctively (`^
 where the BonkLM wrap surface is stable across vendor majors. Workerd `nodejs_compat` flag required
 for edge bundles.
 
-Last updated: v1.0.0-rc.3 (rc.4 cut imminent).
+Last updated: v1.0.0-rc.4.

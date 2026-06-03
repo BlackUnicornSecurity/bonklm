@@ -1,12 +1,11 @@
 # BonkLM Architecture
 
-> Last updated: 2026-05-25 Audience: senior engineers onboarding to `@blackunicorn/bonklm`. Project
-> version: `1.0.0-rc.3` (rc.4 cut imminent). Source of truth: `packages/core/package.json` + the
-> `[1.0.0-rc.3]` CHANGELOG entry. Root `package.json` (private; repo metadata only) is aligned to
-> the same version. Per [CONTRIBUTING.md](../CONTRIBUTING.md#versioning-changesets-and-releases),
-> all 21 packages in the changeset `linked` group release together. Scope: this is a _what exists in
-> the source_ doc. Aspirational design lives in `team/plans/`. Cross-references point at the
-> load-bearing files.
+> Last updated: 2026-06-03 Audience: senior engineers onboarding to `@blackunicorn/bonklm`. Project
+> version: `1.0.0-rc.4`. Source of truth: `packages/core/package.json` + the `[1.0.0-rc.4]`
+> CHANGELOG entry. Root `package.json` (private; repo metadata only) is aligned to the same version.
+> Per [CONTRIBUTING.md](../CONTRIBUTING.md#versioning-changesets-and-releases), all 21 packages in
+> the changeset `linked` group release together. Scope: this is a _what exists in the source_ doc.
+> Aspirational design lives in `team/plans/`. Cross-references point at the load-bearing files.
 
 ## 1. System overview
 
@@ -235,9 +234,9 @@ Asymmetry: vector-DB write-path BLOCKs throw synchronously instead of firing the
   internal/coverage/etc.).
 - **Single-version policy**: changesets `linked` group keeps every published
   `@blackunicorn/bonklm-*` package at the same version. The current `.changeset/config.json` linked
-  array enumerates 21 packages; the v1.0.0-rc.3 matrix in `docs/user/package-matrix.md` lists 31
+  array enumerates 21 packages; the v1.0.0-rc.4 matrix in `docs/user/package-matrix.md` lists 31
   published packages —
-  `[needs-info: which packages joined the linked group between the .changeset/config.json snapshot and the v1.0.0-rc.3 publish, or whether the linked array is intentionally a subset]`.
+  `[needs-info: which packages joined the linked group between the .changeset/config.json snapshot and the v1.0.0-rc.4 cut, or whether the linked array is intentionally a subset]`.
   `bonklm-wizard` is in the `ignore` list.
 - **Bundle targets** (per package-matrix.md):
   - NODE — Node 20.4+ only, uses `node:fs` / `node:vm` / native crypto.
