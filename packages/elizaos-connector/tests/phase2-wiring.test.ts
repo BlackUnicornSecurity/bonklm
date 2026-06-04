@@ -332,31 +332,25 @@ describe('bonklmPlugin.init — security A&D-Q7: shadowLog absent + runtimePort 
   // Hermeticity — defect OI-006, "the :3000 trap". This test's subject is the
   // A&D-Q7 HIGH warn (init emits it when `runtimePort` is set but `shadowLog`
   // is absent); it is NOT a probe-branch test. The startup probe is incidental
-  // but fires a REAL fetch to 127.0.0.1:<runtimePort>/api/agents/<id>/memories,
+  // but would otherwise fire a REAL fetch to 127.0.0.1:<runtimePort>/api/agents/<id>/memories,
   // so anything answering 200 on that port (a stray dev server, a Docker
   // container publishing :3000) makes the probe mis-read a Class-4 unauth route
-  // and init THROWS before the warn is reached. Stub `fetch` to reject so both
-  // the IPv4 and IPv6 probe attempts resolve to `unreachable` — no network, no
-  // port assumption — and init proceeds to the warn under test. Probe-branch
-  // behaviour itself is covered by probe.test.ts against real loopback servers.
-  // (We deliberately diverge from the package's `port: 1` unreachable-probe
-  // convention — that fits tests whose subject IS the probe; here the probe is
-  // incidental, and `port: 1` still assumes nothing is bound there, whereas a
-  // `fetch` stub is independent of ALL host port state. The `it` asserts the
-  // stub was actually hit so it cannot silently no-op.)
-  let fetchMock: ReturnType<typeof vi.fn>;
+  // and init THROWS before the warn is reached. We inject a rejecting transport
+  // through the typed public contract (`fetchImpl`) so BOTH the IPv4 and IPv6
+  // probe attempts resolve to `unreachable` — no network, no host-port
+  // assumption — and init proceeds to the warn under test. Injecting via the
+  // documented option (vs the prior `vi.stubGlobal('fetch')`) makes a future
+  // move of the probe's transport off `fetchImpl` a COMPILE-TIME break rather
+  // than a silent runtime no-op that re-opens the trap. Probe-branch behaviour
+  // itself is covered by probe.test.ts against real loopback servers.
   beforeEach(() => {
     __clearProbeCacheForTests();
-    const econnrefused = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1'), { code: 'ECONNREFUSED' });
-    fetchMock = vi.fn().mockRejectedValue(econnrefused);
-    vi.stubGlobal('fetch', fetchMock);
   });
 
   afterEach(() => {
-    vi.unstubAllGlobals();
-    // Belt-and-suspenders: `beforeEach` already clears before the next test;
-    // this also drops the `a-1:3000` outcome this describe cached so it cannot
-    // outlive the block in the module-scope probe memo.
+    // Drop the `a-1:3000` outcome this describe cached so it cannot outlive the
+    // block in the module-scope probe memo (`fetchImpl` is not part of the
+    // dedup key — see ProbeOptions.fetchImpl).
     __clearProbeCacheForTests();
   });
 
@@ -374,20 +368,27 @@ describe('bonklmPlugin.init — security A&D-Q7: shadowLog absent + runtimePort 
       actions: []
     };
 
+    // Deterministic rejecting transport injected via the public contract — the
+    // probe is incidental here, so we only need it to be a guaranteed no-op
+    // (ECONNREFUSED on both the IPv4 + IPv6 attempts → `unreachable`).
+    const econnrefused = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1'), { code: 'ECONNREFUSED' });
+    const transport = vi.fn().mockRejectedValue(econnrefused);
+
     const plugin = bonklmPlugin({
       validators: makeValidators(),
       runtimePort: 3000,
+      fetchImpl: transport as unknown as typeof fetch,
       // NO shadowLog — the gap A&D-Q7 catches.
       logger
     });
     await plugin.init!({ runtime });
 
-    // Premise check (defends the hermeticity described above): the probe really
-    // ran against our stub at the configured runtime URL. If the probe's
-    // transport ever moves off global `fetch`, this fails loudly instead of
-    // silently no-opping and re-opening the :3000 trap.
-    expect(fetchMock).toHaveBeenCalled();
-    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('127.0.0.1:3000'))).toBe(true);
+    // Premise check: the injected transport was actually exercised, so the
+    // incidental probe is a true no-op (init reached the warn, did not throw).
+    // With DI this is type-safe — moving the probe off `fetchImpl` fails here
+    // loudly instead of silently re-opening the :3000 trap.
+    expect(transport).toHaveBeenCalled();
+    expect(transport.mock.calls.some(([url]) => String(url).includes('127.0.0.1:3000'))).toBe(true);
 
     const highWarn = logs.find(
       l => l.msg.includes('HIGH') && l.msg.includes('runtimePort') && l.msg.includes('shadowLog')
