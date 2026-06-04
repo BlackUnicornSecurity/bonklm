@@ -13,7 +13,7 @@
  *  - auditInstalledVersions emits HIGH EOL finding for v0.4.x.
  *  - runDoctor accepts installedVersions and threads through.
  */
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createShadowLog,
   createInMemoryShadowLogStorage,
@@ -22,6 +22,7 @@ import {
 } from '@blackunicorn/bonklm';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 import { auditInstalledVersions, bonklmPlugin, runDoctor, wrapSigningAction } from '../src/index.js';
+import { __clearProbeCacheForTests } from '../src/probe.js';
 import type { ActionLike, IAgentRuntimeLike, MemoryLike } from '../src/types.js';
 
 function makeValidators(): Validator[] {
@@ -328,6 +329,37 @@ describe('wrapSigningAction — security BLOCK-Q2 + Q10a default semantics', () 
 });
 
 describe('bonklmPlugin.init — security A&D-Q7: shadowLog absent + runtimePort set', () => {
+  // Hermeticity — defect OI-006, "the :3000 trap". This test's subject is the
+  // A&D-Q7 HIGH warn (init emits it when `runtimePort` is set but `shadowLog`
+  // is absent); it is NOT a probe-branch test. The startup probe is incidental
+  // but fires a REAL fetch to 127.0.0.1:<runtimePort>/api/agents/<id>/memories,
+  // so anything answering 200 on that port (a stray dev server, a Docker
+  // container publishing :3000) makes the probe mis-read a Class-4 unauth route
+  // and init THROWS before the warn is reached. Stub `fetch` to reject so both
+  // the IPv4 and IPv6 probe attempts resolve to `unreachable` — no network, no
+  // port assumption — and init proceeds to the warn under test. Probe-branch
+  // behaviour itself is covered by probe.test.ts against real loopback servers.
+  // (We deliberately diverge from the package's `port: 1` unreachable-probe
+  // convention — that fits tests whose subject IS the probe; here the probe is
+  // incidental, and `port: 1` still assumes nothing is bound there, whereas a
+  // `fetch` stub is independent of ALL host port state. The `it` asserts the
+  // stub was actually hit so it cannot silently no-op.)
+  let fetchMock: ReturnType<typeof vi.fn>;
+  beforeEach(() => {
+    __clearProbeCacheForTests();
+    const econnrefused = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1'), { code: 'ECONNREFUSED' });
+    fetchMock = vi.fn().mockRejectedValue(econnrefused);
+    vi.stubGlobal('fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    // Belt-and-suspenders: `beforeEach` already clears before the next test;
+    // this also drops the `a-1:3000` outcome this describe cached so it cannot
+    // outlive the block in the module-scope probe memo.
+    __clearProbeCacheForTests();
+  });
+
   it('emits HIGH warn when runtimePort is configured but shadowLog is absent', async () => {
     const logs: Array<{ level: string; msg: string }> = [];
     const logger = {
@@ -349,6 +381,13 @@ describe('bonklmPlugin.init — security A&D-Q7: shadowLog absent + runtimePort 
       logger
     });
     await plugin.init!({ runtime });
+
+    // Premise check (defends the hermeticity described above): the probe really
+    // ran against our stub at the configured runtime URL. If the probe's
+    // transport ever moves off global `fetch`, this fails loudly instead of
+    // silently no-opping and re-opening the :3000 trap.
+    expect(fetchMock).toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('127.0.0.1:3000'))).toBe(true);
 
     const highWarn = logs.find(
       l => l.msg.includes('HIGH') && l.msg.includes('runtimePort') && l.msg.includes('shadowLog')
