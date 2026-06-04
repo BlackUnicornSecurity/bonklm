@@ -6,7 +6,7 @@
  * module-scope dedup with FIFO eviction, probe-await, 4-branch outcome.
  */
 import { createServer, type Server } from 'node:http';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runStartupProbe, applyProbeOutcome, __clearProbeCacheForTests, type ProbeOutcome } from '../src/probe.js';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 import { withCallContext, getCallContext } from '../src/als-context.js';
@@ -261,5 +261,38 @@ describe('runStartupProbe — AbortController 2000ms timeout', () => {
     } finally {
       await closeServer(server);
     }
+  });
+});
+
+describe('runStartupProbe — injectable fetch transport (fetchImpl)', () => {
+  beforeEach(() => __clearProbeCacheForTests());
+
+  it('routes the probe through an injected fetchImpl instead of the global fetch', async () => {
+    // 200 from the injected transport → unauth detected, proving the seam
+    // threads opts.fetchImpl → executeProbe → probeSingleIp (IPv4 attempt).
+    const transport = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    const outcome = await runStartupProbe({
+      agentId: 'inject-200',
+      port: 65000,
+      fetchImpl: transport as unknown as typeof fetch
+    });
+    expect(transport).toHaveBeenCalledTimes(1);
+    expect(String(transport.mock.calls[0][0])).toContain('127.0.0.1:65000');
+    expect(outcome.kind).toBe('unauth_detected_no_ack');
+  });
+
+  it('injected transport rejection falls through IPv4 → IPv6 → unreachable', async () => {
+    const econnrefused = Object.assign(new Error('connect ECONNREFUSED'), { code: 'ECONNREFUSED' });
+    const transport = vi.fn().mockRejectedValue(econnrefused);
+    const outcome = await runStartupProbe({
+      agentId: 'inject-reject',
+      port: 65001,
+      fetchImpl: transport as unknown as typeof fetch
+    });
+    expect(outcome.kind).toBe('unreachable');
+    // Both the 127.0.0.1 and [::1] attempts use the injected transport.
+    expect(transport).toHaveBeenCalledTimes(2);
+    expect(String(transport.mock.calls[0][0])).toContain('127.0.0.1:65001');
+    expect(String(transport.mock.calls[1][0])).toContain('[::1]:65001');
   });
 });

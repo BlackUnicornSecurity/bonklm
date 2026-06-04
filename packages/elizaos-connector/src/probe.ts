@@ -108,6 +108,33 @@ export interface ProbeOptions {
   envBindings?: Record<string, string | undefined>;
   /** Logger. @default `createLogger('console')`. */
   logger?: Logger;
+  /**
+   * Injectable HTTP transport for the probe's loopback request.
+   * @default the global `fetch`.
+   *
+   * TESTING / REFACTOR-SAFETY seam. Lets probe-incidental tests inject a
+   * deterministic transport (e.g. one that rejects with `ECONNREFUSED`)
+   * through this typed contract instead of monkey-patching
+   * `globalThis.fetch`. A future move of the probe's transport off the
+   * global `fetch` then becomes a COMPILE-TIME change here rather than a
+   * silent runtime no-op that lets a stub pass for the wrong reason.
+   *
+   * SECURITY: `fetchImpl` does NOT widen the probe's target. The probe
+   * still issues requests ONLY to the hardcoded loopback literals
+   * (`127.0.0.1` / `[::1]`); a custom transport cannot redirect it to a
+   * non-loopback host. It is consumer-supplied config (frozen by
+   * `bonklmPlugin`), equivalent in trust to `acknowledgeClass4Risk` /
+   * `envBindings` — not an attacker-reachable surface. Production
+   * deployments should leave it unset.
+   *
+   * NOTE: `fetchImpl` is intentionally NOT part of the `runStartupProbe`
+   * dedup key (functions are not identity-stable cache material). Two
+   * probes sharing `(agentId, port, NODE_ENV)` that differ only in
+   * `fetchImpl` resolve to the FIRST probe's cached outcome; tests that
+   * inject a transport isolate via `__clearProbeCacheForTests()`.
+   * Production never injects, so the default path is unaffected.
+   */
+  fetchImpl?: typeof fetch;
 }
 
 /**
@@ -181,14 +208,15 @@ function buildProbeUrl(ipLiteral: string, port: number, agentId: string): string
 async function probeSingleIp(
   ipLiteral: string,
   port: number,
-  agentId: string
+  agentId: string,
+  fetchImpl: typeof fetch
 ): Promise<'200_unauth' | 'safe' | 'unreachable'> {
   const url = buildProbeUrl(ipLiteral, port, agentId);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchImpl(url, {
       method: 'GET',
       signal: controller.signal,
       // No `redirect` config — we don't want to follow redirects to a
@@ -227,15 +255,20 @@ async function executeProbe(opts: ProbeOptions): Promise<ProbeOutcome> {
     return { kind: 'skipped', reason: 'BONKLM_SKIP_RUNTIME_PROBE=1 in non-production' };
   }
 
+  // Resolve the transport once: explicit injection (testing seam) else the
+  // global `fetch`. Resolved here — outside `runWithoutCallContext` — because
+  // choosing a function reference touches no ALS state.
+  const fetchImpl = opts.fetchImpl ?? fetch;
+
   // Run the probe with the ambient call context CLEARED so a parent
   // `withCallContext({ sourceTrust: 'agent_internal' })` cannot leak
   // into the probe's HTTP request callback (iter-2 senior-dev AAD-C).
   return runWithoutCallContext(async () => {
     // IPv4 attempt first.
-    let outcome = await probeSingleIp('127.0.0.1', opts.port, opts.agentId);
+    let outcome = await probeSingleIp('127.0.0.1', opts.port, opts.agentId, fetchImpl);
     if (outcome === 'unreachable') {
       // IPv6 fallback per architect AAD-3.
-      outcome = await probeSingleIp('::1', opts.port, opts.agentId);
+      outcome = await probeSingleIp('::1', opts.port, opts.agentId, fetchImpl);
     }
 
     if (outcome === '200_unauth') {

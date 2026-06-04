@@ -99,6 +99,21 @@ export interface BonklmPluginOptions {
    * to `process.env`. Locked 6-key contract per Story 2.1b plan.
    */
   envBindings?: Record<string, string | undefined>;
+  /**
+   * Phase-2 startup-probe transport injection. Optional HTTP transport
+   * for the startup probe's loopback request, threaded straight through
+   * to `runStartupProbe` (see `ProbeOptions.fetchImpl`). @default the
+   * global `fetch`.
+   *
+   * TESTING / REFACTOR-SAFETY seam: lets probe-incidental tests inject a
+   * deterministic transport via this typed option instead of
+   * monkey-patching `globalThis.fetch`. The probe still targets ONLY the
+   * hardcoded loopback literals — `fetchImpl` cannot redirect it off-host
+   * — and the options object is frozen at plugin construction, so this is
+   * consumer-config trust (like `envBindings`), not an attacker surface.
+   * Production deployments should leave it unset.
+   */
+  fetchImpl?: typeof fetch;
   /** Callback when an action is blocked at validation. */
   onActionBlocked?: (actionName: string, reason: string) => void;
   /** Callback when a memory write is refused. */
