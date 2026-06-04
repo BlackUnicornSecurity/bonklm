@@ -395,6 +395,110 @@ describe('bonklmPlugin.init — security A&D-Q7: shadowLog absent + runtimePort 
     );
     expect(highWarn).toBeDefined();
   });
+
+  it('does NOT emit the A&D-Q7 warn when runtimePort is set AND shadowLog IS wired', async () => {
+    // Negative regression guard (ADR-0001 analogue): the A&D-Q7 warn fires ONLY
+    // because the `shadowLog === undefined` guard in init holds. With a shadow
+    // log wired, init takes the auto-wire branch and the warn is unreachable.
+    // Without this assertion, dropping that guard — so the warn fired whenever
+    // `runtimePort` is set, regardless of shadowLog — would pass the positive
+    // test above undetected, silently breaking the gap A&D-Q7 is meant to catch.
+    const logs: Array<{ level: string; msg: string }> = [];
+    const logger = {
+      debug: () => {},
+      info: () => {},
+      warn: (msg: string) => logs.push({ level: 'warn', msg }),
+      error: () => {}
+    };
+    // `on` present so the auto-wire branch subscribes silently (no warn).
+    const runtime: IAgentRuntimeLike = {
+      agentId: 'a-1',
+      createMemory: vi.fn(),
+      actions: [],
+      on: vi.fn()
+    };
+
+    // Same incidental probe no-op as the positive case — `runtimePort` still
+    // triggers the probe here, so the seam is exercised in this scenario too.
+    const econnrefused = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1'), { code: 'ECONNREFUSED' });
+    const transport = vi.fn().mockRejectedValue(econnrefused);
+
+    const plugin = bonklmPlugin({
+      validators: makeValidators(),
+      runtimePort: 3000,
+      // The ONLY difference from the positive case: shadowLog IS wired.
+      shadowLog: createShadowLog(createInMemoryShadowLogStorage()),
+      fetchImpl: transport as unknown as typeof fetch,
+      logger
+    });
+    await plugin.init!({ runtime });
+
+    // The probe still ran, so absence-of-warn is meaningful (not a skipped path)…
+    expect(transport).toHaveBeenCalled();
+    // …yet because `shadowLog` IS wired, the A&D-Q7 gap warn must NOT appear —
+    // same predicate as the positive test, asserted absent.
+    const highWarn = logs.find(
+      l => l.msg.includes('HIGH') && l.msg.includes('runtimePort') && l.msg.includes('shadowLog')
+    );
+    expect(highWarn).toBeUndefined();
+  });
+});
+
+describe('bonklmPlugin — security: fetchImpl-in-production tripwire', () => {
+  // `fetchImpl` is a testing/refactor seam for the Class-4 startup probe; setting
+  // it in production swaps the probe's transport off the system `fetch`, which
+  // could mask a real unauthenticated /memories route. The plugin emits a HIGH
+  // warn at construction (mirroring `acknowledgeClass4Risk`'s prod posture).
+  // These construct only — no init/probe — so they are fully hermetic.
+  const rejectingTransport = (): typeof fetch =>
+    vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED')) as unknown as typeof fetch;
+
+  it('emits a HIGH warn when fetchImpl is set with productionMode:true', () => {
+    const logs: Array<{ level: string; msg: string }> = [];
+    const logger = {
+      debug: () => {},
+      info: () => {},
+      warn: (msg: string) => logs.push({ level: 'warn', msg }),
+      error: () => {}
+    };
+    bonklmPlugin({
+      validators: makeValidators(),
+      fetchImpl: rejectingTransport(),
+      productionMode: true,
+      logger
+    });
+    const warn = logs.find(l => l.msg.includes('HIGH') && l.msg.includes('fetchImpl') && l.msg.includes('production'));
+    expect(warn).toBeDefined();
+  });
+
+  it('does NOT warn when productionMode is false even with fetchImpl set', () => {
+    const logs: Array<{ level: string; msg: string }> = [];
+    const logger = {
+      debug: () => {},
+      info: () => {},
+      warn: (msg: string) => logs.push({ level: 'warn', msg }),
+      error: () => {}
+    };
+    bonklmPlugin({
+      validators: makeValidators(),
+      fetchImpl: rejectingTransport(),
+      productionMode: false,
+      logger
+    });
+    expect(logs.find(l => l.msg.includes('fetchImpl') && l.msg.includes('production'))).toBeUndefined();
+  });
+
+  it('does NOT warn in production when fetchImpl is unset', () => {
+    const logs: Array<{ level: string; msg: string }> = [];
+    const logger = {
+      debug: () => {},
+      info: () => {},
+      warn: (msg: string) => logs.push({ level: 'warn', msg }),
+      error: () => {}
+    };
+    bonklmPlugin({ validators: makeValidators(), productionMode: true, logger });
+    expect(logs.find(l => l.msg.includes('fetchImpl') && l.msg.includes('production'))).toBeUndefined();
+  });
 });
 
 describe('auditInstalledVersions — EOL finding for bonklm-elizaos@0.4.x', () => {
