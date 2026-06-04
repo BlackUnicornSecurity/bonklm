@@ -90,6 +90,7 @@ export function bonklmPlugin(options: BonklmPluginOptions = {}): PluginLike {
           port: frozenOptions.runtimePort,
           acknowledgeClass4Risk: frozenOptions.acknowledgeClass4Risk === true,
           envBindings: frozenOptions.envBindings,
+          fetchImpl: frozenOptions.fetchImpl,
           logger
         });
         // ConnectorValidationError from applyProbeOutcome (branch 1)
