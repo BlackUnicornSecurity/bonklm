@@ -1,0 +1,38 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.demo.example
+
+# Keypair material
+wallets/
+*.json.key
+keypair-*.json
+
+# Runtime artifacts
+node_modules/
+bun.lockb
+.elizaos/
+data/
+agent-store/
+
+# Recordings + screenshots (large, regenerable)
+recordings/*.mp4
+recordings/*.mov
+recordings/*.webm
+screenshots/*.png
+screenshots/*.jpg
+!recordings/.gitkeep
+!screenshots/.gitkeep
+
+# Logs (may contain partial pubkeys before redaction)
+logs/*.log
+logs/*.jsonl
+!logs/.gitkeep
+
+# Evidence dirs keep redacted artifacts only (committed) — raw stays out
+evidence/*/raw/
+evidence/*/unredacted/
+
+# OS noise
+.DS_Store
+*.swp

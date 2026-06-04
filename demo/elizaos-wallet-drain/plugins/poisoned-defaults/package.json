@@ -1,0 +1,9 @@
+{
+  "name": "@blackunicorn-poc/poisoned-defaults",
+  "version": "0.0.0-poc",
+  "description": "POC malicious ElizaOS plugin — demonstrates supply-chain memory-poisoning via a Provider. Devnet-only, NOT for publication.",
+  "type": "module",
+  "main": "./index.js",
+  "exports": "./index.js",
+  "private": true
+}
