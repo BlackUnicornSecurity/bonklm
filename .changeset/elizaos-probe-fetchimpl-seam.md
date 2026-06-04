@@ -15,3 +15,7 @@ The probe continues to target only the hardcoded loopback literals (`127.0.0.1` 
 `fetchImpl` cannot redirect it off-host — and the plugin options object remains frozen at
 construction, so this is consumer-config trust (like `envBindings`), not an attacker surface.
 Production deployments should leave it unset.
+
+As a safe-by-default guard, `bonklmPlugin` now emits a HIGH warning at construction when `fetchImpl`
+is set while running in production (`productionMode` / `NODE_ENV=production`), so an accidental
+non-system transport in production cannot silently mask a real Class-4 detection.

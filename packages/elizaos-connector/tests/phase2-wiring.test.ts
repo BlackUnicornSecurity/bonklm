@@ -444,6 +444,53 @@ describe('bonklmPlugin.init — security A&D-Q7: shadowLog absent + runtimePort 
   });
 });
 
+describe('bonklmPlugin — security: fetchImpl-in-production tripwire', () => {
+  // `fetchImpl` is a testing/refactor seam for the Class-4 startup probe; setting
+  // it in production swaps the probe's transport off the system `fetch`, which
+  // could mask a real unauthenticated /memories route. The plugin emits a HIGH
+  // warn at construction (mirroring `acknowledgeClass4Risk`'s prod posture).
+  // These construct only — no init/probe — so they are fully hermetic.
+  const rejectingTransport = (): typeof fetch =>
+    vi.fn().mockRejectedValue(new Error('connect ECONNREFUSED')) as unknown as typeof fetch;
+
+  it('emits a HIGH warn when fetchImpl is set with productionMode:true', () => {
+    const logs: Array<{ level: string; msg: string }> = [];
+    const logger = {
+      debug: () => {},
+      info: () => {},
+      warn: (msg: string) => logs.push({ level: 'warn', msg }),
+      error: () => {}
+    };
+    bonklmPlugin({ validators: makeValidators(), fetchImpl: rejectingTransport(), productionMode: true, logger });
+    const warn = logs.find(l => l.msg.includes('HIGH') && l.msg.includes('fetchImpl') && l.msg.includes('production'));
+    expect(warn).toBeDefined();
+  });
+
+  it('does NOT warn when productionMode is false even with fetchImpl set', () => {
+    const logs: Array<{ level: string; msg: string }> = [];
+    const logger = {
+      debug: () => {},
+      info: () => {},
+      warn: (msg: string) => logs.push({ level: 'warn', msg }),
+      error: () => {}
+    };
+    bonklmPlugin({ validators: makeValidators(), fetchImpl: rejectingTransport(), productionMode: false, logger });
+    expect(logs.find(l => l.msg.includes('fetchImpl') && l.msg.includes('production'))).toBeUndefined();
+  });
+
+  it('does NOT warn in production when fetchImpl is unset', () => {
+    const logs: Array<{ level: string; msg: string }> = [];
+    const logger = {
+      debug: () => {},
+      info: () => {},
+      warn: (msg: string) => logs.push({ level: 'warn', msg }),
+      error: () => {}
+    };
+    bonklmPlugin({ validators: makeValidators(), productionMode: true, logger });
+    expect(logs.find(l => l.msg.includes('fetchImpl') && l.msg.includes('production'))).toBeUndefined();
+  });
+});
+
 describe('auditInstalledVersions — EOL finding for bonklm-elizaos@0.4.x', () => {
   it('emits HIGH plugin_not_in_allowlist for installed 0.4.x version', () => {
     const findings = auditInstalledVersions({

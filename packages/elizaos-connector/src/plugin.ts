@@ -56,6 +56,21 @@ export function bonklmPlugin(options: BonklmPluginOptions = {}): PluginLike {
   const regex = frozenOptions.signingActionRegex ?? DEFAULT_SIGNING_ACTION_REGEX;
   const productionMode = frozenOptions.productionMode ?? process.env.NODE_ENV === 'production';
 
+  // Safety tripwire (security audit, fetchImpl seam): `fetchImpl` is a testing /
+  // refactor-safety seam for the Class-4 startup probe. If it is set in
+  // production the probe talks to a custom transport instead of the system
+  // `fetch`, and a buggy or copied-from-tests transport could silently report
+  // "safe" and mask a real unauthenticated /memories route. Never silent —
+  // mirror the prod-warning posture of `acknowledgeClass4Risk`. The seam itself
+  // is preserved for legitimately constrained runtimes that opt in deliberately.
+  if (productionMode && frozenOptions.fetchImpl !== undefined) {
+    logger.warn(
+      '[BonkLM] HIGH — `fetchImpl` is set while running in production: the Class-4 startup probe ' +
+        'is using a custom transport instead of the system `fetch`, which can mask a real unauthenticated ' +
+        '/memories route. Leave `fetchImpl` unset in production unless this is a deliberate, audited choice.'
+    );
+  }
+
   return {
     name: '@blackunicorn/bonklm-elizaos',
     description:
