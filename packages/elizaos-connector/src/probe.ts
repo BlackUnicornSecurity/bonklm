@@ -108,6 +108,46 @@ export interface ProbeOptions {
   envBindings?: Record<string, string | undefined>;
   /** Logger. @default `createLogger('console')`. */
   logger?: Logger;
+  /**
+   * Injectable HTTP transport for the probe's loopback request.
+   * @default the global `fetch`.
+   *
+   * TESTING / REFACTOR-SAFETY seam. Lets probe-incidental tests inject a
+   * deterministic transport (e.g. one that rejects with `ECONNREFUSED`)
+   * through this typed contract instead of monkey-patching
+   * `globalThis.fetch`. If the probe's transport is ever moved off the
+   * global `fetch`, that becomes a typed change here — the injected
+   * transport simply stops being called, so a stale stub fails loudly
+   * instead of silently no-opping.
+   *
+   * An injected transport SHOULD honour the `AbortSignal` passed in the
+   * request `init.signal`: the probe enforces a 2000ms per-attempt deadline
+   * by aborting that signal, and the default global `fetch` honours it. A
+   * transport that ignores the signal forfeits that timeout bound for its
+   * own request.
+   *
+   * SECURITY: `fetchImpl` does NOT widen the probe's TARGET. The probe
+   * builds its request URL from the hardcoded loopback literals
+   * (`127.0.0.1` / `[::1]`) only — there is no consumer-overridable
+   * hostname — so any compliant transport probes loopback alone. A hostile
+   * transport could of course call elsewhere, but `fetchImpl` is
+   * consumer-supplied config (frozen by `bonklmPlugin`), equivalent in
+   * trust to `acknowledgeClass4Risk` / `envBindings` — it is NOT an
+   * attacker-reachable surface. Production deployments should leave it
+   * unset.
+   *
+   * NOTE: `fetchImpl` is intentionally NOT part of the `runStartupProbe`
+   * dedup key (functions are not identity-stable cache material). The key
+   * is `(agentId, port, resolved NODE_ENV)`; any two callers that share it
+   * but pass different transports resolve to the FIRST call's cached
+   * outcome — this applies to repeated in-process `runStartupProbe` /
+   * `runDoctorRuntime` calls, not just tests. Tests isolate via
+   * `__clearProbeCacheForTests()`; production never injects, so the default
+   * path is unaffected. (`NODE_ENV` stays in the key, so test and
+   * production callers never share a cached outcome — the BLOCK-6 contract
+   * on `runStartupProbe` is preserved.)
+   */
+  fetchImpl?: typeof fetch;
 }
 
 /**
@@ -181,14 +221,15 @@ function buildProbeUrl(ipLiteral: string, port: number, agentId: string): string
 async function probeSingleIp(
   ipLiteral: string,
   port: number,
-  agentId: string
+  agentId: string,
+  fetchImpl: typeof fetch
 ): Promise<'200_unauth' | 'safe' | 'unreachable'> {
   const url = buildProbeUrl(ipLiteral, port, agentId);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchImpl(url, {
       method: 'GET',
       signal: controller.signal,
       // No `redirect` config — we don't want to follow redirects to a
@@ -231,11 +272,17 @@ async function executeProbe(opts: ProbeOptions): Promise<ProbeOutcome> {
   // `withCallContext({ sourceTrust: 'agent_internal' })` cannot leak
   // into the probe's HTTP request callback (iter-2 senior-dev AAD-C).
   return runWithoutCallContext(async () => {
+    // Resolve the transport once, here: explicit injection (testing seam)
+    // else the global `fetch`. Captured at the last responsible moment so a
+    // mid-flight `globalThis.fetch` swap (e.g. test teardown) cannot leave a
+    // stale reference; selecting a function ref touches no ALS state, so its
+    // placement inside the cleared scope is immaterial to AAD-C.
+    const fetchImpl = opts.fetchImpl ?? fetch;
     // IPv4 attempt first.
-    let outcome = await probeSingleIp('127.0.0.1', opts.port, opts.agentId);
+    let outcome = await probeSingleIp('127.0.0.1', opts.port, opts.agentId, fetchImpl);
     if (outcome === 'unreachable') {
       // IPv6 fallback per architect AAD-3.
-      outcome = await probeSingleIp('::1', opts.port, opts.agentId);
+      outcome = await probeSingleIp('::1', opts.port, opts.agentId, fetchImpl);
     }
 
     if (outcome === '200_unauth') {
