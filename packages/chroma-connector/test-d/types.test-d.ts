@@ -8,7 +8,7 @@
  *   - Option / DTO interfaces + the `BlockedDocumentHandling` union.
  *   - Literal numeric constants.
  *
- * CommonJS package — see `package.json` `"tsd"` override (`composite: false`)
+ * ESM package — see `package.json` `"tsd"` override (`composite: false`)
  * required because the package tsconfig is `composite: true` (project refs).
  *
  * Run via `pnpm --filter @blackunicorn/bonklm-chroma test:types` (tsd).
