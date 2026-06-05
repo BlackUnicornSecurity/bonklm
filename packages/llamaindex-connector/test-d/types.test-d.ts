@@ -12,7 +12,7 @@
  *     'replace'` blocked-document union it carries,
  *   - the `GuardedQueryResult` + `DocumentValidationResult` DTOs.
  *
- * CommonJS package — see `package.json` `"tsd"` override (`composite: false`)
+ * ESM package — see `package.json` `"tsd"` override (`composite: false`)
  * required because the package tsconfig is `composite: true` (project refs).
  *
  * Run via `pnpm exec tsd`. Lives in test-d/ (tsd's default dir).

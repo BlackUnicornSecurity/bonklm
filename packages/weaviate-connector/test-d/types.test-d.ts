@@ -10,7 +10,7 @@
  *     so only missing-required-field rejection is meaningful there.
  *   - Literal numeric constants.
  *
- * CommonJS package — see `package.json` `"tsd"` override (`composite: false`).
+ * ESM package — see `package.json` `"tsd"` override (`composite: false`).
  *
  * Run via `pnpm --filter @blackunicorn/bonklm-weaviate test:types` (tsd).
  */
