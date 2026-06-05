@@ -14,7 +14,7 @@
  * surface) — so they are deliberately not imported / asserted here.
  *
  * ESM package — see `package.json` `"tsd"` override (`composite: false`)
- * required because the package tsconfig is `composite: true` (project refs).
+ * required because the package tsconfig is `composite: true`.
  *
  * Run via `pnpm --filter @blackunicorn/bonklm-pinecone test:types` (tsd).
  */
