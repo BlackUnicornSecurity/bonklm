@@ -7,14 +7,8 @@
  * @package @blackunicorn/bonklm-qdrant
  */
 
-// D-011 (Sprint 52 Gate 2): explicit resolution-mode attribute required so
-// consumers with `moduleResolution: "node16"`/`"nodenext"` can type-resolve
-// these imports across the CJS connector → ESM core boundary. Without the
-// attribute, tsc emits TS1541 in the consumer build.
-import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm' with {
-  'resolution-mode': 'import'
-};
-import type { RetrievedDocValidator } from '@blackunicorn/bonklm' with { 'resolution-mode': 'import' };
+import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
+import type { RetrievedDocValidator } from '@blackunicorn/bonklm';
 
 /**
  * Default validation timeout in milliseconds.

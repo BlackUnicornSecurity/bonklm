@@ -5,13 +5,7 @@
  * Includes security-related options for inference API validation.
  */
 
-// D-011 (Sprint 52 Gate 2): explicit resolution-mode attribute required so
-// consumers with `moduleResolution: "node16"`/`"nodenext"` can type-resolve
-// this import across the CJS connector → ESM core boundary. Without the
-// attribute, tsc emits TS1541 in the consumer build.
-import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm' with {
-  'resolution-mode': 'import'
-};
+import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
 
 /**
  * Configuration options for the guarded HuggingFace wrapper.
