@@ -12,8 +12,8 @@
  *     `DEFAULT_MAX_FILTER_LENGTH` / `_PAYLOAD_SIZE` / `_REGEX_TIMEOUT` are
  *     NOT on the public surface and are not asserted).
  *
- * ESM package, but NOT `composite` — inherits NodeNext from the root
- * tsconfig, so no `package.json` `"tsd"` override is required.
+ * ESM package. Its tsconfig is NOT `composite` (it inherits NodeNext from
+ * the root tsconfig), so no `package.json` `"tsd"` override is required.
  *
  * Run via `pnpm --filter @blackunicorn/bonklm-qdrant test:types` (tsd).
  */

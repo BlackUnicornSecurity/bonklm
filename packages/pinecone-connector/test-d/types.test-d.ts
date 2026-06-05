@@ -13,7 +13,8 @@
  * `DEFAULT_MAX_TOP_K` (they live in `types.ts` but are not on the public
  * surface) — so they are deliberately not imported / asserted here.
  *
- * ESM package — see `package.json` `"tsd"` override (`composite: false`).
+ * ESM package — see `package.json` `"tsd"` override (`composite: false`)
+ * required because the package tsconfig is `composite: true` (project refs).
  *
  * Run via `pnpm --filter @blackunicorn/bonklm-pinecone test:types` (tsd).
  */
