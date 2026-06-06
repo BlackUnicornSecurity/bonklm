@@ -23,11 +23,6 @@
     "test:coverage": "vitest --coverage",
     "test:types": "tsd"
   },
-  "tsd": {
-    "compilerOptions": {
-      "composite": false
-    }
-  },
   "keywords": [
     "chromadb",
     "vector",
