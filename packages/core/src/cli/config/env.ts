@@ -20,7 +20,7 @@
 import { access, chmod, constants, mkdtemp, readFile, rename, rm, stat, writeFile } from 'fs/promises';
 import { platform, tmpdir } from 'os';
 import { existsSync } from 'fs';
-import { dirname, join } from 'path';
+import { dirname, join, resolve, sep } from 'path';
 import { parse as dotenvParse } from 'dotenv';
 import { WizardError } from '../utils/error.js';
 
@@ -68,7 +68,7 @@ function validateEnvPath(path: string): string {
   // `my..config.env`, `.env..bak`, `app..env` — are accepted, while real
   // traversal (`../x`, `a/../../x`, `..\\x`) is still rejected.
   //
-  // A resolve-based containment check (as in doctor.ts `setWindowsPermissions`)
+  // A resolve-based containment check (as in doctor.ts `resolveHooksPath`)
   // is deliberately NOT used here: this function allows absolute paths by
   // contract (see above), so a `resolve(cwd, path).startsWith(cwd)` guard would
   // wrongly reject the supported absolute-path case.
@@ -329,19 +329,43 @@ export class EnvManager {
    *
    * SECURITY: If icacls fails, we try alternative methods
    * and throw an error if all methods fail (rather than silently continuing).
+   * The final destination (`this.path`) is first checked for cwd-containment
+   * (see the inline note); `filePath` is the internal temp file icacls acts on.
    *
-   * @param filePath - Path to the file
-   * @throws {WizardError} If unable to set secure permissions
+   * @param filePath - Path to the internal temp file whose ACLs are set
+   *   (permissions are applied before the atomic rename to `this.path`)
+   * @throws {WizardError} `PATH_OUTSIDE_DIRECTORY` if the final destination
+   *   escapes cwd, or `WINDOWS_PERMISSIONS_FAILED` if icacls and attrib both fail
    */
   private async setWindowsPermissions(filePath: string): Promise<void> {
-    // SECURITY: Validate file path is within safe directory before execution
-    // Resolve to absolute path to prevent path traversal
-    const pathModule = await import('node:path');
-    const normalizedPath = pathModule.resolve(filePath);
+    // SECURITY: cwd-containment guard at the icacls sink.
+    //
+    // icacls spawns a process, so this is the correct place to refuse a write
+    // whose FINAL destination escapes the project directory. Guard `this.path`
+    // — the user-controlled rename target — NOT `filePath`, which is the
+    // internal temp file created by `mkdtemp()` in the OS tmpdir. That temp file
+    // has a crypto-random name (never attacker-controlled) and lives OUTSIDE cwd
+    // by design, so guarding it wrongly rejected EVERY Windows write with
+    // PATH_OUTSIDE_DIRECTORY. icacls still runs on `filePath` below because perms
+    // are applied to the temp file before the atomic rename to `this.path`.
+    //
+    // An .env destination is always a FILE beneath cwd, so the `root + sep`
+    // prefix is the containment check — it also blocks a sibling-prefix bypass
+    // (cwd `/x/app` vs `/x/app-evil`), mirroring doctor.ts `resolveHooksPath`.
+    // (That guard also admits `=== root` for its directory-valued `hooksPath = .`;
+    // a file path here can never equal cwd, so the clause is intentionally omitted.)
+    // execFile (not exec) passes the path as a literal argv entry with no shell,
+    // so there is no command-injection vector to additionally defend here.
+    //
+    // Case-fold both operands: this method runs ONLY on win32, whose filesystem
+    // is case-insensitive, so a destination differing from cwd only in case is
+    // the SAME directory and must not be falsely rejected (mirrors the
+    // case-normalisation in cli/detection/framework.ts). doctor.ts cannot fold
+    // case because it also runs on case-sensitive Unix; this win32-only sink can.
     const cwd = process.cwd();
-
-    // Ensure the path is within the current working directory
-    if (!normalizedPath.startsWith(pathModule.resolve(cwd))) {
+    const root = resolve(cwd);
+    const target = resolve(cwd, this.path);
+    if (!target.toLowerCase().startsWith((root + sep).toLowerCase())) {
       throw new WizardError(
         'PATH_OUTSIDE_DIRECTORY',
         'File path is outside the allowed directory',
