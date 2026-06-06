@@ -20,9 +20,10 @@
 import { access, chmod, constants, mkdtemp, readFile, rename, rm, stat, writeFile } from 'fs/promises';
 import { platform, tmpdir } from 'os';
 import { existsSync } from 'fs';
-import { dirname, join, resolve, sep } from 'path';
+import { dirname, join, resolve } from 'path';
 import { parse as dotenvParse } from 'dotenv';
 import { WizardError } from '../utils/error.js';
+import { isPathWithinRoot } from '../utils/path.js';
 
 /**
  * Default mode for newly created files
@@ -311,12 +312,28 @@ export class EnvManager {
    * Unix/macOS: Uses chmod to set 0o600 (owner read/write only)
    * Windows: Uses icacls to disable inheritance
    *
-   * @param filePath - Path to the file
+   * The cwd-containment guard is intentionally win32-only (it lives in
+   * {@link setWindowsPermissions}); do NOT hoist it to this fork — applying it to
+   * the Unix branch would break the absolute-path contract (see ADR-0003
+   * "Open question (b)").
+   *
+   * @param filePath - Path to the (internal temp) file whose permissions are set
+   * @throws {WizardError} On win32: `PATH_OUTSIDE_DIRECTORY` if the final
+   *   destination escapes cwd, or `WINDOWS_PERMISSIONS_FAILED` if icacls and
+   *   attrib both fail.
    */
   private async setSecurePermissions(filePath: string): Promise<void> {
     if (platform() === 'win32') {
       await this.setWindowsPermissions(filePath);
     } else {
+      // Unix/macOS chmod sink: NO cwd-containment guard, by design (deferred —
+      // see ADR-0003 "Open question (b)", the Unix-chmod deferral tracked in the
+      // PR #46/#47 handover as "observation #1"). `validateEnvPath` already
+      // rejects `..` segments at construction on BOTH platforms; absolute paths
+      // are allowed by contract, and no shipped caller passes a non-default path.
+      // Adding cwd-containment here would break that contract and needs a product
+      // decision, so it is out of scope for the path-helper consolidation.
+      // `filePath` is the crypto-random mkdtemp temp file; chmod takes no shell.
       await chmod(filePath, SECURE_FILE_MODE);
     }
   }
@@ -349,23 +366,20 @@ export class EnvManager {
     // PATH_OUTSIDE_DIRECTORY. icacls still runs on `filePath` below because perms
     // are applied to the temp file before the atomic rename to `this.path`.
     //
-    // An .env destination is always a FILE beneath cwd, so the `root + sep`
-    // prefix is the containment check — it also blocks a sibling-prefix bypass
-    // (cwd `/x/app` vs `/x/app-evil`), mirroring doctor.ts `resolveHooksPath`.
-    // (That guard also admits `=== root` for its directory-valued `hooksPath = .`;
-    // a file path here can never equal cwd, so the clause is intentionally omitted.)
     // execFile (not exec) passes the path as a literal argv entry with no shell,
     // so there is no command-injection vector to additionally defend here.
     //
-    // Case-fold both operands: this method runs ONLY on win32, whose filesystem
-    // is case-insensitive, so a destination differing from cwd only in case is
-    // the SAME directory and must not be falsely rejected (mirrors the
-    // case-normalisation in cli/detection/framework.ts). doctor.ts cannot fold
-    // case because it also runs on case-sensitive Unix; this win32-only sink can.
+    // `caseInsensitive`: this method runs ONLY on win32, whose filesystem is
+    // case-insensitive, so a destination differing from cwd only in case is the
+    // SAME directory and must not be falsely rejected (the shared helper's fold
+    // mirrors the case-normalisation in cli/detection/framework.ts). The helper
+    // applies the `root + sep` boundary that also blocks a sibling-prefix bypass
+    // (cwd `/x/app` vs `/x/app-evil`); `allowRootItself` is left default-false
+    // because an .env destination is always a FILE beneath cwd and can never
+    // equal cwd. See cli/utils/path.ts.
     const cwd = process.cwd();
-    const root = resolve(cwd);
     const target = resolve(cwd, this.path);
-    if (!target.toLowerCase().startsWith((root + sep).toLowerCase())) {
+    if (!isPathWithinRoot(target, cwd, { caseInsensitive: true })) {
       throw new WizardError(
         'PATH_OUTSIDE_DIRECTORY',
         'File path is outside the allowed directory',

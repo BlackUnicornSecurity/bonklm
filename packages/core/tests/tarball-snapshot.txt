@@ -164,6 +164,10 @@ dist/cli/utils/mask.d.ts
 dist/cli/utils/mask.d.ts.map
 dist/cli/utils/mask.js
 dist/cli/utils/mask.js.map
+dist/cli/utils/path.d.ts
+dist/cli/utils/path.d.ts.map
+dist/cli/utils/path.js
+dist/cli/utils/path.js.map
 dist/cli/utils/progress.d.ts
 dist/cli/utils/progress.d.ts.map
 dist/cli/utils/progress.js

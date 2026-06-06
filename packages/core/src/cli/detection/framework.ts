@@ -19,6 +19,7 @@ import { cwd } from 'node:process';
 import { existsSync } from 'node:fs';
 import { parse } from 'secure-json-parse';
 import { WizardError } from '../utils/error.js';
+import { isPathWithinRoot } from '../utils/path.js';
 
 /**
  * Detected framework information
@@ -119,28 +120,21 @@ export async function detectFrameworks(options: FrameworkDetectionOptions = {}):
     return [];
   }
 
-  // SECURITY FIX: Validate path is within working directory (C-4 fix)
-  // This prevents symlink attacks that point outside the project
-  // Normalize paths for case-insensitive systems (Windows, macOS)
-  const normalizedWorkingDir = workingDir.toLowerCase();
-  const normalizedRealPath = realPath.toLowerCase();
-
-  if (!normalizedRealPath.startsWith(normalizedWorkingDir)) {
-    throw new WizardError(
-      'PATH_TRAVERSAL',
-      'package.json path resolved outside working directory',
-      'Ensure package.json is within the project directory',
-      undefined,
-      1 // ERROR exit code
-    );
-  }
-
-  // Additional check: ensure the path separator alignment is correct
-  // Prevents bypass via partial path matches (e.g., /foo/bar1 vs /foo/bar)
-  const workingDirParts = normalizedWorkingDir.split(/[/\\]/).filter(Boolean);
-  const realPathParts = normalizedRealPath.split(/[/\\]/).filter(Boolean);
-
-  if (realPathParts.length < workingDirParts.length) {
+  // SECURITY FIX: Validate path is within working directory (C-4 fix).
+  // Defeats a symlinked package.json that points outside the project. Both
+  // `workingDir` and `realPath` are realpath()-resolved above, so the shared
+  // containment helper compares their on-disk-canonical forms. `caseInsensitive`
+  // preserves this module's long-standing case-fold for Windows/macOS (a
+  // platform-conditional fold is a possible future refinement, deferred to avoid
+  // a behaviour change here — see ADR-0003 "Open question (a)"). The helper's
+  // `root + sep` boundary closes the sibling-prefix bypass (`/foo/bar` vs
+  // `/foo/bar1`) that the previous segment-count check did NOT catch.
+  // `allowRootItself: true` preserves prior behaviour for the degenerate case
+  // where `realPath` resolves to `workingDir` itself (e.g. `packageJsonPath: '.'`):
+  // the old `startsWith` accepted it and the subsequent `readFile` on a directory
+  // returned [] (EISDIR) — so we accept here too rather than mislabel a
+  // non-traversal input as PATH_TRAVERSAL. See cli/utils/path.ts.
+  if (!isPathWithinRoot(realPath, workingDir, { caseInsensitive: true, allowRootItself: true })) {
     throw new WizardError(
       'PATH_TRAVERSAL',
       'package.json path resolved outside working directory',
