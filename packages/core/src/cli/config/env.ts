@@ -41,7 +41,7 @@ const MAX_PATH_LENGTH = 256;
  * SECURITY: Prevents path traversal attacks and limits path length
  *
  * This validation blocks:
- * - Path traversal sequences (..)
+ * - Path traversal sequences (`..` appearing as a complete path segment)
  * - Excessive path length (DoS prevention)
  *
  * Note: Absolute paths are allowed for test/internal use cases
@@ -60,8 +60,19 @@ function validateEnvPath(path: string): string {
     );
   }
 
-  // Disallow path traversal sequences (most critical security check)
-  if (path.includes('..')) {
+  // Disallow path traversal — reject `..` only as a complete path SEGMENT.
+  //
+  // Splitting on both POSIX (`/`) and Windows (`\`) separators and matching a
+  // whole segment (rather than the previous `path.includes('..')` substring
+  // test) means legitimate filenames that merely CONTAIN a `..` substring —
+  // `my..config.env`, `.env..bak`, `app..env` — are accepted, while real
+  // traversal (`../x`, `a/../../x`, `..\\x`) is still rejected.
+  //
+  // A resolve-based containment check (as in doctor.ts `setWindowsPermissions`)
+  // is deliberately NOT used here: this function allows absolute paths by
+  // contract (see above), so a `resolve(cwd, path).startsWith(cwd)` guard would
+  // wrongly reject the supported absolute-path case.
+  if (path.split(/[\\/]/).includes('..')) {
     throw new WizardError(
       'INVALID_PATH',
       'Invalid file path: path traversal detected',
