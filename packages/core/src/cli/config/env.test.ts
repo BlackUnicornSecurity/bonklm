@@ -530,7 +530,9 @@ describe('EnvManager', () => {
   // `validateEnvPath` (cli/config/env.ts) runs synchronously inside the public
   // `EnvManager` constructor, BEFORE any fs access — so these tests need no fs
   // mocks. The guard rejects three distinct attack classes: parent-directory
-  // traversal (`..`), null-byte injection (`\0`), and over-long paths (DoS).
+  // traversal (`..` matched as a path SEGMENT, so benign names like
+  // `my..config.env` are NOT false-rejected), null-byte injection (`\0`), and
+  // over-long paths (DoS).
   // Each assertion targets one clause; deleting that clause from the source
   // makes the matching test fail (ADR-0001 non-vacuity contract). Exercised via
   // the public constructor (integration-style) rather than the unexported
@@ -591,6 +593,34 @@ describe('EnvManager', () => {
       expect(() => new EnvManager('.env.example')).not.toThrow();
       expect(() => new EnvManager('config/app.env')).not.toThrow();
       expect(() => new EnvManager('/custom/absolute/path/.env')).not.toThrow();
+    });
+
+    // Segment-vs-substring regression lock. The guard matches `..` as a whole
+    // path SEGMENT, not a bare substring. These names contain the literal `..`
+    // substring yet are NOT traversal (no `..` segment), so each was wrongly
+    // rejected by the prior `path.includes('..')` check and must now be
+    // accepted. This test fails against that old behavior — it is not vacuous.
+    it('accepts benign filenames that merely contain a ".." substring', () => {
+      expect('my..config.env').toContain('..'); // precondition: the old guard's trigger
+      expect(() => new EnvManager('my..config.env')).not.toThrow();
+      expect(() => new EnvManager('.env..bak')).not.toThrow();
+      expect(() => new EnvManager('app..env')).not.toThrow();
+    });
+
+    it('rejects Windows-separator (`\\`) traversal, not just POSIX `/`', () => {
+      // The segment split covers both separators, so a `..` segment delimited
+      // by backslashes is caught the same as a forward-slash one.
+      expect((captureConstruct('..\\secret.env') as WizardError).code).toBe('INVALID_PATH');
+      expect((captureConstruct('config\\..\\..\\secret.env') as WizardError).code).toBe('INVALID_PATH');
+    });
+
+    it('reports PATH_TOO_LONG when an over-length path also contains traversal (length guard precedes traversal)', () => {
+      // The length check runs before the traversal check, so the length code
+      // wins for an input that violates both. Both orderings still reject —
+      // pinning the order makes any future reorder a test-visible decision.
+      const longTraversal = `../${'a'.repeat(300)}`;
+      expect(longTraversal.length).toBeGreaterThan(256);
+      expect((captureConstruct(longTraversal) as WizardError).code).toBe('PATH_TOO_LONG');
     });
   });
 });
