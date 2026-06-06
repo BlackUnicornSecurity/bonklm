@@ -7,7 +7,12 @@
  * broad method set), so the connector's type contract lives in the
  * three exported interfaces: `GuardedHuggingFaceOptions`,
  * `TextGenerationOptions`, and `GuardedInferenceResult`. Those are
- * locked exhaustively here. Run via `pnpm exec tsd`. Lives in test-d/.
+ * locked exhaustively here.
+ *
+ * ESM package — see `package.json` `"tsd"` override (`composite: false`)
+ * required because the package tsconfig is `composite: true`.
+ *
+ * Run via `pnpm exec tsd`. Lives in test-d/.
  */
 import { expectType, expectError, expectAssignable, expectNotAssignable } from 'tsd';
 import {
