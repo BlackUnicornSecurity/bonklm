@@ -17,7 +17,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 
 import {
   checkEnvFile,
@@ -158,6 +158,41 @@ describe('resolveHooksPath', () => {
     // the default relative `.git/hooks` location.
     writeFileSync(join(cwd, '.git'), 'gitdir: /some/other/gitdir\n');
     expect(resolveHooksPath(cwd)).toBe(join(cwd, '.git', 'hooks'));
+  });
+
+  it('contains a traversal relative `core.hooksPath` within the working tree (Gate 5.9 path-traversal)', () => {
+    // Hostile `.git/config`: a relative hooksPath that escapes `cwd` via `..`
+    // must NOT be followed — the containment guard falls back to the default
+    // `.git/hooks`. Non-vacuity: drop the `within ? resolved : defaultPath`
+    // check and resolveHooksPath returns `resolve(cwd, '../../../../etc/passwd')`
+    // (an escaping path), so both load-bearing assertions below flip.
+    const gitDir = writeGitDir(cwd, '../../../../etc/passwd');
+    const result = resolveHooksPath(cwd);
+    expect(result).toBe(join(gitDir, 'hooks'));
+    // Explicit: the escaping resolved path is NOT returned. (resolve() always
+    // collapses `..`, so a bare `not.toContain('..')` would be vacuous here.)
+    expect(result).not.toBe(resolve(cwd, '../../../../etc/passwd'));
+    expect(result?.startsWith(join(cwd, '.git') + sep)).toBe(true);
+  });
+
+  it('rejects a relative `core.hooksPath` that net-escapes via an intermediate `..`', () => {
+    // `a/../../etc` normalises (via resolve) to the cwd PARENT — a net escape a
+    // naive post-normalisation `includes('..')` would miss. Falls back to default.
+    const gitDir = writeGitDir(cwd, 'a/../../etc');
+    expect(resolveHooksPath(cwd)).toBe(join(gitDir, 'hooks'));
+  });
+
+  it('admits a benign relative `core.hooksPath` whose `..` resolves back inside cwd (no over-block)', () => {
+    // `sub/../.githooks` contains `..` lexically but resolves to `<cwd>/.githooks`
+    // (inside) — the resolve-based guard must NOT over-block it. This pins the
+    // "no false-positive" property (a substring `..` check would wrongly reject).
+    writeGitDir(cwd, 'sub/../.githooks');
+    expect(resolveHooksPath(cwd)).toBe(join(cwd, '.githooks'));
+  });
+
+  it('admits `core.hooksPath = .` — resolves to cwd itself (the `resolved === root` branch)', () => {
+    writeGitDir(cwd, '.');
+    expect(resolveHooksPath(cwd)).toBe(resolve(cwd));
   });
 });
 
@@ -366,6 +401,27 @@ describe('checkPreCommitHook', () => {
     const result = checkPreCommitHook(cwd);
     expect(result.status).toBe('pass');
     expect(result.message).toContain('.githooks');
+  });
+
+  it('does not follow a traversal `core.hooksPath` — verifies the contained default hooks dir (Gate 5.9)', () => {
+    // A hostile `.git/config` sets a relative hooksPath escaping the working
+    // tree; the default `.git/hooks/pre-commit` IS installed. checkPreCommitHook
+    // must verify against the CONTAINED default path and report `pass`. If the
+    // containment were removed, resolveHooksPath would point at the escaping
+    // path (no hook there) and this would report `fail` — so the assertion is
+    // non-vacuous end-to-end.
+    writePackageJson(cwd, {
+      name: 'whatever',
+      'simple-git-hooks': { 'pre-commit': 'pnpm typecheck' }
+    });
+    writeGitDir(cwd, '../../../../etc');
+    writeFileSync(join(cwd, '.git', 'hooks', 'pre-commit'), '#!/usr/bin/env sh\npnpm typecheck\n');
+
+    const result = checkPreCommitHook(cwd);
+    // `pass` is the load-bearing, non-vacuous assertion: the hook exists ONLY at
+    // the contained default `.git/hooks`; without containment resolveHooksPath
+    // would point at the escaping path (no hook there) and this would be `fail`.
+    expect(result.status).toBe('pass');
   });
 });
 

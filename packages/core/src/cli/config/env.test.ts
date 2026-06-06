@@ -523,4 +523,74 @@ describe('EnvManager', () => {
       expect(mocks.access).toHaveBeenCalledWith('.test.env', 6);
     });
   });
+
+  // -------------------------------------------------------------------------
+  // ST-05-009 / Gate 5.9 — CLI path-traversal input validation regression lock
+  //
+  // `validateEnvPath` (cli/config/env.ts) runs synchronously inside the public
+  // `EnvManager` constructor, BEFORE any fs access — so these tests need no fs
+  // mocks. The guard rejects three distinct attack classes: parent-directory
+  // traversal (`..`), null-byte injection (`\0`), and over-long paths (DoS).
+  // Each assertion targets one clause; deleting that clause from the source
+  // makes the matching test fail (ADR-0001 non-vacuity contract). Exercised via
+  // the public constructor (integration-style) rather than the unexported
+  // `validateEnvPath`, per ADR-0001's "integration over contract-lock" preference.
+  // -------------------------------------------------------------------------
+  describe('constructor — path-traversal input validation (ST-05-009 / Gate 5.9)', () => {
+    // Capture the constructor throw without a bare `new` statement — matches the
+    // file's existing `envManager = new EnvManager(...)` assignment idiom and
+    // sidesteps the `no-new` lint rule.
+    const captureConstruct = (path: string): unknown => {
+      try {
+        envManager = new EnvManager(path);
+        return undefined;
+      } catch (error) {
+        return error;
+      }
+    };
+
+    it('rejects parent-directory traversal sequences with INVALID_PATH', () => {
+      const error = captureConstruct('../../../etc/passwd');
+      expect(error).toBeInstanceOf(WizardError);
+      expect((error as WizardError).code).toBe('INVALID_PATH');
+      expect((error as WizardError).message).toContain('path traversal');
+    });
+
+    it('rejects traversal sequences embedded mid-path', () => {
+      const error = captureConstruct('config/../../secret.env');
+      expect(error).toBeInstanceOf(WizardError);
+      expect((error as WizardError).code).toBe('INVALID_PATH');
+      expect((error as WizardError).message).toContain('path traversal');
+    });
+
+    it('rejects null-byte injection with INVALID_PATH', () => {
+      // String.fromCharCode(0) keeps a raw NUL byte out of the test source
+      // (same convention as the C1-range corpus in common/index.test.ts).
+      const error = captureConstruct(`.env${String.fromCharCode(0)}.txt`);
+      expect(error).toBeInstanceOf(WizardError);
+      expect((error as WizardError).code).toBe('INVALID_PATH');
+      expect((error as WizardError).message).toContain('null byte');
+    });
+
+    it('rejects paths exceeding MAX_PATH_LENGTH with PATH_TOO_LONG (DoS guard)', () => {
+      const error = captureConstruct('a'.repeat(257));
+      expect(error).toBeInstanceOf(WizardError);
+      expect((error as WizardError).code).toBe('PATH_TOO_LONG');
+    });
+
+    it('locks the MAX_PATH_LENGTH boundary: 256 accepted, 257 rejected (guards `>` vs `>=` drift)', () => {
+      // The cap is `> 256`. Pin both sides so a regression to `>=` (which would
+      // wrongly reject a legitimate 256-char path) is caught.
+      expect(captureConstruct('a'.repeat(256))).toBeUndefined();
+      expect((captureConstruct('a'.repeat(257)) as WizardError).code).toBe('PATH_TOO_LONG');
+    });
+
+    it('accepts legitimate relative and absolute paths (no false positives)', () => {
+      expect(() => new EnvManager('.env')).not.toThrow();
+      expect(() => new EnvManager('.env.local')).not.toThrow();
+      expect(() => new EnvManager('.env.example')).not.toThrow();
+      expect(() => new EnvManager('config/app.env')).not.toThrow();
+      expect(() => new EnvManager('/custom/absolute/path/.env')).not.toThrow();
+    });
+  });
 });
