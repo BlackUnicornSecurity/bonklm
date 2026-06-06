@@ -10,9 +10,6 @@
  *     so only missing-required-field rejection is meaningful there.
  *   - Literal numeric constants.
  *
- * ESM package — see `package.json` `"tsd"` override (`composite: false`)
- * required because the package tsconfig is `composite: true`.
- *
  * Run via `pnpm --filter @blackunicorn/bonklm-weaviate test:types` (tsd).
  */
 import { expectType, expectError, expectAssignable, expectNotAssignable } from 'tsd';

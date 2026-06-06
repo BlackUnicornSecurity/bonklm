@@ -9,9 +9,6 @@
  * `TextGenerationOptions`, and `GuardedInferenceResult`. Those are
  * locked exhaustively here.
  *
- * ESM package — see `package.json` `"tsd"` override (`composite: false`)
- * required because the package tsconfig is `composite: true`.
- *
  * Run via `pnpm exec tsd`. Lives in test-d/.
  */
 import { expectType, expectError, expectAssignable, expectNotAssignable } from 'tsd';
