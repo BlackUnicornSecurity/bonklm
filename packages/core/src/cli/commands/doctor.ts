@@ -24,7 +24,7 @@
 
 import { Command } from 'commander';
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { isAbsolute, join, resolve } from 'node:path';
+import { isAbsolute, join, resolve, sep } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { parse as secureJsonParse } from 'secure-json-parse';
 
@@ -137,7 +137,30 @@ export function resolveHooksPath(cwd: string): string | null {
       return defaultPath;
     }
     const value = match[1].trim();
-    return isAbsolute(value) ? value : resolve(cwd, value);
+    // Absolute `core.hooksPath` is honoured verbatim, matching git semantics
+    // (absolute shared-hook directories are a legitimate, widely-used pattern).
+    // This is an intentional, accepted exception to containment: the named
+    // path-traversal vector is the RELATIVE `../` escape (contained below). An
+    // absolute value is git-parity behaviour, the echoed path is
+    // `sanitizeLogString`-hardened, and the doctor only reports hook *existence*
+    // (no file-content disclosure), so the residual surface is existence-only.
+    if (isAbsolute(value)) {
+      return value;
+    }
+    // Path-traversal containment: keep a RELATIVE `core.hooksPath` inside the
+    // working tree. A hostile `.git/config` carrying `hooksPath = ../../../../etc`
+    // would otherwise resolve to a path OUTSIDE `cwd`. The doctor is a
+    // diagnostic, not a git re-implementation: an escaping relative hooksPath is
+    // far more likely hostile than intentional, so fall back to the default
+    // `.git/hooks` rather than follow the escape. (Output that echoes a path is
+    // independently hardened via `sanitizeLogString`; this guard stops the
+    // escape at the source.) `resolved === root` admits `hooksPath = .`; the
+    // `+ sep` blocks a sibling-prefix bypass (cwd `/x/app` vs `/x/app-evil`),
+    // and `resolve()` normalises net-escapes like `a/../../etc` before the check.
+    const resolved = resolve(cwd, value);
+    const root = resolve(cwd);
+    const within = resolved === root || resolved.startsWith(root + sep);
+    return within ? resolved : defaultPath;
   } catch {
     return defaultPath;
   }
