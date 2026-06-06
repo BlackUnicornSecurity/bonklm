@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdir, rm, writeFile, mkdtemp, realpath } from 'node:fs/promises';
+import { mkdir, rm, writeFile, mkdtemp, realpath, symlink } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { detectFrameworks, isFrameworkDetected, getFrameworkVersion, type FrameworkId } from './framework.js';
@@ -209,6 +209,48 @@ describe('Framework Detection', () => {
       const frameworks = await detectFrameworks({ workingDir: realTempDir });
 
       expect(frameworks).toHaveLength(1);
+    });
+
+    // Sibling-prefix bypass closure. workingDir `<base>/app` with its package.json
+    // symlinked to `<base>/app-evil/package.json`. After realpath the target is
+    // `<base>/app-evil/package.json`, which shares the TEXT prefix `<base>/app`
+    // but is NOT inside `<base>/app/`. The pre-helper guard used
+    // `realPath.startsWith(workingDir)` (no `+ sep`) plus a segment-COUNT check —
+    // neither catches this, so it accepted the symlink and read the out-of-project
+    // file. The shared `isPathWithinRoot` helper applies the `root + sep` boundary
+    // and rejects it. NON-VACUOUS: against the old code this throws nothing and
+    // detection returns the evil file's frameworks, flipping the assertion.
+    // Skipped on win32 where unprivileged symlink creation can EPERM (CI is POSIX).
+    it.skipIf(process.platform === 'win32')(
+      'rejects a symlinked package.json escaping to a prefix-sharing sibling (PATH_TRAVERSAL)',
+      async () => {
+        const appDir = join(tempDir, 'app');
+        const evilDir = join(tempDir, 'app-evil');
+        await mkdir(appDir, { recursive: true });
+        await mkdir(evilDir, { recursive: true });
+        await writeFile(
+          join(evilDir, 'package.json'),
+          JSON.stringify({ name: 'evil', dependencies: { express: '^4.18.2' } })
+        );
+        // package.json inside appDir is a symlink pointing into the sibling.
+        await symlink(join(evilDir, 'package.json'), join(appDir, 'package.json'));
+
+        await expect(detectFrameworks({ workingDir: appDir })).rejects.toHaveProperty('code', 'PATH_TRAVERSAL');
+      }
+    );
+
+    it('returns [] (not PATH_TRAVERSAL) when packageJsonPath resolves to the working dir itself', async () => {
+      // Degenerate input: `packageJsonPath: '.'` makes the resolved pkg path equal
+      // the working dir, so the realpath'd target equals the root. The containment
+      // helper is called with `allowRootItself: true`, preserving prior behaviour —
+      // the directory `readFile` fails with EISDIR and detection returns []. The
+      // written package.json is deliberately ignored ('.' targets the dir, not it).
+      // NON-VACUOUS: with `allowRootItself` left default-false, the helper would
+      // reject the dir as PATH_TRAVERSAL and this would throw instead of resolving.
+      const pkgJson = { name: 'app', dependencies: { express: '^4.18.2' } };
+      await writeFile(join(tempDir, 'package.json'), JSON.stringify(pkgJson));
+
+      await expect(detectFrameworks({ workingDir: tempDir, packageJsonPath: '.' })).resolves.toEqual([]);
     });
   });
 
