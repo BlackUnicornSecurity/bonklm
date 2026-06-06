@@ -52,12 +52,25 @@ vi.mock('os', () => ({
   tmpdir: () => '/tmp'
 }));
 
+// Mock child_process so the win32 icacls/attrib branch is exercisable on a
+// non-Windows CI host. The real `execFile` returns a ChildProcess; this mock
+// returns a Promise so the source's `await execFile(...)` observes
+// success/failure deterministically. (The production execFile-promisify gap is
+// a separate, pre-existing concern — out of scope for this fix.)
+const execFileMock = vi.fn();
+vi.mock('node:child_process', () => ({
+  execFile: (...args: unknown[]) => execFileMock(...args)
+}));
+
 describe('EnvManager', () => {
   let envManager: EnvManager;
 
   beforeEach(() => {
     // Reset all mocks
     vi.clearAllMocks();
+    // clearAllMocks does NOT drain `...Once` queues or implementations; reset
+    // execFile fully so every win32 test configures it without cross-test leakage.
+    execFileMock.mockReset();
     platformMock.mockReturnValue('darwin');
 
     // Default mock behaviors
@@ -364,30 +377,108 @@ describe('EnvManager', () => {
       expect(mocks.chmod).toHaveBeenCalledWith('/tmp/.env-linux/write.tmp', 0o600);
     });
 
-    it('should use icacls on Windows', async () => {
+    // win32 applies perms via icacls/attrib (not chmod). The previous test here
+    // wrapped write() in try/catch and asserted the same thing in BOTH branches,
+    // so it passed whether or not the Windows write actually worked — masking the
+    // PATH_OUTSIDE_DIRECTORY regression (observation #3). This replacement is
+    // non-vacuous: it asserts the write RESOLVES, which it did NOT under the old
+    // temp-path guard (the temp file is in the OS tmpdir, outside cwd).
+    it('uses icacls (never chmod) on Windows and succeeds for an in-cwd path', async () => {
       platformMock.mockReturnValue('win32');
       existsSyncMock.mockReturnValue(false);
       mocks.mkdtemp.mockResolvedValue('/tmp/.env-win');
-      // Make writeFile succeed without chmod being called
-      mocks.writeFile.mockResolvedValue(undefined);
-      mocks.rename.mockResolvedValue(undefined);
-      mocks.access.mockResolvedValue(undefined);
-      mocks.rm.mockResolvedValue(undefined);
-
+      execFileMock.mockResolvedValue(undefined);
       envManager = new EnvManager('.test.env');
 
-      // On Windows, chmod is not called but the write should still succeed
-      // Note: The actual icacls call happens via dynamic import which is hard to mock
-      // This test verifies that chmod is NOT called (Windows uses different mechanism)
-      try {
-        await envManager.write({ KEY: 'value' });
-        // Write succeeded - chmod was not called
-        expect(mocks.chmod).not.toHaveBeenCalled();
-      } catch (error) {
-        // If the Windows-specific call fails, that's expected in a non-Windows test env
-        // The important thing is that chmod was not called
-        expect(mocks.chmod).not.toHaveBeenCalled();
-      }
+      await expect(envManager.write({ KEY: 'value' })).resolves.toBeUndefined();
+
+      expect(mocks.chmod).not.toHaveBeenCalled();
+      // icacls runs on the TEMP file (perms set before the atomic rename).
+      expect(execFileMock).toHaveBeenCalledWith('icacls', ['/tmp/.env-win/write.tmp', '/inheritance:r']);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Observation #3 (PR #46 handover) regression — the win32 icacls-sink
+  // cwd-containment guard must validate the FINAL destination (`this.path`),
+  // NOT the internal mkdtemp temp file. The temp file lives in the OS tmpdir
+  // (outside cwd) by design, so the previous temp-path guard rejected EVERY
+  // Windows write with PATH_OUTSIDE_DIRECTORY. platform is mocked to win32 and
+  // child_process is mocked so icacls "succeeds" on a non-Windows host.
+  // -------------------------------------------------------------------------
+  describe('setWindowsPermissions — cwd-containment at the icacls sink (observation #3)', () => {
+    beforeEach(() => {
+      platformMock.mockReturnValue('win32');
+      existsSyncMock.mockReturnValue(false);
+      mocks.mkdtemp.mockResolvedValue('/tmp/.env-win');
+    });
+
+    it('rejects a final destination outside cwd with PATH_OUTSIDE_DIRECTORY, before any icacls side effect', async () => {
+      // Absolute path at the filesystem root: outside any real cwd, yet accepted
+      // by validateEnvPath (absolute, no `..` segment). The sink guard must
+      // reject it — and must do so BEFORE spawning icacls.
+      envManager = new EnvManager('/.bonklm-outside.env');
+
+      await expect(envManager.write({ KEY: 'value' })).rejects.toHaveProperty('code', 'PATH_OUTSIDE_DIRECTORY');
+      expect(execFileMock).not.toHaveBeenCalled();
+    });
+
+    it('falls back to attrib when icacls fails, and still resolves', async () => {
+      // First invocation (icacls) rejects; second (attrib) resolves.
+      execFileMock.mockRejectedValueOnce(new Error('icacls unavailable')).mockResolvedValueOnce(undefined);
+      envManager = new EnvManager('.test.env');
+
+      await expect(envManager.write({ KEY: 'value' })).resolves.toBeUndefined();
+      expect(execFileMock).toHaveBeenNthCalledWith(1, 'icacls', ['/tmp/.env-win/write.tmp', '/inheritance:r']);
+      expect(execFileMock).toHaveBeenNthCalledWith(2, 'attrib', ['+R', '/tmp/.env-win/write.tmp']);
+    });
+
+    it('throws WINDOWS_PERMISSIONS_FAILED when both icacls and attrib fail', async () => {
+      execFileMock.mockRejectedValue(new Error('no win32 perms tooling'));
+      envManager = new EnvManager('.test.env');
+
+      await expect(envManager.write({ KEY: 'value' })).rejects.toHaveProperty('code', 'WINDOWS_PERMISSIONS_FAILED');
+    });
+
+    // The guard reads process.cwd() directly, so mocking it pins the two subtle
+    // boundary behaviours deterministically (independent of the runner's cwd).
+    // platform() is mocked to win32, so the real path module uses the host
+    // separator ('/' on the CI/dev host) — paths below use '/' to match.
+    describe('destination-containment boundary (cwd-mocked)', () => {
+      beforeEach(() => {
+        vi.spyOn(process, 'cwd').mockReturnValue('/project');
+        execFileMock.mockResolvedValue(undefined);
+      });
+
+      it('accepts an in-cwd ABSOLUTE destination and reaches icacls', async () => {
+        // Locks the other half of the fix: an absolute path INSIDE cwd is allowed
+        // (the prior temp-path guard rejected even this on win32).
+        envManager = new EnvManager('/project/.env');
+
+        await expect(envManager.write({ KEY: 'value' })).resolves.toBeUndefined();
+        expect(execFileMock).toHaveBeenCalledWith('icacls', ['/tmp/.env-win/write.tmp', '/inheritance:r']);
+      });
+
+      it('rejects a sibling-prefix destination — locks the `root + sep` boundary', async () => {
+        // cwd `/project`; `/project-evil/.env` shares the `/project` text prefix
+        // but is NOT inside cwd. A guard using a bare `startsWith(root)` (no
+        // `+ sep`) would WRONGLY accept it — so this fails if `+ sep` is dropped.
+        envManager = new EnvManager('/project-evil/.env');
+
+        await expect(envManager.write({ KEY: 'value' })).rejects.toHaveProperty('code', 'PATH_OUTSIDE_DIRECTORY');
+        expect(execFileMock).not.toHaveBeenCalled();
+      });
+
+      it('accepts a destination differing from cwd only in CASE — locks the win32 case-fold', async () => {
+        // win32 filesystems are case-insensitive: `/PROJECT/.env` is the same
+        // directory as cwd `/project`. Without the `toLowerCase()` fold this would
+        // be a spurious PATH_OUTSIDE_DIRECTORY — the false-reject class this fix
+        // exists to eliminate. Fails if the case-fold is removed.
+        envManager = new EnvManager('/PROJECT/.env');
+
+        await expect(envManager.write({ KEY: 'value' })).resolves.toBeUndefined();
+        expect(execFileMock).toHaveBeenCalledWith('icacls', ['/tmp/.env-win/write.tmp', '/inheritance:r']);
+      });
     });
   });
 
