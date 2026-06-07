@@ -24,11 +24,12 @@
 
 import { Command } from 'commander';
 import { existsSync, readFileSync, statSync } from 'node:fs';
-import { isAbsolute, join, resolve, sep } from 'node:path';
+import { isAbsolute, join, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { parse as secureJsonParse } from 'secure-json-parse';
 
 import { sanitizeLogString } from '../../common/index.js';
+import { isPathWithinRoot } from '../utils/path.js';
 
 const STATUS_GLYPH = {
   pass: '✓',
@@ -154,13 +155,13 @@ export function resolveHooksPath(cwd: string): string | null {
     // far more likely hostile than intentional, so fall back to the default
     // `.git/hooks` rather than follow the escape. (Output that echoes a path is
     // independently hardened via `sanitizeLogString`; this guard stops the
-    // escape at the source.) `resolved === root` admits `hooksPath = .`; the
-    // `+ sep` blocks a sibling-prefix bypass (cwd `/x/app` vs `/x/app-evil`),
-    // and `resolve()` normalises net-escapes like `a/../../etc` before the check.
+    // escape at the source.) `allowRootItself` admits `hooksPath = .` (resolves
+    // to cwd); `isPathWithinRoot`'s `+ sep` boundary blocks a sibling-prefix
+    // bypass (cwd `/x/app` vs `/x/app-evil`), and `resolve()` normalises
+    // net-escapes like `a/../../etc` before the check. See cli/utils/path.ts.
+    // Case-sensitive (no fold): the doctor runs on case-sensitive Unix too.
     const resolved = resolve(cwd, value);
-    const root = resolve(cwd);
-    const within = resolved === root || resolved.startsWith(root + sep);
-    return within ? resolved : defaultPath;
+    return isPathWithinRoot(resolved, cwd, { allowRootItself: true }) ? resolved : defaultPath;
   } catch {
     return defaultPath;
   }

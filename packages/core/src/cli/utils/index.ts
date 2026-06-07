@@ -11,6 +11,13 @@ export type { AuditAction, AuditEvent } from './audit.js';
 export { validateApiKeySecure, clearValidationCache, getRateLimitStatus } from './validation.js';
 export type { SecureValidationConfig } from './validation.js';
 
+// NOTE: the working-directory containment helper (`cli/utils/path.ts`
+// `isPathWithinRoot`) is intentionally NOT re-exported here. It is an internal
+// security primitive imported by direct path from its in-tree callers and tests;
+// keeping it off this barrel prevents a future `package.json` `exports` subpath
+// from promoting it onto the published surface (same rationale as
+// `cli/commands/index.ts`).
+
 // Terminal capability detection
 export {
   getTerminalCapabilities,
