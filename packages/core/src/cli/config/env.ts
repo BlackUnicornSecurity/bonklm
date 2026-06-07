@@ -37,6 +37,13 @@ const SECURE_FILE_MODE = 0o600;
 const MAX_PATH_LENGTH = 256;
 
 /**
+ * Maximum time (ms) the Windows icacls permission-hardening spawn may run before it
+ * is treated as failed. Bounds the atomic-write critical section so a wedged icacls
+ * cannot hang the CLI (mirrors the bounded spawns in cli/detection/services.ts).
+ */
+const WINDOWS_PERMS_TIMEOUT_MS = 5_000;
+
+/**
  * Validates that a file path is safe for use with EnvManager
  *
  * SECURITY: Prevents path traversal attacks and limits path length
@@ -319,8 +326,8 @@ export class EnvManager {
    *
    * @param filePath - Path to the (internal temp) file whose permissions are set
    * @throws {WizardError} On win32: `PATH_OUTSIDE_DIRECTORY` if the final
-   *   destination escapes cwd, or `WINDOWS_PERMISSIONS_FAILED` if icacls and
-   *   attrib both fail.
+   *   destination escapes cwd, or `WINDOWS_PERMISSIONS_FAILED` if icacls fails
+   *   or times out.
    */
   private async setSecurePermissions(filePath: string): Promise<void> {
     if (platform() === 'win32') {
@@ -344,19 +351,20 @@ export class EnvManager {
    * The /inheritance:r flag removes inherited permissions,
    * leaving only explicitly granted permissions.
    *
-   * SECURITY: Both commands are awaited (promisified), so a non-zero exit or
-   * spawn failure rejects rather than passing silently: an `icacls` failure
-   * triggers the `attrib` fallback, and failure of both throws
-   * `WINDOWS_PERMISSIONS_FAILED` (rather than silently continuing) with the
-   * original `icacls` error attached as the cause. The final destination
-   * (`this.path`) is first checked for cwd-containment (see the inline note);
-   * `filePath` is the internal temp file icacls acts on.
+   * SECURITY: icacls is awaited (promisified) with a bounded timeout, so a
+   * non-zero exit, spawn failure, or hang rejects rather than passing silently.
+   * icacls is the only ACL-hardening tool used — a FAT read-only attribute
+   * confers no confidentiality for a secrets file — so if icacls fails or times
+   * out we FAIL CLOSED, throwing `WINDOWS_PERMISSIONS_FAILED` (cause: the icacls
+   * error) rather than persisting an unhardened .env (ADR-0004). The final
+   * destination (`this.path`) is first checked for cwd-containment (see the
+   * inline note); `filePath` is the internal temp file icacls acts on.
    *
    * @param filePath - Path to the internal temp file whose ACLs are set
    *   (permissions are applied before the atomic rename to `this.path`)
    * @throws {WizardError} `PATH_OUTSIDE_DIRECTORY` if the final destination
    *   escapes cwd, or `WINDOWS_PERMISSIONS_FAILED` (cause: the icacls error) if
-   *   icacls and attrib both fail
+   *   icacls fails or times out
    */
   private async setWindowsPermissions(filePath: string): Promise<void> {
     // SECURITY: cwd-containment guard at the icacls sink.
@@ -393,39 +401,39 @@ export class EnvManager {
 
     // Promisify before awaiting. The callback-style `execFile` returns a
     // ChildProcess (NOT a Promise), so a bare `await execFile(...)` resolves
-    // immediately to that object and never actually waits for the process: a
-    // non-zero exit or spawn error is delivered later through the (absent)
-    // callback / 'error' event, so this try/catch would not observe it —
-    // leaving the `attrib` fallback and the WINDOWS_PERMISSIONS_FAILED path
-    // dead on real Windows. `promisify` yields a function that rejects on
-    // failure, so the handler below catches it. (Imported dynamically, matching
-    // the lazy `import()` idiom in `resolveSymlinks` above, to keep this
-    // win32-only branch off the common-case module path.) Stay on the no-shell
-    // argv form (the path is a literal argument, never interpolated into a
-    // command line).
+    // immediately to that object and never waits for the process: a non-zero exit,
+    // spawn error, or timeout would never be observed by this try/catch.
+    // `promisify` yields a function that rejects on failure so the handler below
+    // catches it. (Imported dynamically, matching the lazy `import()` idiom in
+    // `resolveSymlinks` above, to keep this win32-only branch off the common-case
+    // module path.) Stay on the no-shell argv form (the path is a literal argument,
+    // never interpolated into a command line).
     try {
       const { execFile } = await import('node:child_process');
       const { promisify } = await import('node:util');
       const execFileAsync = promisify(execFile);
-      await execFileAsync('icacls', [filePath, '/inheritance:r']);
+      // `timeout` bounds the spawn so a slow or hung icacls is treated as a failure
+      // rather than hanging the atomic-write critical section; `windowsHide` avoids
+      // a console-window flash if Node would otherwise spawn one.
+      await execFileAsync('icacls', [filePath, '/inheritance:r'], {
+        timeout: WINDOWS_PERMS_TIMEOUT_MS,
+        windowsHide: true
+      });
     } catch (error) {
-      // Try using attrib as fallback for read-only flag (likewise promisified).
-      try {
-        const { execFile } = await import('node:child_process');
-        const { promisify } = await import('node:util');
-        const execFileAsync = promisify(execFile);
-        // Set read-only flag as minimal security measure
-        await execFileAsync('attrib', ['+R', filePath]);
-      } catch (fallbackError) {
-        // Both methods failed - this is a security concern
-        throw new WizardError(
-          'WINDOWS_PERMISSIONS_FAILED',
-          'Unable to set secure file permissions on Windows',
-          'Ensure icacls.exe is available or run with appropriate privileges',
-          error as Error,
-          1
-        );
-      }
+      // icacls is the only tool that confers real ACL confidentiality here. A FAT
+      // `attrib +R` is NOT a security fallback — it merely toggles the read-only
+      // flag (no confidentiality for a secrets file) and would leave the .env
+      // read-only, breaking the next write — so there is deliberately no fallback.
+      // Fail CLOSED: refuse to persist a secret we could not harden. This throw runs
+      // before the atomic rename in writeAtomic(), so no .env is left at the
+      // destination. (ADR-0004.)
+      throw new WizardError(
+        'WINDOWS_PERMISSIONS_FAILED',
+        'Unable to set secure file permissions on Windows',
+        'Ensure icacls.exe is available or run with appropriate privileges',
+        error as Error,
+        1
+      );
     }
   }
 
