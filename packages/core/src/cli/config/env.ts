@@ -344,15 +344,19 @@ export class EnvManager {
    * The /inheritance:r flag removes inherited permissions,
    * leaving only explicitly granted permissions.
    *
-   * SECURITY: If icacls fails, we try alternative methods
-   * and throw an error if all methods fail (rather than silently continuing).
-   * The final destination (`this.path`) is first checked for cwd-containment
-   * (see the inline note); `filePath` is the internal temp file icacls acts on.
+   * SECURITY: Both commands are awaited (promisified), so a non-zero exit or
+   * spawn failure rejects rather than passing silently: an `icacls` failure
+   * triggers the `attrib` fallback, and failure of both throws
+   * `WINDOWS_PERMISSIONS_FAILED` (rather than silently continuing) with the
+   * original `icacls` error attached as the cause. The final destination
+   * (`this.path`) is first checked for cwd-containment (see the inline note);
+   * `filePath` is the internal temp file icacls acts on.
    *
    * @param filePath - Path to the internal temp file whose ACLs are set
    *   (permissions are applied before the atomic rename to `this.path`)
    * @throws {WizardError} `PATH_OUTSIDE_DIRECTORY` if the final destination
-   *   escapes cwd, or `WINDOWS_PERMISSIONS_FAILED` if icacls and attrib both fail
+   *   escapes cwd, or `WINDOWS_PERMISSIONS_FAILED` (cause: the icacls error) if
+   *   icacls and attrib both fail
    */
   private async setWindowsPermissions(filePath: string): Promise<void> {
     // SECURITY: cwd-containment guard at the icacls sink.
@@ -387,15 +391,31 @@ export class EnvManager {
       );
     }
 
+    // Promisify before awaiting. The callback-style `execFile` returns a
+    // ChildProcess (NOT a Promise), so a bare `await execFile(...)` resolves
+    // immediately to that object and never actually waits for the process: a
+    // non-zero exit or spawn error is delivered later through the (absent)
+    // callback / 'error' event, so this try/catch would not observe it —
+    // leaving the `attrib` fallback and the WINDOWS_PERMISSIONS_FAILED path
+    // dead on real Windows. `promisify` yields a function that rejects on
+    // failure, so the handler below catches it. (Imported dynamically, matching
+    // the lazy `import()` idiom in `resolveSymlinks` above, to keep this
+    // win32-only branch off the common-case module path.) Stay on the no-shell
+    // argv form (the path is a literal argument, never interpolated into a
+    // command line).
     try {
       const { execFile } = await import('node:child_process');
-      await execFile('icacls', [filePath, '/inheritance:r']);
+      const { promisify } = await import('node:util');
+      const execFileAsync = promisify(execFile);
+      await execFileAsync('icacls', [filePath, '/inheritance:r']);
     } catch (error) {
-      // Try using attrib as fallback for read-only flag
+      // Try using attrib as fallback for read-only flag (likewise promisified).
       try {
-        const { execFile: execFile2 } = await import('node:child_process');
+        const { execFile } = await import('node:child_process');
+        const { promisify } = await import('node:util');
+        const execFileAsync = promisify(execFile);
         // Set read-only flag as minimal security measure
-        await execFile2('attrib', ['+R', filePath]);
+        await execFileAsync('attrib', ['+R', filePath]);
       } catch (fallbackError) {
         // Both methods failed - this is a security concern
         throw new WizardError(

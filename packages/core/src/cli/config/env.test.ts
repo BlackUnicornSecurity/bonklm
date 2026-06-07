@@ -52,14 +52,38 @@ vi.mock('os', () => ({
   tmpdir: () => '/tmp'
 }));
 
-// Mock child_process so the win32 icacls/attrib branch is exercisable on a
-// non-Windows CI host. The real `execFile` returns a ChildProcess; this mock
-// returns a Promise so the source's `await execFile(...)` observes
-// success/failure deterministically. (The production execFile-promisify gap is
-// a separate, pre-existing concern — out of scope for this fix.)
+// Mock child_process with a FAITHFUL model of the Node callback API so the
+// win32 icacls/attrib branch is exercisable on a non-Windows host AND the
+// promisify contract is genuinely tested. The real `execFile` returns a
+// ChildProcess (NOT a Promise) and reports completion ONLY through its trailing
+// callback; the source promisifies it (`util.promisify`, left real below)
+// before awaiting. Modelling the callback contract — rather than returning a
+// Promise directly — is what makes the promisify regression non-vacuous: the
+// previously masked, un-promisified `await execFile(...)` passes NO callback,
+// so it never observes the outcome and resolves immediately, exactly as it
+// (mis)behaves on real Windows (D-024). Per-test outcome control: list the
+// commands that must fail in `execFileFailFor` (empty ⇒ every call succeeds).
+// Only `(cmd, args)` is recorded on `execFileMock`, so the call-args assertions
+// below are agnostic to the promisify-appended callback.
+let execFileFailFor = new Set<string>();
 const execFileMock = vi.fn();
 vi.mock('node:child_process', () => ({
-  execFile: (...args: unknown[]) => execFileMock(...args)
+  execFile: (cmd: string, args: readonly string[], callback?: (err: Error | null) => void): unknown => {
+    // Record the user-visible arguments only (no trailing callback) so
+    // `toHaveBeenCalledWith('icacls', [...])` holds whether or not the source
+    // promisifies the call (promisify appends the callback as a third arg).
+    execFileMock(cmd, args);
+    const error = execFileFailFor.has(cmd) ? new Error(`${cmd} failed (mock)`) : null;
+    // A promisified caller passes a callback and is signalled exclusively
+    // through it. A bare `await execFile(...)` passes none, so it CANNOT observe
+    // `error` — the regression this models.
+    if (typeof callback === 'function') {
+      callback(error);
+    }
+    // Non-thenable stand-in for ChildProcess (never a Promise): an
+    // un-promisified `await` resolves to it immediately, skipping error handling.
+    return { _childProcessStub: true };
+  }
 }));
 
 describe('EnvManager', () => {
@@ -68,9 +92,11 @@ describe('EnvManager', () => {
   beforeEach(() => {
     // Reset all mocks
     vi.clearAllMocks();
-    // clearAllMocks does NOT drain `...Once` queues or implementations; reset
-    // execFile fully so every win32 test configures it without cross-test leakage.
+    // execFile outcomes are driven by `execFileFailFor` (not by mock return
+    // values); clear recorded calls and reset the set so every win32 test starts
+    // from "every command succeeds" with no cross-test leakage.
     execFileMock.mockReset();
+    execFileFailFor = new Set();
     platformMock.mockReturnValue('darwin');
 
     // Default mock behaviors
@@ -387,7 +413,7 @@ describe('EnvManager', () => {
       platformMock.mockReturnValue('win32');
       existsSyncMock.mockReturnValue(false);
       mocks.mkdtemp.mockResolvedValue('/tmp/.env-win');
-      execFileMock.mockResolvedValue(undefined);
+      // execFileFailFor is empty (beforeEach) ⇒ icacls succeeds.
       envManager = new EnvManager('.test.env');
 
       await expect(envManager.write({ KEY: 'value' })).resolves.toBeUndefined();
@@ -423,9 +449,11 @@ describe('EnvManager', () => {
       expect(execFileMock).not.toHaveBeenCalled();
     });
 
-    it('falls back to attrib when icacls fails, and still resolves', async () => {
-      // First invocation (icacls) rejects; second (attrib) resolves.
-      execFileMock.mockRejectedValueOnce(new Error('icacls unavailable')).mockResolvedValueOnce(undefined);
+    it('falls back to attrib when icacls fails, and still resolves (locks the awaited icacls rejection — D-024)', async () => {
+      // icacls fails; attrib succeeds. The fallback only runs if the icacls
+      // rejection was AWAITED and caught — un-promisified, that await resolves to
+      // a ChildProcess, attrib is never reached, and this test goes RED.
+      execFileFailFor = new Set(['icacls']);
       envManager = new EnvManager('.test.env');
 
       await expect(envManager.write({ KEY: 'value' })).resolves.toBeUndefined();
@@ -434,7 +462,10 @@ describe('EnvManager', () => {
     });
 
     it('throws WINDOWS_PERMISSIONS_FAILED when both icacls and attrib fail', async () => {
-      execFileMock.mockRejectedValue(new Error('no win32 perms tooling'));
+      // Both fail. Only reachable if BOTH awaited rejections are caught — the
+      // un-promisified source resolves through both, so write() would resolve
+      // and this assertion would never see the error (D-024 lock).
+      execFileFailFor = new Set(['icacls', 'attrib']);
       envManager = new EnvManager('.test.env');
 
       await expect(envManager.write({ KEY: 'value' })).rejects.toHaveProperty('code', 'WINDOWS_PERMISSIONS_FAILED');
@@ -447,7 +478,7 @@ describe('EnvManager', () => {
     describe('destination-containment boundary (cwd-mocked)', () => {
       beforeEach(() => {
         vi.spyOn(process, 'cwd').mockReturnValue('/project');
-        execFileMock.mockResolvedValue(undefined);
+        // execFileFailFor empty (outer beforeEach) ⇒ icacls succeeds when reached.
       });
 
       it('accepts an in-cwd ABSOLUTE destination and reaches icacls', async () => {
@@ -479,6 +510,44 @@ describe('EnvManager', () => {
         await expect(envManager.write({ KEY: 'value' })).resolves.toBeUndefined();
         expect(execFileMock).toHaveBeenCalledWith('icacls', ['/tmp/.env-win/write.tmp', '/inheritance:r']);
       });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // D-024 regression — `execFile` MUST be promisified before being awaited.
+  //
+  // Callback-style execFile returns a ChildProcess, not a Promise, so a bare
+  // `await execFile(...)` never waits for the process and never sees a non-zero
+  // exit / spawn error — which silently disabled the attrib fallback and the
+  // WINDOWS_PERMISSIONS_FAILED path on real Windows. The child_process mock
+  // above models that callback contract faithfully (it signals ONLY through the
+  // trailing callback that promisify appends), so the assertions here are RED
+  // against the un-promisified source and GREEN once promisified (ADR-0001
+  // non-vacuity). The attrib-fallback + both-fail tests above are the companion
+  // behavioural locks; this one additionally proves the original rejection
+  // PROPAGATED into the catch (it survives as the WizardError cause).
+  // -------------------------------------------------------------------------
+  describe('setWindowsPermissions — execFile promisify contract (D-024)', () => {
+    beforeEach(() => {
+      platformMock.mockReturnValue('win32');
+      existsSyncMock.mockReturnValue(false);
+      mocks.mkdtemp.mockResolvedValue('/tmp/.env-win');
+    });
+
+    it('carries the awaited icacls rejection as the WINDOWS_PERMISSIONS_FAILED cause', async () => {
+      execFileFailFor = new Set(['icacls', 'attrib']);
+      envManager = new EnvManager('.test.env');
+
+      const error = await envManager.write({ KEY: 'value' }).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(WizardError);
+      expect((error as WizardError).code).toBe('WINDOWS_PERMISSIONS_FAILED');
+      // The cause is the original icacls rejection (sanitized by WizardError) and
+      // can only be present if the promisified await actually threw into the
+      // catch. The un-promisified source never throws, so write() would RESOLVE
+      // and this assertion is unreachable.
+      const cause = (error as WizardError).cause;
+      expect(cause).toBeInstanceOf(Error);
+      expect(cause?.message ?? '').toContain('icacls');
     });
   });
 
