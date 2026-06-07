@@ -53,7 +53,7 @@ vi.mock('os', () => ({
 }));
 
 // Mock child_process with a FAITHFUL model of the Node callback API so the
-// win32 icacls/attrib branch is exercisable on a non-Windows host AND the
+// win32 icacls branch is exercisable on a non-Windows host AND the
 // promisify contract is genuinely tested. The real `execFile` returns a
 // ChildProcess (NOT a Promise) and reports completion ONLY through its trailing
 // callback; the source promisifies it (`util.promisify`, left real below)
@@ -63,25 +63,29 @@ vi.mock('os', () => ({
 // so it never observes the outcome and resolves immediately, exactly as it
 // (mis)behaves on real Windows (D-024). Per-test outcome control: list the
 // commands that must fail in `execFileFailFor` (empty ⇒ every call succeeds).
-// Only `(cmd, args)` is recorded on `execFileMock`, so the call-args assertions
-// below are agnostic to the promisify-appended callback.
+// `(cmd, args, options)` is recorded on `execFileMock`, so the icacls argv AND the
+// timeout/windowsHide options are assertable; the promisify-appended callback is not.
 let execFileFailFor = new Set<string>();
 const execFileMock = vi.fn();
 vi.mock('node:child_process', () => ({
-  execFile: (cmd: string, args: readonly string[], callback?: (err: Error | null) => void): unknown => {
-    // Record the user-visible arguments only (no trailing callback) so
-    // `toHaveBeenCalledWith('icacls', [...])` holds whether or not the source
-    // promisifies the call (promisify appends the callback as a third arg).
-    execFileMock(cmd, args);
+  execFile: (cmd: string, args: readonly string[], ...rest: unknown[]): unknown => {
+    // The source now passes an options object (`{ timeout, windowsHide }`) AND
+    // `promisify` appends a trailing callback, so locate each by TYPE rather than
+    // by fixed arity: the callback is the function arg, the options the object arg.
+    const callback = rest.find((a): a is (err: Error | null) => void => typeof a === 'function');
+    const options = rest.find((a): a is Record<string, unknown> => typeof a === 'object' && a !== null);
+    // Record (cmd, args, options) — the icacls argv and the timeout/windowsHide
+    // options are assertable; the callback is intentionally not recorded.
+    execFileMock(cmd, args, options);
     const error = execFileFailFor.has(cmd) ? new Error(`${cmd} failed (mock)`) : null;
-    // A promisified caller passes a callback and is signalled exclusively
-    // through it. A bare `await execFile(...)` passes none, so it CANNOT observe
-    // `error` — the regression this models.
-    if (typeof callback === 'function') {
+    // A promisified caller passes a callback and is signalled exclusively through
+    // it. A bare `await execFile(...)` passes none, so it CANNOT observe `error` —
+    // the regression this models.
+    if (callback) {
       callback(error);
     }
-    // Non-thenable stand-in for ChildProcess (never a Promise): an
-    // un-promisified `await` resolves to it immediately, skipping error handling.
+    // Non-thenable stand-in for ChildProcess (never a Promise): an un-promisified
+    // `await` resolves to it immediately, skipping error handling.
     return { _childProcessStub: true };
   }
 }));
@@ -403,7 +407,7 @@ describe('EnvManager', () => {
       expect(mocks.chmod).toHaveBeenCalledWith('/tmp/.env-linux/write.tmp', 0o600);
     });
 
-    // win32 applies perms via icacls/attrib (not chmod). The previous test here
+    // win32 applies perms via icacls (not chmod). The previous test here
     // wrapped write() in try/catch and asserted the same thing in BOTH branches,
     // so it passed whether or not the Windows write actually worked — masking the
     // PATH_OUTSIDE_DIRECTORY regression (observation #3). This replacement is
@@ -419,8 +423,13 @@ describe('EnvManager', () => {
       await expect(envManager.write({ KEY: 'value' })).resolves.toBeUndefined();
 
       expect(mocks.chmod).not.toHaveBeenCalled();
-      // icacls runs on the TEMP file (perms set before the atomic rename).
-      expect(execFileMock).toHaveBeenCalledWith('icacls', ['/tmp/.env-win/write.tmp', '/inheritance:r']);
+      // icacls runs on the TEMP file (perms set before the atomic rename), with a
+      // bounded timeout + windowsHide.
+      expect(execFileMock).toHaveBeenCalledWith(
+        'icacls',
+        ['/tmp/.env-win/write.tmp', '/inheritance:r'],
+        expect.objectContaining({ windowsHide: true, timeout: expect.any(Number) })
+      );
     });
   });
 
@@ -449,26 +458,41 @@ describe('EnvManager', () => {
       expect(execFileMock).not.toHaveBeenCalled();
     });
 
-    it('falls back to attrib when icacls fails, and still resolves (locks the awaited icacls rejection — D-024)', async () => {
-      // icacls fails; attrib succeeds. The fallback only runs if the icacls
-      // rejection was AWAITED and caught — un-promisified, that await resolves to
-      // a ChildProcess, attrib is never reached, and this test goes RED.
+    // Fail-closed regression lock (D-025). The `attrib +R` fallback was REMOVED — a
+    // FAT read-only flag gives no ACL confidentiality for a secrets file and left
+    // the .env read-only, breaking the next write. icacls is now the only tool, so
+    // an icacls failure fails CLOSED: throw WINDOWS_PERMISSIONS_FAILED, never spawn
+    // attrib. Non-vacuous: the faithful mock signals failure only via the
+    // promisify-appended callback, so an un-promisified `await execFile` would
+    // resolve through the failure and write() would RESOLVE (no throw) — RED.
+    it('fails closed with WINDOWS_PERMISSIONS_FAILED when icacls fails — no attrib fallback (D-025)', async () => {
       execFileFailFor = new Set(['icacls']);
       envManager = new EnvManager('.test.env');
 
-      await expect(envManager.write({ KEY: 'value' })).resolves.toBeUndefined();
-      expect(execFileMock).toHaveBeenNthCalledWith(1, 'icacls', ['/tmp/.env-win/write.tmp', '/inheritance:r']);
-      expect(execFileMock).toHaveBeenNthCalledWith(2, 'attrib', ['+R', '/tmp/.env-win/write.tmp']);
+      const thrown = await envManager.write({ KEY: 'value' }).catch((e: unknown) => e);
+
+      expect(thrown).toBeInstanceOf(WizardError);
+      expect((thrown as WizardError).code).toBe('WINDOWS_PERMISSIONS_FAILED');
+      // The icacls error is threaded as the (sanitized) cause.
+      expect((thrown as WizardError).cause?.message).toContain('icacls');
+      // Exactly ONE spawn (icacls, with the bounded timeout) — proving attrib was
+      // NOT used as a fallback (it was removed).
+      expect(execFileMock).toHaveBeenCalledTimes(1);
+      expect(execFileMock).toHaveBeenCalledWith(
+        'icacls',
+        ['/tmp/.env-win/write.tmp', '/inheritance:r'],
+        expect.objectContaining({ windowsHide: true, timeout: expect.any(Number) })
+      );
     });
 
-    it('throws WINDOWS_PERMISSIONS_FAILED when both icacls and attrib fail', async () => {
-      // Both fail. Only reachable if BOTH awaited rejections are caught — the
-      // un-promisified source resolves through both, so write() would resolve
-      // and this assertion would never see the error (D-024 lock).
-      execFileFailFor = new Set(['icacls', 'attrib']);
+    it('does not persist the .env when icacls fails — the throw precedes the atomic rename', async () => {
+      execFileFailFor = new Set(['icacls']);
       envManager = new EnvManager('.test.env');
 
       await expect(envManager.write({ KEY: 'value' })).rejects.toHaveProperty('code', 'WINDOWS_PERMISSIONS_FAILED');
+      // Fail-closed: setSecurePermissions throws before rename() in writeAtomic(),
+      // so no unhardened secrets file is left at the destination.
+      expect(mocks.rename).not.toHaveBeenCalled();
     });
 
     // The guard reads process.cwd() directly, so mocking it pins the two subtle
@@ -487,7 +511,11 @@ describe('EnvManager', () => {
         envManager = new EnvManager('/project/.env');
 
         await expect(envManager.write({ KEY: 'value' })).resolves.toBeUndefined();
-        expect(execFileMock).toHaveBeenCalledWith('icacls', ['/tmp/.env-win/write.tmp', '/inheritance:r']);
+        expect(execFileMock).toHaveBeenCalledWith(
+          'icacls',
+          ['/tmp/.env-win/write.tmp', '/inheritance:r'],
+          expect.objectContaining({ windowsHide: true, timeout: expect.any(Number) })
+        );
       });
 
       it('rejects a sibling-prefix destination — locks the `root + sep` boundary', async () => {
@@ -508,7 +536,11 @@ describe('EnvManager', () => {
         envManager = new EnvManager('/PROJECT/.env');
 
         await expect(envManager.write({ KEY: 'value' })).resolves.toBeUndefined();
-        expect(execFileMock).toHaveBeenCalledWith('icacls', ['/tmp/.env-win/write.tmp', '/inheritance:r']);
+        expect(execFileMock).toHaveBeenCalledWith(
+          'icacls',
+          ['/tmp/.env-win/write.tmp', '/inheritance:r'],
+          expect.objectContaining({ windowsHide: true, timeout: expect.any(Number) })
+        );
       });
     });
   });
@@ -523,9 +555,9 @@ describe('EnvManager', () => {
   // above models that callback contract faithfully (it signals ONLY through the
   // trailing callback that promisify appends), so the assertions here are RED
   // against the un-promisified source and GREEN once promisified (ADR-0001
-  // non-vacuity). The attrib-fallback + both-fail tests above are the companion
-  // behavioural locks; this one additionally proves the original rejection
-  // PROPAGATED into the catch (it survives as the WizardError cause).
+  // non-vacuity). The fail-closed tests above are the companion behavioural
+  // locks; this one additionally proves the original rejection PROPAGATED into
+  // the catch (it survives as the WizardError cause).
   // -------------------------------------------------------------------------
   describe('setWindowsPermissions — execFile promisify contract (D-024)', () => {
     beforeEach(() => {
@@ -535,7 +567,7 @@ describe('EnvManager', () => {
     });
 
     it('carries the awaited icacls rejection as the WINDOWS_PERMISSIONS_FAILED cause', async () => {
-      execFileFailFor = new Set(['icacls', 'attrib']);
+      execFileFailFor = new Set(['icacls']);
       envManager = new EnvManager('.test.env');
 
       const error = await envManager.write({ KEY: 'value' }).catch((e: unknown) => e);
