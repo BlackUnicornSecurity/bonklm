@@ -235,8 +235,13 @@ Asymmetry: vector-DB write-path BLOCKs throw synchronously instead of firing the
   `@blackunicorn/bonklm-wizard`) plus 8 private example manifests outside the workspace release
   surface.
 - **Single-version policy**: all release-surface package manifests currently carry `1.0.0-rc.4`. The
-  current `.changeset/config.json` linked array enumerates 21 package names and ignores
-  `@blackunicorn/bonklm-wizard`; `docs/user/package-matrix.md` is the release-surface inventory.
+  `.changeset/config.json` linked array enumerates all 52 publishable package names (changesets
+  `linked` keeps them on a single shared version); the two private manifests
+  (`@blackunicorn/bonklm-openclaw`, `@blackunicorn/bonklm-wizard`) are excluded, and
+  `@blackunicorn/bonklm-wizard` is additionally listed under `ignore`. `docs/user/package-matrix.md`
+  is the release-surface inventory. `tools/*` Tier-B publishable packages (e.g.
+  `@blackunicorn/eslint-plugin-edge`) are governed separately by `tools/WORKSPACE-POLICY.md` and are
+  not in this linked group.
 - **Bundle targets** (per package-matrix.md):
   - NODE — Node 20.4+ only, uses `node:fs` / `node:vm` / native crypto.
   - EDGE — Workerd/Cloudflare (with `nodejs_compat`) / Deno / Bun + Node; strict Vercel Edge
