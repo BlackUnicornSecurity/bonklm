@@ -1,6 +1,6 @@
 # BonkLM v0.x → v1.0 Migration Guide
 
-Last updated: 2026-05-24 (Sprint 28, v1.0.0-rc.2)
+Last updated: 2026-06-10 (v1.0.0-rc.4)
 
 This guide walks you through the breaking changes between BonkLM 0.x (0.4 → 0.7) and the v1.0
 release line. **Most v0.7 consumers will need ZERO code changes.** The cumulative breaking surface

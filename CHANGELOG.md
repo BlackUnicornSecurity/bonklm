@@ -685,8 +685,7 @@ Pass 2 formally retired.
   (Story 4.5) — AAD-E evidence trail. 5 of 10 hand-curated patterns
   cross-referenced to public CVE / OWASP-LLM-Top-10 identifiers
   (OWASP-LLM-2025-02, 05, 06; CVE-2025-44890; CVE-2026-12001).
-- **`team/audit-baselines/sandbox-graduation-checklist.md`** —
-  AAD-E single-maintainer fallback protocol.
+- AAD-E single-maintainer fallback protocol documented internally.
 
 ### Changed
 
@@ -706,7 +705,7 @@ Reviewer: single-maintainer (AAD-E fallback)
 Corpus-hash-pin commit: 4f8ea3f (Sprint 16 Story 3.2)
 Corpus hash (sha256):   db9c1986a01ae0d4f5281c74a038b0392415132d21e38aac80b6aacea778fff4
 24h cooldown: OBSERVED (9-sprint development gap between pin + review)
-Self-review checklist: COMPLETE (team/audit-baselines/sandbox-graduation-checklist.md)
+Self-review checklist: COMPLETE (see internal review record)
 
 Public identifiers (5 of 10 hand-curated):
 1. OWASP-LLM-2025-05 → pi-010 (editable git+URL install drift)
@@ -814,7 +813,7 @@ v0.7-graduation-gate sandbox-attack-corpus.
 - Story 3.12 Pass 2 (id / tr / fa / vi / th / pl / nl) RETIRED to
   v0.7+ backlog under Story 4.2 (CONDITIONAL: native-speaker
   reviewer pipeline). See
-  `team/plans/2026-05-23-story-3.12-finish-retirement.md`.
+  internal planning record.
 
 ### Changed
 
@@ -978,8 +977,7 @@ green across the entire Sprint 13–15 surface.
   identified.** `compatibility_date` pin remains at `2024-09-23`.
   Consumers do NOT need to bump `wrangler.toml`
   `compatibility_date` when upgrading from 0.4.x to 0.5.0.
-  Audit baseline filed at
-  `team/audit-baselines/workerd-compat-audit-2026-05-23.md`.
+  Audit baseline filed internally.
 
 ### Tests
 
