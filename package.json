@@ -10,6 +10,7 @@
   "scripts": {
     "build": "pnpm -r --filter \"@blackunicorn/*\" run build",
     "verify:surface": "node scripts/verify-publish-surface.mjs",
+    "check:changeset-linked": "node tools/check-changeset-linked.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:types": "pnpm -r --if-present test:types",

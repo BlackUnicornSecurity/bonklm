@@ -179,6 +179,12 @@ run_gate "typecheck" pnpm typecheck
 run_gate "lint" pnpm lint
 run_gate "format:check" pnpm format:check
 
+# ---- Release-surface structural gate -------------------------------------
+# Assert the changesets `linked` group equals the publishable packages/* set
+# (private !== true). Dependency-free + instant, so it runs in fast mode too,
+# mirroring the CI `changeset-linked` job.
+run_gate "changeset-linked" node tools/check-changeset-linked.js
+
 # ---- Tests + coverage ----------------------------------------------------
 # Coverage thresholds in vitest.config.ts are the ratchet floor (only moves up;
 # policy target is 100% — see CONTRIBUTING "Test coverage"). A drop below the

@@ -22,7 +22,7 @@ export default defineConfig({
     coverage: {
       provider: 'istanbul',
       reporter: ['text', 'json', 'html', 'json-summary'],
-      include: ['packages/core/src/**/*.ts', 'packages/*/src/**/*.ts'],
+      include: ['packages/core/src/**/*.ts', 'packages/*/src/**/*.ts', 'tools/check-changeset-linked.js'],
       exclude: [
         '**/*.d.ts',
         'node_modules/**',
@@ -70,6 +70,15 @@ export default defineConfig({
           functions: 60,
           branches: 50,
           statements: 60
+        },
+        // The changeset-linked drift gate is dependency-free tooling outside
+        // packages/*; pin it to 100% so its coverage is enforced by the standard
+        // gate, not merely asserted (CONTRIBUTING "documented -> enforced").
+        'tools/check-changeset-linked.js': {
+          lines: 100,
+          functions: 100,
+          branches: 100,
+          statements: 100
         }
       }
     },
