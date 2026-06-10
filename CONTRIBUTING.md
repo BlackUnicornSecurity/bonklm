@@ -314,9 +314,10 @@ asserted.** In summary:
 - **On doubt, search the knowledge base** (`team/lessonslearned.md`, the QA defects / decisions /
   risk register) before improvising.
 - **No scope creep**, immutable updates, no invented facts, no dead code.
-- **Run `pnpm quality-gate` (full) and keep the evidence log.** It bundles typecheck, lint, format,
-  build, tests + coverage, UAT, benchmark, the R2-13 sandbox gate, security regression, and
-  dependency audit. Gates are **local** — do not defer verification to CI.
+- **Run `pnpm quality-gate` (full) and keep the evidence log.** It bundles build (run first, so
+  every later gate evaluates freshly built artifacts), typecheck, lint, format, tests + coverage,
+  UAT, benchmark, the R2-13 sandbox gate, security regression, and dependency audit. Gates are
+  **local** — do not defer verification to CI.
 - **Coverage: 100% is the standard, proven by the report.** The thresholds in `vitest.config.ts` are
   a ratchet floor — they only move up, never down. Tests must cover edge cases, behavioural
   regressions, flow-level failures, and auth / permission gaps.

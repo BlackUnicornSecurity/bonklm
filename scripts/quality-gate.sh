@@ -148,8 +148,30 @@ check_grad_reports_clean() {
 
 if [ "$FAST" -eq 1 ]; then
   log_both ""
-  log_both ">>> FAST MODE: skipping build, uat, benchmark, sandbox-gate, sandbox-report-determinism, security-regression, audit."
+  log_both ">>> FAST MODE: skipping build, test:types, test:pack, uat, benchmark, sandbox-gate, sandbox-report-determinism, security-regression, audit."
   log_both ">>> This output is for the inner loop only and is NOT valid PR evidence."
+fi
+
+if [ "$FAST" -eq 0 ]; then
+  # ---- Build (runs FIRST in full mode) ------------------------------------
+  # Cross-package imports resolve workspace siblings through their built
+  # dist/ (tests via node_modules workspace links, typecheck project refs,
+  # tsd, pack). Building FIRST guarantees every downstream gate evaluates
+  # THIS tree's artifacts: a stale dist/ left by an earlier build can fail a
+  # gate on already-fixed source (false RED) or, worse, let a fresh source
+  # regression ride on healthy stale artifacts (false GREEN). Fast mode still
+  # skips the build and assumes a pre-built workspace — inner loop only,
+  # never PR evidence.
+  run_gate "build" pnpm build
+  if [ "${STATUSES[${#STATUSES[@]} - 1]}" = "FAIL" ]; then
+    # No-fail-fast is preserved (independent gates like format:check still
+    # carry signal), but dist-dependent gates below now evaluate a stale or
+    # partial dist — call that out so derivative failures read as noise, not
+    # as N independent root causes.
+    log_both ""
+    log_both ">>> build FAILED — downstream gates still run (no fail-fast) but evaluate a stale or"
+    log_both ">>> partial dist/; treat their failures as derivative until the build is green."
+  fi
 fi
 
 # ---- Static / type / style ----------------------------------------------
@@ -164,17 +186,15 @@ run_gate "format:check" pnpm format:check
 run_gate "test+coverage" pnpm exec vitest run --coverage
 
 if [ "$FAST" -eq 0 ]; then
-  # ---- Build -------------------------------------------------------------
-  run_gate "build" pnpm build
-
   # ---- Type-surface (tsd) ------------------------------------------------
-  # Runs after build: each per-package suite resolves the package-under-test's
-  # published `types` entry (dist/*.d.ts), so the workspace must be built first.
+  # Needs the build gate (first in full mode): each per-package suite resolves
+  # the package-under-test's published `types` entry (dist/*.d.ts), so the
+  # workspace must be built first.
   run_gate "test:types" pnpm test:types
 
   # ---- Tarball-drift snapshots (ST-04-300..351) --------------------------
-  # Runs after build: `npm pack` snapshots each package's built dist/, which is
-  # gitignored and absent before the build step above.
+  # Needs the build gate (first in full mode): `npm pack` snapshots each
+  # package's built dist/, which is gitignored and absent before the build.
   run_gate "test:pack" pnpm test:pack
 
   # ---- End-to-end + perf -------------------------------------------------

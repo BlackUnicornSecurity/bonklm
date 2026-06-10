@@ -60,6 +60,16 @@ id_rsa*
 team/
 
 # ===================
+# Local agent-harness artifacts (same class as .claude/ below) — generated
+# per-machine by non-Claude agent CLIs; never part of the library.
+# AGENTS.md is a machine-emitted mirror of the tracked CLAUDE.md contract;
+# if it ever becomes a hand-authored tracked file, remove it here.
+# ===================
+.agents/
+.codex/
+AGENTS.md
+
+# ===================
 # Claude Code local settings
 # ===================
 .claude/settings.local.json
@@ -134,11 +144,10 @@ landing-*.png
 playground-*.png
 
 # ===================
-# demo/ runtime state — never commit; doc/script subset belongs in a
-# separate "feat(demo): elizaos-wallet-drain" commit per release-QA
-# coordinator Day 1 standup (2026-05-26). wallets/ contains keypair
-# JSONs that must never enter version control regardless of devnet/testnet
-# classification — per CLAUDE.md "Never commit secrets, PII, or .env files".
+# demo/ runtime state — never commit; the doc/script subset is committed
+# separately. wallets/ contains keypair JSONs that must never enter version
+# control regardless of devnet/testnet classification — per CLAUDE.md
+# "Never commit secrets, PII, or .env files".
 # ===================
 demo/*/node_modules/
 demo/*/.eliza/
@@ -148,9 +157,8 @@ demo/*/screenshots/
 demo/*/logs/
 demo/*/evidence-tmp/
 demo/*/bun.lock
-# Belt-and-suspenders: per-demo .env files. demo/elizaos-wallet-drain/.gitignore
-# already excludes .env.* but we mirror at root per secret-scan
-# recommendation (real Anthropic key surfaced in
-# demo/.env.demo via gitleaks working-tree scan).
+# Belt-and-suspenders: per-demo .env files. Per-demo .gitignore files already
+# exclude .env.*, but we mirror at root so demo env files can never enter
+# version control through any path.
 demo/**/.env
 demo/**/.env.*

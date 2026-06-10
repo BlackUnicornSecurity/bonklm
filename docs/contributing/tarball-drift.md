@@ -12,8 +12,8 @@ story per publishable package) and is now complete — every package in that blo
 ## How it runs
 
 The snapshot reflects each package's built `dist/`, which is gitignored and absent until
-`pnpm build`. So these tests do **not** run in the main `pnpm test` pass (which the local quality
-gate runs before `build`). They run as a dedicated post-build step:
+`pnpm build`. So these tests do **not** run in the main `pnpm test` pass. They run as a dedicated
+post-build step:
 
 ```bash
 pnpm build
@@ -22,7 +22,7 @@ pnpm test:pack
 
 `pnpm test:pack` uses `vitest.pack.config.ts`; the main `vitest.config.ts` excludes
 `tarball-drift.test.ts`. CI runs the same in the **Tarball Drift** job (build → `pnpm test:pack`),
-and the local `pnpm quality-gate` runs it immediately after the build step.
+and the local `pnpm quality-gate` runs it as a post-build gate.
 
 ## What it asserts
 
