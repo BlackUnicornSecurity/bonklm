@@ -45,6 +45,11 @@ yarn.lock
 # Claude files
 .claude/
 
+# Local agent-harness artifacts (untracked, machine-generated — not hand-authored)
+.agents/
+.codex/
+AGENTS.md
+
 # Documentation outputs
 docs/generated/
 

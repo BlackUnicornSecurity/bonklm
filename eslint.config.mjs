@@ -25,6 +25,10 @@ export default tseslint.config(
       'team/',
       // TS files not in any tsconfig project (parse errors)
       '.claude/',
+      // Local agent-harness artifacts — untracked, not in any tsconfig project.
+      // (AGENTS.md needs no entry here: ESLint lints no markdown in this repo.)
+      '.agents/',
+      '.codex/',
       'vitest.config.ts',
       'vitest.pack.config.ts',
       // Lock files & build manifests
