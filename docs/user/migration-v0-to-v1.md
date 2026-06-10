@@ -2,6 +2,10 @@
 
 Last updated: 2026-06-10 (v1.0.0-rc.4)
 
+> **rc.3 and rc.4 introduced no additional breaking changes.** All migration steps below apply to
+> the full v1.0 line. v0.7 consumers upgrading directly to v1.0.0-rc.4 need to address only the
+> sections marked as applicable to their current version.
+
 This guide walks you through the breaking changes between BonkLM 0.x (0.4 → 0.7) and the v1.0
 release line. **Most v0.7 consumers will need ZERO code changes.** The cumulative breaking surface
 is intentionally small — v0.5 → 0.7 already shipped the deprecation removals; v1.0 is a stability

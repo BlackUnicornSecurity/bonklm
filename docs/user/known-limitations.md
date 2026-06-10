@@ -578,7 +578,7 @@ Sprint 22 architect C6 mandated the retire-or-recommit decision; Sprint 23 final
 `MultilingualPattern[]` via the `MultilingualDetector` config. Self-hosted patterns work today
 without core changes — only the bundled-default coverage is at 12.
 
-See `team/plans/2026-05-23-story-3.12-finish-retirement.md` for the full decision trail.
+See internal planning notes for the full decision trail.
 
 ## See also
 

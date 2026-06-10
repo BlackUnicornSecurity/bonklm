@@ -5,7 +5,7 @@
 > CHANGELOG entry. Root `package.json` (private; repo metadata only) is aligned to the same version.
 > Per [CONTRIBUTING.md](../CONTRIBUTING.md#versioning-changesets-and-releases), the changeset
 > `linked` group releases together. Scope: this is a _what exists in the source_ doc. Aspirational
-> design lives in `team/plans/`. Cross-references point at the load-bearing files.
+> design lives in internal planning notes. Cross-references point at the load-bearing files.
 
 ## 1. System overview
 

@@ -95,9 +95,8 @@ All packages now release together at the same version, governed by a `fixed` gro
 
 #### Repo hygiene
 
-- `team/` is now globally gitignored per `CLAUDE.md` (was 151 tracked files including security audit
-  reports). BonkLM-relevant artefacts that lived in `team/` (UAT harness, performance benchmarks)
-  moved to `packages/core/uat/` and `packages/core/benchmarks/`.
+- Internal development artefacts (`team/`) are gitignored. BonkLM-relevant artefacts (UAT harness,
+  performance benchmarks) were moved to `packages/core/uat/` and `packages/core/benchmarks/`.
 - `bonklm-intro.pptx` moved from repo root to `assets/presentations/`.
 - Lint clean: `pnpm exec eslint .` exits 0 with zero errors, zero warnings.
 - Type-check clean: `pnpm exec tsc --noEmit` exits 0.
@@ -134,5 +133,5 @@ now reflects the actual package version instead of `0.1.0`.
 ### Links
 
 - CHANGELOG: [CHANGELOG.md](./CHANGELOG.md)
-- Lessons learned: `team/lessonslearned.md` (local-only, gitignored)
+- Development notes: maintained internally (gitignored)
 - Issue tracker: https://github.com/blackunicorn/bonklm/issues
