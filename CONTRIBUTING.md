@@ -570,9 +570,22 @@ node packages/core/benchmarks/sandbox-attack-corpus/run-graduation-gate.mjs
 
 Per `RELEASE-NOTES.md`, `packages/core/package.json`, and the package matrix, **all release-surface
 package manifests carry the same version**: 52 publishable packages + 2 private tooling/legacy
-packages. The current release line is **`1.0.0-rc.4`**. The current `.changeset/config.json`
-`linked` array enumerates 21 package names and ignores `@blackunicorn/bonklm-wizard`; the package
-matrix is the release-surface inventory.
+packages. The current release line is **`1.0.0-rc.4`**. The `.changeset/config.json` `linked` array
+enumerates all 52 publishable package names so the publishable surface stays on a single shared
+version (changesets `linked` raises the packages in a release to the highest bump among them); the
+two private packages (`@blackunicorn/bonklm-openclaw`, `@blackunicorn/bonklm-wizard`) are excluded,
+and `@blackunicorn/bonklm-wizard` is additionally listed under `ignore`. The package matrix is the
+release-surface inventory. Regenerate the linked list from the publishable manifests with (re-derive
+at HEAD rather than hand-editing — this is how the list drifted stale before):
+
+```sh
+find packages -maxdepth 2 -name package.json ! -path '*/examples/*' ! -path '*/node_modules/*' \
+  | xargs grep -l '"name"' | xargs grep -L '"private": *true' \
+  | xargs grep -h '"name"' | sed 's/.*"name": "//;s/".*//' | sort
+```
+
+`tools/*` packages are governed separately by `tools/WORKSPACE-POLICY.md` and are not part of this
+`linked` group even when Tier-B publishable (e.g. `@blackunicorn/eslint-plugin-edge`).
 
 ### Canonical project version — source of truth
 
