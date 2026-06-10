@@ -5,20 +5,22 @@
 BonkLM is currently in the **RC track** ahead of v1.0.0 general availability. The RC period runs an
 extended public-comment window; security fixes are backported as described below.
 
-| Version             | Track         | Security updates                |
-| ------------------- | ------------- | ------------------------------- |
-| `1.0.0-rc.3`        | RC (current)  | Yes — active                    |
-| `1.0.0-rc.2`        | RC (prior)    | Critical only, until rc.4 ships |
-| `1.0.0-rc.1`        | RC (prior)    | No                              |
-| `0.7.x`             | Pre-RC stable | No                              |
-| `0.6.x` and earlier | Legacy        | No                              |
+| Version             | Track         | Security updates                  |
+| ------------------- | ------------- | --------------------------------- |
+| `1.0.0-rc.4`        | RC (current)  | Yes — active                      |
+| `1.0.0-rc.3`        | RC (prior)    | Critical only, until v1.0.0 ships |
+| `1.0.0-rc.2`        | RC (prior)    | No                                |
+| `1.0.0-rc.1`        | RC (prior)    | No                                |
+| `0.7.x`             | Pre-RC stable | No                                |
+| `0.6.x` and earlier | Legacy        | No                                |
 
 Once v1.0.0 ships, the support table will be updated to track the two most recent minor releases.
-Until then, **upgrade to `1.0.0-rc.3` or later** to receive security patches.
+Until then, **upgrade to `1.0.0-rc.4` or later** to receive security patches.
 
-All 54 packages in the monorepo (1 `@blackunicorn/bonklm` core + 53 connector packages prefixed
-`@blackunicorn/bonklm-*`) share a version line. A security fix to core is released as a coordinated
-bump across the affected packages.
+The release surface has 54 version-locked package manifests (52 publishable packages + 2 private
+tooling/legacy packages). The repository also contains private example manifests that are outside
+the release surface. A security fix to core is released as a coordinated bump across the affected
+packages.
 
 ## Reporting a Vulnerability
 
@@ -26,11 +28,10 @@ bump across the affected packages.
 
 ### Where to send reports
 
-Email:
-`[needs-info: security contact address, e.g. security@blackunicorn.tech or a dedicated alias]`
+Use the GitHub Security Advisory page if it is enabled for the repository:
+`https://github.com/BlackUnicornSecurity/bonklm/security/advisories`.
 
-If the project adds a GitHub Security Advisory page, you may also use the "Report a vulnerability"
-button at `https://github.com/BlackUnicornSecurity/bonklm/security/advisories`.
+No dedicated security email address is documented in this repository yet.
 
 ### What to include
 
@@ -50,13 +51,12 @@ Reports that include a working reproduction are triaged faster.
 
 ### Response timeline
 
-- **Acknowledgment**: `[needs-info: target acknowledgment window, e.g. 3 business days]`
-- **Triage + severity assessment**: `[needs-info: target window, e.g. 7 business days]`
-- **Patch + coordinated disclosure**:
-  `[needs-info: target embargo window, e.g. 90 days maximum, or 30 days for CRITICAL]`
+- **Acknowledgment**: no fixed SLA is documented in this repository yet.
+- **Triage + severity assessment**: no fixed SLA is documented in this repository yet.
+- **Patch + coordinated disclosure**: handled case-by-case according to severity and active
+  exploitation risk.
 
-If you do not receive acknowledgment within the window above, follow up via
-`[needs-info: fallback contact method]`.
+If you do not receive acknowledgment, follow up on the same private advisory thread.
 
 ## Scope
 
@@ -70,9 +70,10 @@ The following are in scope for vulnerability reports:
 - **Core guards** — `SecretGuard`, `XSSGuard`, `BashSafetyGuard`, `ProductionGuard`.
 - **`GuardrailEngine`** — validator orchestration, timeout handling (`validateWithTimeoutSecure`),
   wrap-sentinel logic, streaming gate.
-- **All connector packages** — the 53 `@blackunicorn/bonklm-*` packages (express, fastify, nestjs,
-  openai, anthropic, langchain, etc.). Connector scope includes: validation bypass, incorrect
-  block/allow decisions, timeout no-ops, log injection, and error-message information leakage.
+- **All publishable connector packages** — the `@blackunicorn/bonklm-*` packages listed in
+  `docs/user/package-matrix.md` (express, fastify, nestjs, openai, anthropic, langchain, etc.).
+  Connector scope includes: validation bypass, incorrect block/allow decisions, timeout no-ops, log
+  injection, and error-message information leakage.
 - **`bonklm` CLI** — the `bonklm doctor`, `bonklm connector`, and `bonklm status` commands; the
   interactive setup wizard.
 - **`bonklm-server`** — the Fastify HTTP guardrail server, its HMAC-SHA256 auth, and replay-window
@@ -131,13 +132,10 @@ We follow **responsible / coordinated disclosure**:
 3. We develop and test a fix.
 4. We notify the reporter before public disclosure, giving them an opportunity to review the fix.
 5. We publish a security advisory and release the fix simultaneously.
-6. The embargo period is
-   `[needs-info: default embargo length, e.g. 90 days for HIGH/CRITICAL, 30 days for CRITICAL with active exploitation]`.
-   We may request an extension with justification; reporters may request acceleration if evidence of
-   active exploitation emerges.
+6. The embargo period is agreed case-by-case. We may request an extension with justification;
+   reporters may request acceleration if evidence of active exploitation emerges.
 
 We do not operate a bug-bounty program at this time.
-`[needs-info: if a bug-bounty program is added, replace this line with scope + reward table]`
 
 ## Hall of Fame / Acknowledgments
 

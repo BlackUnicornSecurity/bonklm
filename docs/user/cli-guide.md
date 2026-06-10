@@ -1,6 +1,6 @@
 # BonkLM CLI Reference
 
-> Last updated: 2026-05-25. Applies to `@blackunicorn/bonklm` `1.0.0-rc.3`.
+> Last updated: 2026-06-08. Applies to `@blackunicorn/bonklm` `1.0.0-rc.4`.
 
 Source-verified reference for the BonkLM command-line tools. Two binaries ship with the project:
 

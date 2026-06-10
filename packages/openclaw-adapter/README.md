@@ -1,19 +1,13 @@
 # @blackunicorn/bonklm-openclaw
 
-> **⚠️ DEPRECATION NOTICE (v0.4.0-rc1)**
+> **⚠️ LEGACY / PRIVATE PACKAGE**
 >
-> This package is **deprecated** and scheduled for **removal at v0.6.0 (Sprint 16)**. The
-> deprecation is tracked as Story 2.14a in the BonkLM v0.4–v0.7 roadmap.
+> This package is **deprecated** and marked `private:true` in the v1.0 release surface. It is
+> retained in the repository for migration reference only and is not part of the current publish
+> set.
 >
-> **If you depend on `@blackunicorn/bonklm-openclaw`, please surface yourself before 2026-07-01.**
-> Open an issue at https://github.com/BlackUnicornSecurity/bonklm/issues with the label
-> `dep:openclaw` describing your use case so we can plan a migration path or extend the deprecation
-> window.
->
-> If no consumers surface by 2026-07-01, the package will be removed in v0.6.0 with no further
-> deprecation cycle. Pin to `@blackunicorn/bonklm-openclaw@^0.5.0` in your `package.json` if you
-> need the legacy shape and cannot migrate by then; we will retain the 0.5.x line as a
-> security-fix-only branch through 2027-01-01.
+> If you still depend on a pre-v1 OpenClaw adapter release, migrate to a provider-specific connector
+> or framework-native middleware before adopting the v1 package set.
 
 ## Why this package is deprecated
 

@@ -31,8 +31,8 @@ For voice + realtime webhooks see
 | Trigger.dev | `@blackunicorn/bonklm-trigger`  | `@trigger.dev/sdk ^4.0.0`         | STABLE |
 | Inngest     | `@blackunicorn/bonklm-inngest`  | `inngest ^4.4.0`                  | STABLE |
 
-All packages are published at `1.0.0-rc.3` against project version `0.5.0`. Edge bundles require
-Workerd `nodejs_compat`.
+The package manifests in this guide are pinned at `1.0.0-rc.4`. Edge bundles require Workerd
+`nodejs_compat`.
 
 ---
 

@@ -24,7 +24,7 @@ in both guides because they target the same package from different angles.
 | LiveKit Agents                                   | `@blackunicorn/bonklm-livekit`             | LiveKit voice-agent runtime                                                              | STABLE |
 | Voice webhooks (Vapi + Retell)                   | `@blackunicorn/bonklm-voice-webhooks`      | Vapi HTTP webhooks + Retell WebSocket                                                    | STABLE |
 
-All packages are published at `1.0.0-rc.3` against project version `0.5.0`.
+The package manifests in this guide are pinned at `1.0.0-rc.4`.
 
 ---
 
@@ -337,8 +337,8 @@ const result = await agent.generateText({ prompt: 'hello' });
 
 The `VoltAgentBlockEvent` telemetry is `kind: 'inference', provider: 'voltagent'`.
 
-Runtime support: Node `>=20.0.0`. Edge:
-`[needs-info: VoltAgent edge support status — package does not declare workerd/edge-light exports]`.
+Runtime support: Node `>=20.4.0`. The package does not declare Workerd, Deno, Bun, or `edge-light`
+conditional exports.
 
 For other agent frameworks see [Emerging Framework Connectors](./emerging-frameworks.md).
 

@@ -1,6 +1,6 @@
 # Rate Limiting
 
-> **Last updated:** 2026-05-25 · **Package version:** `1.0.0-rc.3`
+> **Last updated:** 2026-06-08 · **Package version:** `1.0.0-rc.4`
 
 BonkLM does not ship a built-in rate limiter — that responsibility belongs to the framework or edge
 in front of your guardrails. This document walks through the recommended integrations and the
@@ -23,9 +23,9 @@ validator pipeline.
 
 ## Why we do not wire a default rate limiter
 
-BonkLM exports `RateLimiter` + `CommonRateLimiters` from `@blackunicorn/bonklm` (re-exported from
-`@blackunicorn/bonklm/security`) as an ergonomic opt-in primitive, but the framework connectors
-deliberately do NOT instantiate one by default. Three reasons:
+BonkLM exports `RateLimiter` + `CommonRateLimiters` from `@blackunicorn/bonklm` as an ergonomic
+opt-in primitive, but the framework connectors deliberately do NOT instantiate one by default. Three
+reasons:
 
 1. **In-process state is fictional in production.** The bundled `RateLimiter` is an in-memory
    `Map<string, RateLimitEntry>` — it would give a per-pod limit in a multi-instance deployment,
@@ -37,10 +37,9 @@ deliberately do NOT instantiate one by default. Three reasons:
    multi-tenant reality. BonkLM running its own limiter inside the request pipeline still pays the
    TCP-accept + body-parse cost on every blocked request.
 3. **Distributed-state limiters** (Redis-backed `@upstash/ratelimit`, `rate-limiter-flexible` with a
-   Redis store, Cloudflare KV) are the right shape for production. The doctor check (`bonklm doctor`
-   Sprint 51 ST-05-104) surfaces a WARN when a framework connector is installed without a known
-   limiter dependency — nudging consumers toward a real solution rather than a per-pod in-memory
-   limit.
+   Redis store, Cloudflare KV) are the right shape for production. The `bonklm doctor` check
+   surfaces a WARN when a framework connector is installed without a known limiter dependency —
+   nudging consumers toward a real solution rather than a per-pod in-memory limit.
 
 To suppress the doctor advisory after acknowledging the policy, declare in your `package.json`:
 
@@ -148,8 +147,8 @@ Register the rate-limit plugin BEFORE `@blackunicorn/bonklm-fastify`.
 Use the platform's native primitive — Workers KV `cache` API, Vercel Edge rate limiting, Deno
 `KvWatcher` — and short-circuit before the edge variant of the engine is invoked. The
 `EdgeHookManager` does NOT provide ingress rate limiting; it only enforces per-hook rate limits (see
-below). [needs-info: link a Workers-specific recipe here once the
-`packages/cloudflare-agents-connector` README pins one.]
+below). For Cloudflare Agents deployments, place rate limiting in front of the Durable Object entry
+point before `withBonklmAgent(...)` invokes the engine.
 
 ---
 

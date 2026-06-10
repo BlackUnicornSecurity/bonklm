@@ -11,7 +11,7 @@ Complete API documentation for BonkLM (`@blackunicorn/bonklm`).
   - [Base Types](#base-types)
   - [Utilities](#utilities)
 - [Fastify Plugin](#fastify-plugin)
-- [OpenClaw Adapter](#openclaw-adapter)
+- [Legacy OpenClaw Adapter](#legacy-openclaw-adapter)
 
 ---
 
@@ -472,7 +472,7 @@ const hookId = hooks.registerHook({
 Execute all hooks for a given phase.
 
 ```typescript
-const results = await hooks.executeHooks(HookPhase.BEEFORE_VALIDATION, { content: userInput });
+const results = await hooks.executeHooks(HookPhase.BEFORE_VALIDATION, { content: userInput });
 ```
 
 ##### `unregisterHook(hookId: string): boolean`
@@ -753,7 +753,8 @@ logger.info('Application started');
 Create a standardized result object.
 
 ```typescript
-import { createResult, Severity, Finding } from '@blackunicorn/bonklm';
+import { createResult, Severity } from '@blackunicorn/bonklm';
+import type { Finding } from '@blackunicorn/bonklm';
 
 const result = createResult(false, Severity.CRITICAL, [
   {
@@ -832,7 +833,10 @@ interface GuardrailsRequest extends FastifyRequest {
 
 ---
 
-## OpenClaw Adapter
+## Legacy OpenClaw Adapter
+
+The OpenClaw adapter is **private / removed from the v1.0 publish set**. This section is retained
+for migration reference only; new integrations should use the framework-native middleware packages.
 
 ### `OpenClawGuardrailsMiddleware`
 
@@ -999,7 +1003,9 @@ export {
 } from './common/index.js';
 ```
 
-### From `@blackunicorn/bonklm-openclaw`
+### From legacy `@blackunicorn/bonklm-openclaw`
+
+This package is private in the current release surface and is not a v1.0 public export.
 
 ```typescript
 export * from './types.js';

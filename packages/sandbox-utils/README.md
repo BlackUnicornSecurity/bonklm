@@ -51,7 +51,7 @@ const r = await validateCode(code, { onSandboxError: 'allow' });
 // r === { allowed: true, reason: 'sandbox_validator_error_allowed' }
 ```
 
-**Production observability (AAD-4)**: when `onSandboxError: 'allow'` AND
+**Production observability**: when `onSandboxError: 'allow'` AND
 `process.env.NODE_ENV === 'production'`, the helper emits a WARN-severity log via the `warn`
 callback ONCE per wrapper instance. Subsequent fail-open events on the same wrapper increment an
 internal counter without re-emitting (defeats PagerDuty alert pollution while preserving

@@ -338,7 +338,9 @@ if (event.type === 'stream.blocked') {
 }
 ```
 
-`[needs-info: the spec asked for a "stream.released" event with a "chainHasSecretOrPii" flag, but neither exists in TelemetryEventType (only stream.start / .chunk / .blocked / .complete). chainHasSecretOrPii is an internal StreamValidator option (packages/core/src/connector-utils/ stream-validator.ts:64), not a telemetry event field. Confirm whether a stream-release telemetry event should be added in a future sprint, or remove this pattern from the operator catalog.]`
+There is no `stream.released` telemetry event in the current `TelemetryEventType` enum.
+`chainHasSecretOrPii` is an internal `StreamValidator` option, not an operator-facing telemetry
+field.
 
 ### Pattern C — Circuit-breaker observability
 
@@ -382,7 +384,8 @@ engine.onIntercept((result, ctx) => {
 });
 ```
 
-`[needs-info: confirm whether a dedicated cache-hit/miss telemetry event is planned; today the signal is inferred from validation_context tagging.]`
+There is no dedicated cache-hit/miss telemetry event in the current `TelemetryEventType` enum; infer
+this signal from `validation_context` tagging when a connector provides it.
 
 ---
 

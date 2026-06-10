@@ -1,4 +1,4 @@
-# BonkLM Known Limitations (v1.0.0-rc.3)
+# BonkLM Known Limitations (v1.0.0-rc.4)
 
 BonkLM is deterministic pattern + structural defence. There are classes of attack the engine does
 NOT catch, and surfaces where the platform forces us into a documented best-effort posture. This
@@ -460,7 +460,7 @@ the remaining gaps. Current state:
   - RTL bidi-control character handling for ar / ur / fa.
   - Composition fix: `MultilingualDetector` runs INSTEAD of `PromptInjectionValidator` in some
     default chains; should be alongside (Sprint 22).
-- **Honest positioning** (per AC D-5): regex-based; novel phrasings
+- **Honest positioning**: regex-based; novel phrasings
   - mixed-script attacks not fully covered. Compete on Node-native
   - edge + tool-args + memory-writes, not language breadth.
 

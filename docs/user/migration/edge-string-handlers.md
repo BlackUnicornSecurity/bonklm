@@ -187,11 +187,11 @@ falls back to `process.env` when `envBindings` is omitted). v0.5 edge consumers 
 | `LLM_GUARDRAILS_OVERRIDE_SECRET` | `envBindings.LLM_GUARDRAILS_OVERRIDE_SECRET` | Same — legacy alias.                               |
 | `BONKLM_SKIP_RUNTIME_PROBE`      | `envBindings.BONKLM_SKIP_RUNTIME_PROBE`      | ElizaOS probe escape-hatch (Sprint 11 connectors). |
 
-**Forward policy (iter-3 adversarial A&D-5)**: ALL future env-var reads in any
-`@blackunicorn/bonklm/edge`-reachable file MUST flow through `envBindings`, NOT bare `process.env`.
-The Sprint 12 ESLint plugin (`@blackunicorn/eslint-plugin-edge`) enforces this at ERROR severity
-from v0.5.0 final. New env-var additions in v0.6+ connectors that need ambient host-environment data
-MUST extend the `EnvBindings` shape AND add a row to this migration table.
+**Forward policy**: ALL future env-var reads in any `@blackunicorn/bonklm/edge`-reachable file MUST
+flow through `envBindings`, NOT bare `process.env`. The Sprint 12 ESLint plugin
+(`@blackunicorn/eslint-plugin-edge`) enforces this at ERROR severity from v0.5.0 final. New env-var
+additions in v0.6+ connectors that need ambient host-environment data MUST extend the `EnvBindings`
+shape AND add a row to this migration table.
 
 ## EdgeHookManager — function-only handler enforcement
 

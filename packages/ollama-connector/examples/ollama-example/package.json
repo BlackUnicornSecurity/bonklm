@@ -1,6 +1,7 @@
 {
   "name": "ollama-example",
   "version": "1.0.0",
+  "private": true,
   "description": "Example usage of @blackunicorn/bonklm-ollama",
   "type": "module",
   "scripts": {
