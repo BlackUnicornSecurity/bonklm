@@ -178,12 +178,8 @@ interface GuardrailResult {
 ## 🔌 Integrations
 
 BonkLM works with **any** Node.js framework, LLM provider, or platform. The core library is
-framework-agnostic and can be integrated directly. The connector packages below are available in the
-repository for monorepo usage.
-
-> **Note:** Connector packages are currently available for use within this monorepo. For standalone
-> npm package installation, use the core `@blackunicorn/bonklm` package which includes all
-> validators and guards.
+framework-agnostic and can be integrated directly. Publishable connector packages are available as
+standalone npm packages; see the package matrix for the complete release surface.
 
 ### Framework Middleware
 
@@ -191,7 +187,6 @@ repository for monorepo usage.
 npm install @blackunicorn/bonklm-express      # Express middleware
 npm install @blackunicorn/bonklm-fastify      # Fastify plugin
 npm install @blackunicorn/bonklm-nestjs       # NestJS module
-npm install @blackunicorn/bonklm-openclaw     # OpenClaw integration
 ```
 
 ### AI SDKs
@@ -232,7 +227,7 @@ npm install @blackunicorn/bonklm-copilotkit   # CopilotKit
 ### Additional Packages
 
 ```bash
-npm install @blackunicorn/bonklm-wizard       # Interactive setup CLI
+npm install @blackunicorn/bonklm              # Core library + interactive setup CLI
 npm install @blackunicorn/bonklm-logger       # Structured logging utilities
 ```
 
@@ -242,9 +237,10 @@ npm install @blackunicorn/bonklm-logger       # Structured logging utilities
 
 - **[Getting Started Guide](./docs/getting-started.md)** - Complete setup guide
 - **[API Reference](./docs/api-reference.md)** - Full API documentation
-- **[OpenClaw Integration Guide](./docs/openclaw-integration.md)** - OpenClaw connector setup
+- **[OpenClaw Integration Guide](./docs/openclaw-integration.md)** - Deprecated OpenClaw migration
+  guide
 - **[User Documentation](./docs/user/README.md)** - Comprehensive user guide
-- **[Release Notes](./RELEASE-NOTES.md)** - Latest release: v1.0.0-rc.3 (see
+- **[Release Notes](./RELEASE-NOTES.md)** - Latest release: v1.0.0-rc.4 (see
   [CHANGELOG.md](./CHANGELOG.md) for full history)
 
 ---
@@ -256,7 +252,7 @@ npm install @blackunicorn/bonklm-logger       # Structured logging utilities
 - **Platform-Agnostic** — Serverless, containers, edge, or traditional servers
 - **Production-Ready** — Built with security best practices, comprehensive testing
 - **TypeScript-Native** — Full type definitions and excellent IDE support
-- **Zero Dependencies** — Core package has minimal external dependencies
+- **Small Dependency Surface** — Core package keeps external runtime dependencies focused
 - **Extensible** — Hook system for custom validation logic
 
 ---
@@ -306,9 +302,9 @@ Contributions are welcome! Please read our contributing guidelines before submit
 
 ## 📰 Release Notes
 
-**[Release Notes](./RELEASE-NOTES.md)** - Current release: **v1.0.0-rc.3** (post-Sprint 31
-cumulative audit closure; rc.4 cut imminent). See [CHANGELOG.md](./CHANGELOG.md) for the per-sprint
-detail across the v0.3.0 → v0.7.0 → v1.0.0-rc.x history.
+**[Release Notes](./RELEASE-NOTES.md)** - Current release: **v1.0.0-rc.4**. See
+[CHANGELOG.md](./CHANGELOG.md) for the per-sprint detail across the v0.3.0 → v0.7.0 → v1.0.0-rc.x
+history.
 
 See [CHANGELOG.md](./CHANGELOG.md) for full version history.
 

@@ -1,11 +1,11 @@
 <div align="center">
 
-# @blackunicorn/bonklm/core
+# @blackunicorn/bonklm
 
 ### **Core Security Engine for BonkLM**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/node/v/%40blackunicorn%2Fbonklm-core.svg)](https://nodejs.org)
+[![Node.js Version](https://img.shields.io/node/v/%40blackunicorn%2Fbonklm.svg)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
 
 **Framework-agnostic • Provider-agnostic • Platform-agnostic**
@@ -16,8 +16,8 @@
 
 ## Overview
 
-The `@blackunicorn/bonklm/core` package is the foundation of BonkLM. It provides the core security
-engine, validators, guards, and utilities that power all other BonkLM packages.
+The `@blackunicorn/bonklm` package is the foundation of BonkLM. It provides the core security
+engine, validators, guards, and utilities that power the connector packages.
 
 This package contains:
 

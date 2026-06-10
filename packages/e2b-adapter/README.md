@@ -74,7 +74,7 @@ operation is NOT invoked. Opt-out via `onSandboxError: 'allow'`:
 
 ```ts
 const sandbox = wrapSandbox(raw, {
-  onSandboxError: 'allow' // fail-OPEN — emits AAD-4 WARN in production
+  onSandboxError: 'allow' // fail-OPEN — emits a production warning
 });
 ```
 

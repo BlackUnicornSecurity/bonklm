@@ -22,7 +22,7 @@ SDKs are in [AI SDK Connectors](./ai-sdks.md).
 | Browser-agents core (shared)     | `@blackunicorn/bonklm-browser-agents-core` | — (isomorphic)                    | STABLE |
 | Cloudflare Agents (DO + Workerd) | `@blackunicorn/bonklm-cloudflare-agents`   | `agents ^0.13.0`                  | STABLE |
 
-All packages are published at `1.0.0-rc.3` against project version `0.5.0`.
+The package manifests in this guide are pinned at `1.0.0-rc.4`.
 
 ---
 
@@ -484,9 +484,8 @@ try {
 
 ### Runtime Support
 
-- Node `>=20.0.0` (declared `engines` field).
-- Edge:
-  `[needs-info: VoltAgent edge support status — package does not declare workerd/edge-light exports]`.
+- Node `>=20.4.0` (declared `engines` field).
+- Edge: the package does not declare Workerd, Deno, Bun, or `edge-light` conditional exports.
 
 ---
 

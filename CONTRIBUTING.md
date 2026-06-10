@@ -335,11 +335,11 @@ asserted.** In summary:
 
 ### Before submitting
 
-1. Branch from `main`:
+1. Create a dedicated worktree and branch from `main`:
 
    ```bash
-   git checkout -b feature/your-feature-name
-   git checkout -b fix/your-bug-fix
+   git worktree add ../bonklm-your-feature -b feat/your-feature-name
+   cd ../bonklm-your-feature
    ```
 
 2. Make your changes following the code-style guidelines above.
@@ -347,12 +347,7 @@ asserted.** In summary:
 3. Run the full local gate:
 
    ```bash
-   pnpm run typecheck       # also runs as pre-commit
-   pnpm run lint
-   pnpm run build
-   pnpm test
-   pnpm run uat             # release-blocker; please run for any engine/validator/guard change
-   pnpm run benchmark       # release-blocker; please run for perf-sensitive changes
+   pnpm quality-gate
    ```
 
 4. If your change affects user-facing behaviour, add a changeset (see
@@ -573,11 +568,11 @@ node packages/core/benchmarks/sandbox-attack-corpus/run-graduation-gate.mjs
 
 ### Single-version monorepo policy
 
-Per `RELEASE-NOTES.md` and `.changeset/config.json`, **all 21 published packages release together at
-the same version** via a `linked` group. There is no per-package version drift: core, connectors,
-middlewares, the logger package, and adapter packages all ship from the same
-`pnpm exec changeset publish` invocation. The current release line is **`1.0.0-rc.3`** (rc.4 cut
-imminent).
+Per `RELEASE-NOTES.md`, `packages/core/package.json`, and the package matrix, **all release-surface
+package manifests carry the same version**: 52 publishable packages + 2 private tooling/legacy
+packages. The current release line is **`1.0.0-rc.4`**. The current `.changeset/config.json`
+`linked` array enumerates 21 package names and ignores `@blackunicorn/bonklm-wizard`; the package
+matrix is the release-surface inventory.
 
 ### Canonical project version — source of truth
 

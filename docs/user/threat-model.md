@@ -1,9 +1,8 @@
 # BonkLM Threat Model (STRIDE)
 
-> Last updated: 2026-05-25 Audience: security engineers integrating `@blackunicorn/bonklm` into a
-> production stack. Version: `1.0.0-rc.3`
-> (`[needs-info: resolve version ambiguity noted in architecture.md]`). Scope: the BonkLM library
-> itself — validators, guards, engine, connectors, CLI, hook system.
+> Last updated: 2026-06-08 Audience: security engineers integrating `@blackunicorn/bonklm` into a
+> production stack. Version: `1.0.0-rc.4`. Scope: the BonkLM library itself — validators, guards,
+> engine, connectors, CLI, hook system.
 
 ---
 
@@ -23,8 +22,9 @@
   (`packages/core/src/hooks/`)
 - Telemetry — `TelemetryService`, `bonklmTrace` / OTel exporter  
   (`packages/core/src/telemetry/`)
-- Connector packages — all 31 published `@blackunicorn/bonklm-*` wrappers
-- CLI — `bonklm doctor`, `bonklm connector`, `bonklm status`, `bonklm-wizard`
+- Connector packages — the publishable `@blackunicorn/bonklm-*` wrappers listed in
+  `docs/user/package-matrix.md`
+- CLI — `bonklm doctor`, `bonklm connector`, `bonklm status`, `bonklm wizard`
 - `bonklm-server` — Fastify HTTP guardrail server with HMAC-SHA256 auth
 
 **Out of scope** (analysed elsewhere or upstream/downstream):
@@ -364,8 +364,8 @@ disclosure policy, supported versions, response timeline, and scope definitions 
 
 **[`SECURITY.md`](../../SECURITY.md)**
 
-Summary: email the address in `SECURITY.md` (currently `[needs-info: security contact address]`);
-include affected package + version, reproduction steps, and impact. Coordinated disclosure; fix and
-advisory published simultaneously. Only `1.0.0-rc.3` and later receive active security patches. The
-`bonklm doctor` CLI command (`packages/core/src/cli/commands/doctor.ts`) provides a local health
-check that surfaces common misconfiguration issues before deployment.
+Summary: use the reporting channel in `SECURITY.md`; include affected package + version,
+reproduction steps, and impact. Coordinated disclosure; fix and advisory published simultaneously.
+Only `1.0.0-rc.4` and later receive active security patches. The `bonklm doctor` CLI command
+(`packages/core/src/cli/commands/doctor.ts`) provides a local health check that surfaces common
+misconfiguration issues before deployment.

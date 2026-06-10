@@ -59,10 +59,9 @@ The in-repo benchmark suite lives at `packages/core/benchmarks/`.
   forward+reverse scan is baked into the validator design to defeat order-dependent payload splits
   (`known-limitations.md` §8).
 
-Actual measured numbers:
-`[needs-info: latest P50/P99 per benchmark from the most recent CI benchmark-output artifact]`. The
-benchmark CI job uploads `.last-run.log` as an artifact (`benchmark-output`, 7-day retention) — see
-§4.
+Actual checked-in benchmark numbers live in `packages/core/benchmarks/RESULTS.md` (last run:
+2026-05-26). The benchmark CI job uploads `.last-run.log` as an artifact (`benchmark-output`, 7-day
+retention) — see §4.
 
 ### Hash-pinned attack corpora (recall + FPR gates)
 
@@ -75,9 +74,8 @@ benchmark CI job uploads `.last-run.log` as an artifact (`benchmark-output`, 7-d
 - **`multilingual-corpus/`** — per-language TP (20) + TN (20) corpora for `MultilingualDetector`
   per-language recall and FPR measurement. Status table in the folder README; current Tier-2
   measured baselines are `bn` 75 % recall / 0 % FPR, `ur` 80 % recall / 0 % FPR; Tier-1 languages do
-  not yet have TP/TN corpora landed
-  (`[needs-info: Tier-1 corpus backfill schedule for Sprints 17-22]`). Story 3.12 Pass 2 retired in
-  Sprint 23 — see `known-limitations.md` §25.
+  not yet have TP/TN corpora landed. Story 3.12 Pass 2 retired in Sprint 23 — see
+  `known-limitations.md` §25.
 
 ## 4. CI performance gates
 
@@ -98,7 +96,6 @@ guard against the captured log:
 The benchmark log is uploaded as `benchmark-output` artifact for 7 days. There is currently **no
 absolute-latency CI gate** beyond the broken-measurement guard — the bench files document targets in
 their `bench` labels, but a regression that stays a valid number is not auto-rejected.
-`[needs-info: whether a P99 absolute-threshold gate is on the v0.6 / v1.0 roadmap]`.
 
 ### `sandbox-gate` job (R2-13)
 

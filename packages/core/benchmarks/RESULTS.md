@@ -65,7 +65,7 @@ separately.
    suite on their own infra and cite that.
 2. Deterministic-validators only. If you wire an ML-based validator into the chain (Lakera, an
    in-house classifier, etc.) the chain inherits its latency.
-3. Pattern catalogues evolve. The numbers above reflect the v1.0.0-rc.3 patterns. Future minor
+3. Pattern catalogues evolve. The numbers above reflect the v1.0.0-rc.4 patterns. Future minor
    versions may add patterns and shift the numbers; re-run before re-quoting.
 4. Short / medium / long correspond to the test fixtures in `benchmark.bench.ts` — short is 19
    chars, medium ~160 chars, long ~5.6 KB.

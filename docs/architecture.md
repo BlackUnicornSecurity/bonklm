@@ -3,22 +3,22 @@
 > Last updated: 2026-06-03 Audience: senior engineers onboarding to `@blackunicorn/bonklm`. Project
 > version: `1.0.0-rc.4`. Source of truth: `packages/core/package.json` + the `[1.0.0-rc.4]`
 > CHANGELOG entry. Root `package.json` (private; repo metadata only) is aligned to the same version.
-> Per [CONTRIBUTING.md](../CONTRIBUTING.md#versioning-changesets-and-releases), all 21 packages in
-> the changeset `linked` group release together. Scope: this is a _what exists in the source_ doc.
-> Aspirational design lives in `team/plans/`. Cross-references point at the load-bearing files.
+> Per [CONTRIBUTING.md](../CONTRIBUTING.md#versioning-changesets-and-releases), the changeset
+> `linked` group releases together. Scope: this is a _what exists in the source_ doc. Aspirational
+> design lives in internal planning notes. Cross-references point at the load-bearing files.
 
 ## 1. System overview
 
 BonkLM is a **deterministic, framework-agnostic, provider-agnostic Node.js library for LLM
 application security**. It composes pattern + structural validators (`Validator`) and content guards
-(`Guard`) behind a single orchestrator (`GuardrailEngine`) and ships 31 publishable connector
-packages that wire that orchestrator into specific SDKs (OpenAI, Anthropic, LangChain, Vercel AI
-SDK, ElizaOS, LiveKit, E2B, Pinecone, …). The core engine is Node-first; a portable subset
-(`@blackunicorn/bonklm/edge`) runs on Workerd (with `nodejs_compat`) / Deno / Bun — Node-compatible
-edge runtimes, not strict Vercel Edge (`edge-light`); see §6. BonkLM is **NOT** an ML model, **NOT**
-a WAF, **NOT** a sandbox — it is a deterministic in-process detection + redaction layer that runs in
-your call path BEFORE the LLM and (optionally) on the way back. See `packages/core/src/index.ts` and
-`README.md`.
+(`Guard`) behind a single orchestrator (`GuardrailEngine`) and ships 52 publishable workspace
+packages, including connectors that wire that orchestrator into specific SDKs (OpenAI, Anthropic,
+LangChain, Vercel AI SDK, ElizaOS, LiveKit, E2B, Pinecone, …). The core engine is Node-first; a
+portable subset (`@blackunicorn/bonklm/edge`) runs on Workerd (with `nodejs_compat`) / Deno / Bun —
+Node-compatible edge runtimes, not strict Vercel Edge (`edge-light`); see §6. BonkLM is **NOT** an
+ML model, **NOT** a WAF, **NOT** a sandbox — it is a deterministic in-process detection + redaction
+layer that runs in your call path BEFORE the LLM and (optionally) on the way back. See
+`packages/core/src/index.ts` and `README.md`.
 
 ## 2. The 7-surface model
 
@@ -230,14 +230,13 @@ Asymmetry: vector-DB write-path BLOCKs throw synchronously instead of firing the
 
 ## 9. Build & release
 
-- **Monorepo**: pnpm workspaces, 54 package directories (31 publishable per `package-matrix.md` + 19
-  internal/coverage/etc.).
-- **Single-version policy**: changesets `linked` group keeps every published
-  `@blackunicorn/bonklm-*` package at the same version. The current `.changeset/config.json` linked
-  array enumerates 21 packages; the v1.0.0-rc.4 matrix in `docs/user/package-matrix.md` lists 31
-  published packages —
-  `[needs-info: which packages joined the linked group between the .changeset/config.json snapshot and the v1.0.0-rc.4 cut, or whether the linked array is intentionally a subset]`.
-  `bonklm-wizard` is in the `ignore` list.
+- **Monorepo**: pnpm workspaces, 54 release-surface package directories (52 publishable package
+  manifests + 2 private tooling/legacy manifests: `@blackunicorn/bonklm-openclaw` and
+  `@blackunicorn/bonklm-wizard`) plus 8 private example manifests outside the workspace release
+  surface.
+- **Single-version policy**: all release-surface package manifests currently carry `1.0.0-rc.4`. The
+  current `.changeset/config.json` linked array enumerates 21 package names and ignores
+  `@blackunicorn/bonklm-wizard`; `docs/user/package-matrix.md` is the release-surface inventory.
 - **Bundle targets** (per package-matrix.md):
   - NODE — Node 20.4+ only, uses `node:fs` / `node:vm` / native crypto.
   - EDGE — Workerd/Cloudflare (with `nodejs_compat`) / Deno / Bun + Node; strict Vercel Edge

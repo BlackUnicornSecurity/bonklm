@@ -1,10 +1,9 @@
 # BonkLM Release Notes
 
-> Latest release: **v1.0.0-rc.3** (2026-05-24). Full per-sprint detail in
-> [CHANGELOG.md](./CHANGELOG.md#100-rc3--2026-05-24-sprints-29--30--31--cumulative-audit-closure).
-> Post-rc.3 hardening continues in the `[Unreleased]` section of the CHANGELOG (Sprints 42–51), and
-> `v1.0.0-rc.4` cut is imminent. Per-sprint notes between v0.3.0 and v1.0.0-rc.3 (covering v0.4.0,
-> v0.5.0, v0.6.0, v0.7.0) live in the CHANGELOG.
+> Latest release: **v1.0.0-rc.4** (2026-05-26). Full per-sprint detail in
+> [CHANGELOG.md](./CHANGELOG.md#100-rc4--2026-05-26-sprint-51-day-1-cut). Per-sprint notes between
+> v0.3.0 and v1.0.0-rc.4 (covering v0.4.0, v0.5.0, v0.6.0, v0.7.0, and v1.0.0-rc.x) live in the
+> CHANGELOG.
 
 This file preserves the v0.3.0 release announcement as a historical archive. For all releases after
 v0.3.0, see the CHANGELOG.
@@ -96,9 +95,8 @@ All packages now release together at the same version, governed by a `fixed` gro
 
 #### Repo hygiene
 
-- `team/` is now globally gitignored per `CLAUDE.md` (was 151 tracked files including security audit
-  reports). BonkLM-relevant artefacts that lived in `team/` (UAT harness, performance benchmarks)
-  moved to `packages/core/uat/` and `packages/core/benchmarks/`.
+- Internal development artefacts (`team/`) are gitignored. BonkLM-relevant artefacts (UAT harness,
+  performance benchmarks) were moved to `packages/core/uat/` and `packages/core/benchmarks/`.
 - `bonklm-intro.pptx` moved from repo root to `assets/presentations/`.
 - Lint clean: `pnpm exec eslint .` exits 0 with zero errors, zero warnings.
 - Type-check clean: `pnpm exec tsc --noEmit` exits 0.
@@ -135,5 +133,5 @@ now reflects the actual package version instead of `0.1.0`.
 ### Links
 
 - CHANGELOG: [CHANGELOG.md](./CHANGELOG.md)
-- Lessons learned: `team/lessonslearned.md` (local-only, gitignored)
+- Development notes: maintained internally (gitignored)
 - Issue tracker: https://github.com/blackunicorn/bonklm/issues

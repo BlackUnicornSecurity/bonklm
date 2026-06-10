@@ -11,8 +11,8 @@ Sprint 52 Day 2 — Gate 2 unblocking + Gate 5.8 reproducibility:
 
 ### Changed
 
-- **`check-version-pin.sh` moved to the tracked `scripts/` directory so the pre-commit hook works in every checkout.** The version-pin check previously lived under the gitignored `team/` tree, so the `simple-git-hooks` `pre-commit` hook (`bash team/qa/scripts/check-version-pin.sh`) failed with "No such file or directory" in fresh clones and in any `git worktree` — the exact environments the worktree-per-PR workflow relies on. The script now lives at the tracked `scripts/check-version-pin.sh` (beside `quality-gate.sh`), and the hook invokes that tracked path. Contributor-tooling only — no runtime or library change.
-- **Pre-publish surface guard added (`scripts/verify-publish-surface.mjs`).** Defense-in-depth for D-010 (rc.4 once shipped a built core surface missing the B.5 re-exports because `dist/` is gitignored and the rc-cut packed a stale build). After `pnpm -r build`, the guard imports the built `packages/core/dist/index.js` and asserts a canary set of canonical public exports (incl. `createRateLimiter` / `CommonRateLimiters`) is present, exiting non-zero otherwise. Wired into the `publish` job of `.github/workflows/publish.yml` (after build, before `changeset publish`) and exposed as the root `verify:surface` script for the rc-cut RUNBOOK. Contributor / release-tooling only — no runtime or library change.
+- **`check-version-pin.sh` moved to the tracked `scripts/` directory so the pre-commit hook works in every checkout.** The version-pin check previously lived under the gitignored `team/` tree, so the `simple-git-hooks` pre-commit hook failed with "No such file or directory" in fresh clones and in any `git worktree` — the exact environments the worktree-per-PR workflow relies on. The script now lives at the tracked `scripts/check-version-pin.sh` (beside `quality-gate.sh`), and the hook invokes that tracked path. Contributor-tooling only — no runtime or library change.
+- **Pre-publish surface guard added (`scripts/verify-publish-surface.mjs`).** After `pnpm -r build`, the guard imports the built `packages/core/dist/index.js` and asserts a canary set of canonical public exports (including `createRateLimiter` / `CommonRateLimiters`) is present, exiting non-zero otherwise. Wired into the `publish` job of `.github/workflows/publish.yml` (after build, before `changeset publish`) and exposed as the root `verify:surface` script for the rc-cut RUNBOOK. Contributor / release-tooling only — no runtime or library change.
 
 ### Removed
 
@@ -20,11 +20,11 @@ Sprint 52 Day 2 — Gate 2 unblocking + Gate 5.8 reproducibility:
 
 ### Fixed
 
-- **D-007: eslint-plugin-edge `prepublishOnly` chain failure resolved.** Added local `tools/eslint-plugin-bonklm-edge/vitest.config.ts` (11 lines) mirroring the 20 connector packages' convention. Without it, `vitest` walked up to the workspace-root config whose include patterns (`packages/**/*.test.ts`, `tools/**/*.test.ts`) resolved relative to the plugin CWD found zero files and exited 1. Verified: `npm test` from plugin dir now passes 32/32 tests across 3 test files; `pnpm publish -r --dry-run` from repo root now iterates the full workspace (53 publishables clean, was 2 before fix). Architect advisory at `team/qa/1.0.0/evidence/gate-2/ST-02-001/D-007-ADVISORY.md`.
+- **eslint-plugin-edge `prepublishOnly` chain failure resolved.** Added local `tools/eslint-plugin-bonklm-edge/vitest.config.ts` mirroring the connector-package convention so tests resolve from the plugin directory instead of inheriting the workspace-root include patterns. Contributor tooling now runs its local test suite and dry-run publish path from a fresh checkout.
 
 ### Security
 
-- **Gate 5.8 — Tarball reproducibility verified at v1.0.0-rc.4.** Two consecutive `npm pack` passes against HEAD `1b04eb7` produced byte-identical SHA-256 hashes across all 54 tarballs (52 publishable + 2 private — openclaw + wizard). Zero non-reproducible packages. Closes ST-02-009 / ST-05-008 Gate 5.8 PASS criterion 1. Evidence: `team/qa/1.0.0/evidence/gate-5/ST-05-008/reproducibility.json`.
+- **Tarball reproducibility verified at v1.0.0-rc.4.** Two consecutive `npm pack` passes produced byte-identical SHA-256 hashes across the release-surface tarballs. Reproducibility evidence is retained privately under the project QA policy.
 
 (Sprint 51 Day 1 closure landed in 1.0.0-rc.4 below.)
 
@@ -45,11 +45,11 @@ Day 1 (BR-QAF v1.0 release-QA cycle):
 
 Test baseline:
 - Entry rc.3 baseline (HEAD 83bf7ac): 5014 / 5030 pass, 16 pending, 0 fail
-- rc.4 baseline (this RC): captured at team/qa/1.0.0/evidence/baseline/test-rc4-baseline.json
+- rc.4 baseline (this RC): captured in private release evidence
 
 ### Added
 
-- Per-package README finalized for 11 connectors (cloudflare-agents, hono, voltops-otel, letta, zep, voltagent, elysia, mem0, memory-utils, nextjs, web-middleware-utils). All `[needs-info:` draft markers resolved with authoritative source-derived answers or explicit v1.0.x backlog deferrals (CHM:cloudflare validateUserInput export, hono validatedStream helper, zep thread.* tenant-derived ID enforcement).
+- Per-package README finalized for 11 connectors (cloudflare-agents, hono, voltops-otel, letta, zep, voltagent, elysia, mem0, memory-utils, nextjs, web-middleware-utils). All draft information markers resolved with authoritative source-derived answers or explicit v1.0.x backlog deferrals (CHM:cloudflare validateUserInput export, hono validatedStream helper, zep thread.* tenant-derived ID enforcement).
 - **`bonklm doctor` command** (Sprint 50 — closes architect M-2 from
   Sprint 41). Diagnoses the local contributor environment with a
   pre-commit hook check verifying the simple-git-hooks postinstall
@@ -99,7 +99,7 @@ Test baseline:
 
 ### Removed
 
-- `openclaw-adapter` dropped from v1.0.0 publish set (per D-9; original deprecated removal date 2026-07-01 retained). Marked `"private": true` in `packages/openclaw-adapter/package.json`; `pnpm publish -r --dry-run` no longer lists `@blackunicorn/bonklm-openclaw`. `docs/openclaw-integration.md` deprecation banner retained for rc.x consumers. `docs/user/package-matrix.md` + `docs/user/public-api-surface.md` updated in-place to mark as REMOVED v1.0.0 (content preserved per CLAUDE.md). Migrate to native framework middleware (Express, Fastify, NestJS, Hono, Elysia, Next.js).
+- `openclaw-adapter` dropped from the v1.0.0 publish set; original deprecated removal date 2026-07-01 retained. Marked `"private": true` in `packages/openclaw-adapter/package.json`; `pnpm publish -r --dry-run` no longer lists `@blackunicorn/bonklm-openclaw`. `docs/openclaw-integration.md` deprecation banner retained for rc.x consumers. `docs/user/package-matrix.md` + `docs/user/public-api-surface.md` updated in-place to mark as REMOVED v1.0.0. Migrate to native framework middleware (Express, Fastify, NestJS, Hono, Elysia, Next.js).
 
 ### Security
 
@@ -112,14 +112,14 @@ Test baseline:
 - **hashContent HMAC key + threat model documented** Function clarified as deterministic audit-trail fingerprint, NOT a security MAC; hardcoded key is intentional (length-extension attack prevention); correct MAC pattern named for users who need authenticity. `@internal` marker added.
 - **validateCode regex extended from 5 to 16+ banned primitives** Added: EventSource, Worker, setTimeout/setInterval/setImmediate/clearTimeout/clearInterval/clearImmediate, queueMicrotask, eval, Function constructor (call + new forms). 13 blocked-payload tests + 1 safe-baseline.
 - **TelemetryService no longer mutates caller-supplied event timestamps** CLAUDE.md immutability rule compliance. Shallow-clone via spread `{...event, timestamp: event.timestamp ?? Date.now() }`. 4 regression tests covering explicit `undefined` + omitted + pre-supplied + auto-generated paths.
-- **secret-scan baseline established.** workspace + history scanned (scan results tracked internally per project security policy) and git history (details tracked internally per project security policy). `ripsecrets` unavailable in tooling (install pending — recommended addition to `framework/TOOLS.md`). Scaffolded reusable `team/qa/scripts/tarball-secret-scan.sh` for Sprint 52+ tarball-time integration with structured JSON output + `--help` + cleanup trap. `team/qa/1.0.0/evidence/gate-5/policy.md` documents invariant + escalation path. Tarball-time invariant remains gated to Gate 9 (Sprint 54). Defense-in-depth: root `.gitignore` reinforced with `demo/**/.env*` patterns.
-- **secret/pii/guards-secret: ReDoS spot-check completed (D-005 final layer-1 sweep). All 81 regexes across guards/secret.ts (38), guards/pii/patterns.ts (43), and guards/pii/validators.ts (0 variable-length) classified LINEAR; 9 DiD regression tests added across 3 test files. No fix required. Closes ReDoS sweep program for v1.0.0 validator/guard surface.**
+- **secret-scan baseline established.** Workspace and history scan evidence is tracked internally per project security policy. Tarball-time scanning remains planned for the release gate. Defense-in-depth: root `.gitignore` reinforced with `demo/**/.env*` patterns.
+- **secret/PII guard ReDoS spot-check completed.** Existing patterns were reviewed and defense-in-depth regression coverage was added for the v1.0.0 validator/guard surface.
 
-- **jailbreak.ts: ReDoS sister-site sweep completed (D-004). All 54 regexes across jailbreak-patterns.ts, jailbreak.ts, and jailbreak-heuristic.ts classified LINEAR; 15 defense-in-depth regression tests added to jailbreak.test.ts to lock CI classification. No fix required.**
+- **Jailbreak validator ReDoS spot-check completed.** Existing patterns were reviewed and defense-in-depth regression coverage was added.
 
 - **PromptInjectionValidator: regex DoS guard added with 100ms input-bound regression test. CWE-1333 mitigation.** The `detectHtmlCommentInjection()` function used `/<!--([\s\S]*?)-->/g` which exhibited O(n^2) quadratic backtracking on inputs of repeated unclosed `<!--` tokens. Measured: 10 KB → 9 ms, 100 KB → 866 ms (pre-fix). Replaced with an `indexOf`-based linear scanner: 100 KB → 0.4 ms post-fix (2000x improvement). Four regression tests added to `prompt-injection.test.ts` under describe `'ReDoS guard'`. All 13 other regexes in the file confirmed LINEAR via stress probe. The existing `MAX_INPUT_LENGTH = 100_000` pre-check in `analyze()` is preserved as a defence-in-depth ceiling.
 - **PromptInjectionValidator: time-budget guard added to `detectMultiLayerEncoding` + `detectBase64Payloads` scan loops** Layered defence in addition to the earlier HTML-comment-injection fix. `REGEX_SCAN_BUDGET_MS = 500` sampled every `BUDGET_CHECK_INTERVAL = 256` match iterations (bitwise-AND modulo, zero overhead on normal inputs); scan loops break early returning partial results if the wall-clock budget is exceeded. Bounds future exposure if V8 de-optimises the existing patterns or if a new encoding pattern with worse backtracking is added. 13 regression tests in `prompt-injection-dos.test.ts` covering 10K/50K/100K near-base64, near-hex, many-chunks, plus 4 functional-preservation tests. Wall-clock measured: 1-8ms on 100K-char hostile inputs vs 500ms budget. No public-API change.
-- **`secret.ts`: Anthropic API key pattern length boundary tests added** Pattern `/sk-ant-api03-[A-Za-z0-9\-_]{93}/g` was already correct; the coverage gap was that only the 93-char match case was asserted. Added 4 boundary tests: 92-char (no match), 93-char (exactly one match — distinct from existing), 94-char (still exactly one match — proves pattern is anchored to exactly 93), and invalid-char-mid-key (e.g. `!` at position 50 of a 93-char key → no match — proves character class is restrictive).
+- **`secret.ts`: Anthropic API key boundary tests added.** Coverage now asserts the provider-specific key length boundary and allowed-character class without changing public API behavior.
 - **`bonklm doctor`: validate `cwd` argument is an existing directory; throw clear error otherwise** Public CLI function `runDoctor(cwd: string = process.cwd())` previously accepted any string; non-existent paths or file-not-dir inputs silently produced misleading reports. Now short-circuits with a `cwd_invalid` `DoctorCheckResult` at `status: 'fail'` when `statSync(cwd)` fails or `isDirectory()` returns false. 4 new tests cover both invalid scenarios.
 - **`bonklm doctor`: added `checkEnvFile` + `checkPnpmAudit` checks** Diagnostic surface grew from a single check (`checkPreCommitHook`) to three. `checkEnvFile(cwd)` looks for `.env` or `.env.example` and routes pass / warn. `checkPnpmAudit(cwd, _spawnFn?)` runs `pnpm audit --prod --audit-level=high --json` (30s timeout, fail-safe to `warn` if pnpm not on PATH); injectable `_spawnFn` parameter for tests (ESM module sealing prevents `vi.spyOn` on `node:child_process`). 9 new tests covering happy + failure + error + bad-JSON + missing-pnpm paths.
 - **`bonklm doctor --json`: documented + enforced sanitization contract** Extracted `renderJson(report)` with a 13-line JSDoc block documenting the contract: strings are sanitized via `sanitizeLogString` (no ANSI escapes, no raw newlines that could break parsers, no embedded control chars). 2 round-trip tests assert `JSON.parse(renderJson(report))` succeeds on fixtures containing newlines + ANSI escapes (`\x1b[31mRED\x1b[0m`).
@@ -127,7 +127,7 @@ Test baseline:
 ### Added
 
 - **`bonklm doctor` rate-limiter advisory check** New `checkRateLimiterAdvisory(cwd)` check inspects the consumer's `package.json` and emits a `warn` when any BonkLM framework connector (`@blackunicorn/bonklm-{express,fastify,hono,elysia,nestjs,nextjs}`) is installed without a known upstream rate-limiter dependency. Recognised limiter packages: `express-rate-limit`, `@fastify/rate-limit`, `hono-rate-limiter`, `elysia-rate-limit`, `@nestjs/throttler`, `@upstash/ratelimit`, `rate-limiter-flexible`. Consumers explicitly acknowledge the policy via `package.json` field `{ "bonklm": { "rateLimit": "documented" | "external" | "in-process" } }`. WARN-only by design (never blocks dev installs). 11 new tests covering all 8 status branches plus sanitization. Architect-recommended approach — alternative "wire by default" rejected because the bundled `RateLimiter` is in-memory Map and would give a fictional per-pod limit in realistic v1.0 production shapes (multi-pod Node behind LB, Cloudflare Workers, Vercel Edge).
-- **`RateLimiter` / `createRateLimiter` / `CommonRateLimiters` / `DEFAULT_RATE_LIMIT` re-exported from `@blackunicorn/bonklm` root barrel** Previously reachable only via the `@blackunicorn/bonklm/security` subpath. Now reachable as `import { createRateLimiter } from '@blackunicorn/bonklm'` for consumers who want a per-instance safety belt on top of their distributed limiter. DX-only change — no semantic shift.
+- **`RateLimiter` / `createRateLimiter` / `CommonRateLimiters` / `DEFAULT_RATE_LIMIT` re-exported from `@blackunicorn/bonklm` root barrel** Previously reachable only from internal security module paths. Now reachable as `import { createRateLimiter } from '@blackunicorn/bonklm'` for consumers who want a per-instance safety belt on top of their distributed limiter. DX-only change — no semantic shift.
 
 ### Documentation
 
@@ -136,8 +136,8 @@ Test baseline:
 
 ### Changed
 
-- **`files` whitelist standardized to `["dist","README.md","LICENSE"]` across 9 publishable packages (ST-01-011)** Packages: anthropic-connector, copilotkit-connector, genkit-connector, google-genai-connector, langchain-connector, mastra-connector, mcp-connector, ollama-connector, openai-connector. Adds LICENSE to the npm tarball (was previously omitted despite LICENSE file present in source). 34 packages were already compliant; 8 packages with intentional deviations preserved with documented rationale (`bonklm-server` ships `Dockerfile`; `cloudflare-agents-connector` + `document-ingest` + `elysia-plugin` + `nextjs-helpers` + `voltagent-connector` + `voltops-otel-adapter` + `web-middleware-utils` ship `src/` for Deno/Bun edge consumers per D-6).
-- **Pre-commit hook extended to run `check-version-pin.sh` (ST-01-009)** `simple-git-hooks.pre-commit` was `pnpm typecheck`; now `pnpm typecheck && bash team/qa/scripts/check-version-pin.sh`. Pre-commit will now reject any commit that drifts package versions away from the canonical pin (currently `1.0.0-rc.3`; will become `1.0.0-rc.4` after the Sprint 51 cut).
+- **`files` whitelist standardized to `["dist","README.md","LICENSE"]` across 9 publishable packages.** Packages: anthropic-connector, copilotkit-connector, genkit-connector, google-genai-connector, langchain-connector, mastra-connector, mcp-connector, ollama-connector, openai-connector. Adds LICENSE to the npm tarball where it was previously omitted despite the source LICENSE being present. Packages with intentional deviations preserve their documented runtime rationale.
+- **Pre-commit hook extended to run `check-version-pin.sh`.** `simple-git-hooks.pre-commit` now runs `pnpm typecheck && bash scripts/check-version-pin.sh`, rejecting package-version drift from the canonical release pin.
 
 ## [1.0.0-rc.3] — 2026-05-24 (Sprints 29 + 30 + 31 + cumulative audit closure)
 
@@ -685,8 +685,7 @@ Pass 2 formally retired.
   (Story 4.5) — AAD-E evidence trail. 5 of 10 hand-curated patterns
   cross-referenced to public CVE / OWASP-LLM-Top-10 identifiers
   (OWASP-LLM-2025-02, 05, 06; CVE-2025-44890; CVE-2026-12001).
-- **`team/audit-baselines/sandbox-graduation-checklist.md`** —
-  AAD-E single-maintainer fallback protocol.
+- AAD-E single-maintainer fallback protocol documented internally.
 
 ### Changed
 
@@ -706,7 +705,7 @@ Reviewer: single-maintainer (AAD-E fallback)
 Corpus-hash-pin commit: 4f8ea3f (Sprint 16 Story 3.2)
 Corpus hash (sha256):   db9c1986a01ae0d4f5281c74a038b0392415132d21e38aac80b6aacea778fff4
 24h cooldown: OBSERVED (9-sprint development gap between pin + review)
-Self-review checklist: COMPLETE (team/audit-baselines/sandbox-graduation-checklist.md)
+Self-review checklist: COMPLETE (see internal review record)
 
 Public identifiers (5 of 10 hand-curated):
 1. OWASP-LLM-2025-05 → pi-010 (editable git+URL install drift)
@@ -814,7 +813,7 @@ v0.7-graduation-gate sandbox-attack-corpus.
 - Story 3.12 Pass 2 (id / tr / fa / vi / th / pl / nl) RETIRED to
   v0.7+ backlog under Story 4.2 (CONDITIONAL: native-speaker
   reviewer pipeline). See
-  `team/plans/2026-05-23-story-3.12-finish-retirement.md`.
+  internal planning record.
 
 ### Changed
 
@@ -978,8 +977,7 @@ green across the entire Sprint 13–15 surface.
   identified.** `compatibility_date` pin remains at `2024-09-23`.
   Consumers do NOT need to bump `wrangler.toml`
   `compatibility_date` when upgrading from 0.4.x to 0.5.0.
-  Audit baseline filed at
-  `team/audit-baselines/workerd-compat-audit-2026-05-23.md`.
+  Audit baseline filed internally.
 
 ### Tests
 
@@ -1238,7 +1236,7 @@ passing tests** (2898 → 3283). Zero new test failures introduced.
 
 ### Security
 
-**12 BLOCK + 13 HIGH security findings** caught by the audit-loop methodology (architect + code-reviewer + adversarial lanes in parallel) and patched before merge. Highlights:
+Audit-loop security hardening from architect, code-reviewer, and adversarial lanes was patched before merge. Highlights:
 
 - `__depth_capped__` sentinel collision in `createToolCallArgsValidator`.
 - Dot/Unicode-separator humanizer hole (`disable.safety.filter`).

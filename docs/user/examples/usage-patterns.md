@@ -1,6 +1,6 @@
 # Usage Patterns
 
-> **Last updated:** 2026-05-25 · **Package version:** `1.0.0-rc.3`
+> **Last updated:** 2026-06-08 · **Package version:** `1.0.0-rc.4`
 
 Practical examples for the most common BonkLM patterns. Every snippet
 is verified against current source — if you find one that no longer
@@ -155,10 +155,9 @@ for await (const chunk of stream as AsyncIterable<{
 ```
 
 > Streaming mode is `'incremental'` by default — every chunk is fed
-> through the validator chain. Switch to `'buffered'`
-> [needs-info: confirm the canonical mode names in
-> `packages/openai-connector/src/types.ts`] when partial outputs are
-> acceptable but you want to validate at the end.
+> through the validator chain. The OpenAI option type also accepts
+> `'buffer'`, but the current OpenAI connector warns and falls back to
+> pass-through for that mode; use `'incremental'` for stream validation.
 
 ### Lower-level streaming primitive
 
@@ -191,9 +190,8 @@ for await (const chunk of stream) {
 }
 ```
 
-> The old `import { StreamingValidator } from '@blackunicorn/bonklm/examples/streaming'`
-> path no longer exists — the canonical primitive is `StreamValidator`
-> in `connector-utils`, re-exported from the root barrel.
+> The old examples/streaming package subpath no longer exists — the canonical primitive is
+> `StreamValidator` in `connector-utils`, re-exported from the root barrel.
 
 ---
 
@@ -268,9 +266,10 @@ const guardedEngine = createGuardedQueryEngine(queryEngine, {
 const response = await guardedEngine.query({ query: question });
 ```
 
-[needs-info: confirm `createGuardedRetriever` option shape in
-`packages/llamaindex-connector/src/guarded-engine.ts` — exposing it
-here without verifying its signature could mislead callers.]
+`createGuardedRetriever(retriever, options?)` accepts the same
+`GuardedLlamaIndexOptions` bag except `onResponseBlocked`; use
+`onBlockedDocument`, `onQueryBlocked`, and `onDocumentBlocked` for
+retriever flows.
 
 ### Pinecone vector store
 
@@ -352,10 +351,9 @@ const response = await guardedOpenAI.chat.completions.create({
 });
 ```
 
-[needs-info: confirm `allowedTools` / `maxToolArgumentSize` are still
-options on `createGuardedOpenAI` in 1.0.0-rc.3 — the previous docs
-listed them but I did not verify the current signature against
-`packages/openai-connector/src/types.ts`.]
+The OpenAI connector validates tool-call content through the standard
+OpenAI request/response path. Tool allowlists are currently exposed by
+the MCP connector (`allowedTools`), not by `createGuardedOpenAI`.
 
 ---
 

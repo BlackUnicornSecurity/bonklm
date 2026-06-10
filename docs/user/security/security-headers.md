@@ -1,6 +1,6 @@
 # Security Headers
 
-> **Last updated:** 2026-05-25 · **Package version:** `1.0.0-rc.3`
+> **Last updated:** 2026-06-08 · **Package version:** `1.0.0-rc.4`
 
 BonkLM does not set HTTP response headers — header policy belongs to your web framework. This guide
 shows the recommended `helmet` configuration for Express / Fastify in front of the guardrails

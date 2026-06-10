@@ -74,8 +74,8 @@ try {
 ## Fail-CLOSED default
 
 If the validator throws or times out, the wrapper defaults to BLOCK. Opt-out via
-`onSandboxError: 'allow'`. AAD-4 WARN suppression is per-wrapped-workspace (each `wrapWorkspace`
-call gets its own suppression group).
+`onSandboxError: 'allow'`. Production WARN suppression is per-wrapped-workspace (each
+`wrapWorkspace` call gets its own suppression group).
 
 ## License
 

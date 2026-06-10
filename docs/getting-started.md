@@ -1,6 +1,6 @@
 # Getting Started with BonkLM
 
-> **Last updated:** 2026-05-25 · **Package version:** `1.0.0-rc.3`
+> **Last updated:** 2026-06-08 · **Package version:** `1.0.0-rc.4`
 
 BonkLM is a framework-agnostic, provider-agnostic LLM security guardrails library for Node.js. This
 guide walks you from install to a working multi-validator setup.
@@ -285,9 +285,8 @@ await fastify.listen({ port: 3000 });
 ```
 
 The Fastify plugin auto-extracts content from `message`, `prompt`, `content`, `text`, `input`, and
-`query` body fields. Override via `responseExtractor`. [needs-info: confirm Fastify plugin still
-exposes `onError` / `responseExtractor` options in `1.0.0-rc.3` — verify against
-`packages/fastify-plugin/src/index.ts`.]
+`query` body fields. Override response extraction with `responseExtractor`; custom block handling is
+available through `onError`.
 
 ---
 

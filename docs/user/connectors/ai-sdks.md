@@ -27,8 +27,8 @@ see [Emerging Framework Connectors](./emerging-frameworks.md).
 | Mem0 memory-client                               | `@blackunicorn/bonklm-mem0`                | `mem0ai ^3.0.0`                                                     | STABLE |
 | Zep memory-client                                | `@blackunicorn/bonklm-zep`                 | `@getzep/zep-cloud ^3.0.0`                                          | STABLE |
 
-All packages are published at `1.0.0-rc.3` against project version `0.5.0`. Packages are pinned
-together via Changesets `linked` config.
+The package manifests in this guide are pinned at `1.0.0-rc.4`. See
+[Package Compatibility Matrix](../package-matrix.md) for the complete release surface.
 
 ---
 
@@ -220,7 +220,7 @@ const model = wrapLanguageModel({
 });
 ```
 
-For v6 upgrade notes see [vercel-v6-migration.md](../vercel-v6-migration.md).
+For v6 upgrade notes see [vercel-v6-migration.md](./vercel-v6-migration.md).
 
 ### Configuration Options (createGuardedAI)
 

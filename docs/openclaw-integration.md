@@ -1,9 +1,8 @@
 # OpenClaw Integration Guide
 
-> **DEPRECATED — removal gated for 2026-07-01.** The `@blackunicorn/bonklm-openclaw` package is
-> deprecated in v0.3.0 and scheduled for removal in a future release. See
-> [RELEASE-NOTES.md](../RELEASE-NOTES.md) for the deprecation rationale. Existing integrations
-> continue to work until the date gate; new projects should use the framework-native middleware
+> **LEGACY / PRIVATE IN v1.0.0-rc.4.** The `@blackunicorn/bonklm-openclaw` package is preserved in
+> this repository for migration reference, but it is marked `private:true` and is not part of the
+> v1.0 publish set. Existing pre-v1 integrations should migrate to framework-native middleware
 > (Express, Fastify, NestJS, Hono, Elysia, Next.js) instead.
 
 This guide shows how to integrate `@blackunicorn/bonklm` with OpenClaw for comprehensive LLM
@@ -11,17 +10,15 @@ security.
 
 ## Overview
 
-OpenClaw is a production-grade AI assistant framework with built-in hook support. The
-`@blackunicorn/bonklm-openclaw` package provides a pre-built middleware that integrates seamlessly
-with OpenClaw's hook system.
+OpenClaw is an AI assistant framework with built-in hook support. This legacy guide documents the
+private adapter shape retained for migration reference.
 
 ## Installation
 
 ```bash
-# Install the adapter
-npm install @blackunicorn/bonklm-openclaw
-
-# The adapter will automatically install the core package as a dependency
+# Current v1.0 releases do not publish the OpenClaw adapter.
+# Install the core package and migrate to framework-native middleware instead:
+npm install @blackunicorn/bonklm
 ```
 
 ## Quick Setup
@@ -632,7 +629,7 @@ const guardrails = createOpenClawGuardrails(
 You can extend the guardrails with custom validation logic:
 
 ```typescript
-import { HookManager, HookPhase } from '@blackunicorn/bonklm/core';
+import { HookManager, HookPhase } from '@blackunicorn/bonklm';
 
 const customHooks = new HookManager();
 

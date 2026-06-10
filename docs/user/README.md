@@ -205,7 +205,7 @@ See the [Security Guide](./guides/security-guide.md) for complete best practices
 
 - **Issues**: Report bugs on [GitHub](https://github.com/blackunicorn/bonklm/issues)
 - **Documentation**: [https://docs.bonklm.dev](https://docs.bonklm.dev)
-- **Examples**: [examples/](../examples/) directory
+- **Examples**: [examples/](./examples/) directory
 
 ---
 

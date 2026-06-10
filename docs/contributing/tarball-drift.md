@@ -6,8 +6,8 @@ test fails if a file is added to or removed from the shipped tarball — catchin
 drift (a stray build artifact, a dropped declaration file, an edited `files` whitelist) before it
 reaches npm.
 
-The rollout is staged across batches under the story allocation block ST-04-300 … ST-04-351 (one
-story per publishable package) and is now complete — every package in that block ships a drift test.
+The rollout was staged across release-surface package batches and is now complete — every package in
+the batch ships a drift test.
 
 ## How it runs
 

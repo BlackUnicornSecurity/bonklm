@@ -29,9 +29,9 @@ For LLM provider connectors that may sit downstream of the retriever see
 | LanceDB     | `@blackunicorn/bonklm-lance`       | `@lancedb/lancedb ^0.29.0`           | Node   | STABLE |
 | Turbopuffer | `@blackunicorn/bonklm-turbopuffer` | `@turbopuffer/turbopuffer ^2.1.0`    | Edge   | STABLE |
 
-All packages are published at `1.0.0-rc.3` against project version `0.5.0`. The LanceDB connector is
-Node-only (native bindings); the Turbopuffer connector is the edge-compatible alternative (Workerd /
-Deno / Bun / Vercel Edge).
+The package manifests in this guide are pinned at `1.0.0-rc.4`. The LanceDB connector is Node-only
+(native bindings); the Turbopuffer connector is the edge-compatible alternative (Workerd / Deno /
+Bun / Vercel Edge).
 
 ---
 
@@ -189,7 +189,7 @@ try {
 `ConnectorValidationError`, `ConnectorConfigurationError`, and `ConnectorTimeoutError` are also
 re-exported for consistency with the other BonkLM connectors.
 
-For LangChain v1 migration notes see [langchain-v1-migration.md](../langchain-v1-migration.md).
+For LangChain v1 migration notes see [langchain-v1-migration.md](./langchain-v1-migration.md).
 
 ---
 
@@ -610,6 +610,6 @@ primitives as the memory-client connectors (Letta, Mem0, Zep — see
   providers.
 - [Emerging Framework Connectors](./emerging-frameworks.md) — Mastra, Genkit, CopilotKit, ElizaOS,
   Stagehand, Eko, VoltAgent, Cloudflare Agents, browser-agents-core.
-- [LangChain v1 migration](../langchain-v1-migration.md) — middleware pattern upgrade notes.
-- [Vercel AI SDK v6 migration](../vercel-v6-migration.md) — applies to vector-store consumers using
+- [LangChain v1 migration](./langchain-v1-migration.md) — middleware pattern upgrade notes.
+- [Vercel AI SDK v6 migration](./vercel-v6-migration.md) — applies to vector-store consumers using
   Vercel AI SDK for embeddings.

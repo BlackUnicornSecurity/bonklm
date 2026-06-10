@@ -2,7 +2,7 @@
 
 BonkLM models LLM-application security as a set of **named surfaces** where attacker-influenced
 content can enter or leave the model (7-surface taxonomy introduced in v0.4.0, locked at v1.0-RC1,
-current release v1.0.0-rc.3). The 7-string `HookSurface` vocabulary is locked at
+current release v1.0.0-rc.4). The 7-string `HookSurface` vocabulary is locked at
 `packages/core/src/engine/GuardrailEngine.types.ts` and is the canonical taxonomy used by every
 connector, hook, and OTel telemetry attribute (`bonklm.surface`).
 

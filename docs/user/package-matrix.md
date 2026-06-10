@@ -1,7 +1,8 @@
 # BonkLM Package Compatibility Matrix
 
-v1.0.0-rc.4 release surface. 31 publishable workspace packages + 19 internal/infrastructure packages
-= 54 total.
+v1.0.0-rc.4 release surface. 52 publishable workspace packages + 2 private tooling/legacy packages =
+54 release-surface package manifests. The repository also contains 8 private example manifests
+outside this matrix.
 
 ## Bundle target legend
 
@@ -65,6 +66,7 @@ R2-13 hash-pinned 50-pattern corpus + 50-pattern benign corpus. Full attestation
 | `@blackunicorn/bonklm-elizaos`       | 🟢 NODE | `@elizaos/core >=1.7.0 <3.0.0`             | STABLE |
 | `@blackunicorn/bonklm-letta`         | 🟢 NODE | `@letta-ai/letta-client ^1.11.0`           | STABLE |
 | `@blackunicorn/bonklm-mem0`          | 🟢 NODE | `mem0ai ^3.0.0`                            | STABLE |
+| `@blackunicorn/bonklm-zep`           | 🟢 NODE | `@getzep/zep-cloud ^3.0.0`                 | STABLE |
 | `@blackunicorn/bonklm-mcp`           | 🟢 NODE | `@modelcontextprotocol/sdk ^1.0.0`         | STABLE |
 | `@blackunicorn/bonklm-copilotkit`    | 🟢 NODE | `@copilotkit/react-core ^1.0.0`            | STABLE |
 | `@blackunicorn/bonklm-stagehand`     | 🟢 NODE | `@browserbasehq/stagehand ^3.4.0`          | STABLE |
@@ -93,6 +95,7 @@ R2-13 hash-pinned 50-pattern corpus + 50-pattern benign corpus. Full attestation
 | `@blackunicorn/bonklm-pinecone`    | 🟢 NODE | `@pinecone-database/pinecone ^2.0.0` | STABLE |
 | `@blackunicorn/bonklm-qdrant`      | 🟢 NODE | `@qdrant/js-client-rest ^1.0.0`      | STABLE |
 | `@blackunicorn/bonklm-turbopuffer` | 🟡 EDGE | `@turbopuffer/turbopuffer ^2.1.0`    | STABLE |
+| `@blackunicorn/bonklm-weaviate`    | 🟢 NODE | `weaviate-client ^3.0.0`             | STABLE |
 
 ## Workflow + durable execution
 
@@ -117,9 +120,10 @@ R2-13 hash-pinned 50-pattern corpus + 50-pattern benign corpus. Full attestation
 
 ## Deprecated / legacy
 
-| Package                         | Status                                                                                                                                                                                                         | Migration                                                                                                                                                |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@blackunicorn/bonklm-openclaw` | **REMOVED FROM PUBLISH SET v1.0.0** (per D-9, 2026-05-26; marked `private:true`). Original deprecation date gate 2026-07-01 retained for rc.x consumers via `docs/openclaw-integration.md` deprecation banner. | Migrate to native framework middleware (Express, Fastify, NestJS, Hono, Elysia, Next.js) — see [Connectors index](./connectors/framework-middleware.md). |
+| Package                         | Status                                                                                                                                                                                       | Migration                                                                                                                                                |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@blackunicorn/bonklm-openclaw` | **PRIVATE / REMOVED FROM PUBLISH SET v1.0.0** (`private:true`). Original deprecation date gate 2026-07-01 retained for rc.x consumers via `docs/openclaw-integration.md` deprecation banner. | Migrate to native framework middleware (Express, Fastify, NestJS, Hono, Elysia, Next.js) — see [Connectors index](./connectors/framework-middleware.md). |
+| `@blackunicorn/bonklm-wizard`   | **PRIVATE / DEPRECATED** (`private:true`). The CLI ships from `@blackunicorn/bonklm` via the `bonklm` bin.                                                                                   | Install `@blackunicorn/bonklm` and run `bonklm wizard` or `npx @blackunicorn/bonklm`.                                                                    |
 
 ## Cross-package patterns
 
@@ -170,8 +174,8 @@ connectors.
 
 - Public API surface audit — mark internal vs public exports.
 - Deprecated paths removed: `messagesToTextLegacy`, `GuardrailsCallbackHandler`, sync
-  `validateToken`, openclaw-adapter (REMOVED from v1.0.0 publish set per D-9 2026-05-26 — see
-  Deprecated/legacy table above for migration path).
+  `validateToken`, openclaw-adapter (REMOVED from v1.0.0 publish set — see Deprecated/legacy table
+  above for migration path).
 - API freeze — no removal until v2.0.
 - v1.0-RC tag cut.
 

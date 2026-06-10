@@ -1,6 +1,10 @@
 # BonkLM v0.x → v1.0 Migration Guide
 
-Last updated: 2026-05-24 (Sprint 28, v1.0.0-rc.2)
+Last updated: 2026-06-10 (v1.0.0-rc.4)
+
+> **rc.3 and rc.4 introduced no additional breaking changes.** All migration steps below apply to
+> the full v1.0 line. v0.7 consumers upgrading directly to v1.0.0-rc.4 need to address only the
+> sections marked as applicable to their current version.
 
 This guide walks you through the breaking changes between BonkLM 0.x (0.4 → 0.7) and the v1.0
 release line. **Most v0.7 consumers will need ZERO code changes.** The cumulative breaking surface
@@ -223,24 +227,23 @@ through 0.5.
 15 new connector packages shipped across Sprints 16-23 (v0.5.0 → v0.6.0). These are additive —
 existing consumers see no change. New packages:
 
-- `@blackunicorn/bonklm-livekit-connector` — LiveKit Agents
+- `@blackunicorn/bonklm-livekit` — LiveKit Agents
 - `@blackunicorn/bonklm-voice-webhooks` — Vapi + Retell HMAC webhooks
 - `@blackunicorn/bonklm-sandbox-utils` — E2B + Daytona shared primitives
-- `@blackunicorn/bonklm-e2b-adapter` — E2B `wrapSandbox`
-- `@blackunicorn/bonklm-daytona-adapter` — Daytona `wrapSandbox`
+- `@blackunicorn/bonklm-e2b` — E2B `wrapSandbox`
+- `@blackunicorn/bonklm-daytona` — Daytona `wrapSandbox`
 - `@blackunicorn/bonklm-inference-providers` — Groq + Cerebras + Together
-- `@blackunicorn/bonklm-restate-middleware` — Restate ObjectContext
+- `@blackunicorn/bonklm-restate` — Restate ObjectContext
 - `@blackunicorn/bonklm-temporal` — Temporal activity middleware
 - `@blackunicorn/bonklm-document-ingest` — LlamaParse + Unstructured + Reducto
-- `@blackunicorn/bonklm-cloudflare-agents-connector` — CF Agents (DO-backed)
+- `@blackunicorn/bonklm-cloudflare-agents` — CF Agents (DO-backed)
 - `@blackunicorn/bonklm-web-middleware-utils` — Elysia + Next.js shared
-- `@blackunicorn/bonklm-elysia-plugin` — Elysia plugin
-- `@blackunicorn/bonklm-nextjs-helpers` — Next.js App Router edge middleware
-- `@blackunicorn/bonklm-voltagent-connector` — VoltAgent agents
-- `@blackunicorn/bonklm-voltops-otel-adapter` — VoltOps OTLP
+- `@blackunicorn/bonklm-elysia` — Elysia plugin
+- `@blackunicorn/bonklm-nextjs` — Next.js App Router edge middleware
+- `@blackunicorn/bonklm-voltagent` — VoltAgent agents
+- `@blackunicorn/bonklm-voltops-otel` — VoltOps OTLP
 
-See `docs/user/package-matrix.md` for the full 31-package catalog with NODE / EDGE / ISO bundle
-tags.
+See `docs/user/package-matrix.md` for the full package catalog with NODE / EDGE / ISO bundle tags.
 
 ---
 
@@ -405,7 +408,7 @@ freeze. Don't roll your own symbol marker — use these helpers.
 ## Reading list
 
 - `docs/user/public-api-surface.md` — full PUBLIC vs INTERNAL catalog
-- `docs/user/package-matrix.md` — 31-package matrix with bundle tags
+- `docs/user/package-matrix.md` — package matrix with bundle tags
 - `docs/user/known-limitations.md` — accepted limitations
 - `docs/user/otel-vendor-recipes.md` — telemetry wiring
 - `docs/user/connector-style-guide.md` — for connector authors

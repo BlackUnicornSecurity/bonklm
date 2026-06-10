@@ -469,8 +469,7 @@ Story 2.1b-connector-style-ADR establishes this guide as authoritative. From v0.
 - `docs/user/connectors/` — per-connector READMEs and migration guides.
 - `docs/user/error-codes.md` (ships Story 3.13) — `ConnectorValidationError` codes.
 - `tools/WORKSPACE-POLICY.md` — Tier A internal vs Tier B publishable workspace tooling.
-- `team/plans/2026-05-21-v0.4-v0.7-roadmap-FINAL.md` — full v0.4 → v1.0 roadmap with per-story ACs
-  that reference this guide.
+- Internal roadmap — full v0.4 → v1.0 roadmap with per-story ACs that reference this guide.
 
 ---
 
