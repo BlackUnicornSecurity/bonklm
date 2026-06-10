@@ -86,6 +86,10 @@ AGENTS.md
 .claude/dashboard.html
 .claude/github-star-reminder.txt
 .claude/llm-provider.txt
+# Local-harness validator runtime state, incl. the kill-switch sentinel
+# (also covered by .claude/.gitignore; duplicated here so ship-safety does not
+# depend on the nested ignore file alone).
+.claude/validators-node/state/
 
 # ===================
 # Editor / IDE
