@@ -23,6 +23,7 @@ import { EnvManager } from '../config/env.js';
 import { AuditLogger } from '../utils/audit.js';
 import { ExitCode, WizardError } from '../utils/error.js';
 import { maskKey } from '../utils/mask.js';
+import { sanitizeMeta } from '../../connector-utils/logger.js';
 import { formatAvailableConnectors, getAvailableConnectorIds, isValidConnectorIdFormat } from './connector-id.js';
 
 /**
@@ -184,7 +185,10 @@ export const connectorAddCommand = new Command('add')
         const result = await testConnectorWithTimeout(connector, config, ADD_TEST_TIMEOUT);
 
         if (!result.connection || !result.validation) {
-          p.cancel(`Connector test failed: ${result.error || 'Unknown error'}`);
+          // Human-path sanitizeMeta convention (parity with wizard.ts): hex-escape
+          // control / bidi / line-separator chars in the hostile-controllable
+          // connector error. Credential redaction is a `--json`-only concern; add has none.
+          p.cancel(`Connector test failed: ${sanitizeMeta(result.error || 'Unknown error')}`);
           await audit.log({
             timestamp: new Date().toISOString(),
             action: 'connector_added',
@@ -224,7 +228,9 @@ export const connectorAddCommand = new Command('add')
         }
         throw error;
       }
-      p.cancel(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Same human-path sanitizeMeta convention as the failed-test sink above:
+      // a thrown error's message may carry connector-supplied control sequences.
+      p.cancel(`Error: ${sanitizeMeta(error instanceof Error ? error.message : 'Unknown error')}`);
       process.exit(1);
     }
   });
