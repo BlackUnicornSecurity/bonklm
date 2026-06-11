@@ -4,7 +4,7 @@
  * Comprehensive unit tests for hook lifecycle management.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   HookManager,
   HookPhase,
@@ -423,10 +423,29 @@ describe('HookManager', () => {
     });
   });
 
-  // S011-007: Rate limiting tests
-  // NOTE: These tests may be flaky due to timing issues in the test environment.
-  // The rate limiting implementation is correct, but the tests may need adjustment.
-  describe.skip('S011-007: Rate Limiting', () => {
+  // S011-007: Rate limiting tests.
+  //
+  // These exercise the sliding-window limiter in `HookManager.checkRateLimit`,
+  // which keys off `Date.now()`. Real wall-clock timing made them flaky — the
+  // window boundary raced with scheduler jitter — so the block was skipped.
+  // Fake timers freeze the clock and advance it deterministically, removing the
+  // race. The first three are genuine regression tests — each fails if the
+  // limiter is disabled or its window bookkeeping regresses; the fourth is the
+  // negative control (no limiter configured, so it never blocks).
+  //
+  // Determinism relies on Vitest's default of NOT faking microtasks: the hook
+  // handlers resolve on the microtask queue, so `executeHooks` settles without
+  // advancing timers. Don't add `queueMicrotask`/`nextTick` to a global
+  // `fakeTimers.toFake`, or the no-advance tests deadlock on the timeout race.
+  describe('S011-007: Rate Limiting', () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
     it('should enforce rate limit per phase', async () => {
       const manager = new HookManager({
         rateLimit: {
@@ -451,10 +470,8 @@ describe('HookManager', () => {
         expect(results[0].success).toBe(true);
       }
 
-      // Small delay to ensure timestamps are distinct
-      await new Promise(resolve => setTimeout(resolve, 10));
-
-      // 4th execution should be rate limited
+      // 4th execution within the same window is rate limited. The clock is
+      // frozen, so all four calls share one window — no real delay needed.
       const results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
         phase: HookPhase.BEFORE_VALIDATION,
         content: 'test'
@@ -463,7 +480,7 @@ describe('HookManager', () => {
       expect(results[0].message).toContain('Rate limit exceeded');
     });
 
-    it.skip('should enforce global rate limit across phases', async () => {
+    it('should enforce global rate limit across phases', async () => {
       const manager = new HookManager({
         rateLimit: {
           maxCalls: 2,
@@ -504,7 +521,7 @@ describe('HookManager', () => {
       expect(results[0].message).toContain('Rate limit exceeded');
     });
 
-    it.skip('should allow execution after window expires', async () => {
+    it('should allow execution after window expires', async () => {
       const manager = new HookManager({
         rateLimit: {
           maxCalls: 2,
@@ -536,8 +553,8 @@ describe('HookManager', () => {
       });
       expect(results[0].success).toBe(false);
 
-      // Wait for window to expire
-      await new Promise(resolve => setTimeout(resolve, 150));
+      // Advance past the 100ms window so the earlier timestamps fall out of it
+      await vi.advanceTimersByTimeAsync(150);
 
       // Should be allowed again
       results = await manager.executeHooks(HookPhase.BEFORE_VALIDATION, {
