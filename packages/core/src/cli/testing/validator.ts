@@ -73,7 +73,10 @@ export function validateTimeout(timeout: number): number {
  * Keys with no declared mapping pass through unchanged, and a connector that
  * declares no mapping at all (e.g. `ollama`, keyed only by ports, or the
  * framework connectors) yields a shallow copy — so connectors without an
- * env-var -> config-key indirection are unaffected.
+ * env-var -> config-key indirection are unaffected. If two env vars map to the
+ * same config key the last-enumerated value wins. Map keys/values come from
+ * trusted compile-time connector definitions; as defense-in-depth a target key
+ * of `__proto__`/`constructor`/`prototype` is skipped rather than assigned.
  *
  * @param connector - The connector whose mapping to apply.
  * @param config - The env-var-keyed credential bag.
@@ -90,7 +93,17 @@ export function applyConnectorConfigKeys(
 
   const mapped: Record<string, string> = {};
   for (const [key, value] of Object.entries(config)) {
-    mapped[mapping[key] ?? key] = value;
+    // `|| key` (not `??`): an empty-string mapping value is malformed, so fall
+    // back to the original env-var key rather than landing the value under "".
+    const target = mapping[key] || key;
+    // Defense-in-depth: connector maps are trusted compile-time metadata, but
+    // this helper is exported and generically typed — never let a target key
+    // reach into the prototype chain (mirrors the __proto__/constructor guard
+    // in cli/detection/framework.ts).
+    if (target === '__proto__' || target === 'constructor' || target === 'prototype') {
+      continue;
+    }
+    mapped[target] = value;
   }
   return mapped;
 }
@@ -275,6 +288,12 @@ export async function testMultipleConnectors(
  * @param connector - The connector definition to validate
  * @param config - Configuration values to check
  * @returns Object with isValid flag and missing keys array
+ *
+ * @remarks Expects config keyed by the connector's CONFIG keys (e.g. `apiKey`),
+ * not by env-var name. A caller holding an env-var-keyed credential bag (as the
+ * CLI loaders build) must run it through {@link applyConnectorConfigKeys} first,
+ * else `configSchema.safeParse` reports the real keys missing. No live caller
+ * does this today.
  *
  * @example
  * ```ts

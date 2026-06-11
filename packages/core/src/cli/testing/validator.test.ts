@@ -100,6 +100,27 @@ describe('validator', () => {
         apiKey: 'sk-ant-x'
       });
     });
+
+    it('maps multiple env vars declared by one connector', () => {
+      const connector = makeConnector({ A_KEY: 'apiKey', B_URL: 'baseUrl' });
+      expect(applyConnectorConfigKeys(connector, { A_KEY: 'k', B_URL: 'u' })).toEqual({ apiKey: 'k', baseUrl: 'u' });
+    });
+
+    it('falls back to the env-var key when the mapping value is an empty string', () => {
+      const connector = makeConnector({ OPENAI_API_KEY: '' });
+      // `|| key` keeps the value under the env-var name rather than under "".
+      expect(applyConnectorConfigKeys(connector, { OPENAI_API_KEY: 'sk-x' })).toEqual({ OPENAI_API_KEY: 'sk-x' });
+    });
+
+    it('skips target keys that would reach into the prototype chain (defense-in-depth)', () => {
+      const connector = makeConnector({ A: '__proto__', B: 'constructor', C: 'prototype', OK_KEY: 'apiKey' });
+      const result = applyConnectorConfigKeys(connector, { A: 'x', B: 'y', C: 'z', OK_KEY: 'sk-x' });
+      // All three dangerous targets are dropped; only the legitimate one maps.
+      // (Without the guard, 'constructor'/'prototype' would land as own keys.)
+      expect(result).toEqual({ apiKey: 'sk-x' });
+      // Object.prototype was not polluted.
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    });
   });
 
   describe('testConnector', () => {
@@ -198,13 +219,13 @@ describe('validator', () => {
       expect(result.latency).toBeLessThan(200); // Should complete within 200ms
     });
 
-    it('re-keys an env-var-keyed credential bag to the connector config key before testing (D-029)', async () => {
+    it('re-keys an env-var-keyed credential bag to the connector config key before testing', async () => {
       // Mirrors the openai/anthropic contract: detection is keyed by env-var
       // name (OPENAI_API_KEY) but test() reads config.apiKey. The CLI loaders
       // build the bag keyed by env-var name, so testConnector must re-key it via
       // configKeyByEnvVar for the value to actually reach test(). Without the
       // seam mapping, test() sees { OPENAI_API_KEY } -> config.apiKey is
-      // undefined -> "API key is required" (the D-029 false failure).
+      // undefined -> "API key is required" (the false failure this fix removes).
       const received: Array<Record<string, string>> = [];
       const apiKeyConnector: ConnectorDefinition = {
         id: 'apikey-connector',

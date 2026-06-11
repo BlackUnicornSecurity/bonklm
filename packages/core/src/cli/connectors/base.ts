@@ -175,6 +175,27 @@ export function isTestResult(value: unknown): value is TestResult {
 }
 
 /**
+ * Validates the optional {@link ConnectorDefinition.configKeyByEnvVar} field:
+ * absent, or a non-null, non-array object whose values are all non-empty
+ * strings. Used by {@link isConnectorDefinition} as a contract type-guard for
+ * external embedders / tests that build connector definitions dynamically. (The
+ * bundled CLI uses frozen compile-time connectors via the registry, which does
+ * not run this guard — so it is a contract check, not a live-path defense.)
+ *
+ * @param value - The candidate `configKeyByEnvVar` value.
+ * @returns True if absent or a valid non-empty-string-valued map.
+ */
+function isValidConfigKeyMap(value: unknown): boolean {
+  if (value === undefined) {
+    return true;
+  }
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  return Object.values(value as Record<string, unknown>).every(v => typeof v === 'string' && v.length > 0);
+}
+
+/**
  * Type guard to check if a value is a valid ConnectorDefinition
  *
  * @param value - Value to check
@@ -195,7 +216,8 @@ export function isConnectorDefinition(value: unknown): value is ConnectorDefinit
     typeof def.configSchema === 'object' &&
     def.configSchema !== null &&
     'safeParse' in def.configSchema &&
-    typeof def.configSchema.safeParse === 'function'
+    typeof def.configSchema.safeParse === 'function' &&
+    isValidConfigKeyMap(def.configKeyByEnvVar)
   );
 }
 
