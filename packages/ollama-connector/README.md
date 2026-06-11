@@ -120,6 +120,16 @@ for await (const chunk of stream) {
 }
 ```
 
+`streamingMode` selects how `chat()` and `generate()` streams are validated:
+
+- **`'incremental'` (default)** — responses are forwarded as they arrive and the accumulated text is
+  re-validated every 10 chunks; the stream is terminated early on the first violation.
+- **`'buffer'`** — every response is held back, the full text is validated once at stream
+  completion, then the buffered responses are released unchanged only if validation passes. On a
+  violation the content is withheld entirely and a single filtered marker response is emitted (and
+  `onStreamBlocked` fires). One validation pass instead of one per interval, and zero pre-validation
+  leakage, at the cost of progressive delivery. Both modes enforce `maxStreamBufferSize` (SEC-003).
+
 ## Available Validators
 
 Import validators from `@blackunicorn/bonklm`:

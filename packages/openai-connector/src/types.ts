@@ -60,7 +60,22 @@ export interface GuardedOpenAIOptions {
    * Stream validation mode.
    *
    * @remarks
-   * - 'incremental': Validates every N chunks during streaming, early terminates on violation
+   * - `'incremental'` (default): validates the accumulated text every
+   *   {@link VALIDATION_INTERVAL} chunks while streaming and stops forwarding on
+   *   the first violation. Chunks are delivered progressively (lower latency to
+   *   first token); content emitted before a violation is detected has already
+   *   reached the consumer.
+   * - `'buffer'`: holds every chunk back, runs a single validation pass over the
+   *   full response at stream completion, then releases the buffered chunks
+   *   unchanged only if validation passes. On a violation the buffered content is
+   *   withheld entirely and a single filtered marker chunk is emitted (plus the
+   *   {@link GuardedOpenAIOptions.onStreamBlocked} callback). One validation pass
+   *   instead of one per interval, and zero pre-validation leakage, at the cost
+   *   of progressive delivery — the consumer receives nothing until the full
+   *   response clears.
+   *
+   * Both modes enforce {@link GuardedOpenAIOptions.maxStreamBufferSize} (SEC-003)
+   * and require {@link GuardedOpenAIOptions.validateStreaming} to be `true`.
    *
    * Addresses SEC-002: Post-hoc stream validation bypass.
    *

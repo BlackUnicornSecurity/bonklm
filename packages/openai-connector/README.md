@@ -99,8 +99,20 @@ for await (const chunk of stream) {
 }
 ```
 
-With streaming validation enabled, the stream is validated incrementally and terminated early if
-violations are detected.
+With `validateStreaming` enabled, `streamingMode` selects how the stream is validated:
+
+- **`'incremental'` (default)** — chunks are forwarded as they arrive and the accumulated text is
+  re-validated every 10 chunks; the stream is terminated early on the first violation. Lower latency
+  to first token, but content emitted before a violation is detected has already reached the
+  consumer.
+- **`'buffer'`** — every chunk is held back, the full response is validated once at stream
+  completion, then the buffered chunks are released unchanged only if validation passes. On a
+  violation the content is withheld entirely and a single filtered marker chunk is emitted (and
+  `onStreamBlocked` fires). One validation pass instead of one per interval, and zero pre-validation
+  leakage, at the cost of progressive delivery — nothing reaches the consumer until the full
+  response clears.
+
+Both modes enforce `maxStreamBufferSize` (SEC-003).
 
 ## Multimodal Content
 

@@ -154,10 +154,14 @@ for await (const chunk of stream as AsyncIterable<{
 }
 ```
 
-> Streaming mode is `'incremental'` by default — every chunk is fed
-> through the validator chain. The OpenAI option type also accepts
-> `'buffer'`, but the current OpenAI connector warns and falls back to
-> pass-through for that mode; use `'incremental'` for stream validation.
+> Streaming mode is `'incremental'` by default — the accumulated text is
+> re-validated every 10 chunks and the stream terminates early on a
+> violation. Set `streamingMode: 'buffer'` to instead hold every chunk
+> back, validate the full response once at completion, and release the
+> buffered chunks only if validation passes (on a violation the content is
+> withheld entirely and a single filtered marker chunk is emitted). Buffer
+> mode trades progressive delivery for zero pre-validation leakage and a
+> single validation pass; both modes enforce `maxStreamBufferSize`.
 
 ### Lower-level streaming primitive
 

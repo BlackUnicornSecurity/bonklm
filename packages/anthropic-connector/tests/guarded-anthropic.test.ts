@@ -1587,53 +1587,286 @@ describe('Anthropic Guarded Wrapper', () => {
         expect(validationCallPoints.length).toBeGreaterThan(1);
       });
 
-      it('should pass through stream without validation in buffer mode', async () => {
-        const bufferModeStream = createMockStream([
-          { type: 'message_start', message: { id: 'msg-123', type: 'message' } },
-          {
-            type: 'content_block_start',
-            index: 0,
-            content_block: { type: 'text', text: '' }
-          },
-          { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Content' } },
-          { type: 'content_block_stop', index: 0 },
-          { type: 'message_stop' }
-        ]);
+      // SEC-002: buffered full-stream validation (hold-back-and-release).
+      // Buffer mode holds every event back, validates the full text once at
+      // completion, then releases the buffered events only if validation passes.
+      describe('buffer mode (hold-back-and-release)', () => {
+        const textOf = (e: any): string => e.delta?.text ?? e.message?.content?.[0]?.text ?? '';
 
-        mockCreate.mockResolvedValue(bufferModeStream);
+        it('releases all events unchanged and validates the full text exactly once when allowed', async () => {
+          const outputValidations: string[] = [];
+          const events: any[] = [
+            { type: 'message_start', message: { id: 'msg-123', type: 'message' } },
+            { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } }
+          ];
+          for (let i = 0; i < 25; i++) {
+            events.push({ type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: `Chunk${i} ` } });
+          }
+          events.push({ type: 'content_block_stop', index: 0 }, { type: 'message_stop' });
 
-        const mockValidator = {
-          name: 'BufferModeValidator',
-          validate: vi.fn(() => ({
-            allowed: true,
-            blocked: false,
-            severity: 'info' as const,
-            risk_level: 'low' as const,
-            risk_score: 0,
-            findings: [],
-            timestamp: Date.now()
-          }))
-        };
+          mockCreate.mockResolvedValue(createMockStream(events));
 
-        const guardedAnthropic = createGuardedAnthropic(mockClient, {
-          validators: [mockValidator as any],
-          validateStreaming: true,
-          streamingMode: 'buffer'
+          const trackingValidator = {
+            name: 'TrackingValidator',
+            validate: vi.fn((content: string) => {
+              if (content.includes('Chunk')) outputValidations.push(content);
+              return {
+                allowed: true,
+                blocked: false,
+                severity: 'info' as const,
+                risk_level: 'low' as const,
+                risk_score: 0,
+                findings: [],
+                timestamp: Date.now()
+              };
+            })
+          };
+
+          const guardedAnthropic = createGuardedAnthropic(mockClient, {
+            validators: [trackingValidator as any],
+            validateStreaming: true,
+            streamingMode: 'buffer'
+          });
+
+          const result = await guardedAnthropic.messages.create({
+            model: 'claude-3-opus-20240229',
+            messages: [{ role: 'user', content: 'Test' }],
+            max_tokens: 100,
+            stream: true
+          });
+
+          const out: any[] = [];
+          for await (const event of result as AsyncIterable<any>) {
+            out.push(event);
+          }
+
+          // Every original event is released unchanged.
+          expect(out).toHaveLength(events.length);
+          const allText = out.map(textOf).join('');
+          expect(allText).toContain('Chunk0');
+          expect(allText).toContain('Chunk24');
+          // Single validation pass over the FULL text — not one per interval.
+          expect(outputValidations).toHaveLength(1);
+          expect(outputValidations[0]).toContain('Chunk0');
+          expect(outputValidations[0]).toContain('Chunk24');
         });
 
-        const result = await guardedAnthropic.messages.create({
-          model: 'claude-3-opus-20240229',
-          messages: [{ role: 'user', content: 'Test' }],
-          max_tokens: 100,
-          stream: true
+        it('withholds all content and emits a single blocked marker when blocked', async () => {
+          const blockedAccumulated: string[] = [];
+          mockCreate.mockResolvedValue(
+            createMockStream([
+              { type: 'message_start', message: { id: 'msg-123', type: 'message' } },
+              { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+              { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'SECRET data' } },
+              { type: 'content_block_stop', index: 0 },
+              { type: 'message_stop' }
+            ])
+          );
+
+          const blockingValidator = {
+            name: 'OutputBlockingValidator',
+            validate: vi.fn((content: string) => ({
+              allowed: !content.includes('SECRET'),
+              blocked: content.includes('SECRET'),
+              severity: 'high' as const,
+              risk_level: 'high' as const,
+              risk_score: 100,
+              reason: content.includes('SECRET') ? 'Blocked output' : undefined,
+              findings: content.includes('SECRET')
+                ? [{ category: 'leak', description: 'secret', severity: 'high' as const, weight: 100 }]
+                : [],
+              timestamp: Date.now()
+            }))
+          };
+
+          const guardedAnthropic = createGuardedAnthropic(mockClient, {
+            validators: [blockingValidator as any],
+            validateStreaming: true,
+            streamingMode: 'buffer',
+            onStreamBlocked: (acc: string) => blockedAccumulated.push(acc)
+          });
+
+          const result = await guardedAnthropic.messages.create({
+            model: 'claude-3-opus-20240229',
+            messages: [{ role: 'user', content: 'Safe input' }],
+            max_tokens: 100,
+            stream: true
+          });
+
+          const out: any[] = [];
+          for await (const event of result as AsyncIterable<any>) {
+            out.push(event);
+          }
+
+          const allText = out.map(textOf).join('');
+          // Hold-back: the original SECRET content is never released.
+          expect(allText).not.toContain('SECRET');
+          // The block notice is emitted via the standard content_block
+          // start/delta/stop triple in place of the withheld content.
+          expect(out).toHaveLength(3);
+          expect(out.map(e => e.type)).toEqual(['content_block_start', 'content_block_delta', 'content_block_stop']);
+          expect(allText).toContain('[Stream blocked by guardrails');
+          // onStreamBlocked fires once with the full accumulated text.
+          expect(blockedAccumulated).toHaveLength(1);
+          expect(blockedAccumulated[0]).toContain('SECRET');
         });
 
-        const events: any[] = [];
-        for await (const event of result as AsyncIterable<any>) {
-          events.push(event);
-        }
+        it('enforces maxStreamBufferSize (SEC-003) without leaking held-back content', async () => {
+          mockCreate.mockResolvedValue(
+            createMockStream([
+              { type: 'message_start', message: { id: 'msg-123', type: 'message' } },
+              { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+              { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'x'.repeat(50) } },
+              { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'y'.repeat(50) } },
+              { type: 'content_block_stop', index: 0 },
+              { type: 'message_stop' }
+            ])
+          );
 
-        expect(events.length).toBeGreaterThan(0);
+          const guardedAnthropic = createGuardedAnthropic(mockClient, {
+            validators: [noOpValidator()],
+            validateStreaming: true,
+            streamingMode: 'buffer',
+            maxStreamBufferSize: 60 // first delta (50) fits, second (50) overflows
+          });
+
+          const result = await guardedAnthropic.messages.create({
+            model: 'claude-3-opus-20240229',
+            messages: [{ role: 'user', content: 'Safe' }],
+            max_tokens: 100,
+            stream: true
+          });
+
+          const out: any[] = [];
+          for await (const event of result as AsyncIterable<any>) {
+            out.push(event);
+          }
+
+          // Overflow drops the held-back buffer; only graceful closing events emit.
+          const allText = out.map(textOf).join('');
+          expect(allText).not.toContain('x'.repeat(50));
+          expect(allText).not.toContain('y');
+          expect(out.some(e => e.type === 'message_stop')).toBe(true);
+        });
+
+        it('re-throws a non-validation stream error instead of swallowing it', async () => {
+          const throwingStream = (async function* () {
+            yield { type: 'message_start', message: { id: 'msg-123', type: 'message' } };
+            yield { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'partial' } };
+            throw new Error('upstream network failure');
+          })();
+          mockCreate.mockResolvedValue(throwingStream);
+
+          const guardedAnthropic = createGuardedAnthropic(mockClient, {
+            validators: [noOpValidator()],
+            validateStreaming: true,
+            streamingMode: 'buffer'
+          });
+
+          const result = await guardedAnthropic.messages.create({
+            model: 'claude-3-opus-20240229',
+            messages: [{ role: 'user', content: 'Safe' }],
+            max_tokens: 100,
+            stream: true
+          });
+
+          await expect(async () => {
+            for await (const _event of result as AsyncIterable<any>) {
+              // drain
+            }
+          }).rejects.toThrow('upstream network failure');
+        });
+
+        it('releases structural events unchanged when the stream carries no text', async () => {
+          const outputValidations: string[] = [];
+          mockCreate.mockResolvedValue(
+            createMockStream([
+              { type: 'message_start', message: { id: 'msg-123', type: 'message' } },
+              { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+              { type: 'content_block_stop', index: 0 },
+              { type: 'message_stop' }
+            ])
+          );
+
+          const trackingValidator = {
+            name: 'TrackingValidator',
+            validate: vi.fn((content: string) => {
+              if (content === '') outputValidations.push(content);
+              return {
+                allowed: true,
+                blocked: false,
+                severity: 'info' as const,
+                risk_level: 'low' as const,
+                risk_score: 0,
+                findings: [],
+                timestamp: Date.now()
+              };
+            })
+          };
+
+          const guardedAnthropic = createGuardedAnthropic(mockClient, {
+            validators: [trackingValidator as any],
+            validateStreaming: true,
+            streamingMode: 'buffer'
+          });
+
+          const result = await guardedAnthropic.messages.create({
+            model: 'claude-3-opus-20240229',
+            messages: [{ role: 'user', content: 'Test' }],
+            max_tokens: 100,
+            stream: true
+          });
+
+          const out: any[] = [];
+          for await (const event of result as AsyncIterable<any>) {
+            out.push(event);
+          }
+
+          // No text accumulated → no output validation → all structural events released.
+          expect(out).toHaveLength(4);
+          expect(outputValidations).toHaveLength(0);
+        });
+
+        it('caps the retained-event count on a zero-text structural-event flood (SEC-003)', async () => {
+          // All zero-text events: the text cap never grows, so only the
+          // retained-event count can bound memory. anthropic swallows and emits
+          // graceful closing events.
+          mockCreate.mockResolvedValue(
+            createMockStream([
+              { type: 'message_start', message: { id: 'msg-123', type: 'message' } },
+              { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
+              { type: 'ping' },
+              { type: 'ping' },
+              { type: 'ping' },
+              { type: 'content_block_stop', index: 0 },
+              { type: 'message_stop' }
+            ])
+          );
+
+          const guardedAnthropic = createGuardedAnthropic(mockClient, {
+            validators: [noOpValidator()],
+            validateStreaming: true,
+            streamingMode: 'buffer',
+            maxStreamBufferSize: 3 // event-count cap trips after 3 held events
+          });
+
+          const result = await guardedAnthropic.messages.create({
+            model: 'claude-3-opus-20240229',
+            messages: [{ role: 'user', content: 'Safe' }],
+            max_tokens: 100,
+            stream: true
+          });
+
+          const out: any[] = [];
+          for await (const event of result as AsyncIterable<any>) {
+            out.push(event);
+          }
+
+          // Overflow by event count drops the held-back buffer; only graceful
+          // closing events are emitted, none carrying the withheld content.
+          expect(out).toHaveLength(3);
+          expect(out.some(e => e.type === 'message_stop')).toBe(true);
+        });
       });
 
       it('should not validate stream output when validateStreaming is false', async () => {
