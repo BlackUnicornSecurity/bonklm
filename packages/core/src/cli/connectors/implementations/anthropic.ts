@@ -20,7 +20,7 @@ export const anthropicConnector: ConnectorDefinition = {
 
   // The CLI loaders key the credential bag by env-var name (ANTHROPIC_API_KEY)
   // for .env persistence; test() below reads config.apiKey. This declares that
-  // remap so the shared test seam wires the value through (see
+  // remap so the shared test/validate seams wire the value through (see
   // ConnectorDefinition.configKeyByEnvVar / applyConnectorConfigKeys).
   configKeyByEnvVar: {
     ANTHROPIC_API_KEY: 'apiKey'

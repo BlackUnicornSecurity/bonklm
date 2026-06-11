@@ -101,9 +101,12 @@ export interface ConnectorDefinition {
    * build config keyed by env-var name (e.g. `OPENAI_API_KEY`) because that is
    * the shape persisted to `.env`, but a connector's `test()` reads its own keys
    * (e.g. `apiKey`). Declaring `{ OPENAI_API_KEY: 'apiKey' }` lets the shared
-   * test seam re-key the credential bag without each connector re-deriving it.
+   * test/validate seams re-key the credential bag without each connector
+   * re-deriving it.
    * Connectors with no such indirection (e.g. `ollama`, keyed by ports; the
-   * framework connectors) omit this field.
+   * framework connectors) omit this field. Only the test and validate seams
+   * re-key — `generateSnippet` is not — so any future credential read in
+   * `generateSnippet` must use config keys directly.
    *
    * @example
    * ```ts
