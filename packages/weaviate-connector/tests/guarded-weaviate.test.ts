@@ -1403,9 +1403,7 @@ describe('Weaviate Connector', () => {
       expect(result.filtered).toBe(false);
     });
 
-    // TODO: Fix these response format tests - extraction logic works in isolation
-    // but fails with the mock. May need to investigate mock behavior or vitest caching.
-    it.skip('should handle Weaviate v4 nested format (result.data[className].objects)', async () => {
+    it('should handle Weaviate v4 nested format (result.data[className].objects)', async () => {
       const v4NestedResult = {
         data: {
           Document: {
@@ -1434,9 +1432,12 @@ describe('Weaviate Connector', () => {
       expect(result.raw).toEqual(v4NestedResult);
       expect(result.data.Get.Document).toBeDefined();
       expect(result.data.Get.Document).toHaveLength(2);
+      // Pin extracted content, not just length, so the assertion cannot pass
+      // vacuously on an empty or echoed-raw result.
+      expect(result.data.Get.Document).toEqual(v4NestedResult.data.Document.objects);
     });
 
-    it.skip('should handle Weaviate v4 flat format with array (result.data[className])', async () => {
+    it('should handle Weaviate v4 flat format with array (result.data[className])', async () => {
       const v4FlatResult = {
         data: {
           Document: [
@@ -1460,6 +1461,7 @@ describe('Weaviate Connector', () => {
 
       expect(result.data.Get.Document).toBeDefined();
       expect(result.data.Get.Document).toHaveLength(2);
+      expect(result.data.Get.Document).toEqual(v4FlatResult.data.Document);
     });
 
     it('should handle legacy objects format (result.objects)', async () => {
@@ -1486,14 +1488,14 @@ describe('Weaviate Connector', () => {
       expect(result.data.Get.Document).toHaveLength(2);
     });
 
-    it.skip('should use fallback extractContentFromResponse for unknown formats', async () => {
-      const unknownFormatResult = {
+    it('should handle v4 flat format for a non-Document class name', async () => {
+      const flatArticleResult = {
         data: {
           Article: [{ id: '1', title: 'Article 1', content: 'Safe content' }]
         }
       };
 
-      const mockClient = createMockClientForResult(unknownFormatResult);
+      const mockClient = createMockClientForResult(flatArticleResult);
       const guarded = createGuardedClient(mockClient, {
         validators: [noOpValidator()]
       });
@@ -1507,6 +1509,7 @@ describe('Weaviate Connector', () => {
 
       expect(result.data.Get.Article).toBeDefined();
       expect(result.data.Get.Article).toHaveLength(1);
+      expect(result.data.Get.Article).toEqual(flatArticleResult.data.Article);
     });
 
     it('should handle empty result gracefully', async () => {
