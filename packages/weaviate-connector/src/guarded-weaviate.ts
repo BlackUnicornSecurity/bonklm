@@ -37,43 +37,6 @@ import { DEFAULT_MAX_LIMIT, DEFAULT_VALIDATION_TIMEOUT } from './types.js';
 const DEFAULT_LOGGER: Logger = createLogger('console');
 
 /**
- * Gets a nested value from an object using bracket notation.
- * Supports paths like 'data.Get.Document' or 'data.Document.objects'.
- *
- * @param obj - The object to traverse
- * @param path - The path to traverse (e.g., 'a.b.c' or 'a[0].b')
- * @returns The value at the path, or undefined if not found
- *
- * @internal
- */
-function getNestedValue(obj: unknown, path: string): unknown {
-  const parts = path.split(/[\.\[]/);
-  let current: unknown = obj;
-
-  for (const part of parts) {
-    if (current === null || current === undefined) {
-      return undefined;
-    }
-
-    // Clean up array index notation
-    const key = part.replace(/\]$/, '');
-    const index = parseInt(key, 10);
-
-    if (typeof current === 'object' && current !== null) {
-      if (!isNaN(index) && Array.isArray(current)) {
-        current = current[index];
-      } else {
-        current = (current as Record<string, unknown>)[key];
-      }
-    } else {
-      return undefined;
-    }
-  }
-
-  return current;
-}
-
-/**
  * Represents a wrapped Weaviate client with guardrails.
  */
 export interface GuardedWeaviateClient {
@@ -501,24 +464,6 @@ export function createGuardedClient(weaviateClient: any, options: GuardedWeaviat
         const resultObjects = result.objects as unknown;
         if (Array.isArray(resultObjects) && resultObjects.length > 0) {
           objects = resultObjects;
-        }
-      }
-
-      // Last resort: nested value extraction
-      if (objects.length === 0) {
-        // Try to get objects by using various path patterns
-        const possiblePaths = [`data.${className}.objects`, `data.${className}`, `data.Get.${className}`, 'objects'];
-
-        for (const path of possiblePaths) {
-          try {
-            const value = getNestedValue(result, path);
-            if (Array.isArray(value) && value.length > 0) {
-              objects = value;
-              break;
-            }
-          } catch {
-            // Ignore errors in path resolution
-          }
         }
       }
 
