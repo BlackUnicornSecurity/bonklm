@@ -46,10 +46,10 @@ export function validateCredentialFormat(
 
   const format = formats[envVar];
   if (!value.startsWith(format.prefix)) {
-    // The only credentials with a prefix today are API keys; this hint mirrors
-    // the messages previously hardcoded in wizard.ts / connector-add.ts. Extend
-    // CredentialFormat with a label if a non-key credential ever needs one.
-    return `${connector.name} API key must start with "${format.prefix}"`;
+    // `label` defaults to "API key" (the only prefixed credential kind today);
+    // a connector sets it for a non-key credential. Mirrors the messages
+    // previously hardcoded in wizard.ts / connector-add.ts.
+    return `${connector.name} ${format.label ?? 'API key'} must start with "${format.prefix}"`;
   }
   return undefined;
 }

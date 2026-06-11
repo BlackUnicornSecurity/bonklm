@@ -70,6 +70,13 @@ export interface CredentialFormat {
    * `sk-ant-` for Anthropic).
    */
   prefix: string;
+
+  /**
+   * Human label for the credential in the prompt error message; defaults to
+   * `API key`. Set this for a non-API-key credential so the hint reads
+   * correctly (e.g. `label: 'webhook secret'`).
+   */
+  label?: string;
 }
 
 /**
@@ -253,8 +260,11 @@ function isValidCredentialFormats(value: unknown): boolean {
     if (typeof format !== 'object' || format === null || Array.isArray(format)) {
       return false;
     }
-    const prefix = (format as Record<string, unknown>).prefix;
-    return typeof prefix === 'string' && prefix.length > 0;
+    const { prefix, label } = format as Record<string, unknown>;
+    if (typeof prefix !== 'string' || prefix.length === 0) {
+      return false;
+    }
+    return label === undefined || (typeof label === 'string' && label.length > 0);
   });
 }
 

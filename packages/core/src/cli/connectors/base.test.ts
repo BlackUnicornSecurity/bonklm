@@ -427,6 +427,37 @@ describe('isConnectorDefinition', () => {
     expect(isConnectorDefinition(make({ OPENAI_API_KEY: 'sk-' }))).toBe(false);
     expect(isConnectorDefinition(make({ OPENAI_API_KEY: null }))).toBe(false);
   });
+
+  it('should accept a credentialFormats entry with an optional label', () => {
+    const def: ConnectorDefinition = {
+      id: 'test',
+      name: 'Test',
+      category: 'llm',
+      detection: { envVars: ['X'] },
+      credentialFormats: { X: { prefix: 'sk-', label: 'secret' } },
+      test: vi.fn().mockResolvedValue({ connection: true, validation: true }),
+      generateSnippet: vi.fn(),
+      configSchema: z.object({})
+    };
+
+    expect(isConnectorDefinition(def)).toBe(true);
+  });
+
+  it('should reject a credentialFormats entry whose label is not a non-empty string', () => {
+    const make = (credentialFormats: unknown) => ({
+      id: 'test',
+      name: 'Test',
+      category: 'llm',
+      detection: {},
+      credentialFormats,
+      test: vi.fn(),
+      generateSnippet: vi.fn(),
+      configSchema: z.object({})
+    });
+
+    expect(isConnectorDefinition(make({ X: { prefix: 'sk-', label: 42 } }))).toBe(false);
+    expect(isConnectorDefinition(make({ X: { prefix: 'sk-', label: '' } }))).toBe(false);
+  });
 });
 
 describe('TypeScript Type Checking', () => {

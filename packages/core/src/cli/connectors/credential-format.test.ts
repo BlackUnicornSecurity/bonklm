@@ -8,8 +8,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import type { ConnectorDefinition } from './base.js';
 import { validateCredentialFormat } from './credential-format.js';
-import { getConnector } from './registry.js';
+import { getAllConnectors, getConnector } from './registry.js';
 
 const openai = getConnector('openai')!;
 const anthropic = getConnector('anthropic')!;
@@ -50,5 +51,42 @@ describe('validateCredentialFormat', () => {
     expect(validateCredentialFormat(openai, 'toString', 'whatever')).toBeUndefined();
     expect(validateCredentialFormat(openai, 'constructor', 'whatever')).toBeUndefined();
     expect(validateCredentialFormat(openai, '__proto__', 'whatever')).toBeUndefined();
+  });
+
+  it('uses the connector-declared label instead of the default "API key"', () => {
+    const fake: ConnectorDefinition = {
+      ...express,
+      name: 'Webhooks',
+      credentialFormats: { WEBHOOK_SECRET: { prefix: 'whsec_', label: 'webhook secret' } }
+    };
+    expect(validateCredentialFormat(fake, 'WEBHOOK_SECRET', 'nope')).toBe(
+      'Webhooks webhook secret must start with "whsec_"'
+    );
+    expect(validateCredentialFormat(fake, 'WEBHOOK_SECRET', 'whsec_abc')).toBeUndefined();
+  });
+});
+
+describe('credentialFormats / configSchema consistency', () => {
+  it('every declared prefix is accepted by the connector configSchema (hint cannot drift from the schema)', () => {
+    const drift: string[] = [];
+    let checked = 0;
+    for (const connector of getAllConnectors()) {
+      const formats = connector.credentialFormats;
+      if (!formats) continue;
+      for (const [envVar, format] of Object.entries(formats)) {
+        checked++;
+        const configKey = connector.configKeyByEnvVar?.[envVar] ?? envVar;
+        // A value equal to the hint's required prefix plus filler must satisfy
+        // the connector's authoritative configSchema; otherwise the interactive
+        // prompt hint and the schema disagree about the prefix (the drift class
+        // this hint was introduced to remove between commands).
+        const candidate = { [configKey]: `${format.prefix}0123456789abcdef` };
+        if (!connector.configSchema.safeParse(candidate).success) {
+          drift.push(`${connector.id}/${envVar} prefix "${format.prefix}"`);
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(0);
+    expect(drift).toEqual([]);
   });
 });

@@ -8,6 +8,7 @@ export {
   type ConnectorCategory,
   type DetectionRules,
   type TestResult,
+  type CredentialFormat,
   type ConnectorDefinition,
   isConnectorCategory,
   isTestResult,

@@ -80,6 +80,10 @@ dist/cli/connectors/base.d.ts
 dist/cli/connectors/base.d.ts.map
 dist/cli/connectors/base.js
 dist/cli/connectors/base.js.map
+dist/cli/connectors/credential-format.d.ts
+dist/cli/connectors/credential-format.d.ts.map
+dist/cli/connectors/credential-format.js
+dist/cli/connectors/credential-format.js.map
 dist/cli/connectors/implementations/anthropic.d.ts
 dist/cli/connectors/implementations/anthropic.d.ts.map
 dist/cli/connectors/implementations/anthropic.js
