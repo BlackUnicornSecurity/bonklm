@@ -24,9 +24,11 @@
  * Usage:
  *   node tools/check-workspace-policy.js
  *
- * Wire into CI as `pnpm run check:workspace-policy` (root scripts).
+ * Wired into CI as `pnpm run check:workspace-policy` (root scripts), the
+ * dependency-free `workspace-policy` job in `.github/workflows/ci.yml`, and the
+ * local quality gate (`scripts/quality-gate.sh`).
  */
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -38,7 +40,7 @@ const PACKAGES_DIR = join(ROOT, 'packages');
  * Read + parse a JSON file. Returns null on absence; throws on parse error
  * so a malformed package.json is loud (not silently treated as Tier A).
  */
-function readJson(path) {
+export function readJson(path) {
   if (!existsSync(path)) return null;
   const text = readFileSync(path, 'utf-8');
   try {
@@ -49,30 +51,34 @@ function readJson(path) {
 }
 
 /**
- * Enumerate all `tools/*` package directories. Each must contain a
- * `package.json` to be a workspace member; directories without one
- * (e.g. `tools/audit-baselines/` which is a docs dir) are skipped.
+ * Enumerate all `tools/*` package directories under `toolsDir`. Each must
+ * contain a `package.json` to be a workspace member; directories without one
+ * (e.g. `tools/audit-baselines/` which is a docs dir) are skipped. The path is
+ * a required argument so the suite can point at a throwaway fixture; the
+ * default repo `tools/` directory is supplied by `checkWorkspacePolicy`.
  */
-function enumerateToolPackages() {
-  if (!existsSync(TOOLS_DIR)) return [];
-  return readdirSync(TOOLS_DIR)
-    .filter(name => !name.startsWith('.'))
-    .map(name => join(TOOLS_DIR, name))
-    .filter(path => {
-      try {
-        return statSync(path).isDirectory() && existsSync(join(path, 'package.json'));
-      } catch {
-        return false;
-      }
-    });
+export function enumerateToolPackages(toolsDir) {
+  if (!existsSync(toolsDir)) return [];
+  const paths = [];
+  // Skip dotfiles and non-directory entries (e.g. this script itself, a stray
+  // `.DS_Store`, or `WORKSPACE-POLICY.md`) so they are never probed for a
+  // package.json. Dirent.isDirectory() does not follow symlinks, which is
+  // correct here — tools/* are real directories.
+  for (const entry of readdirSync(toolsDir, { withFileTypes: true })) {
+    if (entry.name.startsWith('.')) continue;
+    if (!entry.isDirectory()) continue;
+    const pkgPath = join(toolsDir, entry.name);
+    if (existsSync(join(pkgPath, 'package.json'))) paths.push(pkgPath);
+  }
+  return paths;
 }
 
 /**
  * Validate a single `tools/<name>/package.json` against Tier A or
- * Tier B requirements. Returns an array of violation messages
- * (empty = clean).
+ * Tier B requirements. Returns `{ tier, name, violations }` — `violations`
+ * is an array of message strings (empty = clean).
  */
-function validateToolsPackage(pkgPath) {
+export function validateToolsPackage(pkgPath) {
   const pkgJsonPath = join(pkgPath, 'package.json');
   const pkg = readJson(pkgJsonPath);
   const violations = [];
@@ -131,16 +137,24 @@ function validateToolsPackage(pkgPath) {
 }
 
 /**
- * Walk every `packages/*\/package.json` and verify no Tier A
- * `tools/*` package is listed as runtime `dependencies` or
- * `peerDependencies` — only `devDependencies` permitted.
+ * Walk every `<packagesDir>/*\/package.json` and verify no Tier A
+ * `tools/*` package is listed as a runtime `dependencies`,
+ * `peerDependencies`, or `optionalDependencies` — only `devDependencies`
+ * permitted. `toolsByName` maps tool package name → `{ tier }`. The path is a
+ * required argument for testing; the default repo `packages/` directory is
+ * supplied by `checkWorkspacePolicy`.
  */
-function validateConsumerLinks(toolsByName) {
+export function validateConsumerLinks(toolsByName, packagesDir) {
   const violations = [];
-  if (!existsSync(PACKAGES_DIR)) return violations;
+  if (!existsSync(packagesDir)) return violations;
 
-  for (const pkgDir of readdirSync(PACKAGES_DIR)) {
-    const pkgJsonPath = join(PACKAGES_DIR, pkgDir, 'package.json');
+  // Scope is deliberately the top level only (`packages/<dir>/package.json`),
+  // matching WORKSPACE-POLICY.md's `packages/*/package.json` glob and the
+  // CONTRIBUTING publishable-surface convention (`! -path '*/examples/*'`).
+  // Nested manifests (`packages/<dir>/examples/*`) are private, never-published
+  // example apps, so a Tier A tool reaching one cannot leak to npm consumers.
+  for (const pkgDir of readdirSync(packagesDir)) {
+    const pkgJsonPath = join(packagesDir, pkgDir, 'package.json');
     const pkg = readJson(pkgJsonPath);
     if (pkg === null) continue;
     // optionalDependencies are ALSO published in the npm tarball's
@@ -164,43 +178,80 @@ function validateConsumerLinks(toolsByName) {
   return violations;
 }
 
-function main() {
-  const toolPaths = enumerateToolPackages();
-  if (toolPaths.length === 0) {
-    console.log('check-workspace-policy: no tools/* packages found; nothing to check.');
-    return;
-  }
-
-  const allViolations = [];
+/**
+ * Orchestrate the check: enumerate `tools/*` packages, validate each against
+ * its tier, then assert no Tier A tool leaks into a consumer's runtime deps.
+ * Paths are injectable for testing; both default to the repo locations.
+ * Returns `{ ok, toolCount, checkedCount, violations }` — `toolCount` is the
+ * number of `tools/*` package dirs found, `checkedCount` the number with a
+ * usable `name`.
+ */
+export function checkWorkspacePolicy({ toolsDir, packagesDir } = {}) {
+  const toolPaths = enumerateToolPackages(toolsDir ?? TOOLS_DIR);
   const toolsByName = new Map();
+  const violations = [];
 
   for (const path of toolPaths) {
     const result = validateToolsPackage(path);
     if (result.name !== undefined) {
       toolsByName.set(result.name, { tier: result.tier });
     }
-    allViolations.push(...result.violations);
+    violations.push(...result.violations);
   }
 
-  allViolations.push(...validateConsumerLinks(toolsByName));
+  violations.push(...validateConsumerLinks(toolsByName, packagesDir ?? PACKAGES_DIR));
 
-  if (allViolations.length > 0) {
-    console.error('\nWorkspace-policy violations:\n');
-    for (const v of allViolations) console.error(`  - ${v}`);
-    console.error(`\n${allViolations.length} violation(s). See tools/WORKSPACE-POLICY.md for the contract.`);
-    process.exit(1);
-  }
-
-  console.log(`check-workspace-policy: ${toolsByName.size} tools/* package(s) checked; all compliant.`);
+  return {
+    ok: violations.length === 0,
+    toolCount: toolPaths.length,
+    checkedCount: toolsByName.size,
+    violations
+  };
 }
 
-// Wrap in try/catch so malformed package.json (parse error in readJson)
-// produces a controlled exit code + clear diagnostic rather than an
-// uncaught-exception stack trace. Defensive: review-BLOCK-O.
-try {
-  main();
-} catch (err) {
-  console.error('\nworkspace-policy: aborted on error:');
-  console.error(`  ${err instanceof Error ? err.message : String(err)}`);
+/**
+ * CLI body: run the check, print a result line, and exit non-zero on any
+ * violation. Paths are injectable for testing; production callers pass nothing.
+ */
+export function main(opts) {
+  const result = checkWorkspacePolicy(opts);
+
+  if (result.toolCount === 0) {
+    console.log('check-workspace-policy: no tools/* packages found; nothing to check.');
+    return result;
+  }
+
+  if (result.ok) {
+    console.log(`check-workspace-policy: ${result.checkedCount} tools/* package(s) checked; all compliant.`);
+    return result;
+  }
+
+  // Terminal branch: end on process.exit(1) so there is no fall-through to the
+  // success log when `exit` is stubbed in a unit test, and no unreachable tail.
+  console.error('\nWorkspace-policy violations:\n');
+  for (const v of result.violations) console.error(`  - ${v}`);
+  console.error(`\n${result.violations.length} violation(s). See tools/WORKSPACE-POLICY.md for the contract.`);
   process.exit(1);
 }
+
+/**
+ * Invoke `main` only when this file is executed directly (node tools/...), not
+ * when imported by the test suite. Returns true if it ran as the entrypoint.
+ * `run`/`exit` are injectable so the entrypoint + error paths are unit-testable
+ * without spawning a process. Wrapping `run` in try/catch turns a malformed
+ * package.json (parse error in readJson) into a controlled exit + clear
+ * diagnostic rather than an uncaught-exception stack trace (review-BLOCK-O).
+ */
+export function runCli({ argv1, scriptUrl, run = main, exit = process.exit }) {
+  if (argv1 !== fileURLToPath(scriptUrl)) return false;
+  try {
+    run();
+  } catch (err) {
+    console.error('\nworkspace-policy: aborted on error:');
+    console.error(`  ${err instanceof Error ? err.message : String(err)}`);
+    exit(1);
+  }
+  return true;
+}
+
+runCli({ argv1: process.argv[1], scriptUrl: import.meta.url });

@@ -624,6 +624,13 @@ and is **not** published from this monorepo.
 (publishable) requires explicit opt-in with `workspacePolicy: "tier-b-publishable"`, a
 `publishJustification`, and an explicit `files` allowlist.
 
+This policy is **enforced**, not just documented: `pnpm run check:workspace-policy`
+(`tools/check-workspace-policy.js`) validates every `tools/*/package.json` against its tier and
+fails the build on a tier violation or on a Tier A tool leaking into a `packages/*` consumer's
+runtime (`dependencies` / `peerDependencies` / `optionalDependencies`). It runs in CI
+(`.github/workflows/ci.yml`, the dependency-free `workspace-policy` job) and in the local quality
+gate (`scripts/quality-gate.sh`).
+
 ### Adding a changeset
 
 For any user-visible change:

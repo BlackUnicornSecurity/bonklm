@@ -22,7 +22,12 @@ export default defineConfig({
     coverage: {
       provider: 'istanbul',
       reporter: ['text', 'json', 'html', 'json-summary'],
-      include: ['packages/core/src/**/*.ts', 'packages/*/src/**/*.ts', 'tools/check-changeset-linked.js'],
+      include: [
+        'packages/core/src/**/*.ts',
+        'packages/*/src/**/*.ts',
+        'tools/check-changeset-linked.js',
+        'tools/check-workspace-policy.js'
+      ],
       exclude: [
         '**/*.d.ts',
         'node_modules/**',
@@ -75,6 +80,15 @@ export default defineConfig({
         // packages/*; pin it to 100% so its coverage is enforced by the standard
         // gate, not merely asserted (CONTRIBUTING "documented -> enforced").
         'tools/check-changeset-linked.js': {
+          lines: 100,
+          functions: 100,
+          branches: 100,
+          statements: 100
+        },
+        // The tools/* workspace-policy gate is dependency-free tooling outside
+        // packages/*; pin it to 100% so its coverage is enforced by the standard
+        // gate, not merely asserted (CONTRIBUTING "documented -> enforced").
+        'tools/check-workspace-policy.js': {
           lines: 100,
           functions: 100,
           branches: 100,

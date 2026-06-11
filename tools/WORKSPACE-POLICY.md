@@ -7,7 +7,8 @@
 This document is the longform reference for the per-`tools/*` allowlist policy sketched in
 `team/plans/2026-05-21-v0.4-v0.7-roadmap-FINAL.md` (Story 2.1b section, "Per-`tools/*`
 publish-policy split"). PR reviewers consult this when approving any new `tools/<name>/` directory;
-the in-PR checklist embedded in Story 2.1b's AC text remains the authoritative gate.
+the `tools/check-workspace-policy.js` gate (see "Programmatic enforcement") is the authoritative
+_mechanical_ gate, and the in-PR reviewer checklist is the secondary human gate.
 
 ---
 
@@ -58,24 +59,25 @@ authors to lint their own edge-reachable code), future publishable codegen tools
 
 ## Programmatic enforcement
 
-> **Interim Sprint-11 status (2026-05-22)**: the programmatic enforcement script
-> `tools/check-workspace-policy.js` ships at Sprint 12 day 1 (per the Story 2.1b roadmap section
-> "Programmatic tier-enforcement script"). During Sprint 11 the reviewer checklist below is the ONLY
-> enforcement gate; new `tools/<name>/` additions during this window require explicit reviewer
-> sign-off acknowledging the missing CI check. Block new `tools/<name>/` additions during Sprint 11
-> unless they are part of Story 2.1b itself (`tools/audit-baselines/`, future ESLint plugin
-> scaffold).
-
-Sprint 12 ships `tools/check-workspace-policy.js`, a CI script that enumerates every
+`tools/check-workspace-policy.js` is the primary enforcement gate. It enumerates every
 `tools/*/package.json` and asserts:
 
 1. EITHER `"private": true` (Tier A) OR `"workspacePolicy": "tier-b-publishable"` with non-empty
    `"publishJustification"` AND non-empty `"files"` AND `"name"` starting with `@blackunicorn/`.
-2. NO `packages/*/package.json` lists a Tier A `tools/*` package in `dependencies` or
-   `peerDependencies` (only `devDependencies` permitted).
+2. NO `packages/*/package.json` lists a Tier A `tools/*` package in `dependencies`,
+   `peerDependencies`, or `optionalDependencies` (only `devDependencies` permitted).
 
-CI fails the build on any violation. The reviewer checklist below is a SECONDARY gate; the script is
-the primary enforcement.
+A violation exits the script non-zero and fails the build. The check is wired in three places, so it
+runs on every PR and on every local pre-PR gate:
+
+- the dependency-free `workspace-policy` job in `.github/workflows/ci.yml` (no `pnpm install` or
+  build needed — it only reads `package.json` files);
+- the local quality gate (`scripts/quality-gate.sh`);
+- the root `pnpm run check:workspace-policy` script — run it locally to reproduce a CI failure.
+
+The gate's own Tier A / Tier B branches are covered to 100% by
+`tools/check-workspace-policy.test.ts`. The reviewer checklist below is a SECONDARY gate; the script
+is the primary enforcement.
 
 ## Reviewer checklist for new `tools/<name>/` additions
 
@@ -111,6 +113,7 @@ bounded; Sprint 13 day 1 the allowlist file is deleted as part of the rotation.
 
 ## Amendment history
 
-| Date       | Story                          | Change                                                                                                           |
-| ---------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
-| 2026-05-22 | Story 2.1b-connector-style-ADR | Initial authoring. Tier A / Tier B classification, programmatic enforcement, reviewer checklist, triage hygiene. |
+| Date       | Story                           | Change                                                                                                                                                                                                                                                              |
+| ---------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-05-22 | Story 2.1b-connector-style-ADR  | Initial authoring. Tier A / Tier B classification, programmatic enforcement, reviewer checklist, triage hygiene.                                                                                                                                                    |
+| 2026-06-11 | chore/ci-guard-workspace-policy | Wired `check-workspace-policy.js` into CI (the `workspace-policy` job), the local quality gate, and `pnpm run check:workspace-policy`; added 100%-covered tests. "Programmatic enforcement" section updated from aspirational (Sprint 12) to present-tense reality. |
