@@ -185,6 +185,13 @@ run_gate "format:check" pnpm format:check
 # mirroring the CI `changeset-linked` job.
 run_gate "changeset-linked" node tools/check-changeset-linked.js
 
+# ---- tools/* tiering policy gate -----------------------------------------
+# Assert every tools/<name>/package.json is a valid Tier A (private) or Tier B
+# (publishable opt-in) package and that no Tier A tool leaks into a packages/*
+# consumer's runtime deps. Dependency-free + instant (reads package.json only),
+# so it runs in fast mode too, mirroring the CI `workspace-policy` job.
+run_gate "workspace-policy" node tools/check-workspace-policy.js
+
 # ---- Tests + coverage ----------------------------------------------------
 # Coverage thresholds in vitest.config.ts are the ratchet floor (only moves up;
 # policy target is 100% — see CONTRIBUTING "Test coverage"). A drop below the

@@ -82,6 +82,26 @@ jobs:
       - name: Assert changeset linked group == publishable packages
         run: node tools/check-changeset-linked.js
 
+  workspace-policy:
+    name: Workspace Tiering Policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Dependency-free Node script (reads tools/*/package.json +
+      # packages/*/package.json) — no pnpm install or build needed. Asserts every
+      # tools/* package is a valid Tier A (private) or Tier B (publishable opt-in)
+      # member and that no Tier A tool leaks into a packages/* consumer's runtime deps.
+      - name: Assert tools/* workspace tiering policy
+        run: node tools/check-workspace-policy.js
+
   type-check:
     name: Type Check
     runs-on: ubuntu-latest
