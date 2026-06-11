@@ -22,6 +22,7 @@ import { EnvManager } from '../config/env.js';
 import { AuditLogger } from '../utils/audit.js';
 import { ExitCode, WizardError } from '../utils/error.js';
 import { maskKey } from '../utils/mask.js';
+import { formatAvailableConnectors, getAvailableConnectorIds, isValidConnectorIdFormat } from './connector-id.js';
 
 /**
  * Default timeout for connector tests in the add command (milliseconds)
@@ -34,17 +35,6 @@ const ADD_TEST_TIMEOUT = 10000;
 const MAX_CREDENTIAL_LENGTH = 2048;
 
 /**
- * Allowed connector IDs - whitelist for security
- */
-const ALLOWED_CONNECTOR_IDS = ['openai', 'anthropic', 'ollama', 'express', 'langchain'] as const;
-
-/**
- * Valid connector ID format pattern
- * Must start with lowercase letter, contain only lowercase letters, numbers, and hyphens
- */
-const VALID_CONNECTOR_ID_PATTERN = /^[a-z][a-z0-9-]*$/;
-
-/**
  * Connector add command options
  */
 interface AddOptions {
@@ -52,28 +42,20 @@ interface AddOptions {
 }
 
 /**
- * Validates a connector ID against security requirements
+ * Validates a connector ID against security requirements.
+ *
+ * Behaviour-preserving wrapper over the shared structural guard
+ * ({@link isValidConnectorIdFormat}: length + `[a-z][a-z0-9-]*` pattern) plus
+ * the registry-sourced whitelist ({@link getAvailableConnectorIds}). A
+ * connector ID is valid here only if it is well-formed AND a known connector.
+ * The registry is the single source of truth for the available-connector set
+ * (previously duplicated as a hardcoded array here — see `connector-id.ts`).
  *
  * @param id - The connector ID to validate
  * @returns True if valid
  */
 function validateConnectorId(id: string): boolean {
-  // Check length
-  if (id.length < 1 || id.length > 50) {
-    return false;
-  }
-
-  // Check against whitelist
-  if (!ALLOWED_CONNECTOR_IDS.includes(id as any)) {
-    return false;
-  }
-
-  // Check format pattern
-  if (!VALID_CONNECTOR_ID_PATTERN.test(id)) {
-    return false;
-  }
-
-  return true;
+  return isValidConnectorIdFormat(id) && getAvailableConnectorIds().includes(id);
 }
 
 /**
@@ -144,7 +126,7 @@ export const connectorAddCommand = new Command('add')
     // SECURITY: Validate connector ID format before processing
     if (!validateConnectorId(id)) {
       p.cancel(`Invalid connector ID: ${id}`);
-      p.log.info(`Available connectors: ${ALLOWED_CONNECTOR_IDS.join(', ')}`);
+      p.log.info(`Available connectors: ${formatAvailableConnectors()}`);
       p.log.info(
         'Connector IDs must start with a lowercase letter and contain only lowercase letters, numbers, and hyphens'
       );
@@ -155,7 +137,7 @@ export const connectorAddCommand = new Command('add')
     const connector = getConnector(id);
     if (!connector) {
       p.cancel(`Unknown connector: ${id}`);
-      p.log.info(`Available connectors: ${['openai', 'anthropic', 'ollama', 'express', 'langchain'].join(', ')}`);
+      p.log.info(`Available connectors: ${formatAvailableConnectors()}`);
       process.exit(1);
     }
 

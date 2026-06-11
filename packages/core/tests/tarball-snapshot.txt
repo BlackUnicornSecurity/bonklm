@@ -36,6 +36,10 @@ dist/cli/commands/connector-add.d.ts
 dist/cli/commands/connector-add.d.ts.map
 dist/cli/commands/connector-add.js
 dist/cli/commands/connector-add.js.map
+dist/cli/commands/connector-id.d.ts
+dist/cli/commands/connector-id.d.ts.map
+dist/cli/commands/connector-id.js
+dist/cli/commands/connector-id.js.map
 dist/cli/commands/connector-remove.d.ts
 dist/cli/commands/connector-remove.d.ts.map
 dist/cli/commands/connector-remove.js
