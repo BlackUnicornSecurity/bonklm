@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`streamingMode: 'buffer'` is now implemented for the openai, anthropic, and ollama connectors.**
+  Previously these connectors logged a warning and fell back to no stream validation when `'buffer'`
+  was requested; they now perform real buffered full-stream validation. Buffer mode holds every
+  chunk back, runs a single validation pass over the complete response at stream completion, and
+  releases the buffered chunks unchanged only if validation passes — on a violation the content is
+  withheld entirely and a single filtered marker chunk is emitted (and `onStreamBlocked` fires).
+  This matches the hold-back-and-release semantics already shipped by the vercel connector: zero
+  pre-validation leakage and one validation pass instead of one per interval, traded against
+  progressive delivery. The `'incremental'` default is unchanged, and both modes continue to enforce
+  `maxStreamBufferSize` (SEC-003), now bounding both accumulated text and the retained-event count.
+
+  **Behavior change for existing `'buffer'` callers:** code that previously set
+  `streamingMode: 'buffer'` received unvalidated, progressively-streamed output; it now receives
+  fully-buffered output that is validated once and may be withheld entirely on a violation (and the
+  latency profile shifts from progressive to all-or-nothing). To keep the old progressive,
+  unvalidated delivery, use `streamingMode: 'incremental'` (the default) or set
+  `validateStreaming: false`.
+
 Sprint 52 Day 2 — Gate 2 unblocking + Gate 5.8 reproducibility:
 
 ### Changed

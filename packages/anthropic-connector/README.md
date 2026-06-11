@@ -138,6 +138,16 @@ for await (const event of stream) {
 }
 ```
 
+`streamingMode` selects the validation strategy:
+
+- **`'incremental'` (default)** — events are forwarded as they arrive and the accumulated text is
+  re-validated every 10 chunks; the stream is terminated early on the first violation.
+- **`'buffer'`** — every event is held back, the full response is validated once at stream
+  completion, then the buffered events are released unchanged only if validation passes. On a
+  violation the content is withheld entirely and a single blocked marker event is emitted (and
+  `onStreamBlocked` fires). One validation pass instead of one per interval, and zero pre-validation
+  leakage, at the cost of progressive delivery. Both modes enforce `maxStreamBufferSize` (SEC-003).
+
 ### Output Filtering
 
 ```typescript

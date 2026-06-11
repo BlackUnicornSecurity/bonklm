@@ -233,15 +233,6 @@ export function createGuardedOpenAI(
    * @internal
    */
   const createValidatedStream = (stream: AsyncIterable<ChatCompletionChunk>): AsyncIterable<ChatCompletionChunk> => {
-    // openai-connector currently only implements 'incremental' mode. If a caller
-    // passes 'buffer', validation is silently skipped — surface that intent
-    // explicitly via a warning rather than a silent no-op.
-    if (validateStreaming && streamingMode === 'buffer') {
-      logger.warn(
-        '[Guardrails] streamingMode:"buffer" not implemented for openai connector — falling back to no stream validation. ' +
-          'Use streamingMode:"incremental" (default) for live validation.'
-      );
-    }
     if (validateStreaming && streamingMode === 'incremental') {
       // SEC-002: Incremental stream validation with early termination
       // SEC-003: Max buffer size enforcement
@@ -251,6 +242,18 @@ export function createGuardedOpenAI(
         maxStreamBufferSize,
         logger,
         onStreamBlocked
+      );
+    }
+    if (validateStreaming && streamingMode === 'buffer') {
+      // SEC-002: Buffered full-stream validation (hold-back-and-release)
+      // SEC-003: Max buffer size enforcement
+      return createBufferedValidatedStream(
+        stream,
+        validateWithTimeout,
+        maxStreamBufferSize,
+        logger,
+        onStreamBlocked,
+        productionMode
       );
     }
 
@@ -416,6 +419,119 @@ async function* createIncrementalValidatedStream(
       throw error;
     }
     // StreamValidationError is caught and swallowed - stream ends
+  }
+}
+
+/**
+ * Creates a buffered, full-stream validated stream (hold-back-and-release).
+ *
+ * @internal
+ *
+ * @remarks
+ * Implements `streamingMode: 'buffer'`. Every chunk is held back (never
+ * forwarded) while the full response text is accumulated. At stream completion
+ * a single validation pass runs over the complete text; the buffered chunks are
+ * released unchanged only if validation passes. On a violation the buffered
+ * content is withheld entirely and a single filtered marker chunk is emitted.
+ *
+ * Trade-off vs {@link createIncrementalValidatedStream}: one validation pass
+ * instead of one per {@link VALIDATION_INTERVAL} chunks, and zero
+ * pre-validation leakage (nothing reaches the consumer until the full text is
+ * cleared), at the cost of progressive delivery. Mirrors the vercel connector's
+ * buffer semantics.
+ *
+ * SEC-003 (buffer-size cap) is still enforced per chunk before accumulation.
+ */
+async function* createBufferedValidatedStream(
+  stream: AsyncIterable<ChatCompletionChunk>,
+  validateWithTimeout: (content: string, context?: string) => Promise<GuardrailResult[]>,
+  maxStreamBufferSize: number,
+  logger: Logger,
+  onStreamBlocked: ((accumulated: string) => void) | undefined,
+  productionMode: boolean
+): AsyncIterable<ChatCompletionChunk> {
+  const buffered: ChatCompletionChunk[] = [];
+  let accumulatedText = '';
+
+  // SEC-003: single buffer-exceeded path (text size OR retained-event count).
+  const failBufferExceeded = (detail: Record<string, number>): never => {
+    logger.warn('[Guardrails] Stream buffer exceeded', { ...detail, limit: maxStreamBufferSize });
+    const error: any = new Error('Stream buffer exceeded maximum size');
+    error.name = 'StreamValidationError';
+    error.isStreamValidation = true;
+    error.reason = 'buffer_exceeded';
+    throw error;
+  };
+
+  try {
+    for await (const chunk of stream) {
+      // Optional-chain the array access: providers/gateways (e.g. Azure content
+      // filtering) can emit a chunk whose `choices` is absent or empty.
+      const content = chunk.choices?.[0]?.delta?.content;
+
+      if (content) {
+        // SEC-003: cap accumulated text BEFORE accumulating.
+        if (accumulatedText.length + content.length > maxStreamBufferSize) {
+          failBufferExceeded({ size: accumulatedText.length + content.length });
+        }
+        accumulatedText += content;
+      }
+
+      // SEC-003: also cap the retained-event count. Buffer mode holds one object
+      // per event, so a flood of zero-text/structural chunks would otherwise grow
+      // memory unbounded while the text cap above stays untouched.
+      if (buffered.length >= maxStreamBufferSize) {
+        failBufferExceeded({ events: buffered.length });
+      }
+
+      // Hold the chunk back — nothing is forwarded until the full text validates.
+      buffered.push(chunk);
+    }
+
+    // Single full-text validation on stream completion.
+    if (accumulatedText.length > 0) {
+      const results = await validateWithTimeout(accumulatedText, 'output');
+      const blocked = results.find(r => !r.allowed);
+      if (blocked) {
+        logger.warn('[Guardrails] Stream blocked at buffered validation');
+        if (onStreamBlocked) onStreamBlocked(accumulatedText);
+
+        // Withhold every buffered chunk; emit a single filtered marker instead.
+        // Sprint 43 CWE-117 sweep: sanitize the attacker-influenced reason.
+        const safeReason = sanitizeMeta(blocked.reason);
+        const filteredContent = productionMode
+          ? '[Content filtered by guardrails]'
+          : `[Content filtered by guardrails: ${safeReason}]`;
+        const meta = buffered[0];
+        yield {
+          id: meta?.id ?? 'guardrail-blocked',
+          object: 'chat.completion.chunk',
+          created: meta?.created ?? 0,
+          model: meta?.model ?? '',
+          choices: [
+            {
+              index: 0,
+              delta: { content: filteredContent },
+              finish_reason: 'content_filter',
+              logprobs: null
+            }
+          ]
+        } as ChatCompletionChunk;
+        return;
+      }
+    }
+
+    // Validation passed (or the stream carried no text) — release all chunks.
+    for (const chunk of buffered) {
+      yield chunk;
+    }
+  } catch (error) {
+    // Re-throw non-validation errors (including network/iterator failures).
+    if (error instanceof Error && (error as any).isStreamValidation !== true) {
+      throw error;
+    }
+    // StreamValidationError (buffer exceeded): the buffered content is dropped
+    // and the stream ends with nothing released — the DoS-protection response.
   }
 }
 

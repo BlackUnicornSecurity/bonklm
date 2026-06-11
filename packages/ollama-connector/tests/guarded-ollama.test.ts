@@ -1369,29 +1369,283 @@ describe('Ollama Guarded Wrapper', () => {
       expect(chunks.length).toBeGreaterThan(0);
     });
 
-    it('should use buffer streaming mode when specified', async () => {
-      const mockStream = createMockChatStream();
-      mockChat.mockResolvedValue(mockStream);
+    // SEC-002: buffered full-stream validation (hold-back-and-release).
+    // Buffer mode holds every response back, validates the full text once at
+    // completion, then releases the buffered responses only if validation passes.
+    describe('buffer mode (hold-back-and-release)', () => {
+      const chatResponse = (content: string, done = false): ChatResponse =>
+        ({
+          model: 'llama3.1',
+          created_at: new Date('2024-01-01T00:00:00Z'),
+          message: { role: 'assistant', content },
+          done,
+          done_reason: done ? 'stop' : ''
+        }) as ChatResponse;
 
-      const guardedOllama = createGuardedOllama(mockClient, {
-        validators: [new PromptInjectionValidator()],
-        validateStreaming: true,
-        streamingMode: 'buffer'
+      it('releases all chat responses unchanged and validates the full text exactly once when allowed', async () => {
+        const outputValidations: string[] = [];
+        const responses: ChatResponse[] = [];
+        for (let i = 0; i < 25; i++) {
+          responses.push(chatResponse(`Chunk${i} `));
+        }
+        responses.push(chatResponse('', true));
+        mockChat.mockResolvedValue(createMockChatStream(responses));
+
+        const trackingValidator = {
+          name: 'TrackingValidator',
+          validate: vi.fn((content: string) => {
+            if (content.includes('Chunk')) outputValidations.push(content);
+            return {
+              allowed: true,
+              blocked: false,
+              severity: 'info' as const,
+              risk_level: 'low' as const,
+              risk_score: 0,
+              findings: [],
+              timestamp: Date.now()
+            };
+          })
+        };
+
+        const guardedOllama = createGuardedOllama(mockClient, {
+          validators: [trackingValidator as any],
+          validateStreaming: true,
+          streamingMode: 'buffer'
+        });
+
+        const result = await guardedOllama.chat({
+          model: 'llama3.1',
+          messages: [{ role: 'user', content: 'Hello' }],
+          stream: true
+        });
+
+        const chunks: any[] = [];
+        for await (const chunk of result as any) {
+          chunks.push(chunk);
+        }
+
+        // Every original response is released unchanged.
+        expect(chunks).toHaveLength(26);
+        const allContent = chunks.map(c => c.message?.content || '').join('');
+        expect(allContent).toContain('Chunk0');
+        expect(allContent).toContain('Chunk24');
+        // Single validation pass over the FULL text — not one per interval.
+        expect(outputValidations).toHaveLength(1);
+        expect(outputValidations[0]).toContain('Chunk0');
+        expect(outputValidations[0]).toContain('Chunk24');
       });
 
-      const result = await guardedOllama.chat({
-        model: 'llama3.1',
-        messages: [{ role: 'user', content: 'Hello' }],
-        stream: true
+      it('withholds all chat content and emits a single filtered marker when blocked', async () => {
+        const blockedAccumulated: string[] = [];
+        mockChat.mockResolvedValue(createMockChatStream([chatResponse('SECRET data'), chatResponse('', true)]));
+
+        const blockingValidator = {
+          name: 'OutputBlockingValidator',
+          validate: vi.fn((content: string) => ({
+            allowed: !content.includes('SECRET'),
+            blocked: content.includes('SECRET'),
+            severity: 'high' as const,
+            risk_level: 'high' as const,
+            risk_score: 100,
+            reason: content.includes('SECRET') ? 'Blocked output' : undefined,
+            findings: content.includes('SECRET')
+              ? [{ category: 'leak', description: 'secret', severity: 'high' as const, weight: 100 }]
+              : [],
+            timestamp: Date.now()
+          }))
+        };
+
+        const guardedOllama = createGuardedOllama(mockClient, {
+          validators: [blockingValidator as any],
+          validateStreaming: true,
+          streamingMode: 'buffer',
+          onStreamBlocked: (acc: string) => blockedAccumulated.push(acc)
+        });
+
+        const result = await guardedOllama.chat({
+          model: 'llama3.1',
+          messages: [{ role: 'user', content: 'Safe input' }],
+          stream: true
+        });
+
+        const chunks: any[] = [];
+        for await (const chunk of result as any) {
+          chunks.push(chunk);
+        }
+
+        const allContent = chunks.map(c => c.message?.content || '').join('');
+        // Hold-back: the original SECRET content is never released.
+        expect(allContent).not.toContain('SECRET');
+        // A single filtered marker is emitted in its place.
+        expect(chunks).toHaveLength(1);
+        expect(allContent).toContain('[Content filtered by guardrails');
+        expect(chunks[0].done_reason).toBe('guardrail_blocked');
+        // onStreamBlocked fires once with the full accumulated text.
+        expect(blockedAccumulated).toHaveLength(1);
+        expect(blockedAccumulated[0]).toContain('SECRET');
       });
 
-      // Buffer mode just passes through (not yet implemented for full validation)
-      const chunks: any[] = [];
-      for await (const chunk of result as any) {
-        chunks.push(chunk);
-      }
+      it('propagates StreamValidationError when the chat buffer exceeds the limit (SEC-003)', async () => {
+        const large = 'A'.repeat(400000);
+        mockChat.mockResolvedValue(createMockChatStream([chatResponse(large), chatResponse(large, true)]));
 
-      expect(chunks.length).toBeGreaterThan(0);
+        const guardedOllama = createGuardedOllama(mockClient, {
+          validators: [noOpValidator()],
+          validateStreaming: true,
+          streamingMode: 'buffer',
+          maxStreamBufferSize: 600000 // second chunk pushes past the limit
+        });
+
+        const result = await guardedOllama.chat({
+          model: 'llama3.1',
+          messages: [{ role: 'user', content: 'Generate long content' }],
+          stream: true
+        });
+
+        await expect(async () => {
+          for await (const _chunk of result as any) {
+            // drain
+          }
+        }).rejects.toThrow();
+      });
+
+      it('releases all generate responses unchanged when allowed and withholds them when blocked', async () => {
+        const genResponse = (response: string, done = false): GenerateResponse =>
+          ({
+            model: 'llama3.1',
+            created_at: new Date('2024-01-01T00:00:00Z'),
+            response,
+            done,
+            done_reason: done ? 'stop' : '',
+            context: []
+          }) as GenerateResponse;
+
+        // Allowed: both responses released unchanged.
+        mockGenerate.mockResolvedValue(createMockGenerateStream([genResponse('Safe '), genResponse('output', true)]));
+        const allowed = createGuardedOllama(mockClient, {
+          validators: [noOpValidator()],
+          validateStreaming: true,
+          streamingMode: 'buffer'
+        });
+        const allowedResult = await allowed.generate({ model: 'llama3.1', prompt: 'Hello', stream: true });
+        const allowedChunks: any[] = [];
+        for await (const chunk of allowedResult as any) {
+          allowedChunks.push(chunk);
+        }
+        expect(allowedChunks).toHaveLength(2);
+        expect(allowedChunks.map(c => c.response).join('')).toBe('Safe output');
+
+        // Blocked: original content withheld, single filtered marker emitted.
+        const blockedAccumulated: string[] = [];
+        mockGenerate.mockResolvedValue(createMockGenerateStream([genResponse('SECRET data', true)]));
+        const blockingValidator = {
+          name: 'OutputBlockingValidator',
+          validate: vi.fn((content: string) => ({
+            allowed: !content.includes('SECRET'),
+            blocked: content.includes('SECRET'),
+            severity: 'high' as const,
+            risk_level: 'high' as const,
+            risk_score: 100,
+            reason: content.includes('SECRET') ? 'Blocked output' : undefined,
+            findings: content.includes('SECRET')
+              ? [{ category: 'leak', description: 'secret', severity: 'high' as const, weight: 100 }]
+              : [],
+            timestamp: Date.now()
+          }))
+        };
+        const blocked = createGuardedOllama(mockClient, {
+          validators: [blockingValidator as any],
+          validateStreaming: true,
+          streamingMode: 'buffer',
+          onStreamBlocked: (acc: string) => blockedAccumulated.push(acc)
+        });
+        const blockedResult = await blocked.generate({ model: 'llama3.1', prompt: 'Safe input', stream: true });
+        const blockedChunks: any[] = [];
+        for await (const chunk of blockedResult as any) {
+          blockedChunks.push(chunk);
+        }
+        const blockedContent = blockedChunks.map(c => c.response || '').join('');
+        expect(blockedContent).not.toContain('SECRET');
+        expect(blockedChunks).toHaveLength(1);
+        expect(blockedContent).toContain('[Content filtered by guardrails');
+        expect(blockedAccumulated).toHaveLength(1);
+        expect(blockedAccumulated[0]).toContain('SECRET');
+      });
+
+      it('releases chat responses unchanged when the stream carries no text', async () => {
+        const outputValidations: string[] = [];
+        mockChat.mockResolvedValue(createMockChatStream([chatResponse(''), chatResponse('', true)]));
+
+        const trackingValidator = {
+          name: 'TrackingValidator',
+          validate: vi.fn((content: string) => {
+            if (content === '') outputValidations.push(content);
+            return {
+              allowed: true,
+              blocked: false,
+              severity: 'info' as const,
+              risk_level: 'low' as const,
+              risk_score: 0,
+              findings: [],
+              timestamp: Date.now()
+            };
+          })
+        };
+
+        const guardedOllama = createGuardedOllama(mockClient, {
+          validators: [trackingValidator as any],
+          validateStreaming: true,
+          streamingMode: 'buffer'
+        });
+
+        const result = await guardedOllama.chat({
+          model: 'llama3.1',
+          messages: [{ role: 'user', content: 'Hello' }],
+          stream: true
+        });
+
+        const chunks: any[] = [];
+        for await (const chunk of result as any) {
+          chunks.push(chunk);
+        }
+
+        // No text accumulated → no output validation → all responses released.
+        expect(chunks).toHaveLength(2);
+        expect(outputValidations).toHaveLength(0);
+      });
+
+      it('caps the retained-response count on a zero-text response flood (SEC-003)', async () => {
+        // All zero-text responses: the text cap never grows, so only the
+        // retained-response count can bound memory. ollama propagates the throw.
+        mockChat.mockResolvedValue(
+          createMockChatStream([
+            chatResponse(''),
+            chatResponse(''),
+            chatResponse(''),
+            chatResponse(''),
+            chatResponse('', true)
+          ])
+        );
+
+        const guardedOllama = createGuardedOllama(mockClient, {
+          validators: [noOpValidator()],
+          validateStreaming: true,
+          streamingMode: 'buffer',
+          maxStreamBufferSize: 3 // event-count cap trips after 3 held responses
+        });
+
+        const result = await guardedOllama.chat({
+          model: 'llama3.1',
+          messages: [{ role: 'user', content: 'Safe' }],
+          stream: true
+        });
+
+        await expect(async () => {
+          for await (const _chunk of result as any) {
+            // drain
+          }
+        }).rejects.toThrow();
+      });
     });
   });
 

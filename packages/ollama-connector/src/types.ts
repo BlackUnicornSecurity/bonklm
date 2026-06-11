@@ -69,8 +69,22 @@ export interface GuardedOllamaOptions {
    * Stream validation mode.
    *
    * @remarks
-   * - 'incremental': Validates every N chunks during streaming, early terminates on violation
-   * - 'buffer': NOT YET IMPLEMENTED - Will accumulate entire stream before validating (less secure, faster)
+   * - `'incremental'` (default): validates the accumulated text every
+   *   {@link VALIDATION_INTERVAL} chunks while streaming and stops forwarding on
+   *   the first violation. Responses are delivered progressively (lower latency
+   *   to first token); content emitted before a violation is detected has
+   *   already reached the consumer.
+   * - `'buffer'`: holds every response back, runs a single validation pass over
+   *   the full text at stream completion, then releases the buffered responses
+   *   unchanged only if validation passes. On a violation the buffered content is
+   *   withheld entirely and a single filtered marker response is emitted (plus
+   *   the {@link GuardedOllamaOptions.onStreamBlocked} callback). One validation
+   *   pass instead of one per interval, and zero pre-validation leakage, at the
+   *   cost of progressive delivery — the consumer receives nothing until the full
+   *   response clears.
+   *
+   * Both modes enforce {@link GuardedOllamaOptions.maxStreamBufferSize} (SEC-003)
+   * and require {@link GuardedOllamaOptions.validateStreaming} to be `true`.
    *
    * Addresses SEC-002: Post-hoc stream validation bypass.
    *

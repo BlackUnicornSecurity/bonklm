@@ -347,16 +347,24 @@ export function createGuardedAnthropic(
     stream: AsyncIterable<MessageStreamEvent>,
     runId: string
   ): AsyncIterable<MessageStreamEvent> => {
-    if (validateStreaming && streamingMode === 'buffer') {
-      logger.warn(
-        '[Guardrails] streamingMode:"buffer" not implemented for anthropic connector — falling back to no stream validation. ' +
-          'Use streamingMode:"incremental" (default) for live validation.'
-      );
-    }
     if (validateStreaming && streamingMode === 'incremental') {
       // SEC-002: Incremental stream validation with early termination
       // SEC-003: Max buffer size enforcement
       return createIncrementalValidatedStream(
+        stream,
+        validateWithTimeout,
+        maxStreamBufferSize,
+        logger,
+        onStreamBlocked,
+        productionMode,
+        telemetry,
+        runId
+      );
+    }
+    if (validateStreaming && streamingMode === 'buffer') {
+      // SEC-002: Buffered full-stream validation (hold-back-and-release)
+      // SEC-003: Max buffer size enforcement
+      return createBufferedValidatedStream(
         stream,
         validateWithTimeout,
         maxStreamBufferSize,
@@ -662,6 +670,150 @@ async function* createIncrementalValidatedStream(
       throw error;
     }
     // StreamValidationError: yield a final warning event before ending stream
+    yield {
+      type: 'content_block_stop',
+      index: 0
+    } as MessageStreamEvent;
+    yield {
+      type: 'message_delta',
+      delta: { stop_reason: 'max_tokens' as const, stop_sequence: null },
+      usage: { output_tokens: 0 }
+    } as MessageStreamEvent;
+    yield {
+      type: 'message_stop'
+    } as MessageStreamEvent;
+  }
+}
+
+/**
+ * Creates a buffered, full-stream validated stream (hold-back-and-release).
+ *
+ * @internal
+ *
+ * @remarks
+ * Implements `streamingMode: 'buffer'`. Every event is held back (never
+ * forwarded) while the full response text is accumulated. At stream completion
+ * a single validation pass runs over the complete text; the buffered events are
+ * released unchanged only if validation passes. On a violation the buffered
+ * content is withheld entirely and a single blocked marker event is emitted.
+ *
+ * Trade-off vs {@link createIncrementalValidatedStream}: one validation pass
+ * instead of one per {@link VALIDATION_INTERVAL} chunks, and zero
+ * pre-validation leakage, at the cost of progressive delivery. Mirrors the
+ * vercel connector's buffer semantics.
+ *
+ * SEC-003 (buffer-size cap) is still enforced per chunk before accumulation.
+ */
+async function* createBufferedValidatedStream(
+  stream: AsyncIterable<MessageStreamEvent>,
+  validateWithTimeout: (content: string, context?: string, runId?: string) => Promise<GuardrailResult[]>,
+  maxStreamBufferSize: number,
+  logger: Logger,
+  onStreamBlocked: ((accumulated: string) => void) | undefined,
+  productionMode: boolean,
+  telemetry: import('@blackunicorn/bonklm').TelemetryService | undefined,
+  runId: string
+): AsyncIterable<MessageStreamEvent> {
+  const buffered: MessageStreamEvent[] = [];
+  let accumulatedText = '';
+
+  // SEC-003: single buffer-exceeded path (text size OR retained-event count).
+  const failBufferExceeded = (detail: Record<string, number>): never => {
+    logger.warn('[Guardrails] Stream buffer exceeded', { ...detail, limit: maxStreamBufferSize });
+    const error: any = new Error('Stream buffer exceeded maximum size');
+    error.name = 'StreamValidationError';
+    error.isStreamValidation = true;
+    error.reason = 'buffer_exceeded';
+    throw error;
+  };
+
+  try {
+    for await (const event of stream) {
+      // Only text deltas contribute to the validated content.
+      if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+        const content = event.delta.text;
+
+        // SEC-003: cap accumulated text BEFORE accumulating.
+        if (accumulatedText.length + content.length > maxStreamBufferSize) {
+          failBufferExceeded({ size: accumulatedText.length + content.length });
+        }
+
+        accumulatedText += content;
+
+        if (telemetry) {
+          telemetry.recordStreamChunk({
+            runId,
+            connector: 'anthropic',
+            tokenCount: 1,
+            charCount: content.length
+          });
+        }
+      }
+
+      // SEC-003: also cap the retained-event count. Buffer mode holds one object
+      // per event, so a flood of zero-text/structural events would otherwise grow
+      // memory unbounded while the text cap above stays untouched.
+      if (buffered.length >= maxStreamBufferSize) {
+        failBufferExceeded({ events: buffered.length });
+      }
+
+      // Hold the event back — nothing is forwarded until the full text validates.
+      buffered.push(event);
+    }
+
+    // Single full-text validation on stream completion.
+    if (accumulatedText.length > 0) {
+      const results = await validateWithTimeout(accumulatedText, 'output', runId);
+      const blocked = results.find(r => !r.allowed);
+      if (blocked) {
+        logger.warn('[Guardrails] Stream blocked at buffered validation');
+        if (onStreamBlocked) onStreamBlocked(accumulatedText);
+
+        if (telemetry) {
+          telemetry.recordStreamBlocked({
+            runId,
+            connector: 'anthropic',
+            accumulatedLength: accumulatedText.length
+          });
+        }
+
+        // Withhold every buffered event; emit the block notice via the standard
+        // content-block delta channel. A lone `message_stop` carrying a `message`
+        // body is non-standard and invisible to spec-compliant SDK consumers, so
+        // the notice rides a real text_delta — the same shape the incremental
+        // final-block path uses. Sprint 43 CWE-117 sweep: sanitize the reason.
+        const markerText = productionMode
+          ? '[Content filtered by guardrails]'
+          : `[Stream blocked by guardrails: ${sanitizeMeta(blocked.reason)}]`;
+        yield {
+          type: 'content_block_start',
+          index: 0,
+          content_block: { type: 'text', text: '' }
+        } as MessageStreamEvent;
+        yield {
+          type: 'content_block_delta',
+          index: 0,
+          delta: { type: 'text_delta', text: markerText }
+        } as MessageStreamEvent;
+        yield {
+          type: 'content_block_stop',
+          index: 0
+        } as MessageStreamEvent;
+        return;
+      }
+    }
+
+    // Validation passed (or the stream carried no text) — release all events.
+    for (const event of buffered) {
+      yield event;
+    }
+  } catch (error) {
+    // Re-throw non-validation errors (including network/iterator failures).
+    if (error instanceof Error && (error as any).isStreamValidation !== true) {
+      throw error;
+    }
+    // StreamValidationError (buffer exceeded): the buffered content is dropped;
+    // yield graceful closing events so the consumer's stream terminates cleanly.
     yield {
       type: 'content_block_stop',
       index: 0

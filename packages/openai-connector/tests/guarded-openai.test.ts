@@ -1699,49 +1699,305 @@ describe('OpenAI Guarded Wrapper', () => {
         expect(validationCallPoints.length).toBeGreaterThan(1);
       });
 
-      it('should pass through stream without validation in buffer mode (not implemented)', async () => {
-        const mockStream = {
-          async *[Symbol.asyncIterator]() {
-            yield { choices: [{ delta: { role: 'assistant' } }] };
-            yield { choices: [{ delta: { content: 'Content' } }] };
-            yield { choices: [{ delta: {}, finish_reason: 'stop' }] };
-          }
-        };
-
-        mockCreate.mockResolvedValue(mockStream);
-
-        const mockValidator = {
-          name: 'BufferModeValidator',
-          validate: vi.fn(() => ({
-            allowed: true,
-            blocked: false,
-            severity: 'info' as const,
-            risk_level: 'low' as const,
-            risk_score: 0,
-            findings: [],
-            timestamp: Date.now()
-          }))
-        };
-
-        const guardedOpenAI = createGuardedOpenAI(mockClient, {
-          validators: [mockValidator as any],
-          validateStreaming: true,
-          streamingMode: 'buffer' // Not implemented, should pass through
-        });
-
-        const result = await guardedOpenAI.chat.completions.create({
+      // SEC-002: buffered full-stream validation (hold-back-and-release).
+      // Buffer mode holds every chunk back, validates the full text once at
+      // completion, then releases the buffered chunks only if validation passes.
+      describe('buffer mode (hold-back-and-release)', () => {
+        const chunk = (extra: Record<string, unknown>): any => ({
+          id: 'chatcmpl-buf',
+          object: 'chat.completion.chunk',
+          created: 111,
           model: 'gpt-4',
-          messages: [{ role: 'user', content: 'Test' }],
-          stream: true
+          ...extra
         });
 
-        const chunks = [];
-        for await (const chunk of result as any) {
-          chunks.push(chunk);
-        }
+        it('releases all chunks unchanged and validates the full text exactly once when allowed', async () => {
+          const outputValidations: string[] = [];
+          const mockStream = {
+            async *[Symbol.asyncIterator]() {
+              yield chunk({ choices: [{ delta: { role: 'assistant' } }] });
+              for (let i = 0; i < 25; i++) {
+                yield chunk({ choices: [{ delta: { content: `Chunk${i} ` } }] });
+              }
+              yield chunk({ choices: [{ delta: {}, finish_reason: 'stop' }] });
+            }
+          };
+          mockCreate.mockResolvedValue(mockStream);
 
-        // Buffer mode is not implemented, so stream passes through
-        expect(chunks.length).toBeGreaterThan(0);
+          const trackingValidator = {
+            name: 'TrackingValidator',
+            validate: vi.fn((content: string) => {
+              if (content.includes('Chunk')) outputValidations.push(content);
+              return {
+                allowed: true,
+                blocked: false,
+                severity: 'info' as const,
+                risk_level: 'low' as const,
+                risk_score: 0,
+                findings: [],
+                timestamp: Date.now()
+              };
+            })
+          };
+
+          const guardedOpenAI = createGuardedOpenAI(mockClient, {
+            validators: [trackingValidator as any],
+            validateStreaming: true,
+            streamingMode: 'buffer'
+          });
+
+          const result = await guardedOpenAI.chat.completions.create({
+            model: 'gpt-4',
+            messages: [{ role: 'user', content: 'Test' }],
+            stream: true
+          });
+
+          const chunks: any[] = [];
+          for await (const c of result as any) {
+            chunks.push(c);
+          }
+
+          // Every original chunk is released unchanged (role + 25 content + stop).
+          expect(chunks).toHaveLength(27);
+          const allContent = chunks.map(c => c.choices?.[0]?.delta?.content || '').join('');
+          expect(allContent).toContain('Chunk0');
+          expect(allContent).toContain('Chunk24');
+          // Single validation pass over the FULL text — not one per interval.
+          expect(outputValidations).toHaveLength(1);
+          expect(outputValidations[0]).toContain('Chunk0');
+          expect(outputValidations[0]).toContain('Chunk24');
+        });
+
+        it('withholds all content and emits a single filtered marker when blocked', async () => {
+          const blockedAccumulated: string[] = [];
+          const mockStream = {
+            async *[Symbol.asyncIterator]() {
+              yield chunk({ choices: [{ delta: { role: 'assistant' } }] });
+              yield chunk({ choices: [{ delta: { content: 'SECRET data' } }] });
+              yield chunk({ choices: [{ delta: {}, finish_reason: 'stop' }] });
+            }
+          };
+          mockCreate.mockResolvedValue(mockStream);
+
+          const blockingValidator = {
+            name: 'OutputBlockingValidator',
+            validate: vi.fn((content: string) => ({
+              allowed: !content.includes('SECRET'),
+              blocked: content.includes('SECRET'),
+              severity: 'high' as const,
+              risk_level: 'high' as const,
+              risk_score: 100,
+              reason: content.includes('SECRET') ? 'Blocked output' : undefined,
+              findings: content.includes('SECRET')
+                ? [{ category: 'leak', description: 'secret', severity: 'high' as const, weight: 100 }]
+                : [],
+              timestamp: Date.now()
+            }))
+          };
+
+          const guardedOpenAI = createGuardedOpenAI(mockClient, {
+            validators: [blockingValidator as any],
+            validateStreaming: true,
+            streamingMode: 'buffer',
+            onStreamBlocked: (acc: string) => blockedAccumulated.push(acc)
+          });
+
+          const result = await guardedOpenAI.chat.completions.create({
+            model: 'gpt-4',
+            messages: [{ role: 'user', content: 'Safe input' }],
+            stream: true
+          });
+
+          const chunks: any[] = [];
+          for await (const c of result as any) {
+            chunks.push(c);
+          }
+
+          const allContent = chunks.map(c => c.choices?.[0]?.delta?.content || '').join('');
+          // Hold-back: the original SECRET content is never released.
+          expect(allContent).not.toContain('SECRET');
+          // A single filtered marker is emitted in its place.
+          expect(chunks).toHaveLength(1);
+          expect(allContent).toContain('[Content filtered by guardrails');
+          // onStreamBlocked fires once with the full accumulated text.
+          expect(blockedAccumulated).toHaveLength(1);
+          expect(blockedAccumulated[0]).toContain('SECRET');
+        });
+
+        it('enforces maxStreamBufferSize (SEC-003) by releasing nothing on overflow', async () => {
+          const mockStream = {
+            async *[Symbol.asyncIterator]() {
+              yield chunk({ choices: [{ delta: { content: 'x'.repeat(50) } }] });
+              yield chunk({ choices: [{ delta: { content: 'y'.repeat(50) } }] });
+            }
+          };
+          mockCreate.mockResolvedValue(mockStream);
+
+          const guardedOpenAI = createGuardedOpenAI(mockClient, {
+            validators: [noOpValidator()],
+            validateStreaming: true,
+            streamingMode: 'buffer',
+            maxStreamBufferSize: 60 // first chunk (50) fits, second (50) overflows
+          });
+
+          const result = await guardedOpenAI.chat.completions.create({
+            model: 'gpt-4',
+            messages: [{ role: 'user', content: 'Safe' }],
+            stream: true
+          });
+
+          const chunks: any[] = [];
+          for await (const c of result as any) {
+            chunks.push(c);
+          }
+
+          // Overflow drops the whole held-back buffer — nothing leaks.
+          expect(chunks).toHaveLength(0);
+        });
+
+        it('re-throws a non-validation stream error instead of swallowing it', async () => {
+          const mockStream = {
+            async *[Symbol.asyncIterator]() {
+              yield chunk({ choices: [{ delta: { content: 'partial' } }] });
+              throw new Error('upstream network failure');
+            }
+          };
+          mockCreate.mockResolvedValue(mockStream);
+
+          const guardedOpenAI = createGuardedOpenAI(mockClient, {
+            validators: [noOpValidator()],
+            validateStreaming: true,
+            streamingMode: 'buffer'
+          });
+
+          const result = await guardedOpenAI.chat.completions.create({
+            model: 'gpt-4',
+            messages: [{ role: 'user', content: 'Safe' }],
+            stream: true
+          });
+
+          await expect(async () => {
+            for await (const _c of result as any) {
+              // drain
+            }
+          }).rejects.toThrow('upstream network failure');
+        });
+
+        it('releases structural chunks unchanged when the stream carries no text', async () => {
+          const outputValidations: string[] = [];
+          const mockStream = {
+            async *[Symbol.asyncIterator]() {
+              yield chunk({ choices: [{ delta: { role: 'assistant' } }] });
+              yield chunk({ choices: [{ delta: {}, finish_reason: 'stop' }] });
+            }
+          };
+          mockCreate.mockResolvedValue(mockStream);
+
+          const trackingValidator = {
+            name: 'TrackingValidator',
+            validate: vi.fn((content: string) => {
+              if (content.includes('assistant') || content === '') outputValidations.push(content);
+              return {
+                allowed: true,
+                blocked: false,
+                severity: 'info' as const,
+                risk_level: 'low' as const,
+                risk_score: 0,
+                findings: [],
+                timestamp: Date.now()
+              };
+            })
+          };
+
+          const guardedOpenAI = createGuardedOpenAI(mockClient, {
+            validators: [trackingValidator as any],
+            validateStreaming: true,
+            streamingMode: 'buffer'
+          });
+
+          const result = await guardedOpenAI.chat.completions.create({
+            model: 'gpt-4',
+            messages: [{ role: 'user', content: 'Test' }],
+            stream: true
+          });
+
+          const chunks: any[] = [];
+          for await (const c of result as any) {
+            chunks.push(c);
+          }
+
+          // No text accumulated → no output validation → all structural chunks released.
+          expect(chunks).toHaveLength(2);
+          expect(outputValidations).toHaveLength(0);
+        });
+
+        it('caps the retained-event count on a zero-text structural-event flood (SEC-003)', async () => {
+          const mockStream = {
+            async *[Symbol.asyncIterator]() {
+              // All zero-text chunks: the text cap never grows, so only the
+              // retained-event count can bound memory.
+              for (let i = 0; i < 10; i++) {
+                yield chunk({ choices: [{ delta: {} }] });
+              }
+            }
+          };
+          mockCreate.mockResolvedValue(mockStream);
+
+          const guardedOpenAI = createGuardedOpenAI(mockClient, {
+            validators: [noOpValidator()],
+            validateStreaming: true,
+            streamingMode: 'buffer',
+            maxStreamBufferSize: 3 // event-count cap trips after 3 held events
+          });
+
+          const result = await guardedOpenAI.chat.completions.create({
+            model: 'gpt-4',
+            messages: [{ role: 'user', content: 'Safe' }],
+            stream: true
+          });
+
+          const chunks: any[] = [];
+          for await (const c of result as any) {
+            chunks.push(c);
+          }
+
+          // Overflow by event count drops the held-back buffer — nothing leaks.
+          expect(chunks).toHaveLength(0);
+        });
+
+        it('tolerates chunks with absent or empty choices (Azure content-filter shape)', async () => {
+          const mockStream = {
+            async *[Symbol.asyncIterator]() {
+              yield chunk({ choices: [] }); // Azure content-filter emits a leading empty-choices chunk
+              yield chunk({}); // choices absent entirely
+              yield chunk({ choices: [{ delta: { content: 'ok' } }] });
+              yield chunk({ choices: [{ delta: {}, finish_reason: 'stop' }] });
+            }
+          };
+          mockCreate.mockResolvedValue(mockStream);
+
+          const guardedOpenAI = createGuardedOpenAI(mockClient, {
+            validators: [noOpValidator()],
+            validateStreaming: true,
+            streamingMode: 'buffer'
+          });
+
+          const result = await guardedOpenAI.chat.completions.create({
+            model: 'gpt-4',
+            messages: [{ role: 'user', content: 'Safe' }],
+            stream: true
+          });
+
+          // Must NOT throw a TypeError on the empty/absent-choices chunks.
+          const chunks: any[] = [];
+          for await (const c of result as any) {
+            chunks.push(c);
+          }
+
+          // All chunks released unchanged; the text chunk validated clean.
+          expect(chunks).toHaveLength(4);
+          expect(chunks.map(c => c.choices?.[0]?.delta?.content || '').join('')).toContain('ok');
+        });
       });
 
       it('should not validate stream output when validateStreaming is false', async () => {

@@ -233,6 +233,18 @@ export function createGuardedOllama(
         productionMode
       );
     }
+    if (validateStreaming && streamingMode === 'buffer') {
+      // SEC-002: Buffered full-stream validation (hold-back-and-release)
+      // SEC-003: Max buffer size enforcement
+      return createBufferedValidatedChatStream(
+        stream,
+        validateWithTimeout,
+        maxStreamBufferSize,
+        logger,
+        onStreamBlocked,
+        productionMode
+      );
+    }
 
     // No streaming validation - return original stream
     return stream;
@@ -250,6 +262,18 @@ export function createGuardedOllama(
       // SEC-002: Incremental stream validation with early termination
       // SEC-003: Max buffer size enforcement
       return createIncrementalValidatedGenerateStream(
+        stream,
+        validateWithTimeout,
+        maxStreamBufferSize,
+        logger,
+        onStreamBlocked,
+        productionMode
+      );
+    }
+    if (validateStreaming && streamingMode === 'buffer') {
+      // SEC-002: Buffered full-stream validation (hold-back-and-release)
+      // SEC-003: Max buffer size enforcement
+      return createBufferedValidatedGenerateStream(
         stream,
         validateWithTimeout,
         maxStreamBufferSize,
@@ -634,6 +658,189 @@ async function* createIncrementalValidatedGenerateStream(
     }
     // Re-throw other errors
     throw error;
+  }
+}
+
+/**
+ * Creates a buffered, full-stream validated stream for chat (hold-back-and-release).
+ *
+ * @internal
+ *
+ * @remarks
+ * Implements `streamingMode: 'buffer'` for `chat()`. Every response is held back
+ * (never forwarded) while the full text is accumulated. At stream completion a
+ * single validation pass runs over the complete text; the buffered responses are
+ * released unchanged only if validation passes. On a violation the buffered
+ * content is withheld entirely and a single filtered marker response is emitted.
+ *
+ * Trade-off vs {@link createIncrementalValidatedChatStream}: one validation pass
+ * instead of one per {@link VALIDATION_INTERVAL} chunks, and zero pre-validation
+ * leakage, at the cost of progressive delivery. Mirrors the vercel connector's
+ * buffer semantics. SEC-003 (buffer-size cap) is still enforced per chunk.
+ */
+async function* createBufferedValidatedChatStream(
+  stream: any,
+  validateWithTimeout: (content: string, context?: string) => Promise<GuardrailResult[]>,
+  maxStreamBufferSize: number,
+  logger: Logger,
+  onStreamBlocked: ((accumulated: string) => void) | undefined,
+  productionMode: boolean
+): AsyncGenerator<ChatResponse> {
+  const buffered: ChatResponse[] = [];
+  let accumulatedText = '';
+  let model = '';
+  let createdAt = new Date();
+
+  for await (const response of stream) {
+    // Store metadata from first response
+    if (!model) model = response.model;
+    if (!createdAt) createdAt = response.created_at;
+
+    const content = response.message?.content || '';
+
+    // SEC-003: Check buffer size BEFORE accumulating
+    if (accumulatedText.length + content.length > maxStreamBufferSize) {
+      logger.warn('[Guardrails] Stream buffer exceeded', {
+        size: accumulatedText.length + content.length,
+        limit: maxStreamBufferSize
+      });
+      // Propagates to the consumer (DoS-protection) — mirrors incremental mode.
+      throw new StreamValidationError('Stream buffer exceeded maximum size', 'buffer_exceeded', true);
+    }
+
+    accumulatedText += content;
+
+    // SEC-003: also cap the retained-response count. Buffer mode holds one object
+    // per response, so a flood of zero-text responses would otherwise grow memory
+    // unbounded while the text cap above stays untouched.
+    if (buffered.length >= maxStreamBufferSize) {
+      logger.warn('[Guardrails] Stream buffer exceeded', {
+        events: buffered.length,
+        limit: maxStreamBufferSize
+      });
+      throw new StreamValidationError('Stream buffer exceeded maximum size', 'buffer_exceeded', true);
+    }
+
+    // Hold the response back — nothing is forwarded until the full text validates.
+    buffered.push(response);
+  }
+
+  // Single full-text validation on stream completion.
+  if (accumulatedText.length > 0) {
+    const results = await validateWithTimeout(accumulatedText, 'output');
+    const blocked = results.find(r => !r.allowed);
+    if (blocked) {
+      logger.warn('[Guardrails] Stream blocked at buffered validation');
+      if (onStreamBlocked) onStreamBlocked(accumulatedText);
+
+      // Withhold every buffered response; emit a single filtered marker instead.
+      // Sprint 43 CWE-117 sweep: sanitize the attacker-influenced reason.
+      const safeReason = sanitizeMeta(blocked.reason);
+      yield {
+        model,
+        created_at: createdAt,
+        message: {
+          role: 'assistant',
+          content: productionMode
+            ? '[Content filtered by guardrails]'
+            : `[Content filtered by guardrails: ${safeReason}]`
+        },
+        done: true,
+        done_reason: 'guardrail_blocked'
+      } as ChatResponse;
+      return;
+    }
+  }
+
+  // Validation passed (or the stream carried no text) — release all responses.
+  for (const response of buffered) {
+    yield response;
+  }
+}
+
+/**
+ * Creates a buffered, full-stream validated stream for generate (hold-back-and-release).
+ *
+ * @internal
+ *
+ * @remarks
+ * The `generate()` sibling of {@link createBufferedValidatedChatStream}; same
+ * hold-back-and-release semantics over `GenerateResponse.response` text.
+ */
+async function* createBufferedValidatedGenerateStream(
+  stream: any,
+  validateWithTimeout: (content: string, context?: string) => Promise<GuardrailResult[]>,
+  maxStreamBufferSize: number,
+  logger: Logger,
+  onStreamBlocked: ((accumulated: string) => void) | undefined,
+  productionMode: boolean
+): AsyncGenerator<GenerateResponse> {
+  const buffered: GenerateResponse[] = [];
+  let accumulatedText = '';
+  let model = '';
+  let createdAt = new Date();
+
+  for await (const response of stream) {
+    // Store metadata from first response
+    if (!model) model = response.model;
+    if (!createdAt) createdAt = response.created_at;
+
+    const content = response.response || '';
+
+    // SEC-003: Check buffer size BEFORE accumulating
+    if (accumulatedText.length + content.length > maxStreamBufferSize) {
+      logger.warn('[Guardrails] Stream buffer exceeded', {
+        size: accumulatedText.length + content.length,
+        limit: maxStreamBufferSize
+      });
+      // Propagates to the consumer (DoS-protection) — mirrors incremental mode.
+      throw new StreamValidationError('Stream buffer exceeded maximum size', 'buffer_exceeded', true);
+    }
+
+    accumulatedText += content;
+
+    // SEC-003: also cap the retained-response count. Buffer mode holds one object
+    // per response, so a flood of zero-text responses would otherwise grow memory
+    // unbounded while the text cap above stays untouched.
+    if (buffered.length >= maxStreamBufferSize) {
+      logger.warn('[Guardrails] Stream buffer exceeded', {
+        events: buffered.length,
+        limit: maxStreamBufferSize
+      });
+      throw new StreamValidationError('Stream buffer exceeded maximum size', 'buffer_exceeded', true);
+    }
+
+    // Hold the response back — nothing is forwarded until the full text validates.
+    buffered.push(response);
+  }
+
+  // Single full-text validation on stream completion.
+  if (accumulatedText.length > 0) {
+    const results = await validateWithTimeout(accumulatedText, 'output');
+    const blocked = results.find(r => !r.allowed);
+    if (blocked) {
+      logger.warn('[Guardrails] Stream blocked at buffered validation');
+      if (onStreamBlocked) onStreamBlocked(accumulatedText);
+
+      // Withhold every buffered response; emit a single filtered marker instead.
+      // Sprint 43 CWE-117 sweep: sanitize the attacker-influenced reason.
+      const safeReason = sanitizeMeta(blocked.reason);
+      yield {
+        model,
+        created_at: createdAt,
+        response: productionMode
+          ? '[Content filtered by guardrails]'
+          : `[Content filtered by guardrails: ${safeReason}]`,
+        done: true,
+        done_reason: 'guardrail_blocked'
+      } as GenerateResponse;
+      return;
+    }
+  }
+
+  // Validation passed (or the stream carried no text) — release all responses.
+  for (const response of buffered) {
+    yield response;
   }
 }
 
