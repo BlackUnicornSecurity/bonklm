@@ -27,6 +27,7 @@ import { testConnectorWithTimeout } from '../testing/validator.js';
 import { displayTestResults } from '../testing/display.js';
 import { EnvManager } from '../config/env.js';
 import { type AuditEvent, AuditLogger, createAuditEvent, safeAudit } from '../utils/audit.js';
+import { redactCredentials } from '../utils/error.js';
 import { sanitizeLogString } from '../../common/index.js';
 import { formatAvailableConnectors, isValidConnectorIdFormat } from './connector-id.js';
 
@@ -164,9 +165,11 @@ interface ConnectorTestOptions {
  * Renders a report as machine-readable JSON.
  *
  * Control characters are neutralised by `JSON.stringify` (escaped to `\uXXXX`),
- * so the output is always valid, parseable JSON; the echoed `connectorId` and the
- * connector-supplied `error` are additionally `sanitizeLogString`-hardened to keep
- * SIEM log lines intact (bidi / U+2028 / control chars).
+ * so the output is always valid, parseable JSON; the echoed `connectorId` is
+ * additionally `sanitizeLogString`-hardened, and the connector-supplied `error`
+ * is `redactCredentials`-redacted then `sanitizeLogString`-hardened — keeping
+ * SIEM log lines intact (bidi / U+2028 / control chars) without leaking
+ * credentials, matching the wizard `--json` path.
  */
 export function renderConnectorTestJson(report: ConnectorTestReport): void {
   console.log(
@@ -177,11 +180,15 @@ export function renderConnectorTestJson(report: ConnectorTestReport): void {
         status: report.status,
         connection: report.result?.connection ?? false,
         validation: report.result?.validation ?? false,
-        // Connector-supplied error crosses a trust boundary; hex-escape control /
-        // bidi chars per ADR-0001 (the human path sanitizes via display.ts's
-        // sanitizeMeta). JSON.stringify alone keeps the output parseable but would
-        // still pass U+2028/bidi/TAB-column-injection through to SIEM consumers.
-        error: report.result?.error === undefined ? undefined : sanitizeLogString(report.result.error),
+        // Connector-supplied error crosses a trust boundary: redact credential-
+        // shaped substrings (shared redactCredentials), then hex-escape control /
+        // bidi chars (sanitizeLogString) per ADR-0001 so JSON/SIEM consumers
+        // can't be log-injected and credentials don't leak. JSON.stringify alone
+        // keeps output parseable but passes U+2028/bidi/TAB-column-injection
+        // through. Parity with the wizard --json path; the human path follows the
+        // CLI-wide sanitizeMeta-only convention (display.ts).
+        error:
+          report.result?.error === undefined ? undefined : sanitizeLogString(redactCredentials(report.result.error)),
         latency: report.result?.latency,
         missing: report.missing,
         exitCode: report.exitCode

@@ -60,6 +60,26 @@ export interface TestResult {
 }
 
 /**
+ * Input-format hint for a single credential, used by the interactive CLI
+ * credential prompts (`wizard`, `connector add`) to validate a freshly-entered
+ * value's shape before it is stored.
+ */
+export interface CredentialFormat {
+  /**
+   * Required leading prefix for the credential value (e.g. `sk-` for OpenAI,
+   * `sk-ant-` for Anthropic).
+   */
+  prefix: string;
+
+  /**
+   * Human label for the credential in the prompt error message; defaults to
+   * `API key`. Set this for a non-API-key credential so the hint reads
+   * correctly (e.g. `label: 'webhook secret'`).
+   */
+  label?: string;
+}
+
+/**
  * Connector definition interface
  *
  * All connectors must implement this interface to be compatible with
@@ -115,6 +135,26 @@ export interface ConnectorDefinition {
    * ```
    */
   configKeyByEnvVar?: Record<string, string>;
+
+  /**
+   * Optional per-credential input-format hints, keyed by the env-var name (as
+   * declared in {@link DetectionRules.envVars}). The interactive credential
+   * prompts (`wizard`, `connector add`) use these — via the shared
+   * `validateCredentialFormat` helper — to reject a malformed value (e.g. an API
+   * key missing its provider prefix) BEFORE it is stored, replacing the
+   * `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` checks that were previously
+   * duplicated inline across both commands. Connectors with no recognizable
+   * input shape (ports-only `ollama`, the framework connectors) omit this field.
+   * This is a UX guard only; the authoritative validation is the connector's
+   * {@link ConnectorDefinition.configSchema}.
+   *
+   * @example
+   * ```ts
+   * detection: { envVars: ['OPENAI_API_KEY'] },
+   * credentialFormats: { OPENAI_API_KEY: { prefix: 'sk-' } },
+   * ```
+   */
+  credentialFormats?: Record<string, CredentialFormat>;
 
   /**
    * Test function to verify connector configuration
@@ -199,6 +239,36 @@ function isValidConfigKeyMap(value: unknown): boolean {
 }
 
 /**
+ * Validates the optional {@link ConnectorDefinition.credentialFormats} field:
+ * absent, or a non-null, non-array object whose every value is a
+ * `{ prefix: non-empty-string }` shape. Like {@link isValidConfigKeyMap}, this
+ * is a contract type-guard for external embedders / dynamically-built connector
+ * definitions; the bundled CLI uses frozen compile-time connectors via the
+ * registry, which does not run this guard.
+ *
+ * @param value - The candidate `credentialFormats` value.
+ * @returns True if absent or a valid credential-format map.
+ */
+function isValidCredentialFormats(value: unknown): boolean {
+  if (value === undefined) {
+    return true;
+  }
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  return Object.values(value as Record<string, unknown>).every(format => {
+    if (typeof format !== 'object' || format === null || Array.isArray(format)) {
+      return false;
+    }
+    const { prefix, label } = format as Record<string, unknown>;
+    if (typeof prefix !== 'string' || prefix.length === 0) {
+      return false;
+    }
+    return label === undefined || (typeof label === 'string' && label.length > 0);
+  });
+}
+
+/**
  * Type guard to check if a value is a valid ConnectorDefinition
  *
  * @param value - Value to check
@@ -220,7 +290,8 @@ export function isConnectorDefinition(value: unknown): value is ConnectorDefinit
     def.configSchema !== null &&
     'safeParse' in def.configSchema &&
     typeof def.configSchema.safeParse === 'function' &&
-    isValidConfigKeyMap(def.configKeyByEnvVar)
+    isValidConfigKeyMap(def.configKeyByEnvVar) &&
+    isValidCredentialFormats(def.credentialFormats)
   );
 }
 

@@ -52,13 +52,22 @@ Flow:
    Selected connector ids are validated against the connector registry (shared format guard with
    `connector add|test|remove`).
 
+### Connector IDs
+
+The built-in connector IDs are `openai`, `anthropic`, `ollama`, `express`, and `langchain` — the set
+exposed by the connector registry (`getConnectorIds()`) and echoed under "Available connectors:"
+when an invalid ID is supplied. The three `connector` subcommands below all validate `<id>` against
+this registry-backed set through a shared format guard, so the list cannot drift between commands.
+For other ecosystems (e.g. `vercel`, `mastra`), install the corresponding connector package listed
+in [`package-matrix.md`](./package-matrix.md).
+
 ### `bonklm connector add <id>`
 
 Add a single connector configuration. Source: `packages/core/src/cli/commands/connector-add.ts`.
 
-| Argument | Description                                                    |
-| -------- | -------------------------------------------------------------- |
-| `<id>`   | One of `openai`, `anthropic`, `ollama`, `express`, `langchain` |
+| Argument | Description                                                   |
+| -------- | ------------------------------------------------------------- |
+| `<id>`   | A built-in connector ID (see [Connector IDs](#connector-ids)) |
 
 | Flag      | Description              |
 | --------- | ------------------------ |
@@ -80,9 +89,9 @@ bonklm connector add anthropic --force
 Remove a connector's credentials from `.env`. Source:
 `packages/core/src/cli/commands/connector-remove.ts`.
 
-| Argument | Description                                                    |
-| -------- | -------------------------------------------------------------- |
-| `<id>`   | One of `openai`, `anthropic`, `ollama`, `express`, `langchain` |
+| Argument | Description                                                   |
+| -------- | ------------------------------------------------------------- |
+| `<id>`   | A built-in connector ID (see [Connector IDs](#connector-ids)) |
 
 | Flag    | Description                  |
 | ------- | ---------------------------- |
@@ -104,9 +113,9 @@ bonklm connector remove anthropic --yes
 
 Test an already-configured connector. Source: `packages/core/src/cli/commands/connector-test.ts`.
 
-| Argument | Description                                                    |
-| -------- | -------------------------------------------------------------- |
-| `<id>`   | One of `openai`, `anthropic`, `ollama`, `express`, `langchain` |
+| Argument | Description                                                   |
+| -------- | ------------------------------------------------------------- |
+| `<id>`   | A built-in connector ID (see [Connector IDs](#connector-ids)) |
 
 | Flag     | Description                   |
 | -------- | ----------------------------- |
@@ -339,9 +348,9 @@ add `$(pnpm bin -g)` to `PATH`.
 **Config not detected / no `.env`** — the CLI reads `.env` from the current working directory. Run
 from your project root. There is no upward-search behaviour.
 
-**`Invalid connector ID: <name>`** — `connector add` enforces an allow-list of `openai`,
-`anthropic`, `ollama`, `express`, `langchain`. For other ecosystems (e.g. `vercel`, `mastra`),
-install the corresponding `@blackunicorn/<connector>-package` per `docs/user/package-matrix.md`.
+**`Invalid connector ID: <name>`** — the `connector` subcommands enforce the registry-backed
+allow-list (see [Connector IDs](#connector-ids)). For other ecosystems (e.g. `vercel`, `mastra`),
+install the corresponding connector package listed in `docs/user/package-matrix.md`.
 
 **`Connector test failed`** — wizard / `connector add` runs a 10s connection test. Common causes:
 wrong API key format (OpenAI: `sk-`; Anthropic: `sk-ant-`), local service not running (Ollama

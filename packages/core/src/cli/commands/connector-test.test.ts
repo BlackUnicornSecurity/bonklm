@@ -41,7 +41,8 @@ describe('connector test command', () => {
   });
 
   it('should be properly configured', () => {
-    expect(connectorTestCommand).toHaveProperty('_args');
+    expect(connectorTestCommand).toHaveProperty('registeredArguments');
+    expect(connectorTestCommand.registeredArguments.length).toBe(1);
     expect(connectorTestCommand).toHaveProperty('options');
   });
 });
@@ -261,6 +262,34 @@ describe('renderConnectorTestJson', () => {
     expect(payload.connection).toBe(false);
     expect(payload.validation).toBe(false);
     expect(payload.missing).toEqual(['OPENAI_API_KEY']);
+  });
+
+  it('redacts credential-shaped substrings and hex-escapes control chars in the error field', () => {
+    // Parity with the wizard --json path: a connector-supplied error crosses a
+    // trust boundary, so it is redacted (credential shapes) AND hex-escaped
+    // (control / bidi chars) — not merely hex-escaped.
+    logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const secret = 'sk-proj-ABCDEF1234567890abcdef1234567890';
+    const report: ConnectorTestReport = {
+      status: 'ok',
+      connectorId: 'openai',
+      connectorName: 'OpenAI',
+      result: {
+        connection: false,
+        validation: false,
+        error: `auth failed for ${secret}\u001b[31m\u2028injected`
+      },
+      exitCode: 2
+    };
+
+    renderConnectorTestJson(report);
+
+    const payload = JSON.parse(logSpy.mock.calls[0][0] as string);
+    expect(payload.error).toContain('***REDACTED***');
+    expect(payload.error).not.toContain(secret);
+    expect(payload.error).not.toContain('\u001b');
+    expect(payload.error).toContain('\\x1b');
+    expect(payload.error).not.toContain('\u2028');
   });
 });
 

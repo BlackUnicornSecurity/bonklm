@@ -20,10 +20,11 @@ describe('connector add command', () => {
   });
 
   it('should have id argument', () => {
-    // Commander.js stores arguments in _args array
-    const args = connectorAddCommand._args;
+    // Commander exposes registered arguments via the public `registeredArguments`
+    // accessor (the internal `_args` it replaced predates commander 11).
+    const args = connectorAddCommand.registeredArguments;
     expect(args).toBeDefined();
-    expect(args.length).toBeGreaterThan(0);
+    expect(args.length).toBe(1);
   });
 
   it('should have --force option', () => {
@@ -33,7 +34,7 @@ describe('connector add command', () => {
   });
 
   it('should be properly configured', () => {
-    expect(connectorAddCommand).toHaveProperty('_args');
+    expect(connectorAddCommand).toHaveProperty('registeredArguments');
     expect(connectorAddCommand).toHaveProperty('options');
   });
 });

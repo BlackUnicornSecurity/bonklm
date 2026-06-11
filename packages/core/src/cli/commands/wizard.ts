@@ -21,6 +21,7 @@ import * as p from '@clack/prompts';
 import { sanitizeMeta } from '../../connector-utils/logger.js';
 import { sanitizeLogString } from '../../common/index.js';
 import { getAllConnectors, getConnector } from '../connectors/registry.js';
+import { validateCredentialFormat } from '../connectors/credential-format.js';
 import { isValidConnectorIdFormat } from './connector-id.js';
 import { detectFrameworks } from '../detection/framework.js';
 import { detectServices } from '../detection/services.js';
@@ -141,14 +142,10 @@ async function collectCredentials(connectorId: string): Promise<Record<string, s
         if (value.length > MAX_CREDENTIAL_LENGTH) {
           return `${envVar} is too long (maximum ${MAX_CREDENTIAL_LENGTH} characters)`;
         }
-        // Basic format validation for known keys
-        if (envVar === 'OPENAI_API_KEY' && !value.startsWith('sk-')) {
-          return 'OpenAI API key must start with "sk-"';
-        }
-        if (envVar === 'ANTHROPIC_API_KEY' && !value.startsWith('sk-ant-')) {
-          return 'Anthropic API key must start with "sk-ant-"';
-        }
-        return undefined;
+        // Per-connector input-format hint (e.g. provider key prefix), sourced
+        // from the connector definition via the shared validator so the wizard
+        // and `connector add` cannot desync from the registry.
+        return validateCredentialFormat(connector, envVar, value);
       }
     });
 
@@ -422,9 +419,9 @@ export const wizardCommand = new Command('wizard')
             // Connector-supplied error crosses a trust boundary: redact
             // credential-shaped substrings (shared redactCredentials), then
             // hex-escape control/bidi chars (sanitizeLogString) so JSON
-            // consumers (CI, SIEM) can't be log-injected. This is a superset
-            // of connector-test.ts renderConnectorTestJson, which hex-escapes
-            // but does not redact.
+            // consumers (CI, SIEM) can't be log-injected. The same
+            // redact-then-escape pairing is applied by connector-test.ts
+            // renderConnectorTestJson.
             error: r.result.error === undefined ? undefined : sanitizeLogString(redactCredentials(r.result.error))
           })),
           // SECURITY: Remove envEntries entirely to avoid metadata leakage

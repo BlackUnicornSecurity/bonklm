@@ -378,6 +378,86 @@ describe('isConnectorDefinition', () => {
     expect(isConnectorDefinition(make({ OPENAI_API_KEY: 42 }))).toBe(false);
     expect(isConnectorDefinition(make({ OPENAI_API_KEY: '' }))).toBe(false);
   });
+
+  it('should accept a valid credentialFormats map', () => {
+    const def: ConnectorDefinition = {
+      id: 'test',
+      name: 'Test',
+      category: 'llm',
+      detection: { envVars: ['OPENAI_API_KEY'] },
+      credentialFormats: { OPENAI_API_KEY: { prefix: 'sk-' } },
+      test: vi.fn().mockResolvedValue({ connection: true, validation: true }),
+      generateSnippet: vi.fn(),
+      configSchema: z.object({})
+    };
+
+    expect(isConnectorDefinition(def)).toBe(true);
+  });
+
+  it('should reject a credentialFormats that is not a non-null object', () => {
+    const base = {
+      id: 'test',
+      name: 'Test',
+      category: 'llm',
+      detection: {},
+      test: vi.fn(),
+      generateSnippet: vi.fn(),
+      configSchema: z.object({})
+    };
+
+    expect(isConnectorDefinition({ ...base, credentialFormats: 'nope' })).toBe(false);
+    expect(isConnectorDefinition({ ...base, credentialFormats: null })).toBe(false);
+    expect(isConnectorDefinition({ ...base, credentialFormats: [{ prefix: 'sk-' }] })).toBe(false);
+  });
+
+  it('should reject a credentialFormats whose entry lacks a non-empty string prefix', () => {
+    const make = (credentialFormats: unknown) => ({
+      id: 'test',
+      name: 'Test',
+      category: 'llm',
+      detection: {},
+      credentialFormats,
+      test: vi.fn(),
+      generateSnippet: vi.fn(),
+      configSchema: z.object({})
+    });
+
+    expect(isConnectorDefinition(make({ OPENAI_API_KEY: { prefix: 42 } }))).toBe(false);
+    expect(isConnectorDefinition(make({ OPENAI_API_KEY: { prefix: '' } }))).toBe(false);
+    expect(isConnectorDefinition(make({ OPENAI_API_KEY: 'sk-' }))).toBe(false);
+    expect(isConnectorDefinition(make({ OPENAI_API_KEY: null }))).toBe(false);
+  });
+
+  it('should accept a credentialFormats entry with an optional label', () => {
+    const def: ConnectorDefinition = {
+      id: 'test',
+      name: 'Test',
+      category: 'llm',
+      detection: { envVars: ['X'] },
+      credentialFormats: { X: { prefix: 'sk-', label: 'secret' } },
+      test: vi.fn().mockResolvedValue({ connection: true, validation: true }),
+      generateSnippet: vi.fn(),
+      configSchema: z.object({})
+    };
+
+    expect(isConnectorDefinition(def)).toBe(true);
+  });
+
+  it('should reject a credentialFormats entry whose label is not a non-empty string', () => {
+    const make = (credentialFormats: unknown) => ({
+      id: 'test',
+      name: 'Test',
+      category: 'llm',
+      detection: {},
+      credentialFormats,
+      test: vi.fn(),
+      generateSnippet: vi.fn(),
+      configSchema: z.object({})
+    });
+
+    expect(isConnectorDefinition(make({ X: { prefix: 'sk-', label: 42 } }))).toBe(false);
+    expect(isConnectorDefinition(make({ X: { prefix: 'sk-', label: '' } }))).toBe(false);
+  });
 });
 
 describe('TypeScript Type Checking', () => {

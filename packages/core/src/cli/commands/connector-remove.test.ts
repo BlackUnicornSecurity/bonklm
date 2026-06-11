@@ -40,7 +40,8 @@ describe('connector remove command', () => {
   });
 
   it('should be properly configured', () => {
-    expect(connectorRemoveCommand).toHaveProperty('_args');
+    expect(connectorRemoveCommand).toHaveProperty('registeredArguments');
+    expect(connectorRemoveCommand.registeredArguments.length).toBe(1);
     expect(connectorRemoveCommand).toHaveProperty('options');
   });
 });
