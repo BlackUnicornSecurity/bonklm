@@ -19,14 +19,16 @@
 import { Command } from 'commander';
 import * as p from '@clack/prompts';
 import { sanitizeMeta } from '../../connector-utils/logger.js';
+import { sanitizeLogString } from '../../common/index.js';
 import { getAllConnectors, getConnector } from '../connectors/registry.js';
+import { isValidConnectorIdFormat } from './connector-id.js';
 import { detectFrameworks } from '../detection/framework.js';
 import { detectServices } from '../detection/services.js';
 import { detectCredentials } from '../detection/credentials.js';
 import { testConnectorWithTimeout } from '../testing/validator.js';
 import { EnvManager } from '../config/env.js';
 import { AuditLogger } from '../utils/audit.js';
-import { ExitCode, WizardError } from '../utils/error.js';
+import { ExitCode, redactCredentials, WizardError } from '../utils/error.js';
 import type { TestResult } from '../connectors/base.js';
 
 /**
@@ -38,17 +40,6 @@ const WIZARD_TEST_TIMEOUT = 10000;
  * Maximum credential length to prevent DoS attacks
  */
 const MAX_CREDENTIAL_LENGTH = 2048;
-
-/**
- * Allowed connector IDs - whitelist for security
- */
-const ALLOWED_CONNECTOR_IDS = ['openai', 'anthropic', 'ollama', 'express', 'langchain'] as const;
-
-/**
- * Valid connector ID format pattern
- * Must start with lowercase letter, contain only lowercase letters, numbers, and hyphens
- */
-const VALID_CONNECTOR_ID_PATTERN = /^[a-z][a-z0-9-]*$/;
 
 /**
  * Options for the wizard command
@@ -64,49 +55,6 @@ interface ConnectorTestResult {
   connectorId: string;
   connectorName: string;
   result: TestResult;
-}
-
-/**
- * Validates a connector ID against security requirements
- *
- * @param id - The connector ID to validate
- * @returns True if valid
- */
-function validateConnectorId(id: string): boolean {
-  // Check length
-  if (id.length < 1 || id.length > 50) {
-    return false;
-  }
-
-  // Check against whitelist
-  if (!ALLOWED_CONNECTOR_IDS.includes(id as any)) {
-    return false;
-  }
-
-  // Check format pattern
-  if (!VALID_CONNECTOR_ID_PATTERN.test(id)) {
-    return false;
-  }
-
-  return true;
-}
-
-/**
- * Sanitizes values for JSON output to prevent credential leakage
- *
- * @param value - The value to sanitize
- * @returns Sanitized value
- */
-function sanitizeForJson(value: unknown): unknown {
-  if (typeof value === 'string') {
-    // Remove potential credentials from error messages
-    return value
-      .replace(/sk-[a-zA-Z0-9\-_\.+/]{10,}/gi, '[API_KEY_REDACTED]')
-      .replace(/sk-ant-[a-zA-Z0-9\-_\.+/]{10,}/gi, '[API_KEY_REDACTED]')
-      .replace(/Bearer\s+[a-zA-Z0-9\-._~+/]+=*/gi, '[TOKEN_REDACTED]')
-      .replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[JWT_REDACTED]');
-  }
-  return value;
 }
 
 /**
@@ -339,20 +287,27 @@ export const wizardCommand = new Command('wizard')
       const testResults: ConnectorTestResult[] = [];
 
       for (const connectorId of selected) {
-        // SECURITY: Validate connector ID before processing
-        if (!validateConnectorId(connectorId)) {
-          p.log.warn(`Skipping invalid connector ID: ${connectorId}`);
+        // SECURITY: validate the id at the CLI boundary before any registry or
+        // filesystem access. The format guard + registry lookup replace the old
+        // hardcoded id whitelist, so the connector registry stays the single
+        // source of truth for selectable ids (shared with `connector add` /
+        // `connector test` / `connector remove` via connector-id.ts). The
+        // echoed id is attacker-shaped until format-validated — hex-escape
+        // control chars before it reaches the terminal.
+        if (!isValidConnectorIdFormat(connectorId)) {
+          p.log.warn(`Skipping invalid connector ID: ${sanitizeMeta(connectorId)}`);
+          continue;
+        }
+
+        const connector = getConnector(connectorId);
+        if (!connector) {
+          p.log.warn(`Skipping unknown connector: ${sanitizeMeta(connectorId)}`);
           continue;
         }
 
         p.log.warn(`\n--- Configuring ${connectorId} ---`);
 
         // Check if credentials already exist
-        const connector = getConnector(connectorId);
-        if (!connector) {
-          continue;
-        }
-
         const existingCredentials: Record<string, string> = {};
         for (const envVar of connector.detection.envVars || []) {
           if (process.env[envVar]) {
@@ -400,8 +355,8 @@ export const wizardCommand = new Command('wizard')
         } else {
           // Sprint 47 CWE-117 sweep (security LOW closure from Sprint
           // 46 audit): `testResult.result.error` is a connector-
-          // supplied error string. ANSI/control-char strip prevents
-          // terminal-control injection from a hostile provider.
+          // supplied error string. ANSI/control-char hex-escaping
+          // prevents terminal-control injection from a hostile provider.
           p.log.error(`${connector.name} test failed: ${sanitizeMeta(testResult.result.error || 'Unknown error')}`);
         }
       }
@@ -438,7 +393,13 @@ export const wizardCommand = new Command('wizard')
       if (failed.length > 0) {
         p.log.error(`Failed to configure ${failed.length} connector(s):`);
         for (const r of failed) {
-          p.log.message(`  - ${r.connectorName}: ${r.result.error || 'Unknown error'}`);
+          // Connector-supplied error string — hex-escape ANSI/control chars
+          // before the terminal echo (same trust boundary as the per-connector
+          // failure line above). Human paths follow the CLI-wide
+          // sanitizeMeta-only convention (no credential redaction; see
+          // display.ts) — the redacting path is `--json`, which is the one
+          // commonly persisted to files/CI/SIEM.
+          p.log.message(`  - ${r.connectorName}: ${sanitizeMeta(r.result.error || 'Unknown error')}`);
         }
       }
 
@@ -446,15 +407,25 @@ export const wizardCommand = new Command('wizard')
       if (options.json) {
         // SECURITY: Sanitize error messages and remove envEntries metadata
         const safeOutput = {
+          // Ids are provably `[a-z][a-z0-9-]*` here (format-validated before
+          // the test loop); sanitizeLogString is defense-in-depth so a future
+          // refactor can't silently turn these into CWE-117 sinks (matches
+          // connector-test.ts renderConnectorTestJson).
           configured: successful.map(r => ({
-            id: r.connectorId,
+            id: sanitizeLogString(r.connectorId),
             name: r.connectorName,
             latency: r.result.latency
           })),
           failed: failed.map(r => ({
-            id: r.connectorId,
+            id: sanitizeLogString(r.connectorId),
             name: r.connectorName,
-            error: sanitizeForJson(r.result.error)
+            // Connector-supplied error crosses a trust boundary: redact
+            // credential-shaped substrings (shared redactCredentials), then
+            // hex-escape control/bidi chars (sanitizeLogString) so JSON
+            // consumers (CI, SIEM) can't be log-injected. This is a superset
+            // of connector-test.ts renderConnectorTestJson, which hex-escapes
+            // but does not redact.
+            error: r.result.error === undefined ? undefined : sanitizeLogString(redactCredentials(r.result.error))
           })),
           // SECURITY: Remove envEntries entirely to avoid metadata leakage
           timestamp: new Date().toISOString()

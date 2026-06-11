@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { WizardError, sanitizeError, ExitCode, type ExitCodeType } from './error.js';
+import { WizardError, sanitizeError, redactCredentials, ExitCode } from './error.js';
 
 describe('sanitizeError', () => {
   it('should redact OpenAI API keys', () => {
@@ -320,5 +320,56 @@ describe('entropy detection edge cases', () => {
     const sanitized = sanitizeError(error);
 
     expect(sanitized.message).toBe('   ');
+  });
+});
+
+describe('redactCredentials', () => {
+  it('redacts sk- API keys', () => {
+    expect(redactCredentials('Failed with key: sk-1234567890abcdefghijklmnopqrstuvwxyz123')).toBe(
+      'Failed with key: ***REDACTED***'
+    );
+  });
+
+  it('redacts sk-ant- API keys via the same sk- pattern', () => {
+    const redacted = redactCredentials('Failed with key: sk-ant-api03-1234567890abcdefghijklmnopqrstuvwxyz1234567');
+
+    expect(redacted).toContain('***REDACTED***');
+    expect(redacted).not.toContain('sk-ant-api03');
+  });
+
+  it('redacts Bearer tokens', () => {
+    const redacted = redactCredentials('Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+
+    expect(redacted).toContain('Bearer ***REDACTED***');
+    expect(redacted).not.toContain('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+  });
+
+  it('redacts bare JWTs', () => {
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U';
+    const redacted = redactCredentials(`token ${jwt} expired`);
+
+    expect(redacted).toContain('***JWT_REDACTED***');
+    expect(redacted).not.toContain(jwt);
+  });
+
+  it('redacts a high-entropy api_key value but keeps a low-entropy one', () => {
+    expect(redactCredentials('api_key=aB3xK9mQ2pL7vR5wT8zCdE1f')).toBe('api_key=***REDACTED***');
+    expect(redactCredentials('api_key=development')).toBe('api_key=development');
+  });
+
+  it('redacts quoted high-entropy strings', () => {
+    const highEntropy = 'aB1xY2zC3dE4fG5hI6jK7lM8nO9pQ0rS1tU2vW3xY4z';
+    const redacted = redactCredentials(`Secret: "${highEntropy}"`);
+
+    expect(redacted).toContain('***REDACTED***');
+    expect(redacted).not.toContain(highEntropy);
+  });
+
+  it('returns ordinary prose unchanged', () => {
+    expect(redactCredentials('Failed to connect to database')).toBe('Failed to connect to database');
+  });
+
+  it('handles the empty string', () => {
+    expect(redactCredentials('')).toBe('');
   });
 });

@@ -47,8 +47,10 @@ Flow:
 6. Test each connector with a 10s timeout (`testConnectorWithTimeout`).
 7. Write credentials to `.env` in the current directory via `EnvManager` (atomic write, `0o600`
    perms on Unix; `icacls`/`attrib` on Windows).
-8. Print summary, or emit a JSON object when `--json` is set. JSON output redacts credentials and
-   omits `envEntries`.
+8. Print summary, or emit a JSON object when `--json` is set. JSON output redacts credentials,
+   hex-escapes control characters in connector-supplied error strings, and omits `envEntries`.
+   Selected connector ids are validated against the connector registry (shared format guard with
+   `connector add|test|remove`).
 
 ### `bonklm connector add <id>`
 
