@@ -80,7 +80,9 @@ export function validateTimeout(timeout: number): number {
  *
  * @param connector - The connector whose mapping to apply.
  * @param config - The env-var-keyed credential bag.
- * @returns A new config object keyed for the connector's `test()`.
+ * @returns A new config object keyed for the connector's `test()` /
+ * `configSchema` — i.e. the shape both the test seam ({@link testConnector}) and
+ * the validate seam ({@link validateConnectorConfig}) consume.
  */
 export function applyConnectorConfigKeys(
   connector: ConnectorDefinition,
@@ -93,13 +95,21 @@ export function applyConnectorConfigKeys(
 
   const mapped: Record<string, string> = {};
   for (const [key, value] of Object.entries(config)) {
-    // `|| key` (not `??`): an empty-string mapping value is malformed, so fall
-    // back to the original env-var key rather than landing the value under "".
-    const target = mapping[key] || key;
+    // Read ONLY own mapping entries: a bare `mapping[key]` walks the prototype
+    // chain, so a config key named after an Object.prototype member (e.g.
+    // `constructor`, `toString`) would resolve to an inherited function — a
+    // truthy, non-string value that slips past the string guard below and lands
+    // the credential under a stringified-function key. `hasOwnProperty.call`
+    // confines the lookup to declared mappings.
+    const declared = Object.prototype.hasOwnProperty.call(mapping, key) ? mapping[key] : undefined;
+    // `|| key` (not `??`): a missing / empty / non-string mapping value is
+    // malformed, so fall back to the original env-var key rather than landing the
+    // value under "" (or a coerced non-string key). `target` is therefore always
+    // a non-empty string, which is what makes the guard below reliable.
+    const target = (typeof declared === 'string' && declared) || key;
     // Defense-in-depth: connector maps are trusted compile-time metadata, but
     // this helper is exported and generically typed — never let a target key
-    // reach into the prototype chain (mirrors the __proto__/constructor guard
-    // in cli/detection/framework.ts).
+    // reach into the prototype chain.
     if (target === '__proto__' || target === 'constructor' || target === 'prototype') {
       continue;
     }
@@ -289,11 +299,13 @@ export async function testMultipleConnectors(
  * @param config - Configuration values to check
  * @returns Object with isValid flag and missing keys array
  *
- * @remarks Expects config keyed by the connector's CONFIG keys (e.g. `apiKey`),
- * not by env-var name. A caller holding an env-var-keyed credential bag (as the
- * CLI loaders build) must run it through {@link applyConnectorConfigKeys} first,
- * else `configSchema.safeParse` reports the real keys missing. No live caller
- * does this today.
+ * @remarks Accepts config keyed EITHER by the connector's CONFIG keys (e.g.
+ * `apiKey`) or by env-var name (e.g. `OPENAI_API_KEY`, the shape the CLI loaders
+ * build for `.env` persistence): the bag is re-keyed via
+ * {@link applyConnectorConfigKeys} — the same seam {@link testConnector} uses —
+ * before `configSchema.safeParse`, so a connector declaring
+ * {@link ConnectorDefinition.configKeyByEnvVar} validates either shape. A bag
+ * already keyed by config keys passes through unchanged.
  *
  * @example
  * ```ts
@@ -310,8 +322,15 @@ export function validateConnectorConfig(
   const missing: string[] = [];
   const errors: string[] = [];
 
+  // Re-key the credential bag the same way testConnector does: the CLI loaders
+  // build it keyed by env-var name (e.g. OPENAI_API_KEY) for .env persistence,
+  // but configSchema reads the connector's own keys (e.g. apiKey). Connectors
+  // without a configKeyByEnvVar mapping get a transparent shallow copy, so a bag
+  // already keyed by config keys is unaffected.
+  const validateConfig = applyConnectorConfigKeys(connector, config);
+
   // Parse the config schema to check for required fields
-  const schemaResult = connector.configSchema.safeParse(config);
+  const schemaResult = connector.configSchema.safeParse(validateConfig);
 
   if (!schemaResult.success) {
     // Extract error messages from Zod validation

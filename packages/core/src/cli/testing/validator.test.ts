@@ -121,6 +121,25 @@ describe('validator', () => {
       // Object.prototype was not polluted.
       expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     });
+
+    it('reads only OWN mapping entries — a config key shadowing an Object.prototype member cannot bypass the guard', () => {
+      // `mapping[key]` must not walk the prototype chain. A config key named after
+      // an Object.prototype member (constructor/toString/…) would otherwise resolve
+      // to an inherited function (truthy, non-string), slip past the string target
+      // guard, and land the credential under a stringified-function key.
+      const connector = makeConnector({ OPENAI_API_KEY: 'apiKey' });
+      const result = applyConnectorConfigKeys(connector, {
+        constructor: 'x',
+        toString: 'y',
+        OPENAI_API_KEY: 'sk-real'
+      });
+      // The declared mapping still applies...
+      expect(result.apiKey).toBe('sk-real');
+      // ...and no credential leaks under a stringified-function / garbage key.
+      expect(Object.keys(result).some(k => k.includes('native code'))).toBe(false);
+      // Object.prototype is untouched.
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    });
   });
 
   describe('testConnector', () => {
@@ -463,6 +482,22 @@ describe('validator', () => {
       };
     });
 
+    // A connector that declares an env-var -> config-key remap (like the real
+    // openai/anthropic connectors), used to exercise the re-keying path that
+    // validateConnectorConfig must apply before schema validation (D-031).
+    function makeMappedConnector(): ConnectorDefinition {
+      return {
+        id: 'apikey-connector',
+        name: 'ApiKey Connector',
+        category: 'llm',
+        detection: { envVars: ['OPENAI_API_KEY'] },
+        configKeyByEnvVar: { OPENAI_API_KEY: 'apiKey' },
+        test: vi.fn(),
+        generateSnippet: () => 'snippet',
+        configSchema: z.object({ apiKey: z.string().min(1) })
+      };
+    }
+
     it('should validate complete configuration', () => {
       const result = validateConnectorConfig(mockConnector, {
         apiKey: 'sk-test',
@@ -513,6 +548,52 @@ describe('validator', () => {
       expect(result.isValid).toBe(true);
       expect(result.missing).toEqual([]);
       expect(result.errors).toEqual([]);
+    });
+
+    it('re-keys an env-var-keyed credential bag before schema validation (D-031)', () => {
+      // The CLI loaders build config keyed by env-var name (OPENAI_API_KEY), but
+      // configSchema reads apiKey. validateConnectorConfig must re-key via
+      // configKeyByEnvVar — the same seam testConnector uses — or it wrongly
+      // reports apiKey missing for a valid env-var-keyed bag.
+      const result = validateConnectorConfig(makeMappedConnector(), { OPENAI_API_KEY: 'sk-valid' });
+
+      expect(result.isValid).toBe(true);
+      expect(result.missing).toEqual([]);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('validates the real OpenAI connector from an OPENAI_API_KEY-keyed bag (D-031)', () => {
+      const result = validateConnectorConfig(openaiConnector, { OPENAI_API_KEY: 'sk-test' });
+
+      expect(result.isValid).toBe(true);
+      expect(result.missing).toEqual([]);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('validates the real Anthropic connector from an ANTHROPIC_API_KEY-keyed bag (D-031)', () => {
+      const result = validateConnectorConfig(anthropicConnector, { ANTHROPIC_API_KEY: 'sk-ant-test' });
+
+      expect(result.isValid).toBe(true);
+      expect(result.missing).toEqual([]);
+      expect(result.errors).toEqual([]);
+    });
+
+    it('reports the connector config key (not the env-var name) when the credential is absent', () => {
+      // After re-keying, an empty bag still surfaces the real schema key (apiKey),
+      // never the env-var name — so user-facing "missing" messages stay accurate.
+      const result = validateConnectorConfig(makeMappedConnector(), {});
+
+      expect(result.isValid).toBe(false);
+      expect(result.missing).toContain('apiKey');
+    });
+
+    it('does not mutate the caller config when re-keying', () => {
+      const input = { OPENAI_API_KEY: 'sk-valid' };
+
+      validateConnectorConfig(makeMappedConnector(), input);
+
+      expect(input).toEqual({ OPENAI_API_KEY: 'sk-valid' });
+      expect(input).not.toHaveProperty('apiKey');
     });
   });
 
