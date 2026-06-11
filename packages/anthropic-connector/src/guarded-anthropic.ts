@@ -655,7 +655,7 @@ async function* createIncrementalValidatedStream(
             type: 'text_delta',
             text: productionMode
               ? '\n\n[Content filtered by guardrails - post-stream validation]'
-              : `\n\n[Content filtered by guardrails: ${results.find(r => !r.allowed)?.reason || 'validation failed'}]`
+              : `\n\n[Content filtered by guardrails: ${sanitizeMeta(results.find(r => !r.allowed)?.reason || 'validation failed')}]`
           }
         } as MessageStreamEvent;
         yield {
