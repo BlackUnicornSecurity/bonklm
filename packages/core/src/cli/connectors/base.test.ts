@@ -331,6 +331,53 @@ describe('isConnectorDefinition', () => {
     expect(isConnectorDefinition({})).toBe(false);
     expect(isConnectorDefinition({ id: 'test' })).toBe(false);
   });
+
+  it('should accept a valid configKeyByEnvVar map', () => {
+    const def: ConnectorDefinition = {
+      id: 'test',
+      name: 'Test',
+      category: 'llm',
+      detection: { envVars: ['OPENAI_API_KEY'] },
+      configKeyByEnvVar: { OPENAI_API_KEY: 'apiKey' },
+      test: vi.fn().mockResolvedValue({ connection: true, validation: true }),
+      generateSnippet: vi.fn(),
+      configSchema: z.object({})
+    };
+
+    expect(isConnectorDefinition(def)).toBe(true);
+  });
+
+  it('should reject a configKeyByEnvVar that is not a non-null object', () => {
+    const base = {
+      id: 'test',
+      name: 'Test',
+      category: 'llm',
+      detection: {},
+      test: vi.fn(),
+      generateSnippet: vi.fn(),
+      configSchema: z.object({})
+    };
+
+    expect(isConnectorDefinition({ ...base, configKeyByEnvVar: 'nope' })).toBe(false);
+    expect(isConnectorDefinition({ ...base, configKeyByEnvVar: null })).toBe(false);
+    expect(isConnectorDefinition({ ...base, configKeyByEnvVar: ['apiKey'] })).toBe(false);
+  });
+
+  it('should reject a configKeyByEnvVar whose target is not a non-empty string', () => {
+    const make = (configKeyByEnvVar: unknown) => ({
+      id: 'test',
+      name: 'Test',
+      category: 'llm',
+      detection: {},
+      configKeyByEnvVar,
+      test: vi.fn(),
+      generateSnippet: vi.fn(),
+      configSchema: z.object({})
+    });
+
+    expect(isConnectorDefinition(make({ OPENAI_API_KEY: 42 }))).toBe(false);
+    expect(isConnectorDefinition(make({ OPENAI_API_KEY: '' }))).toBe(false);
+  });
 });
 
 describe('TypeScript Type Checking', () => {

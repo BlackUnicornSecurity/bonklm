@@ -59,6 +59,56 @@ export function validateTimeout(timeout: number): number {
 }
 
 /**
+ * Re-keys a connector credential bag from env-var names to the config keys the
+ * connector's `test()` / `configSchema` actually consume.
+ *
+ * The CLI credential loaders (`wizard`, `connector add`, `connector test`) build
+ * config keyed by the connector's `detection.envVars` names (e.g.
+ * `OPENAI_API_KEY`) because that is the shape persisted to `.env`. A connector's
+ * `test()`, however, reads its own config keys (e.g. `apiKey`). A connector
+ * declares this env-var -> config-key mapping via
+ * {@link ConnectorDefinition.configKeyByEnvVar}; this function applies it,
+ * returning a NEW object (the input is never mutated).
+ *
+ * Keys with no declared mapping pass through unchanged, and a connector that
+ * declares no mapping at all (e.g. `ollama`, keyed only by ports, or the
+ * framework connectors) yields a shallow copy — so connectors without an
+ * env-var -> config-key indirection are unaffected. If two env vars map to the
+ * same config key the last-enumerated value wins. Map keys/values come from
+ * trusted compile-time connector definitions; as defense-in-depth a target key
+ * of `__proto__`/`constructor`/`prototype` is skipped rather than assigned.
+ *
+ * @param connector - The connector whose mapping to apply.
+ * @param config - The env-var-keyed credential bag.
+ * @returns A new config object keyed for the connector's `test()`.
+ */
+export function applyConnectorConfigKeys(
+  connector: ConnectorDefinition,
+  config: Record<string, string>
+): Record<string, string> {
+  const mapping = connector.configKeyByEnvVar;
+  if (!mapping) {
+    return { ...config };
+  }
+
+  const mapped: Record<string, string> = {};
+  for (const [key, value] of Object.entries(config)) {
+    // `|| key` (not `??`): an empty-string mapping value is malformed, so fall
+    // back to the original env-var key rather than landing the value under "".
+    const target = mapping[key] || key;
+    // Defense-in-depth: connector maps are trusted compile-time metadata, but
+    // this helper is exported and generically typed — never let a target key
+    // reach into the prototype chain (mirrors the __proto__/constructor guard
+    // in cli/detection/framework.ts).
+    if (target === '__proto__' || target === 'constructor' || target === 'prototype') {
+      continue;
+    }
+    mapped[target] = value;
+  }
+  return mapped;
+}
+
+/**
  * Tests a connector with the provided configuration
  *
  * This function measures latency and handles errors gracefully,
@@ -86,8 +136,14 @@ export async function testConnector(
   const startTime = Date.now();
 
   try {
+    // Re-key the credential bag (built by the CLI loaders keyed by env-var name,
+    // e.g. OPENAI_API_KEY, for .env persistence) into the config keys the
+    // connector's test() consumes (e.g. apiKey). Connectors without an env-var
+    // -> config-key indirection get a transparent shallow copy.
+    const testConfig = applyConnectorConfigKeys(connector, config);
+
     // Call the connector's test function with the abort signal
-    const result = await connector.test(config, signal);
+    const result = await connector.test(testConfig, signal);
 
     // Ensure the result has the required fields
     if (typeof result.connection !== 'boolean' || typeof result.validation !== 'boolean') {
@@ -232,6 +288,12 @@ export async function testMultipleConnectors(
  * @param connector - The connector definition to validate
  * @param config - Configuration values to check
  * @returns Object with isValid flag and missing keys array
+ *
+ * @remarks Expects config keyed by the connector's CONFIG keys (e.g. `apiKey`),
+ * not by env-var name. A caller holding an env-var-keyed credential bag (as the
+ * CLI loaders build) must run it through {@link applyConnectorConfigKeys} first,
+ * else `configSchema.safeParse` reports the real keys missing. No live caller
+ * does this today.
  *
  * @example
  * ```ts
