@@ -1,6 +1,6 @@
 # BonkLM CLI Reference
 
-> Last updated: 2026-06-08. Applies to `@blackunicorn/bonklm` `1.0.0-rc.4`.
+> Last updated: 2026-06-11. Applies to `@blackunicorn/bonklm` `1.0.0-rc.4`.
 
 Source-verified reference for the BonkLM command-line tools. Two binaries ship with the project:
 
@@ -62,8 +62,8 @@ Add a single connector configuration. Source: `packages/core/src/cli/commands/co
 | --------- | ------------------------ |
 | `--force` | Skip the connection test |
 
-The ID is validated against an explicit allow-list (`ALLOWED_CONNECTOR_IDS`). Unknown / malformed
-IDs exit `1` and list available connectors.
+The ID is validated against the registry-backed allow-list of available connectors. Unknown /
+malformed IDs exit `1` and list available connectors.
 
 Flow: validate ID → re-use existing env credentials or prompt → unless `--force`, run a 10s
 connection test (failure exits `1`) → write `.env` via `EnvManager` → audit-log via `AuditLogger`.
@@ -73,16 +73,53 @@ bonklm connector add openai
 bonklm connector add anthropic --force
 ```
 
-### `bonklm connector remove <id>` — not yet implemented
+### `bonklm connector remove <id>`
 
-Source: `packages/core/src/cli/commands/connector-remove.ts`. Declared flags: `--yes`. Today throws
-`NOT_IMPLEMENTED` with exit code `2` (EPIC-6).
+Remove a connector's credentials from `.env`. Source:
+`packages/core/src/cli/commands/connector-remove.ts`.
 
-### `bonklm connector test <id>` — not yet implemented
+| Argument | Description                                                    |
+| -------- | -------------------------------------------------------------- |
+| `<id>`   | One of `openai`, `anthropic`, `ollama`, `express`, `langchain` |
 
-Source: `packages/core/src/cli/commands/connector-test.ts`. Declared flags: `--json`. Today throws
-`NOT_IMPLEMENTED` with exit code `2` (EPIC-5). To test a connector now, use
-`bonklm connector add <id>` (which tests on add) or re-run `bonklm wizard`.
+| Flag    | Description                  |
+| ------- | ---------------------------- |
+| `--yes` | Skip the confirmation prompt |
+
+Registry-gated — the inverse of `connector add`: validate ID → resolve the connector → read `.env`
+via `EnvManager` → if none of the connector's env vars are present, report "nothing to remove" and
+exit `0` → otherwise show the affected key names (never values) and, unless `--yes`, prompt for
+confirmation → atomically rewrite `.env` without those keys → audit-log via `AuditLogger`. Unknown /
+malformed IDs and an aborted (Ctrl-C) confirmation exit `1`; a declined confirmation makes no
+changes and exits `0`.
+
+```bash
+bonklm connector remove openai
+bonklm connector remove anthropic --yes
+```
+
+### `bonklm connector test <id>`
+
+Test an already-configured connector. Source: `packages/core/src/cli/commands/connector-test.ts`.
+
+| Argument | Description                                                    |
+| -------- | -------------------------------------------------------------- |
+| `<id>`   | One of `openai`, `anthropic`, `ollama`, `express`, `langchain` |
+
+| Flag     | Description                   |
+| -------- | ----------------------------- |
+| `--json` | Output results in JSON format |
+
+Reads the connector's credentials from `process.env` overlaid on `.env`, then runs the connector's
+two-tier connection + validation test with a 10s timeout and prints the result. Exit codes: `0` when
+both connection and validation pass; `2` when the test ran but connection or validation failed (a
+10s timeout is reported here as a connection failure); `1` for an unknown / malformed ID or an
+unconfigured connector (run `bonklm connector add <id>` first).
+
+```bash
+bonklm connector test openai
+bonklm connector test anthropic --json
+```
 
 ### `bonklm status`
 
@@ -185,7 +222,7 @@ The CLI keeps the flag surface tiny. Only the flags below appear in source; anyt
 | `--help`    | `bonklm` and all subcommands (provided by `commander`) |
 | `--json`    | `wizard`, `connector test`, `status`, `doctor`         |
 | `--force`   | `connector add`                                        |
-| `--yes`     | `connector remove` _(declared, not implemented)_       |
+| `--yes`     | `connector remove`                                     |
 
 ## 4. `bonklm-server` (separate binary)
 
@@ -244,11 +281,11 @@ The default validator stack wired into the CLI entrypoint is `PromptInjectionVal
 
 From `packages/core/src/cli/utils/error.ts` (`ExitCode` enum):
 
-| Code | Name      | Meaning                                                               |
-| ---- | --------- | --------------------------------------------------------------------- |
-| `0`  | `SUCCESS` | Command completed; for `doctor`, includes both `pass` and `warn`      |
-| `1`  | `ERROR`   | Hard failure (validation, connector test failed, `doctor` FAIL, etc.) |
-| `2`  | `PARTIAL` | Used by `connector remove` / `connector test` `NOT_IMPLEMENTED`       |
+| Code | Name      | Meaning                                                                        |
+| ---- | --------- | ------------------------------------------------------------------------------ |
+| `0`  | `SUCCESS` | Command completed; for `doctor`, includes both `pass` and `warn`               |
+| `1`  | `ERROR`   | Hard failure (validation, unknown/unconfigured connector, `doctor` FAIL, etc.) |
+| `2`  | `PARTIAL` | `connector test` ran but connection or validation failed                       |
 
 `bonklm-server`: exits `1` on missing/short HMAC secret, on bind failure, or on unhandled error.
 

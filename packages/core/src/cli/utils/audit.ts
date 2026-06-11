@@ -17,6 +17,7 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { createHmac, randomBytes } from 'node:crypto';
 import { WizardError } from './error.js';
+import { sanitizeLogString } from '../../common/index.js';
 
 /**
  * Secure mode for log files (owner read/write only)
@@ -478,4 +479,25 @@ export function createAuditEvent(
   }
 
   return event;
+}
+
+/**
+ * Logs an audit event without letting a logging failure propagate.
+ *
+ * Audit is best-effort telemetry for the CLI commands: an action that already
+ * completed (e.g. a `.env` write) — or an up-front validation failure — must not
+ * be turned into a crash because the audit log could not be written. The failure
+ * is surfaced on stderr (sanitized via {@link sanitizeLogString}), never silently
+ * dropped. Accepts any sink exposing `log(event)` so commands can inject a stub.
+ *
+ * @param audit - An audit sink exposing `log(event)` (e.g. an {@link AuditLogger}).
+ * @param event - The audit event to record.
+ */
+export async function safeAudit(audit: Pick<AuditLogger, 'log'>, event: AuditEvent): Promise<void> {
+  try {
+    await audit.log(event);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'unknown error';
+    console.warn(`[WARN] Failed to write audit event: ${sanitizeLogString(message)}`);
+  }
 }

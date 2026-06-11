@@ -18,8 +18,6 @@ import { connectorTestCommand } from './connector-test.js';
  * - connector add: Add a connector configuration
  * - connector remove: Remove a connector configuration
  * - connector test: Test a connector configuration
- *
- * Full implementation will be in EPIC-6
  */
 export const connectorCommand = new Command('connector')
   .description('Manage connector configurations')
