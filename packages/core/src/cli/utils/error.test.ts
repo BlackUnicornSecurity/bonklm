@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { WizardError, sanitizeError, redactCredentials, ExitCode, type ExitCodeType } from './error.js';
+import { WizardError, sanitizeError, redactCredentials, ExitCode } from './error.js';
 
 describe('sanitizeError', () => {
   it('should redact OpenAI API keys', () => {

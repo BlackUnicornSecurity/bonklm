@@ -292,8 +292,8 @@ export const wizardCommand = new Command('wizard')
         // hardcoded id whitelist, so the connector registry stays the single
         // source of truth for selectable ids (shared with `connector add` /
         // `connector test` / `connector remove` via connector-id.ts). The
-        // echoed id is attacker-shaped until format-validated — strip control
-        // chars before it reaches the terminal.
+        // echoed id is attacker-shaped until format-validated — hex-escape
+        // control chars before it reaches the terminal.
         if (!isValidConnectorIdFormat(connectorId)) {
           p.log.warn(`Skipping invalid connector ID: ${sanitizeMeta(connectorId)}`);
           continue;
@@ -355,8 +355,8 @@ export const wizardCommand = new Command('wizard')
         } else {
           // Sprint 47 CWE-117 sweep (security LOW closure from Sprint
           // 46 audit): `testResult.result.error` is a connector-
-          // supplied error string. ANSI/control-char strip prevents
-          // terminal-control injection from a hostile provider.
+          // supplied error string. ANSI/control-char hex-escaping
+          // prevents terminal-control injection from a hostile provider.
           p.log.error(`${connector.name} test failed: ${sanitizeMeta(testResult.result.error || 'Unknown error')}`);
         }
       }
@@ -393,9 +393,12 @@ export const wizardCommand = new Command('wizard')
       if (failed.length > 0) {
         p.log.error(`Failed to configure ${failed.length} connector(s):`);
         for (const r of failed) {
-          // Connector-supplied error string — strip ANSI/control chars before
-          // the terminal echo (same trust boundary as the per-connector
-          // failure line above).
+          // Connector-supplied error string — hex-escape ANSI/control chars
+          // before the terminal echo (same trust boundary as the per-connector
+          // failure line above). Human paths follow the CLI-wide
+          // sanitizeMeta-only convention (no credential redaction; see
+          // display.ts) — the redacting path is `--json`, which is the one
+          // commonly persisted to files/CI/SIEM.
           p.log.message(`  - ${r.connectorName}: ${sanitizeMeta(r.result.error || 'Unknown error')}`);
         }
       }
@@ -404,19 +407,24 @@ export const wizardCommand = new Command('wizard')
       if (options.json) {
         // SECURITY: Sanitize error messages and remove envEntries metadata
         const safeOutput = {
+          // Ids are provably `[a-z][a-z0-9-]*` here (format-validated before
+          // the test loop); sanitizeLogString is defense-in-depth so a future
+          // refactor can't silently turn these into CWE-117 sinks (matches
+          // connector-test.ts renderConnectorTestJson).
           configured: successful.map(r => ({
-            id: r.connectorId,
+            id: sanitizeLogString(r.connectorId),
             name: r.connectorName,
             latency: r.result.latency
           })),
           failed: failed.map(r => ({
-            id: r.connectorId,
+            id: sanitizeLogString(r.connectorId),
             name: r.connectorName,
             // Connector-supplied error crosses a trust boundary: redact
             // credential-shaped substrings (shared redactCredentials), then
             // hex-escape control/bidi chars (sanitizeLogString) so JSON
-            // consumers (CI, SIEM) can't be log-injected — mirrors
-            // connector-test.ts renderConnectorTestJson.
+            // consumers (CI, SIEM) can't be log-injected. This is a superset
+            // of connector-test.ts renderConnectorTestJson, which hex-escapes
+            // but does not redact.
             error: r.result.error === undefined ? undefined : sanitizeLogString(redactCredentials(r.result.error))
           })),
           // SECURITY: Remove envEntries entirely to avoid metadata leakage

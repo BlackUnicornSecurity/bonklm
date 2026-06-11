@@ -138,15 +138,13 @@ describe('wizard command', () => {
   });
 
   it('should have action handler registered', () => {
-    // Commander.js stores the action handler internally
-    // The _executionCommand property indicates an action is registered
-    expect(wizardCommand).toHaveProperty('_args');
+    expect(wizardCommand).toHaveProperty('registeredArguments');
     expect(wizardCommand).toHaveProperty('options');
-    expect(wizardCommand._args.length).toBe(0); // wizard has no args
+    expect(wizardCommand.registeredArguments.length).toBe(0); // wizard has no args
   });
 
   it('should have proper command structure', () => {
-    expect(wizardCommand).toHaveProperty('_args');
+    expect(wizardCommand).toHaveProperty('registeredArguments');
     expect(wizardCommand).toHaveProperty('options');
   });
 });

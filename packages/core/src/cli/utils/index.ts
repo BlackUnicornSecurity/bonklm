@@ -16,7 +16,10 @@ export type { SecureValidationConfig } from './validation.js';
 // security primitive imported by direct path from its in-tree callers and tests;
 // keeping it off this barrel prevents a future `package.json` `exports` subpath
 // from promoting it onto the published surface (same rationale as
-// `cli/commands/index.ts`).
+// `cli/commands/index.ts`). The same rationale applies to `error.ts`'s
+// `redactCredentials`: an internal redaction primitive consumed by direct path
+// (sanitizeError, the wizard's --json renderer) — only `sanitizeError` is on
+// the barrel.
 
 // Terminal capability detection
 export {
