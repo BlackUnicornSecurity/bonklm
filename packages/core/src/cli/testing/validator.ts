@@ -59,6 +59,43 @@ export function validateTimeout(timeout: number): number {
 }
 
 /**
+ * Re-keys a connector credential bag from env-var names to the config keys the
+ * connector's `test()` / `configSchema` actually consume.
+ *
+ * The CLI credential loaders (`wizard`, `connector add`, `connector test`) build
+ * config keyed by the connector's `detection.envVars` names (e.g.
+ * `OPENAI_API_KEY`) because that is the shape persisted to `.env`. A connector's
+ * `test()`, however, reads its own config keys (e.g. `apiKey`). A connector
+ * declares this env-var -> config-key mapping via
+ * {@link ConnectorDefinition.configKeyByEnvVar}; this function applies it,
+ * returning a NEW object (the input is never mutated).
+ *
+ * Keys with no declared mapping pass through unchanged, and a connector that
+ * declares no mapping at all (e.g. `ollama`, keyed only by ports, or the
+ * framework connectors) yields a shallow copy — so connectors without an
+ * env-var -> config-key indirection are unaffected.
+ *
+ * @param connector - The connector whose mapping to apply.
+ * @param config - The env-var-keyed credential bag.
+ * @returns A new config object keyed for the connector's `test()`.
+ */
+export function applyConnectorConfigKeys(
+  connector: ConnectorDefinition,
+  config: Record<string, string>
+): Record<string, string> {
+  const mapping = connector.configKeyByEnvVar;
+  if (!mapping) {
+    return { ...config };
+  }
+
+  const mapped: Record<string, string> = {};
+  for (const [key, value] of Object.entries(config)) {
+    mapped[mapping[key] ?? key] = value;
+  }
+  return mapped;
+}
+
+/**
  * Tests a connector with the provided configuration
  *
  * This function measures latency and handles errors gracefully,
@@ -86,8 +123,14 @@ export async function testConnector(
   const startTime = Date.now();
 
   try {
+    // Re-key the credential bag (built by the CLI loaders keyed by env-var name,
+    // e.g. OPENAI_API_KEY, for .env persistence) into the config keys the
+    // connector's test() consumes (e.g. apiKey). Connectors without an env-var
+    // -> config-key indirection get a transparent shallow copy.
+    const testConfig = applyConnectorConfigKeys(connector, config);
+
     // Call the connector's test function with the abort signal
-    const result = await connector.test(config, signal);
+    const result = await connector.test(testConfig, signal);
 
     // Ensure the result has the required fields
     if (typeof result.connection !== 'boolean' || typeof result.validation !== 'boolean') {

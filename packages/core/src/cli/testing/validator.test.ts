@@ -11,6 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
+  applyConnectorConfigKeys,
   testConnector,
   testConnectorWithTimeout,
   testMultipleConnectors,
@@ -23,6 +24,8 @@ import {
   validateTimeout
 } from './validator.js';
 import type { ConnectorDefinition, TestResult } from '../connectors/base.js';
+import { openaiConnector } from '../connectors/implementations/openai.js';
+import { anthropicConnector } from '../connectors/implementations/anthropic.js';
 import { z } from 'zod';
 import { WizardError } from '../utils/error.js';
 
@@ -46,6 +49,56 @@ describe('validator', () => {
 
     it('should accept zero timeout', () => {
       expect(validateTimeout(0)).toBe(0);
+    });
+  });
+
+  describe('applyConnectorConfigKeys', () => {
+    function makeConnector(configKeyByEnvVar?: Record<string, string>): ConnectorDefinition {
+      return {
+        id: 'c',
+        name: 'C',
+        category: 'llm',
+        detection: { envVars: Object.keys(configKeyByEnvVar ?? {}) },
+        configKeyByEnvVar,
+        test: vi.fn(),
+        generateSnippet: () => 'snippet',
+        configSchema: z.object({})
+      };
+    }
+
+    it('re-keys a declared env var to its connector config key', () => {
+      const connector = makeConnector({ OPENAI_API_KEY: 'apiKey' });
+      expect(applyConnectorConfigKeys(connector, { OPENAI_API_KEY: 'sk-x' })).toEqual({ apiKey: 'sk-x' });
+    });
+
+    it('passes through env vars that have no declared mapping', () => {
+      const connector = makeConnector({ OPENAI_API_KEY: 'apiKey' });
+      expect(applyConnectorConfigKeys(connector, { OTHER_VAR: 'v' })).toEqual({ OTHER_VAR: 'v' });
+    });
+
+    it('returns a shallow copy unchanged when the connector declares no mapping', () => {
+      const connector = makeConnector();
+      const input = { TEST_KEY: 'v' };
+      const out = applyConnectorConfigKeys(connector, input);
+      expect(out).toEqual({ TEST_KEY: 'v' });
+      expect(out).not.toBe(input); // new object — never mutate the caller's bag
+    });
+
+    it('does not mutate the input config', () => {
+      const connector = makeConnector({ OPENAI_API_KEY: 'apiKey' });
+      const input = { OPENAI_API_KEY: 'sk-x' };
+      applyConnectorConfigKeys(connector, input);
+      expect(input).toEqual({ OPENAI_API_KEY: 'sk-x' });
+    });
+
+    it('maps the real OpenAI connector OPENAI_API_KEY to apiKey', () => {
+      expect(applyConnectorConfigKeys(openaiConnector, { OPENAI_API_KEY: 'sk-x' })).toEqual({ apiKey: 'sk-x' });
+    });
+
+    it('maps the real Anthropic connector ANTHROPIC_API_KEY to apiKey', () => {
+      expect(applyConnectorConfigKeys(anthropicConnector, { ANTHROPIC_API_KEY: 'sk-ant-x' })).toEqual({
+        apiKey: 'sk-ant-x'
+      });
     });
   });
 
@@ -143,6 +196,44 @@ describe('validator', () => {
       expect(result.connection).toBe(true);
       expect(result.latency).toBeGreaterThanOrEqual(40); // Allow some margin
       expect(result.latency).toBeLessThan(200); // Should complete within 200ms
+    });
+
+    it('re-keys an env-var-keyed credential bag to the connector config key before testing (D-029)', async () => {
+      // Mirrors the openai/anthropic contract: detection is keyed by env-var
+      // name (OPENAI_API_KEY) but test() reads config.apiKey. The CLI loaders
+      // build the bag keyed by env-var name, so testConnector must re-key it via
+      // configKeyByEnvVar for the value to actually reach test(). Without the
+      // seam mapping, test() sees { OPENAI_API_KEY } -> config.apiKey is
+      // undefined -> "API key is required" (the D-029 false failure).
+      const received: Array<Record<string, string>> = [];
+      const apiKeyConnector: ConnectorDefinition = {
+        id: 'apikey-connector',
+        name: 'ApiKey Connector',
+        category: 'llm',
+        detection: { envVars: ['OPENAI_API_KEY'] },
+        configKeyByEnvVar: { OPENAI_API_KEY: 'apiKey' },
+        test: vi.fn(async (config: Record<string, string>) => {
+          received.push(config);
+          const ok = config.apiKey === 'sk-valid';
+          return {
+            connection: ok,
+            validation: ok,
+            error: ok ? undefined : 'API key is required'
+          };
+        }),
+        generateSnippet: () => 'snippet',
+        configSchema: z.object({ apiKey: z.string() })
+      };
+
+      const result = await testConnector(apiKeyConnector, { OPENAI_API_KEY: 'sk-valid' });
+
+      // The connector saw the re-keyed config, not the raw env-var name...
+      expect(received[0]).toEqual({ apiKey: 'sk-valid' });
+      expect(received[0]).not.toHaveProperty('OPENAI_API_KEY');
+      // ...and therefore reports success instead of "API key is required".
+      expect(result.connection).toBe(true);
+      expect(result.validation).toBe(true);
+      expect(result.error).toBeUndefined();
     });
   });
 

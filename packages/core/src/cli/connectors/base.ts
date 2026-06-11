@@ -92,6 +92,28 @@ export interface ConnectorDefinition {
   detection: DetectionRules;
 
   /**
+   * Optional map from a detected env-var name (as declared in
+   * {@link DetectionRules.envVars}) to the config key this connector's
+   * {@link ConnectorDefinition.test} and {@link ConnectorDefinition.configSchema}
+   * actually consume.
+   *
+   * The CLI credential loaders (`wizard`, `connector add`, `connector test`)
+   * build config keyed by env-var name (e.g. `OPENAI_API_KEY`) because that is
+   * the shape persisted to `.env`, but a connector's `test()` reads its own keys
+   * (e.g. `apiKey`). Declaring `{ OPENAI_API_KEY: 'apiKey' }` lets the shared
+   * test seam re-key the credential bag without each connector re-deriving it.
+   * Connectors with no such indirection (e.g. `ollama`, keyed by ports; the
+   * framework connectors) omit this field.
+   *
+   * @example
+   * ```ts
+   * detection: { envVars: ['OPENAI_API_KEY'] },
+   * configKeyByEnvVar: { OPENAI_API_KEY: 'apiKey' },
+   * ```
+   */
+  configKeyByEnvVar?: Record<string, string>;
+
+  /**
    * Test function to verify connector configuration
    *
    * The function should respect the AbortSignal if provided to allow
