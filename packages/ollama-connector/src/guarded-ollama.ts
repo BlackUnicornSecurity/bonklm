@@ -546,7 +546,7 @@ async function* createIncrementalValidatedChatStream(
             role: 'assistant',
             content: productionMode
               ? '\n\n[Content filtered by guardrails - post-stream validation]'
-              : `\n\n[Content filtered by guardrails: ${results.find(r => !r.allowed)?.reason || 'validation failed'}]`
+              : `\n\n[Content filtered by guardrails: ${sanitizeMeta(results.find(r => !r.allowed)?.reason || 'validation failed')}]`
           },
           done: true,
           done_reason: 'guardrail_blocked'
@@ -645,7 +645,7 @@ async function* createIncrementalValidatedGenerateStream(
           created_at: createdAt,
           response: productionMode
             ? '\n\n[Content filtered by guardrails - post-stream validation]'
-            : `\n\n[Content filtered by guardrails: ${results.find(r => !r.allowed)?.reason || 'validation failed'}]`,
+            : `\n\n[Content filtered by guardrails: ${sanitizeMeta(results.find(r => !r.allowed)?.reason || 'validation failed')}]`,
           done: true,
           done_reason: 'guardrail_blocked'
         } as GenerateResponse;
