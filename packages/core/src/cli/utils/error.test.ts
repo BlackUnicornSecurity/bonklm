@@ -141,6 +141,24 @@ describe('sanitizeError', () => {
     expect(sanitized.message).not.toContain('sk-1234567890abcdef');
     expect(sanitized.message).not.toContain('sk-ant-api03-1234567890abcdef');
   });
+
+  it('redacts a long-segment JWT consistently on the message and the stack', () => {
+    // The header segment alone is 36 contiguous high-entropy base64 chars. Both
+    // passes must collapse the whole token to one ***JWT_REDACTED*** marker; the
+    // message pass historically ran base64 before the JWT pattern, fragmenting
+    // it into ***REDACTED*** chunks and diverging from the stack pass.
+    const jwt =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+    const error = new Error(`token ${jwt}`);
+    error.stack = `Error: token ${jwt}\n    at somewhere (/x.ts:1:1)`;
+
+    const sanitized = sanitizeError(error);
+
+    expect(sanitized.message).toContain('***JWT_REDACTED***');
+    expect(sanitized.stack).toContain('***JWT_REDACTED***');
+    expect(sanitized.message).not.toContain('eyJhbGci');
+    expect(sanitized.stack).not.toContain('eyJhbGci');
+  });
 });
 
 describe('WizardError', () => {
@@ -371,5 +389,25 @@ describe('redactCredentials', () => {
 
   it('handles the empty string', () => {
     expect(redactCredentials('')).toBe('');
+  });
+
+  it('collapses a JWT with a long high-entropy segment to a single JWT marker', () => {
+    // Regression for the base64-before-JWT ordering bug: the 36-char header is a
+    // high-entropy base64 run, so running base64 first consumed it before the
+    // JWT pattern could match, yielding fragmented ***REDACTED*** chunks with no
+    // ***JWT_REDACTED*** marker. JWT must be matched before base64.
+    const jwt =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+    const redacted = redactCredentials(`auth ${jwt} failed`);
+
+    expect(redacted).toContain('***JWT_REDACTED***');
+    expect(redacted).not.toContain('eyJhbGci');
+  });
+
+  it('still redacts a high-entropy api_key value after the reorder (base64 runs first)', () => {
+    // api_key now runs after the base64 pass; a value too short for base64
+    // (< 32 chars) must still be caught by the api_key catch-all.
+    expect(redactCredentials('api_key=aB3xK9mQ2pL7vR5wT8zCdE1f')).toBe('api_key=***REDACTED***');
+    expect(redactCredentials('api_key=development')).toBe('api_key=development');
   });
 });

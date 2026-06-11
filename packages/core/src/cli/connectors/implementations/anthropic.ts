@@ -26,6 +26,14 @@ export const anthropicConnector: ConnectorDefinition = {
     ANTHROPIC_API_KEY: 'apiKey'
   },
 
+  // Input-format hint for the interactive prompts (`wizard`, `connector add`):
+  // an Anthropic key must start with `sk-ant-`. Single source of truth shared
+  // via validateCredentialFormat, replacing the prefix check that was duplicated
+  // inline in both commands. The configSchema below is the authoritative check.
+  credentialFormats: {
+    ANTHROPIC_API_KEY: { prefix: 'sk-ant-' }
+  },
+
   test: async (config, _signal) => {
     const apiKey = config.apiKey;
     if (!apiKey) {

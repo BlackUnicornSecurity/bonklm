@@ -17,6 +17,7 @@
 import { Command } from 'commander';
 import * as p from '@clack/prompts';
 import { getConnector } from '../connectors/registry.js';
+import { validateCredentialFormat } from '../connectors/credential-format.js';
 import { testConnectorWithTimeout } from '../testing/validator.js';
 import { EnvManager } from '../config/env.js';
 import { AuditLogger } from '../utils/audit.js';
@@ -84,14 +85,10 @@ async function collectCredentials(connectorId: string): Promise<Record<string, s
         if (value.length > MAX_CREDENTIAL_LENGTH) {
           return `${envVar} is too long (maximum ${MAX_CREDENTIAL_LENGTH} characters)`;
         }
-        // Basic format validation for known keys
-        if (envVar === 'OPENAI_API_KEY' && !value.startsWith('sk-')) {
-          return 'OpenAI API key must start with "sk-"';
-        }
-        if (envVar === 'ANTHROPIC_API_KEY' && !value.startsWith('sk-ant-')) {
-          return 'Anthropic API key must start with "sk-ant-"';
-        }
-        return undefined;
+        // Per-connector input-format hint (e.g. provider key prefix), sourced
+        // from the connector definition via the shared validator so `connector
+        // add` and the wizard cannot desync from the registry.
+        return validateCredentialFormat(connector, envVar, value);
       }
     });
 

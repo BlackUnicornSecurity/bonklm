@@ -53,48 +53,69 @@ function isHighEntropy(str: string): boolean {
 }
 
 /**
+ * Applies the always-on credential patterns — the high-confidence shapes that
+ * are redacted unconditionally — in a single canonical order shared by
+ * {@link redactCredentials} (Error / CLI messages) and {@link sanitizeError}'s
+ * stack-trace pass, so both agree on the output for the same input.
+ *
+ * Order is load-bearing: JWTs are matched BEFORE the generic base64 pattern. A
+ * JWT segment is often a long high-entropy base64 run, so running base64 first
+ * would consume it and leave the token fragmented into several `***REDACTED***`
+ * chunks instead of one `***JWT_REDACTED***` marker.
+ *
+ * @param text - The text to redact.
+ * @returns A new string with always-on credential shapes redacted.
+ */
+function redactAlwaysOn(text: string): string {
+  // sk- API keys (case-insensitive: Sk-, SK-, ...); includes the special
+  // characters commonly found in provider keys.
+  let sanitized = text.replace(/sk-[a-zA-Z0-9\-_\.+/]{10,}/gi, '***REDACTED***');
+
+  // Bearer tokens.
+  sanitized = sanitized.replace(/Bearer\s+[a-zA-Z0-9\-._~+/]+=*/gi, 'Bearer ***REDACTED***');
+
+  // JWTs (header.payload.signature) — before base64 (see order note above).
+  sanitized = sanitized.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '***JWT_REDACTED***');
+
+  // High-entropy base64 (optional `=` / `==` padding).
+  sanitized = sanitized.replace(/([A-Za-z0-9+/]{32,}={0,2})/g, match =>
+    isHighEntropy(match) ? '***REDACTED***' : match
+  );
+
+  return sanitized;
+}
+
+/**
  * Redacts credential-shaped substrings from a single piece of text.
  *
  * Single string-level source of truth for credential redaction, shared by
  * {@link sanitizeError} (Error messages) and CLI output paths that surface
- * connector-supplied strings (e.g. the wizard's `--json` error field).
+ * connector-supplied strings (e.g. the wizard / `connector test` `--json`
+ * error field).
  *
- * The redaction process:
- * 1. Applies each pattern to find potential credentials
- * 2. Checks each match for high entropy
- * 3. Redacts high-entropy matches, keeps low-entropy matches
+ * Runs the shared always-on shapes ({@link redactAlwaysOn}: sk- keys, Bearer
+ * tokens, JWTs, high-entropy base64) first, then two message-only conditional
+ * catch-alls — labelled `api_key=` values and quoted high-entropy strings —
+ * that mop up credentials the high-confidence patterns did not already redact.
+ * Each conditional match is redacted only when it clears the entropy check, so
+ * ordinary prose is left intact.
  *
  * @param text - The text to redact
  * @returns A new string with credential-shaped substrings replaced
  */
 export function redactCredentials(text: string): string {
-  // First pass: Redact known credential patterns
-  // sk- patterns are always redacted (they're API keys)
-  // Case-insensitive to catch Sk-, SK-, etc.
-  // Include common special characters found in API keys
-  let sanitized = text.replace(/sk-[a-zA-Z0-9\-_\.+/]{10,}/gi, '***REDACTED***');
+  let sanitized = redactAlwaysOn(text);
 
-  // Bearer tokens are always redacted
-  sanitized = sanitized.replace(/Bearer\s+[a-zA-Z0-9\-._~+/]+=*/gi, 'Bearer ***REDACTED***');
-
-  // api_key patterns - extract and check the value
+  // api_key=<value> — redact only a high-entropy value (message-only catch-all).
   sanitized = sanitized.replace(/api[_-]?key["\s:=]+([^\s"'`<>]+)/gi, (match, value) => {
     return isHighEntropy(value) ? match.replace(value, '***REDACTED***') : match;
   });
 
-  // Base64 and high-entropy strings
-  // Pattern 1: Base64 with proper padding (== or =)
-  sanitized = sanitized.replace(/([A-Za-z0-9+/]{32,}={0,2})/g, match =>
-    isHighEntropy(match) ? '***REDACTED***' : match
-  );
-
-  // Pattern 2: Quoted high-entropy strings (more specific to avoid false positives)
+  // Quoted high-entropy strings — more specific, to avoid false positives
+  // (message-only catch-all).
   sanitized = sanitized.replace(/["']([a-zA-Z0-9_\-\.+/=]{32,})["']/g, (match, captured) =>
     isHighEntropy(captured) ? '***REDACTED***' : match
   );
-
-  // Pattern 3: Known JWT format (header.payload.signature)
-  sanitized = sanitized.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '***JWT_REDACTED***');
 
   return sanitized;
 }
@@ -104,8 +125,9 @@ export function redactCredentials(text: string): string {
  *
  * This prevents sensitive data from leaking through error handling pathways.
  * The message is redacted via {@link redactCredentials}; the stack trace gets
- * the always-redact subset of those patterns (sk- keys, Bearer tokens, JWTs,
- * high-entropy base64).
+ * only the shared always-on subset (sk- keys, Bearer tokens, JWTs, high-entropy
+ * base64) through the same `redactAlwaysOn` helper and canonical order, so the
+ * two outputs stay consistent.
  *
  * @param error - The error to sanitize
  * @param depth - Internal recursion guard (do not use)
@@ -123,18 +145,11 @@ export function sanitizeError(error: Error, depth: number = 0): Error {
   const sanitizedMessage = redactCredentials(error.message);
   let sanitizedStack = error.stack;
 
-  // Apply same sanitization to stack trace
+  // Stack frames get the shared always-on subset (sk-/Bearer/JWT/base64) in the
+  // same canonical order as the message pass; the message-only api_key / quoted
+  // catch-alls are intentionally not applied to stack traces.
   if (sanitizedStack) {
-    sanitizedStack = sanitizedStack.replace(/sk-[a-zA-Z0-9\-_\.+/]{10,}/gi, '***REDACTED***');
-    sanitizedStack = sanitizedStack.replace(/Bearer\s+[a-zA-Z0-9\-._~+/]+=*/gi, 'Bearer ***REDACTED***');
-
-    // JWT tokens in stack traces
-    sanitizedStack = sanitizedStack.replace(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '***JWT_REDACTED***');
-
-    // Base64 patterns
-    sanitizedStack = sanitizedStack.replace(/([A-Za-z0-9+/]{32,}={0,2})/g, match =>
-      isHighEntropy(match) ? '***REDACTED***' : match
-    );
+    sanitizedStack = redactAlwaysOn(sanitizedStack);
   }
 
   const sanitized = new Error(sanitizedMessage);

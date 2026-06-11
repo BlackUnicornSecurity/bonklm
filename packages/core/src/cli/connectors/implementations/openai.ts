@@ -26,6 +26,14 @@ export const openaiConnector: ConnectorDefinition = {
     OPENAI_API_KEY: 'apiKey'
   },
 
+  // Input-format hint for the interactive prompts (`wizard`, `connector add`):
+  // an OpenAI key must start with `sk-`. Single source of truth shared via
+  // validateCredentialFormat, replacing the prefix check that was duplicated
+  // inline in both commands. The configSchema below is the authoritative check.
+  credentialFormats: {
+    OPENAI_API_KEY: { prefix: 'sk-' }
+  },
+
   test: async (config, _signal) => {
     const apiKey = config.apiKey;
     if (!apiKey) {
