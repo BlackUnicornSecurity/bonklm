@@ -18,9 +18,9 @@ _mechanical_ gate, and the in-PR reviewer checklist is the secondary human gate.
 workspace-policy enforcement. These are NOT consumer-facing packages and most of them MUST NOT
 publish to npm.
 
-`tools/` is registered as a pnpm workspace via `pnpm-workspace.yaml`'s `tools/*` entry (added at
-Sprint 12 day 1). It is NOT covered by the repo-root `.gitignore` exclusion of `team/`; everything
-under `tools/` is committed.
+`tools/` is registered as a pnpm workspace via `pnpm-workspace.yaml`'s `tools/*` entry (added under
+Story 2.1b). It is NOT covered by the repo-root `.gitignore` exclusion of `team/`; everything under
+`tools/` is committed.
 
 ---
 
@@ -93,14 +93,16 @@ The PR adding any new `tools/<name>/` directory MUST satisfy:
 
 ## Triage hygiene for committed allowlists
 
-Some Tier A packages commit allowlist files enumerating internal violations (e.g.
-`tools/eslint-plugin-bonklm-edge/grandfather-allowlist.json`). These files are necessary for CI to
-consume the allowlist but they are also publicly visible in the repository.
+A Tier A package may commit an allowlist file enumerating internal violations. Such files are
+necessary for CI to consume the allowlist but they are also publicly visible in the repository.
 
-Triage discipline: do NOT cross-reference specific file paths from the allowlist in public GitHub
-issues, community Discord, or PR descriptions visible to external contributors. Internal PR
-comments + private Slack threads are acceptable. The Sprint 12-13 ERROR-escalation window is
-bounded; Sprint 13 day 1 the allowlist file is deleted as part of the rotation.
+Triage discipline: do NOT cross-reference specific file paths from a committed allowlist in public
+GitHub issues, community Discord, or PR descriptions visible to external contributors. Internal PR
+comments + private Slack threads are acceptable.
+
+`tools/eslint-plugin-bonklm-edge/` previously carried a `grandfather-allowlist.json` under this
+policy; its ERROR-escalation window closed and the allowlist file was deleted as part of the
+rotation.
 
 ---
 
@@ -117,3 +119,4 @@ bounded; Sprint 13 day 1 the allowlist file is deleted as part of the rotation.
 | ---------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-05-22 | Story 2.1b-connector-style-ADR  | Initial authoring. Tier A / Tier B classification, programmatic enforcement, reviewer checklist, triage hygiene.                                                                                                                                                    |
 | 2026-06-11 | chore/ci-guard-workspace-policy | Wired `check-workspace-policy.js` into CI (the `workspace-policy` job), the local quality gate, and `pnpm run check:workspace-policy`; added 100%-covered tests. "Programmatic enforcement" section updated from aspirational (Sprint 12) to present-tense reality. |
+| 2026-06-11 | Documentation accuracy audit    | Replaced unverifiable "Sprint 12 day 1" provenance for the `tools/*` workspace entry with a Story 2.1b reference; rewrote the committed-allowlist triage subsection to past tense after the `grandfather-allowlist.json` rotation completed.                        |
