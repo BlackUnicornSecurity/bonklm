@@ -3,7 +3,8 @@
  *
  * This module provides secure API key validation with the following security features:
  * - Rate limiting to prevent credential enumeration attacks (HP-8 fix)
- * - Credential caching to reduce API calls
+ * - Credential caching to reduce API calls (keyed by SHA-256 digest — the
+ *   plaintext key is never retained in the cache)
  * - Timeout enforcement to prevent hanging
  * - Secure credential handling with automatic memory cleanup
  * - No credential logging
@@ -19,6 +20,7 @@
 import { WizardError } from './error.js';
 import { SecureCredential } from './secure-credential.js';
 import { LRUCache } from 'lru-cache';
+import { createHash } from 'node:crypto';
 
 /**
  * Validation cache entry
@@ -34,11 +36,25 @@ interface CacheEntry {
  * - Max 100 entries to prevent memory exhaustion
  * - 60 second TTL (time-to-live)
  * - Tracks both successful and failed validations
+ * - Keyed by a SHA-256 digest of the API key, never the plaintext (see
+ *   {@link toCacheKey})
  */
 const validationCache = new LRUCache<string, CacheEntry>({
   max: 100,
   ttl: 60 * 1000 // 1 minute in milliseconds
 });
+
+/**
+ * Derives the cache key for an API key.
+ *
+ * SECURITY: the validation cache outlives `SecureCredential`'s zeroing window
+ * (entries live up to the 60s TTL, up to 100 keys), so it must never retain
+ * the plaintext key in the heap. A SHA-256 digest preserves exact-match cache
+ * hits and rate-limit counting without holding recoverable key material.
+ */
+function toCacheKey(apiKey: string): string {
+  return createHash('sha256').update(apiKey).digest('hex');
+}
 
 /**
  * Maximum number of validation attempts per minute
@@ -126,8 +142,10 @@ export interface SecureValidationConfig {
  * ```
  */
 export async function validateApiKeySecure(apiKey: string, config: SecureValidationConfig): Promise<boolean> {
+  const cacheKey = toCacheKey(apiKey);
+
   // Check cache first to avoid unnecessary API calls
-  const cached = validationCache.get(apiKey);
+  const cached = validationCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < RATE_LIMIT_WINDOW) {
     return cached.result;
   }
@@ -204,7 +222,7 @@ export async function validateApiKeySecure(apiKey: string, config: SecureValidat
     });
 
     // Cache the result for future requests
-    validationCache.set(apiKey, { timestamp: Date.now(), result });
+    validationCache.set(cacheKey, { timestamp: Date.now(), result });
 
     return result;
   } finally {

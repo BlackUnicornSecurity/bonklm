@@ -10,6 +10,8 @@ import {
   type SecureValidationConfig
 } from './validation.js';
 import { WizardError } from './error.js';
+import { LRUCache } from 'lru-cache';
+import { createHash } from 'node:crypto';
 
 // Mock fetch globally with proper typing
 const mockFetch = vi.fn();
@@ -570,6 +572,51 @@ describe('Secure API Validation Protocol', () => {
       const config = { ...validConfig, timeout: 50 };
 
       await expect(validateApiKeySecure('sk-testkey', config)).rejects.toThrow(WizardError);
+    });
+  });
+
+  describe('cache key hygiene', () => {
+    it('keys the validation cache by a SHA-256 digest, never the plaintext key', async () => {
+      // The module-level LRU cache outlives SecureCredential's zeroing window
+      // (entries persist up to the 60s TTL), so the plaintext key must never
+      // be used as a cache key. Spy at the LRUCache prototype seam to observe
+      // exactly what key material reaches the cache.
+      const setSpy = vi.spyOn(LRUCache.prototype, 'set');
+      const getSpy = vi.spyOn(LRUCache.prototype, 'get');
+
+      try {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          status: 200
+        });
+
+        const plaintext = 'sk-plaintext-retention-probe-1234567890';
+        await validateApiKeySecure(plaintext, validConfig);
+
+        const digest = createHash('sha256').update(plaintext).digest('hex');
+        expect(setSpy).toHaveBeenCalledWith(digest, expect.objectContaining({ result: true }));
+
+        const observedKeys = [...setSpy.mock.calls, ...getSpy.mock.calls].map(call => String(call[0]));
+        expect(observedKeys.length).toBeGreaterThan(0);
+        for (const key of observedKeys) {
+          expect(key).not.toContain(plaintext);
+        }
+      } finally {
+        setSpy.mockRestore();
+        getSpy.mockRestore();
+      }
+    });
+
+    it('still serves cache hits for a repeated key through the digest', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200
+      });
+
+      await validateApiKeySecure('sk-digest-cache-hit-key', validConfig);
+      await validateApiKeySecure('sk-digest-cache-hit-key', validConfig);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
 });
