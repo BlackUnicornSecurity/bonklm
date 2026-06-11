@@ -62,6 +62,26 @@ jobs:
       - name: Check formatting
         run: pnpm run format:check
 
+  changeset-linked:
+    name: Changeset Linked-Group Drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Dependency-free Node script (reads packages/*/package.json +
+      # .changeset/config.json) — no pnpm install or build needed. Asserts the
+      # changesets `linked` group equals the publishable packages/* set so the
+      # release-surface list cannot silently drift stale as connectors are added.
+      - name: Assert changeset linked group == publishable packages
+        run: node tools/check-changeset-linked.js
+
   type-check:
     name: Type Check
     runs-on: ubuntu-latest

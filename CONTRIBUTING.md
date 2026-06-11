@@ -66,6 +66,7 @@ LLM-Guardrails/
 ├── tools/                          # Internal tooling (see tools/WORKSPACE-POLICY.md)
 │   ├── eslint-plugin-bonklm-edge/  # Edge-runtime lint rules
 │   ├── audit-baselines/            # Per-sprint audit baselines
+│   ├── check-changeset-linked.js   # CI enforcement: changeset linked-group == publishable set
 │   └── check-workspace-policy.js   # CI enforcement for tools/* tiering
 ├── docs/
 │   ├── user/                       # User-facing docs
@@ -586,6 +587,14 @@ find packages -maxdepth 2 -name package.json ! -path '*/examples/*' ! -path '*/n
 
 `tools/*` packages are governed separately by `tools/WORKSPACE-POLICY.md` and are not part of this
 `linked` group even when Tier-B publishable (e.g. `@blackunicorn/eslint-plugin-edge`).
+
+This invariant is **enforced**, not just documented: `pnpm run check:changeset-linked`
+(`tools/check-changeset-linked.js`) derives the publishable set (`packages/*` with
+`private !== true`) and fails with a missing/extra diff if it differs from the `linked[0]` group. It
+runs in CI (`.github/workflows/ci.yml`, the `changeset-linked` job) and in the local quality gate
+(`scripts/quality-gate.sh`), so a newly added connector that is not linked — the exact way the list
+drifted stale before — breaks the build until `linked` is regenerated. Run
+`pnpm run check:changeset-linked` locally to print the exact names that are missing or extra.
 
 ### Canonical project version — source of truth
 
