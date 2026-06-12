@@ -50,8 +50,19 @@ export interface GuardedWeaviateClient {
  * @param options - Configuration options for the guarded wrapper
  * @returns A guarded client with validation
  *
+ * @experimental
+ *
+ * @remarks
+ * This connector is a PREVIEW and is **not yet wired to its `weaviate-client ^3` peer dependency**.
+ * The guardrail logic (class / field access control, query and filter validation, object-poisoning
+ * detection) has unit tests, but those tests run against a mocked client and do not exercise the
+ * real `weaviate-client ^3` API. The example below illustrates the *intended* API surface and
+ * **will not run** successfully against a live Weaviate instance yet. Do not depend on this for live
+ * retrieval until it is marked stable.
+ *
  * @example
  * ```ts
+ * // PREVIEW - intended API shape; not yet runnable against weaviate-client ^3.
  * import weaviate from 'weaviate-client';
  * import { createGuardedClient } from '@blackunicorn/bonklm-weaviate';
  * import { PromptInjectionValidator } from '@blackunicorn/bonklm';

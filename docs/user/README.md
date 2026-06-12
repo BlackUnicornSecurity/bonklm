@@ -92,7 +92,7 @@ npm install @blackunicorn/bonklm-pinecone
 # ChromaDB
 npm install @blackunicorn/bonklm-chroma
 
-# Weaviate
+# Weaviate (experimental, preview)
 npm install @blackunicorn/bonklm-weaviate
 
 # Qdrant

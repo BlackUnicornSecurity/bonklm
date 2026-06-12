@@ -14,6 +14,16 @@
 
 ---
 
+> **⚠️ EXPERIMENTAL — preview API.** This connector is **not yet wired to its `weaviate-client ^3`
+> peer dependency.** The `createGuardedClient(...).query(...)` API and the response shapes shown
+> throughout this README (including the Quick Start) illustrate the **intended** guardrail surface —
+> they are a preview and **will change**. The guardrail logic (class / field access control, query
+> and filter validation, object-poisoning detection) has unit tests, but those tests run against a
+> **mocked** client and do not exercise the real `weaviate-client ^3` API — the query-execution and
+> response-extraction layer does not match it, so the examples below will **not** run successfully
+> against a live Weaviate instance yet. Do not depend on this package for live retrieval until it is
+> marked stable.
+
 ## Overview
 
 The `@blackunicorn/bonklm-weaviate` package provides security guardrails for
@@ -75,6 +85,8 @@ const results = await guardedClient.query({
   limit: 10
 });
 
+// PREVIEW: the `data.Get[className]` envelope below is illustrative — a live
+// `weaviate-client ^3` returns `{ objects }`, not this shape.
 console.log('Objects:', results.data.Get.Document.length);
 console.log('Objects blocked:', results.objectsBlocked);
 ```
@@ -131,11 +143,16 @@ const guardedClient = createGuardedClient(weaviateClient, options);
 
 Result of a guarded query operation.
 
+> **PREVIEW.** The `data.Get[className]` envelope shown here is the connector's _intended_ output
+> shape, **not** what a live `weaviate-client ^3` produces (the real client returns `{ objects }`).
+> This contract will change when the connector is wired to the real client; the package's own
+> `types.ts` currently types `data` as `any`.
+
 ```typescript
 interface GuardedWeaviateResult {
   data: {
     Get: {
-      [className: string]: any[]; // Valid objects only
+      [className: string]: any[]; // Valid objects only (preview shape)
     };
   };
   objectsBlocked: number; // Count of blocked objects
@@ -359,15 +376,13 @@ const guardedClient = createGuardedClient(client, {
 
 ---
 
-## Supported Weaviate Versions
+## Compatibility status
 
-This connector supports Weaviate v4.x clients using the `weaviate-client` package. It handles
-multiple response formats including:
-
-- v4 nested format: `result.data[className].objects`
-- v4 flat format: `result.data[className]`
-- GraphQL Get format: `result.data.Get[className]`
-- Legacy format: `result.objects`
+> **EXPERIMENTAL.** This connector is a preview and is **not yet compatible** with its
+> `weaviate-client ^3` peer dependency. The query API and response shapes documented above are the
+> _intended_ design and **will change** before this connector is marked stable — aligning it with
+> the real `weaviate-client ^3` API is a tracked follow-up. Until then, do not rely on it for live
+> Weaviate retrieval.
 
 ---
 

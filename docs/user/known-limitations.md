@@ -580,6 +580,32 @@ without core changes — only the bundled-default coverage is at 12.
 
 See internal planning notes for the full decision trail.
 
+## 30. Weaviate connector is EXPERIMENTAL (preview API, not yet wired to `weaviate-client ^3`)
+
+(Added: 2026-06-12.)
+
+**Status**: `@blackunicorn/bonklm-weaviate` is **experimental and not yet functional against its
+declared `weaviate-client ^3` peer dependency.** Its `createGuardedClient(...).query(...)` API and
+the response shapes shown in the package README and JSDoc illustrate the _intended_ guardrail
+surface — they are a preview and will change. The guardrail logic itself (class / field access
+control, query and filter validation, retrieved-object poisoning checks) has unit tests, but those
+tests run against a **mocked** client and do not establish real-client compatibility; the
+query-execution and response-extraction layer does not match the real `weaviate-client ^3` API, so a
+live query against a real Weaviate instance will not succeed as the examples imply.
+
+**Why**: the connector was authored against a query-builder shape and response envelope that the
+shipped `weaviate-client ^3` does not expose. Aligning it changes the connector's input/output
+contract, so the rewrite is a tracked follow-up deferred to a future release rather than rushed.
+
+**Mitigation**:
+
+- Do NOT rely on `@blackunicorn/bonklm-weaviate` for live Weaviate retrieval yet; it is flagged
+  EXPERIMENTAL for this reason.
+- Treat the README / JSDoc query examples as a preview of the intended API, not runnable code, until
+  the connector is marked stable.
+- Check the connector's status in [`package-matrix.md`](./package-matrix.md) and the package README
+  before adopting it.
+
 ## See also
 
 - [`threat-surfaces.md`](./threat-surfaces.md) — what BonkLM DOES cover per surface.
