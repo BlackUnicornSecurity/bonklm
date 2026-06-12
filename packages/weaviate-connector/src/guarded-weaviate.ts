@@ -12,7 +12,7 @@
  * - Collection (class) and field access control
  * - Structural `FilterValue` validation (see `filter-validation.ts`)
  * - Production mode error messages
- * - Validation timeout via validateWithTimeoutSecure (Sprint 30)
+ * - Validation timeout via validateWithTimeoutSecure
  *
  * @package @blackunicorn/bonklm-weaviate
  */
@@ -182,7 +182,8 @@ export function createGuardedClient(
   });
 
   /**
-   * Validation timeout wrapper (Sprint 30: routes through canonical validateWithTimeoutSecure primitive).
+   * Validation timeout wrapper — routes through the canonical
+   * `validateWithTimeoutSecure` primitive.
    *
    * @internal
    */

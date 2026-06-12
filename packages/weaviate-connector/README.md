@@ -77,6 +77,8 @@ const results = await guardedClient.query({
 });
 
 // Validated objects mirror the real client shape: { uuid, properties, metadata, ... }
+// `properties` is typed `Record<string, unknown>`, so narrow before use in typed code:
+//   const title = obj.properties.title as string;
 for (const obj of results.objects) {
   console.log(obj.uuid, obj.properties.title);
 }
@@ -158,6 +160,20 @@ interface WeaviateRetrievedObject {
   vectors?: unknown;
 }
 ```
+
+### Exported types and constants
+
+Beyond the names above, the package barrel also exports:
+
+- **Constants** — `DEFAULT_MAX_LIMIT` (50), `DEFAULT_QUERY_LIMIT` (10), `DEFAULT_VALIDATION_TIMEOUT`
+  (30000).
+- **Filter types** — `WeaviateFilterValue`, `WeaviateFilterTarget`, and `WeaviateFilterOperator`
+  (the 15-member operator union: `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanEqual`, `LessThan`,
+  `LessThanEqual`, `Like`, `IsNull`, `WithinGeoRange`, `ContainsAny`, `ContainsAll`, `ContainsNone`,
+  `And`, `Or`, `Not`).
+- **Client-mirror types** (useful for typing a test double) — `WeaviateClientLike`,
+  `WeaviateCollectionLike`, `WeaviateQueryNamespaceLike`, `WeaviateSearchOptions`,
+  `WeaviateQueryResult`, `WeaviateRetrievedObject`.
 
 ---
 

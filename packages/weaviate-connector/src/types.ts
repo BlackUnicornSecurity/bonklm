@@ -205,7 +205,9 @@ export interface GuardedWeaviateOptions {
   logger?: Logger;
 
   /**
-   * Whether to validate retrieved objects.
+   * Whether to validate retrieved objects. Master switch: when `false`,
+   * objects are returned unvalidated and any
+   * {@link GuardedWeaviateOptions.retrievedDocValidator} is skipped.
    *
    * @defaultValue true
    */
@@ -268,6 +270,11 @@ export interface GuardedWeaviateOptions {
    * Story 1.2 — opt-in batch retrieved-doc validator. Replaces the
    * per-object validation loop with a single batch call supporting the
    * `drop` / `block-all` / `redact` failure modes. NOT default-on.
+   *
+   * @remarks
+   * Subordinate to {@link GuardedWeaviateOptions.validateRetrievedObjects}:
+   * that flag is the master switch. With `validateRetrievedObjects: false`,
+   * objects are returned unvalidated and this batch validator does NOT run.
    */
   retrievedDocValidator?: RetrievedDocValidator;
 
