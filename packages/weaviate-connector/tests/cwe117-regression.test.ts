@@ -16,11 +16,13 @@
  *   - `'[Guardrails] Field contains invalid characters'` and
  *     `'[Guardrails] Invalid pattern regex'` log meta (`field` / `pattern`).
  *
- * Per the Sprint 40 pattern, this contract-lock asserts the canonical
- * primitive is reachable from the import surface and behaves as expected on
- * representative attacker inputs. End-to-end proof that the guarded paths
- * fire lives in `guarded-weaviate.test.ts` (block/abort/filter-rejection
- * suites assert the sanitized messages and callbacks).
+ * This contract-lock asserts the canonical primitive is reachable from the
+ * import surface and behaves as expected on representative attacker inputs.
+ * The END-TO-END proof that each guarded path actually applies `sanitizeMeta`
+ * (and would FAIL if a wrap were removed — the ADR-0001 non-vacuity standard)
+ * lives in `guarded-weaviate.test.ts` › "CWE-117 sanitization is load-bearing
+ * (ADR-0001)": those tests drive a capturing logger with control-char
+ * payloads and assert the escaped form at each boundary.
  *
  * History: Sprint 42 architect LOW deferral → Sprint 43 closure (original
  * six boundaries) → real-client rewrite carried all six forward and added
@@ -28,20 +30,12 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { sanitizeLogString, sanitizeMeta, serializeError } from '@blackunicorn/bonklm';
+import { sanitizeMeta } from '@blackunicorn/bonklm';
 
-describe('weaviate-connector — Sprint 43 CWE-117 sanitization contract', () => {
+describe('weaviate-connector — CWE-117 sanitization primitive contract', () => {
   it('imports sanitizeMeta from the core barrel', () => {
     expect(typeof sanitizeMeta).toBe('function');
     expect(sanitizeMeta('a\nb')).toBe('a\\nb');
-  });
-
-  it('imports sanitizeLogString from the core barrel', () => {
-    expect(typeof sanitizeLogString).toBe('function');
-  });
-
-  it('imports serializeError from the core barrel', () => {
-    expect(typeof serializeError).toBe('function');
   });
 
   it('sanitizes a validator-extracted reason carrying control chars', () => {

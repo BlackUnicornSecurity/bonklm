@@ -42,6 +42,7 @@ import {
   type WeaviateCollectionLike,
   type WeaviateQueryNamespaceLike,
   type WeaviateFilterValue,
+  type WeaviateFilterOperator,
   type WeaviateFilterTarget,
   type WeaviateQueryResult,
   type WeaviateRetrievedObject,
@@ -164,6 +165,25 @@ expectAssignable<WeaviateFilterValue>({
 expectNotAssignable<WeaviateFilterValue>({ target: { property: 'title' }, value: 'x' }); // operator required
 expectAssignable<WeaviateFilterTarget>({ property: 'title' });
 expectAssignable<WeaviateFilterTarget>({});
+
+// --- WeaviateFilterOperator union: every real operator member, nothing else ---
+expectAssignable<WeaviateFilterOperator>('Equal');
+expectAssignable<WeaviateFilterOperator>('NotEqual');
+expectAssignable<WeaviateFilterOperator>('GreaterThan');
+expectAssignable<WeaviateFilterOperator>('GreaterThanEqual');
+expectAssignable<WeaviateFilterOperator>('LessThan');
+expectAssignable<WeaviateFilterOperator>('LessThanEqual');
+expectAssignable<WeaviateFilterOperator>('Like');
+expectAssignable<WeaviateFilterOperator>('IsNull');
+expectAssignable<WeaviateFilterOperator>('WithinGeoRange');
+expectAssignable<WeaviateFilterOperator>('ContainsAny');
+expectAssignable<WeaviateFilterOperator>('ContainsAll');
+expectAssignable<WeaviateFilterOperator>('ContainsNone');
+expectAssignable<WeaviateFilterOperator>('And');
+expectAssignable<WeaviateFilterOperator>('Or');
+expectAssignable<WeaviateFilterOperator>('Not');
+expectNotAssignable<WeaviateFilterOperator>('Eval'); // not a real operator
+expectNotAssignable<WeaviateFilterOperator>('equal'); // wrong case
 
 // --- WeaviateSearchOptions (forwarded to the client) ---
 expectAssignable<WeaviateSearchOptions>({});
