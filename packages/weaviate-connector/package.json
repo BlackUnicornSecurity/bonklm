@@ -1,7 +1,7 @@
 {
   "name": "@blackunicorn/bonklm-weaviate",
   "version": "1.0.0-rc.4",
-  "description": "Weaviate connector for BonkLM - Vector database security for RAG applications",
+  "description": "Weaviate connector for BonkLM - Vector database security for RAG applications. EXPERIMENTAL - the query API is a preview and is not yet wired to the weaviate-client ^3 peer dependency.",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -32,7 +32,8 @@
     "security",
     "retrieval",
     "prompt-injection",
-    "validation"
+    "validation",
+    "experimental"
   ],
   "dependencies": {
     "@blackunicorn/bonklm": "workspace:*"
