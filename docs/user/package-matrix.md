@@ -88,14 +88,14 @@ R2-13 hash-pinned 50-pattern corpus + 50-pattern benign corpus. Full attestation
 
 ## Vector DBs
 
-| Package                            | Bundle  | Peer dep                             | Status                         |
-| ---------------------------------- | ------- | ------------------------------------ | ------------------------------ |
-| `@blackunicorn/bonklm-chroma`      | 🟢 NODE | `chromadb ^1.0.0 ‖ ^2.0.0 ‖ ^3.0.0`  | STABLE                         |
-| `@blackunicorn/bonklm-lance`       | 🟢 NODE | `@lancedb/lancedb ^0.29.0`           | STABLE                         |
-| `@blackunicorn/bonklm-pinecone`    | 🟢 NODE | `@pinecone-database/pinecone ^2.0.0` | STABLE                         |
-| `@blackunicorn/bonklm-qdrant`      | 🟢 NODE | `@qdrant/js-client-rest ^1.0.0`      | STABLE                         |
-| `@blackunicorn/bonklm-turbopuffer` | 🟡 EDGE | `@turbopuffer/turbopuffer ^2.1.0`    | STABLE                         |
-| `@blackunicorn/bonklm-weaviate`    | 🟢 NODE | `weaviate-client ^3.0.0`             | **EXPERIMENTAL (preview API)** |
+| Package                            | Bundle  | Peer dep                             | Status |
+| ---------------------------------- | ------- | ------------------------------------ | ------ |
+| `@blackunicorn/bonklm-chroma`      | 🟢 NODE | `chromadb ^1.0.0 ‖ ^2.0.0 ‖ ^3.0.0`  | STABLE |
+| `@blackunicorn/bonklm-lance`       | 🟢 NODE | `@lancedb/lancedb ^0.29.0`           | STABLE |
+| `@blackunicorn/bonklm-pinecone`    | 🟢 NODE | `@pinecone-database/pinecone ^2.0.0` | STABLE |
+| `@blackunicorn/bonklm-qdrant`      | 🟢 NODE | `@qdrant/js-client-rest ^1.0.0`      | STABLE |
+| `@blackunicorn/bonklm-turbopuffer` | 🟡 EDGE | `@turbopuffer/turbopuffer ^2.1.0`    | STABLE |
+| `@blackunicorn/bonklm-weaviate`    | 🟢 NODE | `weaviate-client ^3.11.0`            | STABLE |
 
 ## Workflow + durable execution
 

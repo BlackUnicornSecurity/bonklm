@@ -20,14 +20,14 @@ For LLM provider connectors that may sit downstream of the retriever see
 
 ### Vector databases
 
-| Connector   | Package                            | Peer                                 | Bundle | Status                         |
-| ----------- | ---------------------------------- | ------------------------------------ | ------ | ------------------------------ |
-| Pinecone    | `@blackunicorn/bonklm-pinecone`    | `@pinecone-database/pinecone ^2.0.0` | Node   | STABLE                         |
-| ChromaDB    | `@blackunicorn/bonklm-chroma`      | `chromadb ^1.0.0 / ^2.0.0 / ^3.0.0`  | Node   | STABLE                         |
-| Weaviate    | `@blackunicorn/bonklm-weaviate`    | `weaviate-client ^3.0.0`             | Node   | **EXPERIMENTAL (preview API)** |
-| Qdrant      | `@blackunicorn/bonklm-qdrant`      | `@qdrant/js-client-rest ^1.0.0`      | Node   | STABLE                         |
-| LanceDB     | `@blackunicorn/bonklm-lance`       | `@lancedb/lancedb ^0.29.0`           | Node   | STABLE                         |
-| Turbopuffer | `@blackunicorn/bonklm-turbopuffer` | `@turbopuffer/turbopuffer ^2.1.0`    | Edge   | STABLE                         |
+| Connector   | Package                            | Peer                                 | Bundle | Status |
+| ----------- | ---------------------------------- | ------------------------------------ | ------ | ------ |
+| Pinecone    | `@blackunicorn/bonklm-pinecone`    | `@pinecone-database/pinecone ^2.0.0` | Node   | STABLE |
+| ChromaDB    | `@blackunicorn/bonklm-chroma`      | `chromadb ^1.0.0 / ^2.0.0 / ^3.0.0`  | Node   | STABLE |
+| Weaviate    | `@blackunicorn/bonklm-weaviate`    | `weaviate-client ^3.11.0`            | Node   | STABLE |
+| Qdrant      | `@blackunicorn/bonklm-qdrant`      | `@qdrant/js-client-rest ^1.0.0`      | Node   | STABLE |
+| LanceDB     | `@blackunicorn/bonklm-lance`       | `@lancedb/lancedb ^0.29.0`           | Node   | STABLE |
+| Turbopuffer | `@blackunicorn/bonklm-turbopuffer` | `@turbopuffer/turbopuffer ^2.1.0`    | Edge   | STABLE |
 
 The package manifests in this guide are pinned at `1.0.0-rc.4`. The LanceDB connector is Node-only
 (native bindings); the Turbopuffer connector is the edge-compatible alternative (Workerd / Deno /
@@ -315,26 +315,23 @@ across each listed major.
 
 ## Weaviate Connector
 
-> **⚠️ EXPERIMENTAL — preview API.** The Weaviate connector is **not yet wired to its
-> `weaviate-client ^3` peer dependency** and will not run against a live Weaviate instance yet. The
-> snippets below illustrate the _intended_ guardrail API and **will change** before the connector is
-> marked stable (see [Known Limitations](../known-limitations.md)). Do not adopt it for live
-> retrieval.
-
 ### Installation
 
 ```bash
 npm install @blackunicorn/bonklm-weaviate @blackunicorn/bonklm weaviate-client
 ```
 
-> Peer is the modern `weaviate-client ^3.0.0` (NOT the legacy `weaviate-ts-client`).
+> Peer is the modern `weaviate-client ^3.11.0` (NOT the legacy `weaviate-ts-client`) — the floor is
+> the version the connector's type conformance is verified against.
 
-### Basic Usage (preview — not yet runnable)
+### Basic Usage
 
 ```typescript
-// PREVIEW - intended API shape; not yet runnable against weaviate-client ^3.
+import weaviate from 'weaviate-client';
 import { createGuardedClient } from '@blackunicorn/bonklm-weaviate';
 import { PromptInjectionValidator } from '@blackunicorn/bonklm';
+
+const weaviateClient = await weaviate.connectToLocal();
 
 const guardedClient = createGuardedClient(weaviateClient, {
   validators: [new PromptInjectionValidator()],
@@ -342,29 +339,38 @@ const guardedClient = createGuardedClient(weaviateClient, {
   allowedFields: ['title', 'content', 'tags']
 });
 
-// The guarded client exposes a single query(options) method (preview shape):
+// The guarded client exposes a single query(options) method; queries execute
+// through the real v3 namespace (nearText / bm25 / hybrid / fetchObjects):
 const results = await guardedClient.query({
   className: 'Document',
   fields: ['title', 'content'],
   nearText: { concepts: ['search query'] },
   limit: 10
 });
+
+// Validated objects mirror the real client shape: { uuid, properties, metadata, ... }
+for (const obj of results.objects) {
+  console.log(obj.uuid, obj.properties.title);
+}
 ```
 
 ### Configuration Options
 
-| Option              | Type          | Default                     | Description                                |
-| ------------------- | ------------- | --------------------------- | ------------------------------------------ |
-| `validators`        | `Validator[]` | `[]`                        | Validators to apply                        |
-| `guards`            | `Guard[]`     | `[]`                        | Guards to run                              |
-| `allowedClasses`    | `string[]`    | `[]`                        | Class name allowlist (wildcards supported) |
-| `allowedFields`     | `string[]`    | `[]`                        | Field allowlist (wildcards supported)      |
-| `validateFilters`   | `boolean`     | `true`                      | Validate filter expressions                |
-| `validateQueries`   | `boolean`     | `true`                      | Validate all queries                       |
-| `productionMode`    | `boolean`     | `NODE_ENV === 'production'` | Generic errors in production               |
-| `validationTimeout` | `number`      | `30000`                     | Timeout in milliseconds                    |
-| `onQueryBlocked`    | `Function`    | —                           | Callback when query blocked                |
-| `onClassNotAllowed` | `Function`    | —                           | Callback when class not allowed            |
+| Option                     | Type                    | Default                     | Description                                  |
+| -------------------------- | ----------------------- | --------------------------- | -------------------------------------------- |
+| `validators`               | `Validator[]`           | `[]`                        | Validators to apply                          |
+| `guards`                   | `Guard[]`               | `[]`                        | Guards to run                                |
+| `allowedClasses`           | `string[]`              | `[]`                        | Class name allowlist (wildcards supported)   |
+| `allowedFields`            | `string[]`              | `[]`                        | Field/filter allowlist (wildcards supported) |
+| `validateFilters`          | `boolean`               | `true`                      | Validate `where` filter trees                |
+| `validateRetrievedObjects` | `boolean`               | `true`                      | Validate retrieved objects                   |
+| `onBlockedObject`          | `'filter' \| 'abort'`   | `'filter'`                  | Action when an object is blocked             |
+| `maxLimit`                 | `number`                | `50`                        | Maximum `limit` value                        |
+| `productionMode`           | `boolean`               | `NODE_ENV === 'production'` | Generic errors in production                 |
+| `validationTimeout`        | `number`                | `30000`                     | Timeout in milliseconds                      |
+| `onQueryBlocked`           | `(result) => void`      | —                           | Callback when query blocked                  |
+| `onObjectBlocked`          | `(obj, result) => void` | —                           | Callback when an object is blocked           |
+| `onClassNotAllowed`        | `(className) => void`   | —                           | Callback when class not allowed              |
 
 ### Wildcard Patterns
 

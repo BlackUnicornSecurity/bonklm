@@ -211,7 +211,7 @@ npm install @blackunicorn/bonklm-ollama       # Ollama
 npm install @blackunicorn/bonklm-llamaindex   # LlamaIndex
 npm install @blackunicorn/bonklm-pinecone     # Pinecone
 npm install @blackunicorn/bonklm-chroma       # ChromaDB
-npm install @blackunicorn/bonklm-weaviate     # Weaviate (experimental, preview)
+npm install @blackunicorn/bonklm-weaviate     # Weaviate
 npm install @blackunicorn/bonklm-qdrant       # Qdrant
 npm install @blackunicorn/bonklm-huggingface  # HuggingFace
 ```
