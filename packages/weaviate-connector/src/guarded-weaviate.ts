@@ -168,7 +168,8 @@ export function createGuardedClient(
   } = options;
 
   // Fail fast on a client that cannot satisfy the v3 surface the wrapper
-  // executes against (JS callers bypass the static type).
+  // executes against. The unknown-typed alias exists because JS callers
+  // bypass the static type — the runtime checks must not trust it.
   const clientView: unknown = weaviateClient;
   if (!isRecord(clientView) || !isRecord(clientView.collections) || typeof clientView.collections.get !== 'function') {
     throw new Error('weaviateClient must expose collections.get() — pass a weaviate-client ^3 client instance');
@@ -271,16 +272,24 @@ export function createGuardedClient(
   };
 
   /**
-   * Serializes the content view of a retrieved object — its `properties`
-   * map. Falls back to the whole object when a non-conforming client omits
-   * `properties`.
+   * Reads an object's `properties` map through a widened view — the typed
+   * contract requires it, but a non-conforming client may omit it at
+   * runtime.
    *
    * @internal
    */
-  const objectContent = (obj: WeaviateRetrievedObject): string => {
-    const properties = (obj as { properties?: Record<string, unknown> }).properties;
-    return JSON.stringify(properties ?? obj);
-  };
+  const objectProperties = (obj: WeaviateRetrievedObject): Record<string, unknown> | undefined =>
+    (obj as { properties?: Record<string, unknown> }).properties;
+
+  /**
+   * Serializes the content view of a retrieved object — its `properties`
+   * map. Falls back to the whole object when a non-conforming client omits
+   * `properties`. Single source of the content-derivation rule for both the
+   * per-object and batch validation paths.
+   *
+   * @internal
+   */
+  const objectContent = (obj: WeaviateRetrievedObject): string => JSON.stringify(objectProperties(obj) ?? obj);
 
   /**
    * Validates retrieved objects. The validated content is the object's
@@ -303,13 +312,10 @@ export function createGuardedClient(
       return applyRetrievedDocValidatorToMatches(
         objects,
         retrievedDocValidator,
-        obj => {
-          const properties = (obj as { properties?: Record<string, unknown> }).properties;
-          return {
-            content: JSON.stringify(properties ?? obj),
-            metadata: properties
-          };
-        },
+        obj => ({
+          content: objectContent(obj),
+          metadata: objectProperties(obj)
+        }),
         { productionMode, itemNoun: 'Object' }
       );
     }
