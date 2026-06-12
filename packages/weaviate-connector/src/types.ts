@@ -102,6 +102,12 @@ export interface WeaviateFilterValue {
 /**
  * Structural mirror of a retrieved object as returned by `weaviate-client ^3`
  * query methods (`{ uuid, properties, metadata, references, vectors }`).
+ *
+ * Intentionally WIDER than the client's own object type (`metadata` /
+ * `references` / `vectors` optional and `unknown`-typed): the connector
+ * reads these defensively so a non-conforming client cannot crash it. Do
+ * not tighten this to the client shape — the defensive read paths depend on
+ * the widening.
  */
 export interface WeaviateRetrievedObject {
   /** The UUID of the object. */
@@ -368,6 +374,11 @@ export interface GuardedWeaviateResult {
 
   /**
    * Raw, unfiltered result from Weaviate.
+   *
+   * SECURITY: `raw.objects` bypasses retrieved-object validation — blocked
+   * objects are still present here. Read guarded content from
+   * {@link GuardedWeaviateResult.objects}; reach for `raw` only when you
+   * deliberately need the unvalidated client return.
    */
   raw: WeaviateQueryResult;
 }

@@ -391,16 +391,45 @@ const guardedClient = createGuardedClient(client, {
 // "Class not allowed" instead of "Class 'AdminConfig' is not allowed"
 ```
 
+Set `productionMode: true` explicitly in any deployment where untrusted callers can observe error
+messages: the detailed development messages distinguish "not allowed" from other failures, which
+lets a probing caller enumerate `allowedClasses` / `allowedFields` membership. The default follows
+`NODE_ENV === 'production'`, which may be unset in serverless/edge runtimes.
+
+---
+
+## Security considerations
+
+- **`raw` bypasses object validation.** `GuardedWeaviateResult.raw` is the original, unfiltered
+  client return — blocked objects are still present in `raw.objects`. Read guarded content from
+  `results.objects`; reach for `raw` only when you deliberately need the unvalidated result.
+- **Validation surface is `properties`.** Retrieved-object validation covers each object's
+  `properties` map (falling back to the whole object if a non-conforming client omits it). `uuid`,
+  `metadata`, `references`, and `vectors` are not treated as content — do not render them into LLM
+  context without your own validation.
+- **Wildcard allowlists are powerful.** `'*'` in `allowedClasses` / `allowedFields` matches
+  everything — an allow-all that looks like a restriction. Matching is case-insensitive.
+- **Hand-built reference filter targets.** Filters produced by the client's builder (including
+  `byRef(...)`) flow through `where` as-is. The static `where` type only declares property targets;
+  a hand-written cross-reference target literal needs a cast and is validated at runtime (and
+  rejected outright while `allowedFields` is configured).
+
 ---
 
 ## Compatibility status
 
-Compatible with `weaviate-client ^3` (peer dependency). The connector executes queries through the
-v3 `collection.query` namespace (`nearText` / `bm25` / `hybrid` / `fetchObjects`) and consumes the
-v3 `{ objects }` return shape. Conformance with the client API is locked at compile time: the
-package's type-surface tests assignability-check the connector's structural client types against the
-installed `weaviate-client` typings (verified against `weaviate-client@3.11.0`), and the unit suite
-runs against mocks that mirror those verified shapes.
+Compatible with `weaviate-client ^3.11` (peer dependency `^3.11.0` — the floor is the version the
+type conformance is actually verified against). The connector executes queries through the v3
+`collection.query` namespace (`nearText` / `bm25` / `hybrid` / `fetchObjects`) and consumes the v3
+`{ objects }` return shape. Conformance with the client API is enforced at compile time by the
+package's type-surface tests, which assignability-check the connector's structural client types
+against the installed `weaviate-client` typings in both directions (real client → connector mirrors,
+and the forwarded option shapes → real option types). The unit suite runs against hand-authored
+mocks written to those same shapes.
+
+The guarded `query()` facade intentionally exposes a minimal surface: `nearVector`, `offset`,
+`returnMetadata`, `returnReferences`, and `groupBy` are not available through it yet. If you reach
+for the raw client for those, you are bypassing the guardrails — see Security considerations.
 
 ---
 

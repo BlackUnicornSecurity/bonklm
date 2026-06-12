@@ -24,7 +24,7 @@ For LLM provider connectors that may sit downstream of the retriever see
 | ----------- | ---------------------------------- | ------------------------------------ | ------ | ------ |
 | Pinecone    | `@blackunicorn/bonklm-pinecone`    | `@pinecone-database/pinecone ^2.0.0` | Node   | STABLE |
 | ChromaDB    | `@blackunicorn/bonklm-chroma`      | `chromadb ^1.0.0 / ^2.0.0 / ^3.0.0`  | Node   | STABLE |
-| Weaviate    | `@blackunicorn/bonklm-weaviate`    | `weaviate-client ^3.0.0`             | Node   | STABLE |
+| Weaviate    | `@blackunicorn/bonklm-weaviate`    | `weaviate-client ^3.11.0`            | Node   | STABLE |
 | Qdrant      | `@blackunicorn/bonklm-qdrant`      | `@qdrant/js-client-rest ^1.0.0`      | Node   | STABLE |
 | LanceDB     | `@blackunicorn/bonklm-lance`       | `@lancedb/lancedb ^0.29.0`           | Node   | STABLE |
 | Turbopuffer | `@blackunicorn/bonklm-turbopuffer` | `@turbopuffer/turbopuffer ^2.1.0`    | Edge   | STABLE |
@@ -321,7 +321,8 @@ across each listed major.
 npm install @blackunicorn/bonklm-weaviate @blackunicorn/bonklm weaviate-client
 ```
 
-> Peer is the modern `weaviate-client ^3.0.0` (NOT the legacy `weaviate-ts-client`).
+> Peer is the modern `weaviate-client ^3.11.0` (NOT the legacy `weaviate-ts-client`) — the floor is
+> the version the connector's type conformance is verified against.
 
 ### Basic Usage
 

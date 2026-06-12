@@ -1,27 +1,30 @@
 /**
- * Sprint 43 cross-connector CWE-117 sweep — weaviate-connector regression.
+ * CWE-117 sanitization contract — weaviate-connector regression.
  *
- * Six src sites in `guarded-weaviate.ts` carry attacker-influenced
- * template-literal log calls or dev-mode error messages:
- *   - line 364-370 (`logger.warn('[Guardrails] Object blocked', { id, reason })`)
- *     — both `obj.id` (caller-supplied) and `result.reason` (validator
- *     output) were raw.
- *   - line 373 (`throw new Error(\`Object blocked: ${result.reason}\`)`)
- *     — raw reason in dev-mode error message.
- *   - line 391 (`logger.warn('[Guardrails] Class not allowed', { className })`)
- *     — `options.className` is caller-supplied.
- *   - line 393 (`throw new Error(\`Class '${className}' is not allowed\`)`)
- *     — raw className in dev-mode error message.
- *   - line 418 (`logger.warn('[Guardrails] Query blocked', { reason })`) — raw.
- *   - line 420 (`throw new Error(\`Query blocked: ${result.reason}\`)`) — raw.
+ * `createGuardedClient` in `guarded-weaviate.ts` wraps every
+ * attacker-influenced log-meta value and dev-mode error interpolation with
+ * the canonical `sanitizeMeta` primitive. The wrapped boundaries (located by
+ * their log/message strings, not line numbers):
+ *   - `'[Guardrails] Object blocked'` log meta (`obj.uuid`, `result.reason`)
+ *     and the dev-mode `Object blocked: ...` throw (`result.reason`).
+ *   - `'[Guardrails] Class not allowed'` log meta and the dev-mode
+ *     `Class '...' ...` throws (`className`).
+ *   - `'[Guardrails] Query blocked'` log meta and the dev-mode
+ *     `Query blocked: ...` throw (`result.reason`).
+ *   - `'[Guardrails] Filter rejected'` log meta (validator detail —
+ *     connector-authored static strings; wrapped as defense-in-depth).
+ *   - `'[Guardrails] Field contains invalid characters'` and
+ *     `'[Guardrails] Invalid pattern regex'` log meta (`field` / `pattern`).
  *
- * Sprint 43 wraps each interpolation boundary with `sanitizeMeta`. Per
- * Sprint 40 pattern, this contract-lock test asserts the canonical
- * primitive is reachable from the import surface. A future integration
- * test (Sprint 44+) should instantiate `createGuardedWeaviate` with a
- * mock client + spy logger to prove the wraps fire end-to-end.
+ * Per the Sprint 40 pattern, this contract-lock asserts the canonical
+ * primitive is reachable from the import surface and behaves as expected on
+ * representative attacker inputs. End-to-end proof that the guarded paths
+ * fire lives in `guarded-weaviate.test.ts` (block/abort/filter-rejection
+ * suites assert the sanitized messages and callbacks).
  *
- * Sprint 42 architect LOW deferral → Sprint 43 closure.
+ * History: Sprint 42 architect LOW deferral → Sprint 43 closure (original
+ * six boundaries) → real-client rewrite carried all six forward and added
+ * the filter/field/pattern boundaries.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -59,11 +62,11 @@ describe('weaviate-connector — Sprint 43 CWE-117 sanitization contract', () =>
     expect(sanitizeMeta(className)).toBe('Document\\nINJECTED');
   });
 
-  it('sanitizes a caller-supplied Weaviate object ID', () => {
-    // `obj.id` is whatever the Weaviate client passed in. A hostile
+  it('sanitizes an upstream-supplied Weaviate object UUID', () => {
+    // `obj.uuid` is whatever the Weaviate client returned. A hostile
     // upstream may inject control chars to manipulate downstream
     // log aggregators.
-    const objectId = 'doc-1234\nINJECTED:fake_status=processed';
-    expect(sanitizeMeta(objectId)).toBe('doc-1234\\nINJECTED:fake_status=processed');
+    const objectUuid = 'doc-1234\nINJECTED:fake_status=processed';
+    expect(sanitizeMeta(objectUuid)).toBe('doc-1234\\nINJECTED:fake_status=processed');
   });
 });

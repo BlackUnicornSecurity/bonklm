@@ -583,7 +583,7 @@ describe('Weaviate Connector', () => {
           className: 'Document',
           nearText: { concepts: [] }
         })
-      ).rejects.toThrow('nearText.concepts must be a non-empty array of strings');
+      ).rejects.toThrow('nearText.concepts must be a non-empty array of non-blank strings');
     });
 
     it('should reject non-string nearText concepts', async () => {
@@ -595,31 +595,53 @@ describe('Weaviate Connector', () => {
           className: 'Document',
           nearText: { concepts: ['ok', 42 as unknown as string] }
         })
-      ).rejects.toThrow('nearText.concepts must be a non-empty array of strings');
+      ).rejects.toThrow('nearText.concepts must be a non-empty array of non-blank strings');
     });
 
-    it('should reject an empty bm25 query', async () => {
+    it('should reject blank nearText concepts instead of skipping validation', async () => {
+      const { client, collection } = createMockClient();
+      const guarded = createGuardedClient(client, { validators: [noOpValidator()] });
+
+      // An empty or whitespace-only concept would join to blank content and
+      // silently skip the content validator — it must be rejected up front.
+      for (const concepts of [[''], ['   '], ['ok', '\n\t']]) {
+        await expect(
+          guarded.query({
+            className: 'Document',
+            nearText: { concepts }
+          })
+        ).rejects.toThrow('nearText.concepts must be a non-empty array of non-blank strings');
+      }
+
+      expect(collection.query.nearText).not.toHaveBeenCalled();
+    });
+
+    it('should reject empty and blank bm25 queries', async () => {
       const { client } = createMockClient();
       const guarded = createGuardedClient(client, { validators: [noOpValidator()] });
 
-      await expect(
-        guarded.query({
-          className: 'Document',
-          bm25: { query: '' }
-        })
-      ).rejects.toThrow('bm25.query must be a non-empty string');
+      for (const query of ['', '   ', '\n\t']) {
+        await expect(
+          guarded.query({
+            className: 'Document',
+            bm25: { query }
+          })
+        ).rejects.toThrow('bm25.query must be a non-blank string');
+      }
     });
 
-    it('should reject an empty hybrid query', async () => {
+    it('should reject empty and blank hybrid queries', async () => {
       const { client } = createMockClient();
       const guarded = createGuardedClient(client, { validators: [noOpValidator()] });
 
-      await expect(
-        guarded.query({
-          className: 'Document',
-          hybrid: { query: '' }
-        })
-      ).rejects.toThrow('hybrid.query must be a non-empty string');
+      for (const query of ['', '   ']) {
+        await expect(
+          guarded.query({
+            className: 'Document',
+            hybrid: { query }
+          })
+        ).rejects.toThrow('hybrid.query must be a non-blank string');
+      }
     });
 
     it('should reject non-string fields entries', async () => {
@@ -1377,6 +1399,65 @@ describe('Weaviate Connector', () => {
           })
         ).rejects.toThrow(message);
       }
+    });
+
+    it('should bound string operand lengths', async () => {
+      const { client } = createMockClient();
+      const guarded = createGuardedClient(client, { validators: [noOpValidator()] });
+
+      // At the 10000-char bound: accepted.
+      const atBound = await guarded.query({
+        className: 'Document',
+        nearText: { concepts: ['test'] },
+        where: propertyFilter('content', 'Equal', 'a'.repeat(10_000))
+      });
+      expect(atBound.objects).toHaveLength(2);
+
+      // Over the bound: rejected for every string-carrying operator.
+      const oversized = 'a'.repeat(10_001);
+      for (const where of [
+        propertyFilter('content', 'Equal', oversized),
+        propertyFilter('content', 'Like', oversized),
+        propertyFilter('content', 'GreaterThan', oversized),
+        propertyFilter('tags', 'ContainsAny', ['ok', oversized])
+      ]) {
+        await expect(
+          guarded.query({
+            className: 'Document',
+            nearText: { concepts: ['test'] },
+            where
+          })
+        ).rejects.toThrow('Filter value exceeds maximum string length');
+      }
+    });
+
+    it('should bound Contains operand array lengths', async () => {
+      const { client } = createMockClient();
+      const guarded = createGuardedClient(client, { validators: [noOpValidator()] });
+
+      // At the 1000-element bound: accepted.
+      const atBound = await guarded.query({
+        className: 'Document',
+        nearText: { concepts: ['test'] },
+        where: propertyFilter(
+          'tags',
+          'ContainsAny',
+          Array.from({ length: 1_000 }, (_, i) => `t${i}`)
+        )
+      });
+      expect(atBound.objects).toHaveLength(2);
+
+      await expect(
+        guarded.query({
+          className: 'Document',
+          nearText: { concepts: ['test'] },
+          where: propertyFilter(
+            'tags',
+            'ContainsAny',
+            Array.from({ length: 1_001 }, (_, i) => `t${i}`)
+          )
+        })
+      ).rejects.toThrow('Contains filter exceeds maximum array length');
     });
 
     it('should skip filter validation when validateFilters is false', async () => {

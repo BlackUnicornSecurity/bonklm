@@ -294,7 +294,9 @@ export function createGuardedClient(
   /**
    * Validates retrieved objects. The validated content is the object's
    * `properties` map (the retrieved content); `uuid`, vectors, and return
-   * metadata are not treated as content.
+   * metadata are not treated as content — except when a non-conforming
+   * client omits `properties`, in which case the whole object is validated
+   * as a fail-safe.
    *
    * @internal
    */
@@ -373,24 +375,33 @@ export function createGuardedClient(
         throw new Error(productionMode ? 'Invalid query' : 'Specify at most one of nearText, bm25, or hybrid');
       }
 
+      // Blank (whitespace-only) query inputs are rejected rather than
+      // skipped: the content-validation gate below fires on non-empty
+      // content, so an empty/blank query must never reach it unvalidated.
       let queryContent = '';
       if (nearText !== undefined) {
         if (
           !Array.isArray(nearText.concepts) ||
           nearText.concepts.length === 0 ||
-          nearText.concepts.some(concept => typeof concept !== 'string')
+          nearText.concepts.some(concept => typeof concept !== 'string' || concept.trim().length === 0)
         ) {
-          throw new Error(productionMode ? 'Invalid query' : 'nearText.concepts must be a non-empty array of strings');
+          throw new Error(
+            productionMode ? 'Invalid query' : 'nearText.concepts must be a non-empty array of non-blank strings'
+          );
         }
+        // Validated as one space-joined blob; the client receives the raw
+        // array (concepts are embedded per element). Equivalent for the
+        // bundled substring/pattern validators — noted because the validated
+        // representation is not byte-identical to what is forwarded.
         queryContent = nearText.concepts.join(' ');
       } else if (bm25 !== undefined) {
-        if (typeof bm25.query !== 'string' || bm25.query.length === 0) {
-          throw new Error(productionMode ? 'Invalid query' : 'bm25.query must be a non-empty string');
+        if (typeof bm25.query !== 'string' || bm25.query.trim().length === 0) {
+          throw new Error(productionMode ? 'Invalid query' : 'bm25.query must be a non-blank string');
         }
         queryContent = bm25.query;
       } else if (hybrid !== undefined) {
-        if (typeof hybrid.query !== 'string' || hybrid.query.length === 0) {
-          throw new Error(productionMode ? 'Invalid query' : 'hybrid.query must be a non-empty string');
+        if (typeof hybrid.query !== 'string' || hybrid.query.trim().length === 0) {
+          throw new Error(productionMode ? 'Invalid query' : 'hybrid.query must be a non-blank string');
         }
         queryContent = hybrid.query;
       }
@@ -475,13 +486,3 @@ export function createGuardedClient(
     }
   };
 }
-
-/**
- * Re-exports types for convenience.
- */
-export type {
-  GuardedWeaviateOptions,
-  GuardedWeaviateResult,
-  WeaviateQueryOptions,
-  BlockedObjectHandling
-} from './types.js';

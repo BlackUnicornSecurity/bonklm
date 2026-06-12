@@ -10,9 +10,11 @@
  * Validation therefore walks that exact structure instead of
  * JSON-stringifying and pattern-scanning the input:
  *
- * - node keys restricted to the `FilterValue` shape (own-property reads only,
- *   so prototype-chain tricks and polluted keys like `constructor` are
- *   rejected structurally),
+ * - node keys restricted to the `FilterValue` shape (own ENUMERABLE STRING
+ *   keys, via `Object.keys` + own-property reads — prototype-chain tricks and
+ *   polluted keys like `constructor` are rejected structurally; Symbol /
+ *   non-enumerable keys are invisible here AND inert downstream, since the
+ *   v3 gRPC serializer reads the same enumerable-string-key surface),
  * - operators checked against the v3 operator allowlist,
  * - leaf targets restricted to the proto `FilterTarget` shape, with property
  *   names length- and character-checked (including the builder's
@@ -28,13 +30,18 @@
  * @package @blackunicorn/bonklm-weaviate
  */
 
+import type { WeaviateFilterOperator } from './types.js';
+
 /**
  * The full `weaviate-client ^3` filter operator set (verified against
- * weaviate-client@3.11.0 `Operator`).
+ * weaviate-client@3.11.0 `Operator`). Typed against the public
+ * {@link WeaviateFilterOperator} union so a typo here is a compile error;
+ * the `validateValue` switch enforces the reverse direction (a union member
+ * missing a case fails its `never` exhaustiveness assignment).
  *
  * @internal
  */
-const ALLOWED_OPERATORS = new Set([
+const ALL_FILTER_OPERATORS: readonly WeaviateFilterOperator[] = [
   'Equal',
   'NotEqual',
   'GreaterThan',
@@ -50,7 +57,10 @@ const ALLOWED_OPERATORS = new Set([
   'And',
   'Or',
   'Not'
-]);
+];
+
+/** Membership set for the runtime operator gate. @internal */
+const ALLOWED_OPERATORS: ReadonlySet<string> = new Set(ALL_FILTER_OPERATORS);
 
 /** Logical operators carrying child filters instead of a target/value. @internal */
 const LOGICAL_OPERATORS = new Set(['And', 'Or', 'Not']);
@@ -72,6 +82,12 @@ const MAX_FILTER_NODES = 256;
 
 /** Maximum length of a filter target property name. @internal */
 const MAX_PROPERTY_LENGTH = 100;
+
+/** Maximum length of a string operand value (DoS bound). @internal */
+const MAX_VALUE_STRING_LENGTH = 10_000;
+
+/** Maximum element count of a Contains-operand array (DoS bound). @internal */
+const MAX_VALUE_ARRAY_LENGTH = 1_000;
 
 /** Safe property-name pattern (GraphQL-safe identifier). @internal */
 const SAFE_PROPERTY_REGEX = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
@@ -112,6 +128,10 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 
 /**
  * Primitive filter-operand check (string / finite number / boolean / Date).
+ * String operands are additionally length-bounded via
+ * {@link assertBoundedString} at each use site — the node-count cap bounds
+ * tree width, not operand bytes, so unbounded values would be a
+ * payload-amplification hole.
  *
  * @internal
  */
@@ -120,6 +140,17 @@ const isPrimitiveOperand = (value: unknown): boolean =>
   (typeof value === 'number' && Number.isFinite(value)) ||
   typeof value === 'boolean' ||
   value instanceof Date;
+
+/**
+ * Bounds a string operand's length (DoS guard).
+ *
+ * @internal
+ */
+const assertBoundedString = (value: string): void => {
+  if (value.length > MAX_VALUE_STRING_LENGTH) {
+    throw new Error('Filter value exceeds maximum string length');
+  }
+};
 
 /**
  * Extracts the validation-failure detail from a thrown value.
@@ -203,7 +234,9 @@ function visitNode(
   }
 
   validateTarget(target, options);
-  validateValue(operator, value);
+  // Sound cast: `operator` passed the ALLOWED_OPERATORS gate, which is built
+  // from the WeaviateFilterOperator union.
+  validateValue(operator as WeaviateFilterOperator, value);
 }
 
 /**
@@ -269,11 +302,17 @@ function validateTargetProperty(property: unknown, options: ValidateWeaviateFilt
 }
 
 /**
- * Validates a leaf node's operand value against its operator.
+ * Validates a leaf node's operand value against its operator. String
+ * operands are length-bounded and Contains arrays are element-count-bounded
+ * (DoS guards — the node cap does not bound operand bytes).
+ *
+ * The `default` arm's `never` assignment makes a `WeaviateFilterOperator`
+ * union member without a case here a compile error, keeping this switch and
+ * the operator allowlist in lockstep.
  *
  * @internal
  */
-function validateValue(operator: string, value: unknown): void {
+function validateValue(operator: WeaviateFilterOperator, value: unknown): void {
   switch (operator) {
     case 'IsNull':
       if (typeof value !== 'boolean') {
@@ -283,8 +322,19 @@ function validateValue(operator: string, value: unknown): void {
     case 'ContainsAny':
     case 'ContainsAll':
     case 'ContainsNone':
-      if (!Array.isArray(value) || !value.every(isPrimitiveOperand)) {
+      if (!Array.isArray(value)) {
         throw new Error('Contains filter requires an array of primitive values');
+      }
+      if (value.length > MAX_VALUE_ARRAY_LENGTH) {
+        throw new Error('Contains filter exceeds maximum array length');
+      }
+      if (!value.every(isPrimitiveOperand)) {
+        throw new Error('Contains filter requires an array of primitive values');
+      }
+      for (const element of value) {
+        if (typeof element === 'string') {
+          assertBoundedString(element);
+        }
       }
       return;
     case 'WithinGeoRange':
@@ -294,6 +344,7 @@ function validateValue(operator: string, value: unknown): void {
       if (typeof value !== 'string') {
         throw new Error('Like filter requires a string value');
       }
+      assertBoundedString(value);
       return;
     case 'GreaterThan':
     case 'GreaterThanEqual':
@@ -306,16 +357,29 @@ function validateValue(operator: string, value: unknown): void {
       ) {
         throw new Error('Comparison filter requires a string, finite number, or Date value');
       }
+      if (typeof value === 'string') {
+        assertBoundedString(value);
+      }
       return;
     case 'Equal':
     case 'NotEqual':
       if (!isPrimitiveOperand(value)) {
         throw new Error('Equality filter requires a primitive value');
       }
+      if (typeof value === 'string') {
+        assertBoundedString(value);
+      }
       return;
-    /* v8 ignore next 3 -- unreachable: operator allowlist precedes the switch */
-    default:
-      throw new Error('Filter operator is not allowed');
+    /* v8 ignore start -- unreachable: And/Or/Not are dispatched as logical nodes in visitNode, and the ALLOWED_OPERATORS gate precedes this switch. The never assignment keeps the switch exhaustive at compile time. */
+    case 'And':
+    case 'Or':
+    case 'Not':
+      return;
+    default: {
+      const exhaustive: never = operator;
+      throw new Error(`Unhandled filter operator: ${String(exhaustive)}`);
+    }
+    /* v8 ignore stop */
   }
 }
 

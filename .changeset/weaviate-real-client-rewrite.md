@@ -14,8 +14,12 @@ output contract is the real client shape — `{ objects, objectsBlocked, filtere
 node/target key allowlists with own-property reads, per-operator value typing, depth and node-count
 caps) instead of the old JSON-stringify pattern scan; when `allowedFields` is configured, filter
 targets must satisfy the allowlist and cross-reference targets are rejected. `className` is now
-validated structurally even without an allowlist, `limit` is clamped to `[1, maxLimit]`, and at most
-one search mode may be specified. `createGuardedClient` now takes a typed `WeaviateClientLike`
-instead of `any`; conformance of the connector's structural client types against the installed
-`weaviate-client` typings is locked at compile time by the package's type tests. The EXPERIMENTAL /
-preview-API marking is removed across the package and docs.
+validated structurally even without an allowlist, `limit` is clamped to `[1, maxLimit]`, at most one
+search mode may be specified, and blank (whitespace-only) query inputs are rejected rather than
+silently skipping content validation. Filter operand values are DoS-bounded (string operands ≤ 10000
+chars, Contains arrays ≤ 1000 elements). `createGuardedClient` now takes a typed
+`WeaviateClientLike` instead of `any`; conformance of the connector's structural client types
+against the installed `weaviate-client` typings is locked at compile time by the package's type
+tests, and the peer dependency floor is raised to `weaviate-client ^3.11.0` — the version that
+conformance is verified against. The EXPERIMENTAL / preview-API marking is removed across the
+package and docs.

@@ -38,7 +38,7 @@
     "@blackunicorn/bonklm": "workspace:*"
   },
   "peerDependencies": {
-    "weaviate-client": "^3.0.0"
+    "weaviate-client": "^3.11.0"
   },
   "peerDependenciesMeta": {
     "weaviate-client": {

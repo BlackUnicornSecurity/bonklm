@@ -18,7 +18,11 @@
  */
 import { expectType, expectError, expectAssignable, expectNotAssignable } from 'tsd';
 import type {
+  BaseBm25Options,
+  BaseHybridOptions,
+  BaseNearTextOptions,
   Collection,
+  FetchObjectsOptions,
   FilterValue,
   WeaviateClient,
   WeaviateNonGenericObject,
@@ -64,6 +68,30 @@ expectAssignable<WeaviateQueryResult>(realReturn);
 expectAssignable<WeaviateRetrievedObject>(realObject);
 // And the factory accepts a real client directly.
 expectType<GuardedWeaviateClient>(createGuardedClient(realClient));
+
+// MIRROR → REAL direction: what the connector forwards must be accepted by
+// the real client's option types (catches a client-side option rename even
+// though the runtime forwards plain objects). The connector sends
+// `{ limit, returnProperties?, filters? }` to nearText/bm25/fetchObjects and
+// additionally `alpha` to hybrid; `filters` carries the caller's mirror-typed
+// tree.
+declare const mirrorFilter: WeaviateFilterValue;
+expectAssignable<FilterValue>(mirrorFilter);
+declare const forwardedOptions: {
+  limit: number;
+  returnProperties?: string[];
+  filters?: FilterValue;
+};
+expectAssignable<BaseNearTextOptions<undefined, undefined, undefined>>(forwardedOptions);
+expectAssignable<BaseBm25Options<undefined, undefined>>(forwardedOptions);
+expectAssignable<FetchObjectsOptions<undefined, undefined>>(forwardedOptions);
+declare const forwardedHybridOptions: {
+  limit: number;
+  returnProperties?: string[];
+  filters?: FilterValue;
+  alpha?: number;
+};
+expectAssignable<BaseHybridOptions<undefined, undefined, undefined>>(forwardedHybridOptions);
 
 // --- Factory: createGuardedClient(client: WeaviateClientLike, options?) ---
 declare const unknownClient: unknown;
