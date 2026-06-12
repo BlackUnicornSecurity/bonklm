@@ -14,29 +14,20 @@
 
 ---
 
-> **⚠️ EXPERIMENTAL — preview API.** This connector is **not yet wired to its `weaviate-client ^3`
-> peer dependency.** The `createGuardedClient(...).query(...)` API and the response shapes shown
-> throughout this README (including the Quick Start) illustrate the **intended** guardrail surface —
-> they are a preview and **will change**. The guardrail logic (class / field access control, query
-> and filter validation, object-poisoning detection) has unit tests, but those tests run against a
-> **mocked** client and do not exercise the real `weaviate-client ^3` API — the query-execution and
-> response-extraction layer does not match it, so the examples below will **not** run successfully
-> against a live Weaviate instance yet. Do not depend on this package for live retrieval until it is
-> marked stable.
-
 ## Overview
 
 The `@blackunicorn/bonklm-weaviate` package provides security guardrails for
-[Weaviate](https://weaviate.io/) vector database operations. It validates queries, sanitizes
+[Weaviate](https://weaviate.io/) vector database operations. It validates queries, validates
 filters, enforces class/field access control, and detects poisoned objects to protect your RAG
-(Retrieval-Augmented Generation) applications.
+(Retrieval-Augmented Generation) applications. Queries execute through the real `weaviate-client ^3`
+API (`collection.query.nearText` / `bm25` / `hybrid` / `fetchObjects`).
 
 This package contains:
 
-- **Class Access Control** - Restricts which classes can be queried
-- **Field Access Control** - Restricts which fields can be retrieved
+- **Class Access Control** - Restricts which collections (classes) can be queried
+- **Field Access Control** - Restricts which fields can be retrieved and filtered on
 - **Query Validation** - Validates query text for nearText, BM25, and hybrid searches
-- **Filter Sanitization** - Prevents GraphQL injection in filter expressions
+- **Filter Validation** - Structurally validates `where` filter trees before they are forwarded
 - **Object Poisoning Detection** - Validates retrieved objects for malicious content
 
 ---
@@ -85,9 +76,10 @@ const results = await guardedClient.query({
   limit: 10
 });
 
-// PREVIEW: the `data.Get[className]` envelope below is illustrative — a live
-// `weaviate-client ^3` returns `{ objects }`, not this shape.
-console.log('Objects:', results.data.Get.Document.length);
+// Validated objects mirror the real client shape: { uuid, properties, metadata, ... }
+for (const obj of results.objects) {
+  console.log(obj.uuid, obj.properties.title);
+}
 console.log('Objects blocked:', results.objectsBlocked);
 ```
 
@@ -109,7 +101,7 @@ console.log('Objects blocked:', results.objectsBlocked);
 | `onBlockedObject`          | `'filter' \| 'abort'`   | `'filter'`                  | Action when object is blocked      |
 | `productionMode`           | `boolean`               | `NODE_ENV === 'production'` | Generic errors in production       |
 | `validationTimeout`        | `number`                | `30000`                     | Validation timeout in ms           |
-| `maxLimit`                 | `number`                | `100`                       | Maximum limit value                |
+| `maxLimit`                 | `number`                | `50`                        | Maximum limit value                |
 | `onQueryBlocked`           | `(result) => void`      | -                           | Callback when query is blocked     |
 | `onObjectBlocked`          | `(obj, result) => void` | -                           | Callback when object is blocked    |
 | `onClassNotAllowed`        | `(className) => void`   | -                           | Callback when class is not allowed |
@@ -130,34 +122,40 @@ const guardedClient = createGuardedClient(weaviateClient, options);
 
 #### Methods
 
-- **query(options)** - Executes a query with validation
-  - `className`: Class name (validated against allowedClasses)
-  - `fields`: Fields to retrieve (validated against allowedFields)
-  - `nearText`: Near text search (concepts validated)
-  - `bm25`: BM25 search (query validated)
-  - `hybrid`: Hybrid search (query validated)
-  - `where`: Filter expression (sanitized)
-  - `limit`: Number of results (max enforced)
+- **query(options)** - Executes a query with validation through the real `weaviate-client ^3` API
+  - `className`: Collection (class) name — always structurally validated, and checked against
+    `allowedClasses` when configured
+  - `fields`: Fields to retrieve (validated against `allowedFields`, forwarded as
+    `returnProperties`); omit to retrieve all non-reference properties
+  - `nearText`: Semantic search — `{ concepts: string[] }` (concepts validated)
+  - `bm25`: Keyword search — `{ query: string }` (query validated)
+  - `hybrid`: Hybrid search — `{ query: string, alpha?: number }` (query validated)
+  - `where`: A `weaviate-client ^3` `FilterValue` (structurally validated; see
+    [Filter Validation](#filter-validation))
+  - `limit`: Number of results — clamped to `[1, maxLimit]`, default `10`
+
+  At most one of `nearText` / `bm25` / `hybrid` may be given; with none, the query runs as a plain
+  `fetchObjects` retrieval.
 
 ### GuardedWeaviateResult
 
-Result of a guarded query operation.
-
-> **PREVIEW.** The `data.Get[className]` envelope shown here is the connector's _intended_ output
-> shape, **not** what a live `weaviate-client ^3` produces (the real client returns `{ objects }`).
-> This contract will change when the connector is wired to the real client; the package's own
-> `types.ts` currently types `data` as `any`.
+Result of a guarded query operation. Mirrors the real `weaviate-client ^3` return shape
+(`{ objects }`) with guardrail metadata alongside:
 
 ```typescript
 interface GuardedWeaviateResult {
-  data: {
-    Get: {
-      [className: string]: any[]; // Valid objects only (preview shape)
-    };
-  };
+  objects: WeaviateRetrievedObject[]; // Validated objects (blocked objects removed)
   objectsBlocked: number; // Count of blocked objects
-  filtered: boolean; // True if any objects blocked
-  raw: any; // Original Weaviate result
+  filtered: boolean; // True if any objects were blocked
+  raw: WeaviateQueryResult; // Original, unfiltered Weaviate result
+}
+
+interface WeaviateRetrievedObject {
+  uuid: string; // The object's UUID
+  properties: Record<string, unknown>; // The retrieved content
+  metadata?: unknown; // Distance / score / ... when requested
+  references?: unknown;
+  vectors?: unknown;
 }
 ```
 
@@ -257,45 +255,64 @@ await guardedClient.query({
 });
 ```
 
-### Filter Sanitization
+### Filter Validation
 
-Prevents GraphQL injection in filter expressions:
+`where` takes a real `weaviate-client ^3` `FilterValue` — built with the client's filter builder
+(`collection.filter.byProperty(...)`, `byId()`, ...) or the `Filters.and/or/not` helpers — and the
+connector validates the tree structurally before forwarding it:
 
 ```typescript
-// These filters will be rejected
-await guardedClient.query({
-  className: 'Document',
-  fields: ['title'],
-  where: {
-    operator: 'And',
-    operands: [
-      {
-        path: ['__proto__'], // Blocked: dangerous key
-        operator: 'Equal',
-        valueText: 'admin'
-      }
-    ]
-  },
-  limit: 10
-});
+import { Filters } from 'weaviate-client';
 
-// Unicode escape detection
-await guardedClient.query({
+const documents = client.collections.get('Document');
+
+const results = await guardedClient.query({
   className: 'Document',
-  fields: ['title'],
-  where: {
-    operator: 'And',
-    operands: [
-      {
-        path: ['\u0024where'], // Blocked: Unicode obfuscation
-        operator: 'Equal',
-        valueText: 'malicious'
-      }
-    ]
-  },
+  fields: ['title', 'content'],
+  nearText: { concepts: ['machine learning'] },
+  where: Filters.and(
+    documents.filter.byProperty('category').equal('tutorial'),
+    documents.filter.byProperty('published').greaterThan(new Date('2024-01-01'))
+  ),
   limit: 10
 });
 ```
+
+Validation enforces, on every node of the tree:
+
+- **Node shape** — only the `FilterValue` keys (`filters`, `operator`, `target`, `value`) are
+  accepted; anything else (including polluted keys like `constructor` or an own-key `__proto__`) is
+  rejected. Reads are own-property only, so prototype-chain tricks don't leak in.
+- **Operator allowlist** — the exact `weaviate-client ^3` operator set (`Equal`, `Like`,
+  `ContainsAny`, `And`, ...). Unknown operators are rejected.
+- **Target property checks** — leaf targets must name a property with safe characters (the builder's
+  `len(<property>)` length wrapper is understood), length-capped.
+- **Per-operator value typing** — e.g. `Like` requires a string, `IsNull` a boolean,
+  `WithinGeoRange` a `{ latitude, longitude, distance }` object of finite numbers.
+- **Depth and node caps** — bounded traversal (depth <= 10, <= 256 nodes).
+
+```typescript
+// Rejected: unknown operator
+await guardedClient.query({
+  className: 'Document',
+  where: { operator: 'Eval', target: { property: 'title' }, value: 'x' },
+  limit: 10
+});
+// Error: Filter operator is not allowed
+
+// Rejected: unsupported node keys (legacy GraphQL envelope, polluted keys, ...)
+await guardedClient.query({
+  className: 'Document',
+  where: { operator: 'And', operands: [{ path: ['title'] }] },
+  limit: 10
+});
+// Error: Filter contains unsupported keys
+```
+
+When `allowedFields` is configured, filter targets must also satisfy the allowlist: filters may only
+target allowlisted properties (add `_id` / `_creationTimeUnix` / `_lastUpdateTimeUnix` to the
+allowlist to permit id/time filters), and cross-reference filter targets are rejected outright. Set
+`validateFilters: false` to opt out of filter validation entirely.
 
 ---
 
@@ -326,7 +343,7 @@ await guardedClient.query({
 const guardedClient = createGuardedClient(client, {
   onBlockedObject: 'abort', // Fail closed
   onObjectBlocked: (obj, result) => {
-    console.error('Object blocked:', obj.id, result.reason);
+    console.error('Object blocked:', obj.uuid, result.reason);
   },
   onClassNotAllowed: className => {
     console.warn('Access denied to class:', className);
@@ -378,11 +395,12 @@ const guardedClient = createGuardedClient(client, {
 
 ## Compatibility status
 
-> **EXPERIMENTAL.** This connector is a preview and is **not yet compatible** with its
-> `weaviate-client ^3` peer dependency. The query API and response shapes documented above are the
-> _intended_ design and **will change** before this connector is marked stable — aligning it with
-> the real `weaviate-client ^3` API is a tracked follow-up. Until then, do not rely on it for live
-> Weaviate retrieval.
+Compatible with `weaviate-client ^3` (peer dependency). The connector executes queries through the
+v3 `collection.query` namespace (`nearText` / `bm25` / `hybrid` / `fetchObjects`) and consumes the
+v3 `{ objects }` return shape. Conformance with the client API is locked at compile time: the
+package's type-surface tests assignability-check the connector's structural client types against the
+installed `weaviate-client` typings (verified against `weaviate-client@3.11.0`), and the unit suite
+runs against mocks that mirror those verified shapes.
 
 ---
 

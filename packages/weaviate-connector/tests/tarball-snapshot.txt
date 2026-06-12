@@ -1,5 +1,9 @@
 LICENSE
 README.md
+dist/filter-validation.d.ts
+dist/filter-validation.d.ts.map
+dist/filter-validation.js
+dist/filter-validation.js.map
 dist/guarded-weaviate.d.ts
 dist/guarded-weaviate.d.ts.map
 dist/guarded-weaviate.js
