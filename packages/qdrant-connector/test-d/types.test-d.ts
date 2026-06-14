@@ -41,6 +41,11 @@ import {
   type BlockedPointHandling
 } from '@blackunicorn/bonklm-qdrant';
 import type { Schemas } from '@qdrant/js-client-rest';
+// The native-option allow-list is an internal (non-barrel) export, imported via a
+// relative source path so the conformance union below is derived from the SAME
+// runtime value the guarded `search` screens passthrough against — not a
+// hand-maintained copy that could silently diverge from it (D-046).
+import { QDRANT_NATIVE_SEARCH_KEYS } from '../src/guarded-qdrant.js';
 
 // --- Factory: createGuardedClient(client: any, options?) ---
 declare const qdrantClient: unknown;
@@ -123,10 +128,11 @@ expectType<50>(DEFAULT_MAX_LIMIT);
 // they are deliberately absent from both sets and from `Schemas['SearchRequest']`.
 type RealSearchBodyKey = keyof Schemas['SearchRequest'];
 type AccountedSearchBodyKey =
-  // allow-listed caller passthrough (QDRANT_NATIVE_SEARCH_KEYS):
-  | 'offset'
-  | 'params'
-  | 'shard_key'
+  // allow-listed caller passthrough — derived from the runtime allow-list tuple
+  // (QDRANT_NATIVE_SEARCH_KEYS) so a key removed from the Set the guarded `search`
+  // screens against shrinks this union and trips the conformance assertions below,
+  // instead of the type lock silently diverging from a hand-copied key list (D-046):
+  | (typeof QDRANT_NATIVE_SEARCH_KEYS)[number]
   // set explicitly by search() (camelCase option → snake_case body field):
   | 'vector'
   | 'limit'

@@ -58,9 +58,26 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  * fields); those are intentionally not forwarded here. Add explicit, validated
  * support if they are ever needed.
  *
+ * Exported (off-barrel) solely so the `test-d` conformance lock can derive its
+ * key union from this single source of truth — not part of the public API
+ * (absent from `index.ts`; unreachable through the package `exports` map).
+ *
  * @internal
  */
-const QDRANT_NATIVE_SEARCH_KEYS: ReadonlySet<string> = new Set(['offset', 'params', 'shard_key']);
+export const QDRANT_NATIVE_SEARCH_KEYS = ['offset', 'params', 'shard_key'] as const;
+
+/**
+ * Runtime allow-list `Set` derived from {@link QDRANT_NATIVE_SEARCH_KEYS}. The
+ * tuple above is the single source of truth: the `test-d` real-client
+ * conformance lock derives its caller-passthrough union from
+ * `(typeof QDRANT_NATIVE_SEARCH_KEYS)[number]`, so a key removed from the tuple
+ * shrinks that union and fails type-compilation instead of silently dropping a
+ * passthrough field. Closes the hand-transcription drift between the runtime
+ * allow-list and its compile-time conformance lock (single source of truth).
+ *
+ * @internal
+ */
+const QDRANT_NATIVE_SEARCH_KEY_SET: ReadonlySet<string> = new Set(QDRANT_NATIVE_SEARCH_KEYS);
 
 /**
  * Represents a wrapped Qdrant client with guardrails.
@@ -524,8 +541,8 @@ export function createGuardedClient(qdrantClient: any, options: GuardedQdrantOpt
      */
     async search(options: QdrantSearchOptions): Promise<GuardedQdrantResult> {
       // Separate connector-level options from the rest; the remaining
-      // `passthrough` keys are screened against QDRANT_NATIVE_SEARCH_KEYS
-      // (Step 5 below) before any of them can reach the client.
+      // `passthrough` keys are screened against the QDRANT_NATIVE_SEARCH_KEY_SET
+      // allow-list (Step 5 below) before any of them can reach the client.
       const {
         collectionName,
         vector,
@@ -566,7 +583,7 @@ export function createGuardedClient(qdrantClient: any, options: GuardedQdrantOpt
       // cannot reach the client unvalidated (D-040 defense-in-depth).
       const nativeOptions: Record<string, unknown> = {};
       for (const key of Object.keys(passthrough)) {
-        if (QDRANT_NATIVE_SEARCH_KEYS.has(key)) {
+        if (QDRANT_NATIVE_SEARCH_KEY_SET.has(key)) {
           nativeOptions[key] = (passthrough as Record<string, unknown>)[key];
         }
       }
