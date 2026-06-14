@@ -48,9 +48,26 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  * other key a (JS) caller adds is dropped so it cannot reach the client
  * unvalidated (D-040 defense-in-depth).
  *
+ * Exported (off-barrel) solely so the `test-d` conformance lock can derive its
+ * key union from this single source of truth — not part of the public API
+ * (absent from `index.ts`; unreachable through the package `exports` map).
+ *
  * @internal
  */
-const PINECONE_NATIVE_QUERY_KEYS: ReadonlySet<string> = new Set(['vector', 'includeValues', 'includeMetadata']);
+export const PINECONE_NATIVE_QUERY_KEYS = ['vector', 'includeValues', 'includeMetadata'] as const;
+
+/**
+ * Runtime allow-list `Set` derived from {@link PINECONE_NATIVE_QUERY_KEYS}. The
+ * tuple above is the single source of truth: the `test-d` real-client
+ * conformance lock derives its forwarded-passthrough union from
+ * `(typeof PINECONE_NATIVE_QUERY_KEYS)[number]`, so a key removed from the tuple
+ * shrinks that union and fails type-compilation instead of silently dropping a
+ * forwarded field. Closes the hand-transcription drift between the runtime
+ * allow-list and its compile-time conformance lock (single source of truth).
+ *
+ * @internal
+ */
+const PINECONE_NATIVE_QUERY_KEY_SET: ReadonlySet<string> = new Set(PINECONE_NATIVE_QUERY_KEYS);
 
 /**
  * Safe namespace charset — mirrors the qdrant `collectionName` guard.
@@ -369,7 +386,7 @@ export function createGuardedIndex(pineconeIndex: any, options: GuardedPineconeO
       // client unvalidated (D-040 defense-in-depth).
       const nativeQuery: Record<string, unknown> = {};
       for (const key of Object.keys(queryOptions)) {
-        if (PINECONE_NATIVE_QUERY_KEYS.has(key)) {
+        if (PINECONE_NATIVE_QUERY_KEY_SET.has(key)) {
           nativeQuery[key] = (queryOptions as Record<string, unknown>)[key];
         }
       }

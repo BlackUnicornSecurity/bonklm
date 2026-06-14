@@ -41,6 +41,11 @@ import {
   type VectorQueryOptions
 } from '@blackunicorn/bonklm-pinecone';
 import type { QueryByVectorValues, QueryByRecordId } from '@pinecone-database/pinecone';
+// The native-option allow-list is an internal (non-barrel) export, imported via a
+// relative source path so the conformance union below is derived from the SAME
+// runtime value the guarded `query` screens passthrough against — not a
+// hand-maintained copy that could silently diverge from it (D-046).
+import { PINECONE_NATIVE_QUERY_KEYS } from '../src/guarded-pinecone.js';
 
 // --- Factory: createGuardedIndex(index: any, options?) ---
 declare const index: unknown;
@@ -121,10 +126,11 @@ expectError(new ConnectorTimeoutError('m')); // timeout required
 // intentionally unsupported.
 type RealVectorQueryKey = keyof QueryByVectorValues;
 type ForwardedQueryKey =
-  // allow-listed caller passthrough (PINECONE_NATIVE_QUERY_KEYS):
-  | 'vector'
-  | 'includeValues'
-  | 'includeMetadata'
+  // allow-listed caller passthrough — derived from the runtime allow-list tuple
+  // (PINECONE_NATIVE_QUERY_KEYS) so a key removed from the Set the guarded `query`
+  // screens against shrinks this union and trips the conformance assertions below,
+  // instead of the type lock silently diverging from a hand-copied key list (D-046):
+  | (typeof PINECONE_NATIVE_QUERY_KEYS)[number]
   // set explicitly by query():
   | 'topK'
   | 'filter';
