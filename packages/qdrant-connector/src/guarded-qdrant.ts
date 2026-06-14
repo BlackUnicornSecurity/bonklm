@@ -26,7 +26,7 @@ import {
   Severity,
   validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
-import { applyRetrievedDocValidatorToMatches } from '@blackunicorn/bonklm/core/connector-utils';
+import { applyRetrievedDocValidatorToMatches, normalizeLimit } from '@blackunicorn/bonklm/core/connector-utils';
 import type { GuardedQdrantOptions, GuardedQdrantResult, QdrantPoint, QdrantSearchOptions } from './types.js';
 import {
   DEFAULT_MAX_FILTER_LENGTH,
@@ -504,8 +504,21 @@ export function createGuardedClient(qdrantClient: any, options: GuardedQdrantOpt
      * @returns Search results with validation metadata
      */
     async search(options: QdrantSearchOptions): Promise<GuardedQdrantResult> {
+      // Separate connector-level options from the rest so the remaining
+      // keys (`...passthrough`) can be forwarded verbatim as native Qdrant
+      // params (e.g. `offset`, `params`, `consistency`).
+      const {
+        collectionName,
+        vector,
+        limit: requestedLimit,
+        scoreThreshold,
+        withPayload,
+        withVector,
+        filter,
+        ...passthrough
+      } = options;
+
       // Step 1: Validate collection name
-      const collectionName = options.collectionName;
       const safeCollectionNameRegex = /^[a-zA-Z0-9_-]+$/;
       if (!safeCollectionNameRegex.test(collectionName)) {
         throw new Error(productionMode ? 'Invalid collection name' : 'Collection name contains invalid characters');
@@ -515,21 +528,34 @@ export function createGuardedClient(qdrantClient: any, options: GuardedQdrantOpt
       }
 
       // Step 2: Validate vector format
-      validateVector(options.vector);
+      validateVector(vector);
 
-      // Step 3: Validate and apply limit
-      const limit = Math.min(options.limit || 10, maxLimit);
+      // Step 3: Normalize limit to [1, maxLimit] (shared vector-DB family
+      // clamp: floors fractional, defaults non-finite, rejects zero/negative
+      // so an invalid limit can never reach the client).
+      const limit = normalizeLimit(requestedLimit, { max: maxLimit, fallback: 10 });
 
       // Step 4: Validate filters
-      if (options.filter) {
-        validateFilter(options.filter);
+      if (filter) {
+        validateFilter(filter);
       }
 
-      // Step 5: Execute the search
-      const rawResult = await qdrantClient.search(collectionName, {
-        ...options,
-        limit
-      });
+      // Step 5: Execute the search. Translate the connector's camelCase
+      // options to Qdrant's snake_case `SearchRequest` fields — the real
+      // `@qdrant/js-client-rest` client expects `score_threshold` /
+      // `with_payload` / `with_vector` (the camelCase forms are silently
+      // ignored server-side), and the request body carries no
+      // `collectionName` (that is the first positional argument).
+      const searchBody = {
+        ...passthrough,
+        vector,
+        limit,
+        ...(filter !== undefined ? { filter } : {}),
+        ...(scoreThreshold !== undefined ? { score_threshold: scoreThreshold } : {}),
+        ...(withPayload !== undefined ? { with_payload: withPayload } : {}),
+        ...(withVector !== undefined ? { with_vector: withVector } : {})
+      };
+      const rawResult = await qdrantClient.search(collectionName, searchBody);
 
       // Step 6: Validate retrieved points
       const points = rawResult || [];
@@ -578,7 +604,11 @@ export function createGuardedClient(qdrantClient: any, options: GuardedQdrantOpt
         }
       }
 
-      return qdrantClient.upsert(collectionName, points);
+      // Qdrant's REST client expects the points wrapped in a `PointsList`
+      // object (`{ points }`), not a bare array — a bare array serializes
+      // to a body with no `points`/`batch` key, which the API rejects as
+      // schema-invalid.
+      return qdrantClient.upsert(collectionName, { points });
     }
   };
 }

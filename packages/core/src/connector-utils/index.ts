@@ -96,7 +96,7 @@ export {
 } from './logger.js';
 
 // Validation helpers
-export { validatePositiveNumber } from './validation-helpers.js';
+export { validatePositiveNumber, normalizeLimit, type NormalizeLimitOptions } from './validation-helpers.js';
 
 // Sprint 14 cumulative PB-6 closure: sanitizeReasonText canonical home.
 // (Browser-agents-core retains its own export for back-compat; new
