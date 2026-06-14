@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createGuardedClient } from '../src/guarded-qdrant';
+import { createGuardedClient, QDRANT_NATIVE_SEARCH_KEYS } from '../src/guarded-qdrant';
 import { PromptInjectionValidator } from '@blackunicorn/bonklm';
 import { noOpValidator } from '@blackunicorn/bonklm/testing';
 
@@ -1885,6 +1885,61 @@ describe('Qdrant Connector', () => {
       await expect(
         guarded.search({ collectionName: 'test_collection', vector: [0.1, 0.2, 0.3], offset: -1 })
       ).rejects.toThrow('Invalid search options');
+    });
+  });
+
+  describe('Forwarded body key-set conformance (D-047)', () => {
+    it('forwards EXACTLY the accounted body key set — the allow-list tuple plus the explicitly-set fields, and nothing else', async () => {
+      const mockClient = createMockClient();
+      const guarded = createGuardedClient(mockClient, { validators: [noOpValidator()] });
+
+      // Populate every option whose key the guarded `search` is meant to forward:
+      // all three allow-listed passthrough keys + every explicitly-set field.
+      await guarded.search({
+        collectionName: 'test_collection',
+        vector: [0.1, 0.2, 0.3],
+        limit: 5,
+        scoreThreshold: 0.7,
+        withPayload: ['title'],
+        withVector: true,
+        filter: { must: [{ key: 'genre', match: { value: 'sci-fi' } }] },
+        offset: 7,
+        params: { hnsw_ef: 128 },
+        shard_key: 'shard-a'
+      });
+
+      // The forwarded surface = the D-046 allow-list tuple (passthrough) ∪ the keys
+      // `search` writes explicitly. Asserting the EXACT key set (not a partial
+      // `toMatchObject`) ties the body assembly to a single source: a dropped spread
+      // line or a stray added field fails here — the runtime half of the conformance
+      // lock that the type-level test cannot see (D-047).
+      const body = mockClient.search.mock.calls[0]?.[1] as Record<string, unknown>;
+      const expected = [
+        ...QDRANT_NATIVE_SEARCH_KEYS,
+        'vector',
+        'limit',
+        'filter',
+        'score_threshold',
+        'with_payload',
+        'with_vector'
+      ].sort();
+      expect(Object.keys(body).sort()).toEqual(expected);
+    });
+
+    it('writes none of the conditional or passthrough fields when the caller omits them', async () => {
+      const mockClient = createMockClient();
+      const guarded = createGuardedClient(mockClient, { validators: [noOpValidator()] });
+
+      // Minimal call: only the two unconditionally-written fields (`vector` and the
+      // normalized `limit`) may appear. This pins the conditional spreads (filter /
+      // score_threshold / with_payload / with_vector) AND the passthrough allow-list
+      // as genuinely conditional — a regression that writes any of them
+      // unconditionally (e.g. `score_threshold: undefined` on every call) adds a key
+      // here and fails, which the all-options-populated case above cannot see (D-047).
+      await guarded.search({ collectionName: 'test_collection', vector: [0.1, 0.2, 0.3] });
+
+      const body = mockClient.search.mock.calls[0]?.[1] as Record<string, unknown>;
+      expect(Object.keys(body).sort()).toEqual(['limit', 'vector']);
     });
   });
 });

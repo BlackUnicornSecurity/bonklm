@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { createGuardedIndex } from '../src/guarded-pinecone.js';
+import { createGuardedIndex, PINECONE_NATIVE_QUERY_KEYS } from '../src/guarded-pinecone.js';
 import { PromptInjectionValidator, PIIGuard } from '@blackunicorn/bonklm';
 import { noOpValidator } from '@blackunicorn/bonklm/testing';
 
@@ -356,6 +356,50 @@ describe('Pinecone Connector', () => {
       expect(keys).not.toContain('sparseVector');
       expect(keys).not.toContain('evilOption');
       expect(body).toMatchObject({ includeMetadata: true });
+    });
+  });
+
+  describe('Forwarded body key-set conformance (D-047)', () => {
+    it('forwards EXACTLY the accounted query-body key set — the allow-list tuple plus the explicitly-set topK/filter, and nothing else', async () => {
+      const mockIndex = createMockPineconeIndex();
+      const guardedIndex = createGuardedIndex(mockIndex, { validators: [noOpValidator()] });
+
+      // Populate every option whose key the guarded `query` is meant to forward:
+      // all three allow-listed passthrough keys + the explicitly-set topK / filter.
+      // (`namespace` is intentionally omitted — it is the index handle, routed via
+      // index.namespace(), never a query-body key.)
+      await guardedIndex.query({
+        vector: [0.1, 0.2, 0.3],
+        topK: 5,
+        includeValues: true,
+        includeMetadata: true,
+        filter: { genre: { $eq: 'sci-fi' } }
+      });
+
+      // The forwarded surface = the D-046 allow-list tuple (passthrough) ∪ the keys
+      // `query` writes explicitly (topK, filter). The EXACT key set (not a partial
+      // `toMatchObject`) ties the body assembly to a single source: a dropped or
+      // stray field fails here — the runtime half of the conformance lock that the
+      // type-level test cannot see (D-047).
+      const body = mockIndex.query.mock.calls[0]?.[0] as Record<string, unknown>;
+      const expected = [...PINECONE_NATIVE_QUERY_KEYS, 'topK', 'filter'].sort();
+      expect(Object.keys(body).sort()).toEqual(expected);
+    });
+
+    it('writes only the unconditionally-forwarded fields when the caller omits the optional ones', async () => {
+      const mockIndex = createMockPineconeIndex();
+      const guardedIndex = createGuardedIndex(mockIndex, { validators: [noOpValidator()] });
+
+      // Minimal call: `vector` (allow-listed) plus the always-written `topK`
+      // (normalized) and `filter` (sanitized). includeValues / includeMetadata must
+      // be ABSENT when not supplied — a regression admitting an allow-list key
+      // unconditionally adds it here and fails, which the all-options case above
+      // cannot see. `topK` and `filter` are intentionally unconditional, so they
+      // remain present even in the minimal call (D-047).
+      await guardedIndex.query({ vector: [0.1, 0.2, 0.3] });
+
+      const body = mockIndex.query.mock.calls[0]?.[0] as Record<string, unknown>;
+      expect(Object.keys(body).sort()).toEqual(['filter', 'topK', 'vector']);
     });
   });
 });
