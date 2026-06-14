@@ -12,6 +12,18 @@
  *     `DEFAULT_MAX_FILTER_LENGTH` / `_PAYLOAD_SIZE` / `_REGEX_TIMEOUT` are
  *     NOT on the public surface and are not asserted).
  *
+ * Also locks REAL-CLIENT CONFORMANCE: the native-option allow-list
+ * (`QDRANT_NATIVE_SEARCH_KEYS`) and the snake_case keys the guarded `search`
+ * forwards explicitly must TOGETHER equal the set of real `Schemas['SearchRequest']`
+ * BODY keys of the installed `@qdrant/js-client-rest` (a devDependency whose range
+ * mirrors the peer range, so it resolves to the newest in-range SDK). This is a
+ * KEY-SET lock (not a value-type one): if the schema drifts — a body field
+ * renamed/removed, or a NEW one added the connector would silently drop — this
+ * file fails to compile. Tracking the newest in-range SDK means a future in-range
+ * minor that adds a body field trips this lock by design, prompting a conscious
+ * allow-list review. Compile-time tripwire for the stale/hallucinated-client-API
+ * defect class.
+ *
  * ESM package. Its tsconfig is NOT `composite` (it inherits NodeNext from
  * the root tsconfig), so no `package.json` `"tsd"` override is required.
  *
@@ -28,6 +40,7 @@ import {
   type QdrantPoint,
   type BlockedPointHandling
 } from '@blackunicorn/bonklm-qdrant';
+import type { Schemas } from '@qdrant/js-client-rest';
 
 // --- Factory: createGuardedClient(client: any, options?) ---
 declare const qdrantClient: unknown;
@@ -98,3 +111,38 @@ expectNotAssignable<GuardedQdrantResult>({ points: 'nope' }); // QdrantPoint[] f
 // --- Constants (literals) ---
 expectType<30000>(DEFAULT_VALIDATION_TIMEOUT);
 expectType<50>(DEFAULT_MAX_LIMIT);
+
+// --- REAL-CLIENT CONFORMANCE (@qdrant/js-client-rest ^1) ---
+// The guarded `search` forwards a body to `client.search(collectionName, body)`
+// assembled from two key sets that must TOGETHER equal the real `SearchRequest`
+// BODY surface:
+//   • allow-listed caller passthrough — `QDRANT_NATIVE_SEARCH_KEYS`
+//   • keys `search` sets itself, translating camelCase options to the client's
+//     snake_case body fields
+// `consistency` / `timeout` are client METHOD query-params (NOT body fields), so
+// they are deliberately absent from both sets and from `Schemas['SearchRequest']`.
+type RealSearchBodyKey = keyof Schemas['SearchRequest'];
+type AccountedSearchBodyKey =
+  // allow-listed caller passthrough (QDRANT_NATIVE_SEARCH_KEYS):
+  | 'offset'
+  | 'params'
+  | 'shard_key'
+  // set explicitly by search() (camelCase option → snake_case body field):
+  | 'vector'
+  | 'limit'
+  | 'filter'
+  | 'score_threshold'
+  | 'with_payload'
+  | 'with_vector';
+
+declare const realSearchBodyKey: RealSearchBodyKey;
+declare const accountedSearchBodyKey: AccountedSearchBodyKey;
+// Every real body field is accounted for — a NEW in-range SDK field fails here
+// (otherwise the allow-list would silently drop it):
+expectAssignable<AccountedSearchBodyKey>(realSearchBodyKey);
+// Every accounted key is a real body field — a renamed/removed SDK field fails here:
+expectAssignable<RealSearchBodyKey>(accountedSearchBodyKey);
+
+// The always-set required fields conform to the real request shape (locks
+// `vector` + `limit` as required, with compatible value types).
+expectAssignable<Schemas['SearchRequest']>({ vector: [0.1], limit: 10 });

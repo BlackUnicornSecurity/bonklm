@@ -953,10 +953,10 @@ importers:
       '@blackunicorn/bonklm':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
       '@pinecone-database/pinecone':
         specifier: ^2.0.0
         version: 2.2.2
-    devDependencies:
       '@types/node':
         specifier: ^20.10.0
         version: 20.19.33
@@ -978,10 +978,10 @@ importers:
       '@blackunicorn/bonklm':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
       '@qdrant/js-client-rest':
         specifier: ^1.0.0
         version: 1.16.2(typescript@5.9.3)
-    devDependencies:
       '@types/node':
         specifier: ^20.10.0
         version: 20.19.33
@@ -1172,7 +1172,7 @@ importers:
     dependencies:
       '@voltagent/core':
         specifier: ^2.7.0
-        version: 2.7.5(@ai-sdk/provider-utils@4.0.27(zod@4.3.6))(@ai-sdk/provider@3.0.10)(@cfworker/json-schema@4.1.1)(ai@5.0.192(zod@4.3.6))(bufferutil@4.1.0)(encoding@0.1.13)(graphql@16.12.0)(ws@8.20.1(bufferutil@4.1.0))(zod@4.3.6)
+        version: 2.7.5(@ai-sdk/provider-utils@4.0.27(zod@4.3.6))(@ai-sdk/provider@3.0.10)(@cfworker/json-schema@4.1.1)(ai@5.0.192(zod@4.3.6))(bufferutil@4.1.0)(graphql@16.12.0)(ws@8.20.1(bufferutil@4.1.0))(zod@4.3.6)
     devDependencies:
       '@blackunicorn/bonklm':
         specifier: workspace:*
@@ -15555,7 +15555,7 @@ snapshots:
     dependencies:
       zod: 3.25.76
 
-  '@gitlab/gitlab-ai-provider@3.6.1(@ai-sdk/provider-utils@4.0.27(zod@4.3.6))(@ai-sdk/provider@3.0.10)(bufferutil@4.1.0)(encoding@0.1.13)(graphql@16.12.0)(ws@8.20.1(bufferutil@4.1.0))':
+  '@gitlab/gitlab-ai-provider@3.6.1(@ai-sdk/provider-utils@4.0.27(zod@4.3.6))(@ai-sdk/provider@3.0.10)(bufferutil@4.1.0)(graphql@16.12.0)(ws@8.20.1(bufferutil@4.1.0))':
     dependencies:
       '@ai-sdk/provider': 3.0.10
       '@ai-sdk/provider-utils': 4.0.27(zod@4.3.6)
@@ -19170,7 +19170,7 @@ snapshots:
   '@pinecone-database/pinecone@2.2.2':
     dependencies:
       '@sinclair/typebox': 0.29.6
-      ajv: 8.18.0
+      ajv: 8.20.0
       cross-fetch: 3.2.0(encoding@0.1.13)
       encoding: 0.1.13
 
@@ -20860,7 +20860,7 @@ snapshots:
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.0
 
-  '@voltagent/core@2.7.5(@ai-sdk/provider-utils@4.0.27(zod@4.3.6))(@ai-sdk/provider@3.0.10)(@cfworker/json-schema@4.1.1)(ai@5.0.192(zod@4.3.6))(bufferutil@4.1.0)(encoding@0.1.13)(graphql@16.12.0)(ws@8.20.1(bufferutil@4.1.0))(zod@4.3.6)':
+  '@voltagent/core@2.7.5(@ai-sdk/provider-utils@4.0.27(zod@4.3.6))(@ai-sdk/provider@3.0.10)(@cfworker/json-schema@4.1.1)(ai@5.0.192(zod@4.3.6))(bufferutil@4.1.0)(graphql@16.12.0)(ws@8.20.1(bufferutil@4.1.0))(zod@4.3.6)':
     dependencies:
       '@ai-sdk/amazon-bedrock': 3.0.99(zod@4.3.6)
       '@ai-sdk/anthropic': 3.0.79(zod@4.3.6)
@@ -20881,7 +20881,7 @@ snapshots:
       '@ai-sdk/vercel': 2.0.50(zod@4.3.6)
       '@ai-sdk/xai': 3.0.92(zod@4.3.6)
       '@aihubmix/ai-sdk-provider': 1.0.3(zod@4.3.6)
-      '@gitlab/gitlab-ai-provider': 3.6.1(@ai-sdk/provider-utils@4.0.27(zod@4.3.6))(@ai-sdk/provider@3.0.10)(bufferutil@4.1.0)(encoding@0.1.13)(graphql@16.12.0)(ws@8.20.1(bufferutil@4.1.0))
+      '@gitlab/gitlab-ai-provider': 3.6.1(@ai-sdk/provider-utils@4.0.27(zod@4.3.6))(@ai-sdk/provider@3.0.10)(bufferutil@4.1.0)(graphql@16.12.0)(ws@8.20.1(bufferutil@4.1.0))
       '@modelcontextprotocol/sdk': 1.29.0(@cfworker/json-schema@4.1.1)(zod@4.3.6)
       '@mymediset/sap-ai-provider': 2.1.0(ai@5.0.192(zod@4.3.6))
       '@opentelemetry/api': 1.9.1
