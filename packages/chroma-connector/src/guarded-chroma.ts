@@ -429,7 +429,11 @@ export function createGuardedCollection(
         const batch = await retrievedDocValidator.validateBatch(queryDocs);
         if (batch.result.blocked) {
           throw new ConnectorValidationError(
-            productionMode ? 'Document batch blocked' : `Document batch blocked: ${batch.result.reason}`,
+            // CWE-117: `batch.result.reason` can carry attacker-influenced
+            // content from a flagged doc; sanitize before it reaches a throw
+            // boundary a caller may log. (Chroma's 2D batch path is inline and
+            // does not route through the shared helper's hardened throw.)
+            productionMode ? 'Document batch blocked' : `Document batch blocked: ${sanitizeMeta(batch.result.reason)}`,
             'validation_failed'
           );
         }
@@ -483,8 +487,9 @@ export function createGuardedCollection(
           if (e instanceof ConnectorValidationError) {
             blocked++;
             logger.warn('[Guardrails] Document structure validation failed', {
-              id,
-              reason: e.message
+              // CWE-117: doc id is retrieved/attacker-influenced; escape before logging.
+              id: sanitizeMeta(id),
+              reason: sanitizeMeta(e.message)
             });
             if (onDocumentBlocked) {
               onDocumentBlocked(doc?.substring(0, 200) || '', e as any);
@@ -516,9 +521,12 @@ export function createGuardedCollection(
           queryValidIndices.push(j);
         } else {
           blocked++;
+          // CWE-117: doc id + validator reason are retrieved/attacker-influenced;
+          // escape before they reach the log meta or the thrown error message.
+          const safeReason = sanitizeMeta(result.reason);
           logger.warn('[Guardrails] Document blocked', {
-            id,
-            reason: result.reason
+            id: sanitizeMeta(id),
+            reason: safeReason
           });
           if (onDocumentBlocked) {
             onDocumentBlocked(doc.substring(0, 200), result);
@@ -526,7 +534,7 @@ export function createGuardedCollection(
 
           if (blockedDocumentHandling === 'abort') {
             throw new ConnectorValidationError(
-              productionMode ? 'Document blocked' : `Document blocked: ${result.reason}`,
+              productionMode ? 'Document blocked' : `Document blocked: ${safeReason}`,
               'validation_failed'
             );
           }
