@@ -27,7 +27,8 @@ import {
 import {
   applyRetrievedDocValidatorToMatches,
   ConnectorValidationError,
-  logValidationFailure
+  logValidationFailure,
+  normalizeLimit
 } from '@blackunicorn/bonklm/core/connector-utils';
 import type { GuardedPineconeOptions, GuardedQueryResult, VectorQueryOptions } from './types.js';
 import { DEFAULT_MAX_TOP_K, DEFAULT_VALIDATION_TIMEOUT } from './types.js';
@@ -171,7 +172,7 @@ export function createGuardedIndex(pineconeIndex: any, options: GuardedPineconeO
    *
    * @internal
    */
-  const validateQuery = async (options: VectorQueryOptions): Promise<void> => {
+  const validateQuery = async (options: VectorQueryOptions, topK: number): Promise<void> => {
     // Validate vector format
     if (!options.vector || !Array.isArray(options.vector)) {
       throw new ConnectorValidationError('Vector must be an array of numbers', 'invalid_format');
@@ -187,13 +188,10 @@ export function createGuardedIndex(pineconeIndex: any, options: GuardedPineconeO
       throw new ConnectorValidationError('Vector must contain only finite numbers', 'invalid_format');
     }
 
-    // Validate topK
-    const topK = Math.min(options.topK || 10, maxTopK);
-    if (topK < 1 || topK > maxTopK) {
-      throw new ConnectorValidationError(`topK must be between 1 and ${maxTopK}`, 'invalid_range');
-    }
-
-    // Create query context for validation
+    // Create query context for validation. `topK` is the already-normalized
+    // value that will be sent to the client (see `query`), so the scanned
+    // context matches the outgoing request and limit clamping is unified
+    // across the qdrant/weaviate connectors via the shared normalizeLimit.
     const queryContext = JSON.stringify({
       topK,
       namespace: options.namespace,
@@ -298,20 +296,32 @@ export function createGuardedIndex(pineconeIndex: any, options: GuardedPineconeO
      * @returns Query results with validation metadata
      */
     async query(options: VectorQueryOptions): Promise<GuardedQueryResult> {
-      // Step 1: Validate the query
-      await validateQuery(options);
+      // Normalize the limit once (shared vector-DB family clamp) so the
+      // validation context scans the same value that is sent to the client.
+      const topK = normalizeLimit(options.topK, { max: maxTopK, fallback: 10 });
 
-      // Step 2: Sanitize filters
+      // Step 1: Validate the query
+      await validateQuery(options, topK);
+
+      // Step 2: Sanitize filters. `namespace` is NOT a member of the SDK's
+      // query body (it is targeted via `index.namespace(ns)` below), so it
+      // is separated out here.
+      const { namespace, ...queryOptions } = options;
       const sanitizedOptions = {
-        ...options,
-        topK: Math.min(options.topK || 10, maxTopK),
+        ...queryOptions,
+        topK,
         filter: sanitizeFilter(options.filter)
       };
 
-      // Step 3: Execute the query
-      const result = await pineconeIndex.query(sanitizedOptions);
+      // Step 3: Execute the query. Route namespace targeting through the
+      // SDK's `namespace()` method — passing `namespace` inside the query
+      // body is silently ignored and queries the DEFAULT namespace.
+      const target = namespace ? pineconeIndex.namespace(namespace) : pineconeIndex;
+      const result = await target.query(sanitizedOptions);
 
-      const matches = result.matches || result.vectors || [];
+      // `QueryResponse` carries only `matches`; the `vectors` fallback was
+      // dead (that field exists on Fetch/List/Upsert responses only).
+      const matches = result.matches || [];
 
       // Step 4: Validate retrieved vectors
       const { valid: validMatches, blocked } = await validateVectors(matches);

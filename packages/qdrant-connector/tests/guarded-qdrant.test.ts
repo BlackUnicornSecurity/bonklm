@@ -324,13 +324,17 @@ describe('Qdrant Connector', () => {
         ])
       ).resolves.not.toThrow();
 
-      expect(mockClient.upsert).toHaveBeenCalledWith('test_collection', [
-        {
-          id: '1',
-          vector: [0.1, 0.2, 0.3],
-          payload: { content: 'Safe content' }
-        }
-      ]);
+      // D-037: the wrapper must hand Qdrant a `{ points }` object (PointsList),
+      // not a bare array.
+      expect(mockClient.upsert).toHaveBeenCalledWith('test_collection', {
+        points: [
+          {
+            id: '1',
+            vector: [0.1, 0.2, 0.3],
+            payload: { content: 'Safe content' }
+          }
+        ]
+      });
     });
 
     it('should handle validation timeout', async () => {
@@ -1732,6 +1736,79 @@ describe('Qdrant Connector', () => {
 
       // Long pattern should be skipped, all fields returned
       expect(result.points[0].payload).toHaveProperty('field');
+    });
+  });
+
+  describe('Client request-shape contract (D-037 / D-039)', () => {
+    it('wraps upsert points in a { points } object (not a bare array)', async () => {
+      const mockClient = createMockClient();
+      const guarded = createGuardedClient(mockClient, { validators: [noOpValidator()] });
+
+      await guarded.upsert('test_collection', [{ id: '1', vector: [0.1, 0.2, 0.3], payload: { content: 'ok' } }]);
+
+      const arg = mockClient.upsert.mock.calls[0]?.[1] as Record<string, unknown>;
+      expect(arg).toHaveProperty('points');
+      expect(Array.isArray(arg.points)).toBe(true);
+    });
+
+    it('translates camelCase search options to Qdrant snake_case fields', async () => {
+      const mockClient = createMockClient();
+      const guarded = createGuardedClient(mockClient, { validators: [noOpValidator()] });
+
+      await guarded.search({
+        collectionName: 'test_collection',
+        vector: [0.1, 0.2, 0.3],
+        limit: 5,
+        scoreThreshold: 0.7,
+        withPayload: ['title'],
+        withVector: true
+      });
+
+      const body = mockClient.search.mock.calls[0]?.[1] as Record<string, unknown>;
+      expect(body).toMatchObject({ score_threshold: 0.7, with_payload: ['title'], with_vector: true });
+      // camelCase forms and the positional collectionName must NOT leak into the body.
+      const keys = Object.keys(body);
+      expect(keys).not.toContain('scoreThreshold');
+      expect(keys).not.toContain('withPayload');
+      expect(keys).not.toContain('withVector');
+      expect(keys).not.toContain('collectionName');
+    });
+
+    it('forwards unknown (native) search options verbatim', async () => {
+      const mockClient = createMockClient();
+      const guarded = createGuardedClient(mockClient, { validators: [noOpValidator()] });
+
+      await guarded.search({ collectionName: 'test_collection', vector: [0.1, 0.2, 0.3], offset: 7 });
+
+      const body = mockClient.search.mock.calls[0]?.[1] as Record<string, unknown>;
+      expect(body).toMatchObject({ offset: 7 });
+    });
+
+    it('passes a safe filter through to the client body', async () => {
+      const mockClient = createMockClient();
+      const guarded = createGuardedClient(mockClient, { validators: [noOpValidator()] });
+      const filter = { must: [{ key: 'genre', match: { value: 'sci-fi' } }] };
+
+      await guarded.search({ collectionName: 'test_collection', vector: [0.1, 0.2, 0.3], filter });
+
+      const body = mockClient.search.mock.calls[0]?.[1] as Record<string, unknown>;
+      expect(body.filter).toEqual(filter);
+    });
+
+    const limitCases: ReadonlyArray<{ label: string; requested: number; expected: number }> = [
+      { label: 'a negative limit', requested: -5, expected: 1 },
+      { label: 'a zero limit', requested: 0, expected: 1 },
+      { label: 'a fractional limit', requested: 3.9, expected: 3 },
+      { label: 'an over-max limit', requested: 100, expected: 50 }
+    ];
+    it.each(limitCases)('normalizes $label before calling the client', async ({ requested, expected }) => {
+      const mockClient = createMockClient();
+      const guarded = createGuardedClient(mockClient, { validators: [noOpValidator()], maxLimit: 50 });
+
+      await guarded.search({ collectionName: 'test_collection', vector: [0.1, 0.2, 0.3], limit: requested });
+
+      const body = mockClient.search.mock.calls[0]?.[1] as Record<string, unknown>;
+      expect(body.limit).toBe(expected);
     });
   });
 });

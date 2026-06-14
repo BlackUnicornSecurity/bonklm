@@ -17,3 +17,33 @@ export function validatePositiveNumber(value: number, optionName: string): void 
     throw new TypeError(`${optionName} must be a positive number. Received: ${value}`);
   }
 }
+
+/**
+ * Options for {@link normalizeLimit}.
+ */
+export interface NormalizeLimitOptions {
+  /** Upper bound (clamped to at least 1). */
+  max: number;
+  /** Value used when `requested` is omitted or non-finite. */
+  fallback: number;
+}
+
+/**
+ * Normalizes a caller-supplied result-limit into the inclusive range
+ * `[1, max]`: non-finite (`undefined` / `NaN` / `Infinity`) falls back to
+ * `fallback`, fractional values are floored, and the result is clamped so a
+ * zero, negative, or over-large limit can never reach the downstream client.
+ *
+ * Shared across vector-DB connectors so limit handling cannot drift between
+ * them (the weaviate rewrite established this clamp; qdrant/pinecone adopt it
+ * here).
+ *
+ * @param requested - The caller's requested limit (may be undefined).
+ * @param options - `{ max, fallback }`.
+ * @returns An integer in `[1, max]` (with `max` itself floored to ≥ 1).
+ */
+export function normalizeLimit(requested: number | undefined, options: NormalizeLimitOptions): number {
+  const effectiveMax = Math.max(1, Math.floor(options.max));
+  const base = typeof requested === 'number' && Number.isFinite(requested) ? Math.floor(requested) : options.fallback;
+  return Math.min(Math.max(base, 1), effectiveMax);
+}
