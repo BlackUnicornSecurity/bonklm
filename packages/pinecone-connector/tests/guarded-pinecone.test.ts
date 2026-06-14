@@ -289,4 +289,73 @@ describe('Pinecone Connector', () => {
       );
     });
   });
+
+  describe('namespace + option passthrough hardening (D-040)', () => {
+    const badNamespaces: ReadonlyArray<{ label: string; namespace: unknown }> = [
+      { label: 'an object namespace', namespace: {} },
+      { label: 'a numeric namespace', namespace: 123 },
+      { label: 'a boolean namespace', namespace: true }
+    ];
+    it.each(badNamespaces)('rejects $label without calling the SDK', async ({ namespace }) => {
+      const mockIndex = createMockPineconeIndex();
+      const guardedIndex = createGuardedIndex(mockIndex, { validators: [noOpValidator()] });
+
+      await expect(guardedIndex.query({ vector: [0.1, 0.2], topK: 10, namespace } as any)).rejects.toThrow();
+      expect(mockIndex.namespace).not.toHaveBeenCalled();
+      expect(mockIndex.query).not.toHaveBeenCalled();
+    });
+
+    it('rejects a namespace with invalid characters', async () => {
+      const mockIndex = createMockPineconeIndex();
+      const guardedIndex = createGuardedIndex(mockIndex, { validators: [noOpValidator()] });
+
+      await expect(guardedIndex.query({ vector: [0.1, 0.2], topK: 10, namespace: 'bad ns/../x' })).rejects.toThrow();
+      expect(mockIndex.namespace).not.toHaveBeenCalled();
+    });
+
+    it('rejects an over-long namespace', async () => {
+      const mockIndex = createMockPineconeIndex();
+      const guardedIndex = createGuardedIndex(mockIndex, { validators: [noOpValidator()] });
+
+      await expect(guardedIndex.query({ vector: [0.1, 0.2], topK: 10, namespace: 'a'.repeat(256) })).rejects.toThrow();
+    });
+
+    it('uses a generic namespace error in production mode', async () => {
+      const mockIndex = createMockPineconeIndex();
+      const guardedIndex = createGuardedIndex(mockIndex, { validators: [noOpValidator()], productionMode: true });
+
+      await expect(guardedIndex.query({ vector: [0.1, 0.2], topK: 10, namespace: 'bad ns!' })).rejects.toThrow(
+        'Invalid namespace'
+      );
+    });
+
+    it('accepts a valid namespace and targets it via index.namespace()', async () => {
+      const mockIndex = createMockPineconeIndex();
+      const guardedIndex = createGuardedIndex(mockIndex, { validators: [noOpValidator()] });
+
+      await guardedIndex.query({ vector: [0.1, 0.2], topK: 10, namespace: 'valid_ns-1' });
+      expect(mockIndex.namespace).toHaveBeenCalledWith('valid_ns-1');
+    });
+
+    it('drops non-allow-listed caller options from the query body', async () => {
+      const mockIndex = createMockPineconeIndex();
+      const guardedIndex = createGuardedIndex(mockIndex, { validators: [noOpValidator()] });
+
+      await guardedIndex.query({
+        vector: [0.1, 0.2],
+        topK: 10,
+        includeMetadata: true,
+        // Not real Pinecone query-body keys — must be dropped, not forwarded.
+        sparseVector: { indices: [1], values: [0.5] },
+        evilOption: { $where: 'sleep(1000)' }
+      } as any);
+
+      expect(mockIndex.query).toHaveBeenCalledTimes(1);
+      const body = mockIndex.query.mock.calls[0]?.[0] as Record<string, unknown>;
+      const keys = Object.keys(body);
+      expect(keys).not.toContain('sparseVector');
+      expect(keys).not.toContain('evilOption');
+      expect(body).toMatchObject({ includeMetadata: true });
+    });
+  });
 });
