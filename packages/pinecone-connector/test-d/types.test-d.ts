@@ -9,6 +9,20 @@
  *     `VectorQueryOptions`; `matches` on `GuardedQueryResult`).
  *   - Re-exported core error classes (4).
  *
+ * Also locks REAL-CLIENT CONFORMANCE: as a vector-query wrapper, the keys the
+ * guarded `query` forwards (the native-option allow-list
+ * `PINECONE_NATIVE_QUERY_KEYS` plus the explicitly-set `topK` / `filter`) must
+ * equal the set of real `@pinecone-database/pinecone` `QueryByVectorValues` BODY
+ * keys (a devDependency whose range mirrors the peer range, so it resolves to the
+ * newest in-range SDK). `namespace` is the index handle (NOT a body field);
+ * record-id query mode (`id`) is intentionally unsupported. This is a KEY-SET lock
+ * (not a value-type one): if the query schema drifts — a body field
+ * renamed/removed, or a NEW one added the connector would silently drop — this
+ * file fails to compile. Tracking the newest in-range SDK means a future in-range
+ * minor that adds a body field trips this lock by design, prompting a conscious
+ * allow-list review. Compile-time tripwire for the stale/hallucinated-client-API
+ * defect class.
+ *
  * NOTE: the barrel does NOT re-export `DEFAULT_VALIDATION_TIMEOUT` /
  * `DEFAULT_MAX_TOP_K` (they live in `types.ts` but are not on the public
  * surface) — so they are deliberately not imported / asserted here.
@@ -26,6 +40,7 @@ import {
   type GuardedQueryResult,
   type VectorQueryOptions
 } from '@blackunicorn/bonklm-pinecone';
+import type { QueryByVectorValues, QueryByRecordId } from '@pinecone-database/pinecone';
 
 // --- Factory: createGuardedIndex(index: any, options?) ---
 declare const index: unknown;
@@ -95,3 +110,43 @@ const cte = new ConnectorTimeoutError('msg', 5000);
 expectType<ConnectorTimeoutError>(cte);
 expectType<number>(cte.timeout);
 expectError(new ConnectorTimeoutError('m')); // timeout required
+
+// --- REAL-CLIENT CONFORMANCE (@pinecone-database/pinecone ^2) ---
+// `query` forwards a body to `index.query(body)` (or
+// `index.namespace(ns).query(body)`) assembled from the native-option allow-list
+// (`PINECONE_NATIVE_QUERY_KEYS`) plus the explicitly-set `topK` / `filter`. As a
+// VECTOR-query wrapper its forwarded key set must equal the real
+// `QueryByVectorValues` BODY surface. `namespace` is the index handle (targeted
+// via `index.namespace()`), NOT a body field; record-id query mode (`id`) is
+// intentionally unsupported.
+type RealVectorQueryKey = keyof QueryByVectorValues;
+type ForwardedQueryKey =
+  // allow-listed caller passthrough (PINECONE_NATIVE_QUERY_KEYS):
+  | 'vector'
+  | 'includeValues'
+  | 'includeMetadata'
+  // set explicitly by query():
+  | 'topK'
+  | 'filter';
+
+declare const realVectorQueryKey: RealVectorQueryKey;
+declare const forwardedQueryKey: ForwardedQueryKey;
+// Every real vector-query body field is forwarded — a NEW shared/vector field the
+// connector would silently drop fails here:
+expectAssignable<ForwardedQueryKey>(realVectorQueryKey);
+// Every forwarded key is a real vector-query body field — a renamed/removed SDK
+// field fails here:
+expectAssignable<RealVectorQueryKey>(forwardedQueryKey);
+
+// `namespace` is the index handle, not a query-body field — assert it never
+// appears on the body surface so the "route via index.namespace()" contract
+// cannot silently regress to a forwarded body key.
+expectNotAssignable<RealVectorQueryKey>('namespace');
+// Record-id query mode (`id`) exists on the real union but is intentionally
+// unsupported (the connector requires `vector`):
+expectAssignable<keyof QueryByRecordId>('id');
+expectNotAssignable<ForwardedQueryKey>('id');
+
+// A minimal vector query body conforms to the real type (locks `vector` + the
+// required `topK` with compatible value types).
+expectAssignable<QueryByVectorValues>({ topK: 10, vector: [0.1] });
