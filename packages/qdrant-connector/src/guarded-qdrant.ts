@@ -44,6 +44,25 @@ import {
 const DEFAULT_LOGGER: Logger = createLogger('console');
 
 /**
+ * Native Qdrant `SearchRequest` BODY keys (verified against
+ * `@qdrant/js-client-rest@1.16.2` `generated_schema.d.ts` `SearchRequest`) that
+ * the guarded `search` does NOT handle explicitly but forwards to the client.
+ * The caller-supplied `passthrough` is screened against this allow-list before
+ * it reaches the client: any other key — a filter-bearing field that would
+ * bypass `validateFilter`, or an arbitrary key admitted by the
+ * `[key: string]: any` index signature on `QdrantSearchOptions` — is dropped
+ * (defense-in-depth).
+ *
+ * Scoped to `SearchRequest` BODY fields. The client's `search()` additionally
+ * accepts `consistency` / `timeout` (lifted to query-string params — NOT body
+ * fields); those are intentionally not forwarded here. Add explicit, validated
+ * support if they are ever needed.
+ *
+ * @internal
+ */
+const QDRANT_NATIVE_SEARCH_KEYS: ReadonlySet<string> = new Set(['offset', 'params', 'shard_key']);
+
+/**
  * Represents a wrapped Qdrant client with guardrails.
  */
 export interface GuardedQdrantClient {
@@ -504,9 +523,9 @@ export function createGuardedClient(qdrantClient: any, options: GuardedQdrantOpt
      * @returns Search results with validation metadata
      */
     async search(options: QdrantSearchOptions): Promise<GuardedQdrantResult> {
-      // Separate connector-level options from the rest so the remaining
-      // keys (`...passthrough`) can be forwarded verbatim as native Qdrant
-      // params (e.g. `offset`, `params`, `consistency`).
+      // Separate connector-level options from the rest; the remaining
+      // `passthrough` keys are screened against QDRANT_NATIVE_SEARCH_KEYS
+      // (Step 5 below) before any of them can reach the client.
       const {
         collectionName,
         vector,
@@ -540,14 +559,35 @@ export function createGuardedClient(qdrantClient: any, options: GuardedQdrantOpt
         validateFilter(filter);
       }
 
-      // Step 5: Execute the search. Translate the connector's camelCase
-      // options to Qdrant's snake_case `SearchRequest` fields — the real
+      // Step 5: Restrict forwarded caller options to an allow-list of native
+      // Qdrant `SearchRequest` keys. Anything else in `passthrough` (a
+      // filter-bearing field that would bypass `validateFilter`, or any key
+      // admitted by the `[key: string]: any` index signature) is dropped so it
+      // cannot reach the client unvalidated (D-040 defense-in-depth).
+      const nativeOptions: Record<string, unknown> = {};
+      for (const key of Object.keys(passthrough)) {
+        if (QDRANT_NATIVE_SEARCH_KEYS.has(key)) {
+          nativeOptions[key] = (passthrough as Record<string, unknown>)[key];
+        }
+      }
+
+      // Bound the only numeric native passthrough key: a negative, fractional,
+      // or non-numeric `offset` must not reach the client.
+      if (nativeOptions.offset !== undefined) {
+        const offset = nativeOptions.offset;
+        if (typeof offset !== 'number' || !Number.isInteger(offset) || offset < 0) {
+          throw new Error(productionMode ? 'Invalid search options' : 'Search offset must be a non-negative integer');
+        }
+      }
+
+      // Step 6: Execute the search. Translate the connector's camelCase options
+      // to Qdrant's snake_case `SearchRequest` fields — the real
       // `@qdrant/js-client-rest` client expects `score_threshold` /
       // `with_payload` / `with_vector` (the camelCase forms are silently
-      // ignored server-side), and the request body carries no
-      // `collectionName` (that is the first positional argument).
+      // ignored server-side), and the request body carries no `collectionName`
+      // (that is the first positional argument).
       const searchBody = {
-        ...passthrough,
+        ...nativeOptions,
         vector,
         limit,
         ...(filter !== undefined ? { filter } : {}),
@@ -557,7 +597,7 @@ export function createGuardedClient(qdrantClient: any, options: GuardedQdrantOpt
       };
       const rawResult = await qdrantClient.search(collectionName, searchBody);
 
-      // Step 6: Validate retrieved points
+      // Step 7: Validate retrieved points
       const points = rawResult || [];
       const { valid: validPoints, blocked } = await validatePoints(points);
 

@@ -41,6 +41,58 @@ import { DEFAULT_MAX_TOP_K, DEFAULT_VALIDATION_TIMEOUT } from './types.js';
 const DEFAULT_LOGGER: Logger = createLogger('console');
 
 /**
+ * Real Pinecone query-body keys (verified against
+ * `@pinecone-database/pinecone@2.2.2` `query.d.ts` `QueryShared` /
+ * `QueryByVectorValues`). `topK` (normalized) and `filter` (sanitized) are set
+ * explicitly by `query`; `namespace` is targeted via `index.namespace()`. Any
+ * other key a (JS) caller adds is dropped so it cannot reach the client
+ * unvalidated (D-040 defense-in-depth).
+ *
+ * @internal
+ */
+const PINECONE_NATIVE_QUERY_KEYS: ReadonlySet<string> = new Set(['vector', 'includeValues', 'includeMetadata']);
+
+/**
+ * Safe namespace charset — mirrors the qdrant `collectionName` guard.
+ *
+ * @internal
+ */
+const SAFE_NAMESPACE_REGEX = /^[a-zA-Z0-9_-]+$/;
+
+/**
+ * Maximum namespace length — mirrors the qdrant `collectionName` cap.
+ *
+ * @internal
+ */
+const MAX_NAMESPACE_LENGTH = 255;
+
+/**
+ * Structurally validates a Pinecone `namespace` before it reaches
+ * `index.namespace()` (D-040). Rejects a non-string (`{}` / `123`),
+ * control-character, or over-long namespace. The namespace value is never
+ * interpolated into the message (only a fixed reason), so this is not a
+ * CWE-117 sink. Mirrors the qdrant collectionName guard.
+ *
+ * @internal
+ */
+const validateNamespace = (namespace: unknown, productionMode: boolean): void => {
+  const reason =
+    typeof namespace !== 'string'
+      ? 'must be a string'
+      : !SAFE_NAMESPACE_REGEX.test(namespace)
+        ? 'contains invalid characters'
+        : namespace.length > MAX_NAMESPACE_LENGTH
+          ? 'exceeds maximum length'
+          : null;
+  if (reason) {
+    throw new ConnectorValidationError(
+      productionMode ? 'Invalid namespace' : `Namespace ${reason}`,
+      'invalid_namespace'
+    );
+  }
+};
+
+/**
  * Represents a wrapped Pinecone Index with guardrails.
  */
 export interface GuardedPineconeIndex {
@@ -303,17 +355,31 @@ export function createGuardedIndex(pineconeIndex: any, options: GuardedPineconeO
       // Step 1: Validate the query
       await validateQuery(options, topK);
 
-      // Step 2: Sanitize filters. `namespace` is NOT a member of the SDK's
-      // query body (it is targeted via `index.namespace(ns)` below), so it
-      // is separated out here.
+      // Step 2: Separate `namespace` (targeted via index.namespace(), NOT a
+      // query-body member) and structurally validate it before it can reach
+      // the SDK (D-040 — mirrors the qdrant collectionName guard).
       const { namespace, ...queryOptions } = options;
+      if (namespace) {
+        validateNamespace(namespace, productionMode);
+      }
+
+      // Step 3: Build the outgoing body from an allow-list of real Pinecone
+      // query-body keys; `topK` (normalized) and `filter` (sanitized) are set
+      // explicitly. Any other caller key is dropped so it cannot reach the
+      // client unvalidated (D-040 defense-in-depth).
+      const nativeQuery: Record<string, unknown> = {};
+      for (const key of Object.keys(queryOptions)) {
+        if (PINECONE_NATIVE_QUERY_KEYS.has(key)) {
+          nativeQuery[key] = (queryOptions as Record<string, unknown>)[key];
+        }
+      }
       const sanitizedOptions = {
-        ...queryOptions,
+        ...nativeQuery,
         topK,
         filter: sanitizeFilter(options.filter)
       };
 
-      // Step 3: Execute the query. Route namespace targeting through the
+      // Step 4: Execute the query. Route namespace targeting through the
       // SDK's `namespace()` method — passing `namespace` inside the query
       // body is silently ignored and queries the DEFAULT namespace.
       const target = namespace ? pineconeIndex.namespace(namespace) : pineconeIndex;
@@ -323,7 +389,7 @@ export function createGuardedIndex(pineconeIndex: any, options: GuardedPineconeO
       // dead (that field exists on Fetch/List/Upsert responses only).
       const matches = result.matches || [];
 
-      // Step 4: Validate retrieved vectors
+      // Step 5: Validate retrieved vectors
       const { valid: validMatches, blocked } = await validateVectors(matches);
 
       return {

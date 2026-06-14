@@ -1774,7 +1774,7 @@ describe('Qdrant Connector', () => {
       expect(keys).not.toContain('collectionName');
     });
 
-    it('forwards unknown (native) search options verbatim', async () => {
+    it('forwards the native offset search option to the client body', async () => {
       const mockClient = createMockClient();
       const guarded = createGuardedClient(mockClient, { validators: [noOpValidator()] });
 
@@ -1809,6 +1809,82 @@ describe('Qdrant Connector', () => {
 
       const body = mockClient.search.mock.calls[0]?.[1] as Record<string, unknown>;
       expect(body.limit).toBe(expected);
+    });
+  });
+
+  describe('Native option passthrough allow-list (D-040)', () => {
+    it('forwards allow-listed native search options (offset, params, shard_key)', async () => {
+      const mockClient = createMockClient();
+      const guarded = createGuardedClient(mockClient, { validators: [noOpValidator()] });
+
+      await guarded.search({
+        collectionName: 'test_collection',
+        vector: [0.1, 0.2, 0.3],
+        offset: 7,
+        params: { hnsw_ef: 128, exact: false },
+        shard_key: 'shard-a'
+      });
+
+      const body = mockClient.search.mock.calls[0]?.[1] as Record<string, unknown>;
+      expect(body).toMatchObject({ offset: 7, params: { hnsw_ef: 128, exact: false }, shard_key: 'shard-a' });
+    });
+
+    it('forwards offset 0 (the lower boundary) without rejecting it', async () => {
+      const mockClient = createMockClient();
+      const guarded = createGuardedClient(mockClient, { validators: [noOpValidator()] });
+
+      await guarded.search({ collectionName: 'test_collection', vector: [0.1, 0.2, 0.3], offset: 0 });
+
+      expect(mockClient.search).toHaveBeenCalledTimes(1);
+      const body = mockClient.search.mock.calls[0]?.[1] as Record<string, unknown>;
+      expect(body.offset).toBe(0);
+    });
+
+    it('drops non-allow-listed caller options so they cannot reach the client unvalidated', async () => {
+      const mockClient = createMockClient();
+      const guarded = createGuardedClient(mockClient, { validators: [noOpValidator()] });
+
+      // `prefetch` (a Qdrant Query-API field, not a classic `search`-body key)
+      // and `evilOption` (admitted only by the `[key: string]: any` index
+      // signature) are both non-`SearchRequest`-body keys — a forwarded
+      // filter-bearing key would bypass validateFilter, so both must be dropped.
+      await guarded.search({
+        collectionName: 'test_collection',
+        vector: [0.1, 0.2, 0.3],
+        prefetch: { filter: { must: [{ key: '__proto__', match: { value: 'x' } }] } },
+        evilOption: { $where: 'sleep(1000)' }
+      });
+
+      expect(mockClient.search).toHaveBeenCalledTimes(1);
+      const body = mockClient.search.mock.calls[0]?.[1] as Record<string, unknown>;
+      const keys = Object.keys(body);
+      expect(keys).not.toContain('prefetch');
+      expect(keys).not.toContain('evilOption');
+    });
+
+    const badOffsets: ReadonlyArray<{ label: string; offset: unknown }> = [
+      { label: 'a negative offset', offset: -1 },
+      { label: 'a fractional offset', offset: 2.5 },
+      { label: 'a NaN offset', offset: Number.NaN },
+      { label: 'a non-numeric offset', offset: '5' }
+    ];
+    it.each(badOffsets)('rejects $label without calling the client', async ({ offset }) => {
+      const mockClient = createMockClient();
+      const guarded = createGuardedClient(mockClient, { validators: [noOpValidator()] });
+
+      await expect(
+        guarded.search({ collectionName: 'test_collection', vector: [0.1, 0.2, 0.3], offset })
+      ).rejects.toThrow();
+      expect(mockClient.search).not.toHaveBeenCalled();
+    });
+
+    it('uses a generic offset error in production mode', async () => {
+      const mockClient = createMockClient();
+      const guarded = createGuardedClient(mockClient, { validators: [noOpValidator()], productionMode: true });
+
+      await expect(
+        guarded.search({ collectionName: 'test_collection', vector: [0.1, 0.2, 0.3], offset: -1 })
+      ).rejects.toThrow('Invalid search options');
     });
   });
 });
