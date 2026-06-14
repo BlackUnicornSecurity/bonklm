@@ -21,6 +21,7 @@
  * @package @blackunicorn/bonklm/core/connector-utils
  */
 import { ConnectorValidationError } from './errors.js';
+import { sanitizeLogString } from '../common/index.js';
 import type { RetrievedDoc, RetrievedDocValidator } from '../validators/retrieved-doc.js';
 
 /** Position-stable synthetic-id prefix. Audit-fix from Story 1.2. */
@@ -89,7 +90,12 @@ export async function applyRetrievedDocValidatorToMatches<TMatch>(
   const batch = await validator.validateBatch(docs);
   if (batch.result.blocked) {
     throw new ConnectorValidationError(
-      productionMode ? `${itemNoun} batch blocked` : `${itemNoun} batch blocked: ${batch.result.reason}`,
+      // CWE-117: `batch.result.reason` can carry attacker-influenced content
+      // from a flagged doc (or a custom validator); escape before it reaches a
+      // throw boundary a caller may log.
+      productionMode
+        ? `${itemNoun} batch blocked`
+        : `${itemNoun} batch blocked: ${sanitizeLogString(batch.result.reason ?? 'validation failed')}`,
       'validation_failed'
     );
   }

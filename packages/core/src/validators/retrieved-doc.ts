@@ -36,6 +36,7 @@
 import type { Validator, ValidatorInput } from '../engine/GuardrailEngine.types.js';
 import { createResult, type Finding, type GuardrailResult, Severity } from '../base/GuardrailResult.js';
 import type { Logger } from '../base/GenericLogger.js';
+import { sanitizeLogString } from '../common/index.js';
 import {
   applyRedaction,
   maxSeverity,
@@ -197,15 +198,18 @@ export function createRetrievedDocValidator(config: RetrievedDocValidatorConfig)
       // Per-doc failure path.
       if (mode === 'block-all') {
         batchBlocked = true;
-        // Audit-loop fix: doc ids come from caller-controlled (often
-        // attacker-influenced via uploaded RAG content) values. Strip
-        // control characters + ANSI escape codes before interpolation
-        // into log / error strings so a malicious id can't inject
-        // false log lines.
-        // eslint-disable-next-line no-control-regex
-        const safeKey = key.replace(/[\x00-\x1f\x7f]/g, '').slice(0, 128);
-        blockReason = `Blocked by retrieved doc '${safeKey}': ${leafResult.reason ?? 'validation failed'}`;
-        logger?.warn('[RetrievedDocValidator] block-all triggered', { key: safeKey, reason: leafResult.reason });
+        // CWE-117: doc ids are caller/attacker-influenced (uploaded RAG
+        // content) and `leafResult.reason` derives from the flagged content.
+        // Escape both via the shared log-sanitizer — matching the drop/redact
+        // paths and covering C0/C1/DEL/TAB, newlines, U+2028/9 and bidi that a
+        // bespoke C0-only strip would miss — before they reach the user-facing
+        // reason or the log meta. The id is capped at 128 chars.
+        const safeKey = sanitizeLogString(key, 128);
+        blockReason = `Blocked by retrieved doc '${safeKey}': ${sanitizeLogString(leafResult.reason ?? 'validation failed')}`;
+        logger?.warn('[RetrievedDocValidator] block-all triggered', {
+          key: safeKey,
+          reason: sanitizeLogString(leafResult.reason ?? '')
+        });
         // Don't break — fall through so the remaining docs get
         // record-only subResults entries.
         continue;
@@ -215,7 +219,8 @@ export function createRetrievedDocValidator(config: RetrievedDocValidatorConfig)
         const redactedContent = applyRedaction(doc.content, leafResult.findings, config.validators, replacement);
         survivingDocs.push({ ...doc, content: redactedContent });
         logger?.info('[RetrievedDocValidator] redacted doc', {
-          key,
+          // CWE-117: doc id is caller/attacker-influenced; escape before logging.
+          key: sanitizeLogString(key),
           findings: leafResult.findings.length
         });
         continue;
@@ -223,8 +228,9 @@ export function createRetrievedDocValidator(config: RetrievedDocValidatorConfig)
       // drop
       filteredCount++;
       logger?.info('[RetrievedDocValidator] dropped doc', {
-        key,
-        reason: leafResult.reason
+        // CWE-117: doc id + reason are attacker-influenced; escape before logging.
+        key: sanitizeLogString(key),
+        reason: sanitizeLogString(leafResult.reason ?? '')
       });
     }
 

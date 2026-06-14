@@ -7,7 +7,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createGuardedCollection } from '../src/guarded-chroma';
-import { PromptInjectionValidator } from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, Severity } from '@blackunicorn/bonklm';
+import type { RetrievedDocValidator, GuardrailResult, Validator, Logger } from '@blackunicorn/bonklm';
 import { noOpValidator } from '@blackunicorn/bonklm/testing';
 
 describe('ChromaDB Connector', () => {
@@ -1206,5 +1207,137 @@ describe('ChromaDB Connector', () => {
         })
       ).resolves.toBeDefined();
     });
+  });
+});
+
+describe('ChromaDB Connector — CWE-117 batch-block reason sanitization (D-042)', () => {
+  const ESC = String.fromCharCode(27);
+  const NL = String.fromCharCode(10);
+  const CR = String.fromCharCode(13);
+  const RAW_CONTROL = [ESC, NL, CR];
+  const CONTROL_REASON = `evil${ESC}[31m${NL}FAKE-LOG${CR}injected`;
+
+  // A custom RetrievedDocValidator whose batch result carries a control-char
+  // reason. Chroma's inline 2D batch path throws this reason, so its throw is
+  // the sole sanitization point under test.
+  const blockedResult: GuardrailResult = {
+    allowed: false,
+    blocked: true,
+    reason: CONTROL_REASON,
+    severity: Severity.CRITICAL,
+    risk_level: 'HIGH',
+    risk_score: 30,
+    findings: [],
+    timestamp: Date.now()
+  };
+  const blockingValidator: RetrievedDocValidator = {
+    name: 'BlockingBatchValidator',
+    validate: async () => blockedResult,
+    validateBatch: async docs => ({ result: blockedResult, docs: [], filteredCount: docs.length })
+  };
+
+  const mockWithDocs = () => ({
+    query: vi.fn().mockResolvedValue({
+      documents: [['TRIGGER me']],
+      metadatas: [[{ source: 'web' }]],
+      ids: [[`bad-id${ESC}${NL}fake`]],
+      distances: [[0.1]]
+    }),
+    add: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined)
+  });
+
+  it('escapes control chars in the batch-block reason in the thrown error', async () => {
+    const guarded = createGuardedCollection(mockWithDocs(), {
+      validators: [noOpValidator()],
+      retrievedDocValidator: blockingValidator
+    });
+
+    let err: unknown;
+    try {
+      await guarded.query({ queryTexts: ['a safe query'], nResults: 5 });
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeDefined();
+    const message = (err as Error).message;
+    expect(message).toContain('Document batch blocked');
+    for (const ch of RAW_CONTROL) {
+      expect(message).not.toContain(ch);
+    }
+  });
+
+  // A per-doc (engine) Validator that blocks with a control-char reason. The
+  // DEFAULT path (no retrievedDocValidator) routes each doc through
+  // validateWithTimeout and throws/logs the validator reason.
+  const controlCharValidator: Validator = {
+    name: 'ControlCharValidator',
+    validate(input) {
+      const text = typeof input === 'string' ? input : '';
+      if (text.includes('TRIGGER')) {
+        return {
+          allowed: false,
+          blocked: true,
+          reason: CONTROL_REASON,
+          severity: Severity.CRITICAL,
+          risk_level: 'HIGH',
+          risk_score: 30,
+          findings: [{ category: 'test', severity: Severity.CRITICAL, description: 'blocked', weight: 30 }],
+          timestamp: Date.now()
+        };
+      }
+      return {
+        allowed: true,
+        blocked: false,
+        severity: Severity.INFO,
+        risk_level: 'LOW',
+        risk_score: 0,
+        findings: [],
+        timestamp: Date.now()
+      };
+    }
+  };
+
+  it('escapes control chars in the per-doc abort throw and the block log (CWE-117)', async () => {
+    const warnCalls: Array<{ context?: unknown }> = [];
+    const logger = {
+      debug: () => {},
+      info: () => {},
+      warn: (_m: string, context?: unknown) => {
+        warnCalls.push({ context });
+      },
+      error: () => {}
+    } as unknown as Logger;
+    const guarded = createGuardedCollection(mockWithDocs(), {
+      validators: [controlCharValidator],
+      onBlockedDocument: 'abort',
+      logger
+    });
+
+    let err: unknown;
+    try {
+      await guarded.query({ queryTexts: ['a safe query'], nResults: 5 });
+    } catch (e) {
+      err = e;
+    }
+    expect(err).toBeDefined();
+    const message = (err as Error).message;
+    expect(message).toContain('Document blocked');
+    for (const ch of RAW_CONTROL) {
+      expect(message).not.toContain(ch);
+    }
+    // The '[Guardrails] Document blocked' warn meta escapes both id and reason.
+    const blockedWarn = warnCalls.find(c => {
+      const ctx = c.context as Record<string, unknown> | undefined;
+      return ctx !== undefined && 'reason' in ctx && 'id' in ctx;
+    });
+    expect(blockedWarn).toBeDefined();
+    const ctx = blockedWarn!.context as Record<string, unknown>;
+    const id = String(ctx.id ?? '');
+    const reason = String(ctx.reason ?? '');
+    for (const ch of RAW_CONTROL) {
+      expect(id).not.toContain(ch);
+      expect(reason).not.toContain(ch);
+    }
   });
 });

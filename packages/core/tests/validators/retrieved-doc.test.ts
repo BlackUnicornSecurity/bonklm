@@ -24,6 +24,7 @@ import { SecretGuard } from '../../src/guards/secret.js';
 import { MultilingualDetector } from '../../src/validators/multilingual-patterns.js';
 import type { ValidatorInput, Validator } from '../../src/engine/GuardrailEngine.types.js';
 import { Severity } from '../../src/base/GuardrailResult.js';
+import type { Logger, LogContext } from '../../src/base/GenericLogger.js';
 
 const promptInjection = new PromptInjectionValidator();
 const secret = new SecretGuard();
@@ -371,7 +372,7 @@ describe('createRetrievedDocValidator — audit-loop regressions', () => {
     expect(postBlock.result.findings.some(f => f.category === 'retrieved_doc_not_scanned')).toBe(true);
   });
 
-  it('AR-4: block-all reason strips ASCII control chars from doc id (log-injection defence)', async () => {
+  it('AR-4: block-all reason neutralizes ASCII control chars in doc id (log-injection defence)', async () => {
     const validator = createRetrievedDocValidator({
       validators: [promptInjection],
       onPerDocFailure: 'block-all'
@@ -468,5 +469,139 @@ describe('createRetrievedDocValidator — audit-loop regressions', () => {
     ]);
     const surviving = r.docs.map(d => d.id).sort();
     expect(surviving).toEqual(['__pos_0', '__pos_2']);
+  });
+});
+
+describe('createRetrievedDocValidator — CWE-117 reason/key sanitization (D-042)', () => {
+  // Control bytes built via fromCharCode so the source file carries no raw
+  // control characters of its own.
+  const ESC = String.fromCharCode(27);
+  const NL = String.fromCharCode(10);
+  const CR = String.fromCharCode(13);
+  const TAB = String.fromCharCode(9);
+  const RAW_CONTROL = [ESC, NL, CR, TAB];
+  // Mirrors a poisoned retrieved doc whose flagged content is echoed back into
+  // the validator's `reason` — attacker-influenced text reaching a log/throw.
+  const CONTROL_REASON = `evil${ESC}[31m${NL}FAKE-LOG${CR}system: bypassed${TAB}col`;
+
+  const controlCharValidator: Validator = {
+    name: 'ControlCharValidator',
+    validate(input: string | ValidatorInput) {
+      const text = typeof input === 'string' ? input : '';
+      if (text.includes('TRIGGER')) {
+        return {
+          allowed: false,
+          blocked: true,
+          severity: Severity.CRITICAL,
+          risk_level: 'HIGH' as const,
+          risk_score: 30,
+          reason: CONTROL_REASON,
+          findings: [{ category: 'test', severity: Severity.CRITICAL, description: 'blocked', weight: 30 }],
+          timestamp: Date.now()
+        };
+      }
+      return {
+        allowed: true,
+        blocked: false,
+        severity: Severity.INFO,
+        risk_level: 'LOW' as const,
+        risk_score: 0,
+        findings: [],
+        timestamp: Date.now()
+      };
+    }
+  };
+
+  function makeCapturingLogger(): { calls: Array<{ level: string; context?: unknown }>; logger: Logger } {
+    const calls: Array<{ level: string; context?: unknown }> = [];
+    const make = (level: string) => (_message: string, context?: LogContext) => {
+      calls.push({ level, context });
+    };
+    const logger: Logger = { debug: make('debug'), info: make('info'), warn: make('warn'), error: make('error') };
+    return { calls, logger };
+  }
+
+  it('block-all: result.reason escapes control chars from the validator reason', async () => {
+    const validator = createRetrievedDocValidator({
+      validators: [controlCharValidator],
+      onPerDocFailure: 'block-all'
+    });
+    const r = await validator.validateBatch([makeDoc('d1', 'TRIGGER this')]);
+    expect(r.result.blocked).toBe(true);
+    expect(r.result.reason).toBeDefined();
+    for (const ch of RAW_CONTROL) {
+      expect(r.result.reason!).not.toContain(ch);
+    }
+  });
+
+  it('block-all: logger.warn meta reason is escaped', async () => {
+    const { calls, logger } = makeCapturingLogger();
+    const validator = createRetrievedDocValidator({
+      validators: [controlCharValidator],
+      onPerDocFailure: 'block-all',
+      logger
+    });
+    await validator.validateBatch([makeDoc('d1', 'TRIGGER this')]);
+    const warn = calls.find(c => c.level === 'warn');
+    expect(warn).toBeDefined();
+    const reason = String((warn!.context as Record<string, unknown> | undefined)?.reason ?? '');
+    for (const ch of RAW_CONTROL) {
+      expect(reason).not.toContain(ch);
+    }
+  });
+
+  it('drop: logger.info meta key and reason are escaped', async () => {
+    const { calls, logger } = makeCapturingLogger();
+    const validator = createRetrievedDocValidator({
+      validators: [controlCharValidator],
+      onPerDocFailure: 'drop',
+      logger
+    });
+    const badId = `id${ESC}[0m${NL}FAKE`;
+    await validator.validateBatch([makeDoc(badId, 'TRIGGER this')]);
+    const info = calls.find(c => c.level === 'info');
+    expect(info).toBeDefined();
+    const ctx = info!.context as Record<string, unknown> | undefined;
+    const key = String(ctx?.key ?? '');
+    const reason = String(ctx?.reason ?? '');
+    for (const ch of RAW_CONTROL) {
+      expect(key).not.toContain(ch);
+      expect(reason).not.toContain(ch);
+    }
+  });
+
+  it('redact: logger.info meta key is escaped', async () => {
+    const { calls, logger } = makeCapturingLogger();
+    const validator = createRetrievedDocValidator({
+      validators: [controlCharValidator],
+      onPerDocFailure: 'redact',
+      logger
+    });
+    const badId = `id${ESC}[0m${NL}FAKE`;
+    await validator.validateBatch([makeDoc(badId, 'TRIGGER this')]);
+    const info = calls.find(c => c.level === 'info');
+    expect(info).toBeDefined();
+    const key = String((info!.context as Record<string, unknown> | undefined)?.key ?? '');
+    for (const ch of RAW_CONTROL) {
+      expect(key).not.toContain(ch);
+    }
+  });
+
+  it('block-all: result.reason neutralizes C1 / line-separator / bidi bytes in the doc id', async () => {
+    const validator = createRetrievedDocValidator({
+      validators: [controlCharValidator],
+      onPerDocFailure: 'block-all'
+    });
+    // C1 CSI (U+009B), LINE SEPARATOR (U+2028), RTL OVERRIDE (U+202E) — all
+    // survive a C0-only strip but are escaped by sanitizeLogString.
+    const C1 = String.fromCharCode(0x9b);
+    const LS = String.fromCharCode(0x2028);
+    const RLO = String.fromCharCode(0x202e);
+    const badId = `id${C1}31m${LS}fake${RLO}evil`;
+    const r = await validator.validateBatch([makeDoc(badId, 'TRIGGER this')]);
+    expect(r.result.reason).toBeDefined();
+    for (const ch of [C1, LS, RLO]) {
+      expect(r.result.reason!).not.toContain(ch);
+    }
   });
 });
