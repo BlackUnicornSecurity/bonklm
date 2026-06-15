@@ -298,3 +298,61 @@ describe('runStartupProbe — injectable fetch transport (fetchImpl)', () => {
     expect(String(transport.mock.calls[1][0])).toContain('[::1]:65001');
   });
 });
+
+describe('applyProbeOutcome — CWE-117 reason sanitization is load-bearing (ADR-0001)', () => {
+  // ADR-0001 non-vacuity proof for the three `sanitizeMeta(outcome.reason)` sinks in
+  // probe.ts's `applyProbeOutcome`: the `unreachable`-info "Probe completed" branch,
+  // the `unreachable`-warn network-failure branch, and the `skipped`-info branch.
+  // cwe117-regression.test.ts asserts the sanitizer primitive in isolation; these
+  // tests call `applyProbeOutcome` with an `outcome.reason` carrying control
+  // characters and assert the ESCAPED form in the logged MESSAGE string (the reason
+  // is interpolated into the template-literal message, not a meta field) — removing
+  // the matching `sanitizeMeta(...)` wrap from src turns the corresponding test RED.
+  const NL = String.fromCharCode(10); // LF
+  const ESC = String.fromCharCode(27); // ESC
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+
+  const createSpyLogger = () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
+  const findMessage = (mock: ReturnType<typeof vi.fn>, includes: string): string | undefined =>
+    mock.mock.calls.map(call => call[0]).find((m): m is string => typeof m === 'string' && m.includes(includes));
+
+  it('escapes a control-char reason in the "Probe completed" info-branch message', () => {
+    const logger = createSpyLogger();
+    // The reason MUST start with "Probe completed" to reach the info branch.
+    const outcome: ProbeOutcome = { kind: 'unreachable', reason: `Probe completed${NL}INJECTED${ESC}poison` };
+
+    applyProbeOutcome(outcome, { logger, productionMode: false });
+
+    const msg = findMessage(logger.info, 'Probe completed');
+    expect(msg).toBeDefined();
+    expect(msg).toContain('INJECTED');
+    expect(msg).not.toContain(NL);
+    expect(msg).not.toContain(ESC);
+  });
+
+  it('escapes a control-char reason in the network-failure warn-branch message', () => {
+    const logger = createSpyLogger();
+    const outcome: ProbeOutcome = { kind: 'unreachable', reason: RAW_REASON };
+
+    applyProbeOutcome(outcome, { logger, productionMode: false });
+
+    const msg = findMessage(logger.warn, 'startup probe');
+    expect(msg).toBeDefined();
+    expect(msg).toContain('INJECTED');
+    expect(msg).not.toContain(NL);
+    expect(msg).not.toContain(ESC);
+  });
+
+  it('escapes a control-char reason in the skipped info-branch message', () => {
+    const logger = createSpyLogger();
+    const outcome: ProbeOutcome = { kind: 'skipped', reason: RAW_REASON };
+
+    applyProbeOutcome(outcome, { logger, productionMode: false });
+
+    const msg = findMessage(logger.info, 'skipped:');
+    expect(msg).toBeDefined();
+    expect(msg).toContain('INJECTED');
+    expect(msg).not.toContain(NL);
+    expect(msg).not.toContain(ESC);
+  });
+});

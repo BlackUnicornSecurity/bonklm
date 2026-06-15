@@ -1,51 +1,48 @@
 /**
- * Sprint 40 connector CWE-117 sweep — elizaos-connector regression.
+ * CWE-117 sanitization primitive contract — elizaos-connector.
  *
- * Two src sites carry attacker-influenced template-literal log calls:
- *   - `wrap-memory.ts:typoMsg` uses `callerPluginName` from the
- *     ElizaOS plugin registry (hostile plugin can register a name
- *     containing control chars).
- *   - `probe.ts` three sites embed `outcome.reason` from
- *     `runStartupProbe` (network-derived error.message).
+ * Two attacker-influenced interpolation boundaries in this connector wrap their
+ * value with the canonical sanitizer:
+ *   - `wrap-memory.ts` interpolates `callerPluginName` (from the ElizaOS plugin
+ *     registry — a hostile plugin can register a name with control chars) into
+ *     the typo-squat / non-allowlisted REFUSE log.
+ *   - `probe.ts`'s `applyProbeOutcome` interpolates `outcome.reason`
+ *     (network-derived error text) into its three startup-probe log messages.
  *
- * Sprint 40 wraps each interpolation boundary. Sprint 41 upgrades
- * the wrap-memory test from contract-lock to a REAL integration
- * test that installs the sealed wrapper + triggers the typo-squat
- * CRITICAL log via a hostile plugin name — assertions verify the
- * spy logger captured a sanitized output, so removing the
- * `sanitizeMeta(callerPluginName)` wrap from src would fail this
- * test (closing architect HIGH-2 + code-reviewer MEDIUM + security
- * S40-4 for this connector).
+ * This contract-lock asserts the canonical sanitizer primitives are reachable
+ * from the import surface and behave as expected. The END-TO-END proof that each
+ * guarded path actually applies the wrap (and FAILS if it is removed — the
+ * ADR-0001 non-vacuity standard) lives in the driving blocks:
+ *   - wrap-memory: the "elizaos-connector — Sprint 41 typo-squat CRITICAL log
+ *     integration" block below (installs the sealed wrapper + drives the refuse
+ *     log with a hostile plugin name).
+ *   - probe: `probe.test.ts` › "applyProbeOutcome — CWE-117 reason sanitization
+ *     is load-bearing (ADR-0001)".
  */
 import { describe, expect, it, vi } from 'vitest';
 
-import { sanitizeLogString } from '@blackunicorn/bonklm';
+import { sanitizeLogString, sanitizeMeta } from '@blackunicorn/bonklm';
 
 import { withCallContext } from '../src/als-context.js';
 import { installSealedWrapMemory } from '../src/wrap-memory.js';
 import type { IAgentRuntimeLike, MemoryLike } from '../src/types.js';
 
-describe('elizaos-connector — Sprint 40 CWE-117 sanitization contract', () => {
-  it('sanitizes a hostile plugin name (typo-squat path)', () => {
-    // Real-world vector: a hostile plugin registers
-    // `@elizaos/plugin-solana\nINJECTED:CRITICAL fake_alert: bypass`
-    // — the typo-squat REFUSE log includes this name in a
-    // template-literal `[BonkLM] CRITICAL — Caller plugin "..."`
-    // message. Pre-Sprint-40, the embedded `\n` forged a second
-    // log line. Sprint 40 wraps the variable with sanitizeLogString.
+describe('elizaos-connector — CWE-117 sanitization primitive contract', () => {
+  it('sanitizes a hostile plugin name for the typo-squat / refuse log', () => {
+    // Real-world vector: a hostile plugin registers a name carrying a control
+    // char; the refuse log interpolates it into a `[BonkLM] CRITICAL — Caller
+    // plugin "..."` message. The embedded `\n` would otherwise forge a second
+    // log line. wrap-memory.ts wraps the value with the canonical sanitizer.
     const hostile = '@elizaos/plugin-soIana\nINJECTED:CRITICAL bypass';
     expect(sanitizeLogString(hostile)).toBe('@elizaos/plugin-soIana\\nINJECTED:CRITICAL bypass');
   });
 
   it('sanitizes a probe-outcome reason carrying a network error message', () => {
-    // probe.ts: `outcome.reason` ends up in 3 different template
-    // literals depending on the outcome variant. The CWE-117 vector
-    // is a runtime error.message that includes a CR/LF — the runtime
-    // host config is operator-edited, but any downstream config
-    // pipeline taking caller input could surface attacker-controlled
-    // host names here.
-    const reason = 'connect ECONNREFUSED 127.0.0.1:1024\tINJECTED:fake_metric';
-    expect(sanitizeLogString(reason)).toBe('connect ECONNREFUSED 127.0.0.1:1024\\x09INJECTED:fake_metric');
+    // probe.ts's `applyProbeOutcome` interpolates `outcome.reason` (network-derived
+    // error text) into its startup-probe log messages via `sanitizeMeta`. A reason
+    // carrying a CR/LF would otherwise forge a second log line.
+    const reason = 'connect ECONNREFUSED 127.0.0.1:1024\nINJECTED:fake_metric';
+    expect(sanitizeMeta(reason)).toBe('connect ECONNREFUSED 127.0.0.1:1024\\nINJECTED:fake_metric');
   });
 });
 

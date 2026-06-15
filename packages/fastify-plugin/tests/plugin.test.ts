@@ -4,10 +4,10 @@
  * Unit tests for the guardrails plugin.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { guardrailsPlugin } from '../src/plugin.js';
-import { PromptInjectionValidator } from '@blackunicorn/bonklm';
-import Fastify from 'fastify';
+import { CATEGORY_REPEAT_THRESHOLD, clearAllSessions, PromptInjectionValidator } from '@blackunicorn/bonklm';
+import Fastify, { type FastifyInstance } from 'fastify';
 import { noOpValidator } from '@blackunicorn/bonklm/testing';
 
 describe('Fastify Guardrails Plugin', () => {
@@ -1125,5 +1125,313 @@ describe('Fastify Guardrails Plugin', () => {
       expect(json.code).toBe('CONTENT_POLICY_VIOLATION');
       expect(customOnError).toHaveBeenCalled();
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CWE-117 reason / sessionId / path sanitization is load-bearing (ADR-0001)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('Fastify Guardrails Plugin — CWE-117 sanitization is load-bearing (ADR-0001)', () => {
+  // ADR-0001 non-vacuity proof for every attacker-influenced `sanitizeMeta` sink in
+  // `plugin.ts`. `cwe117-regression.test.ts` asserts the sanitizer PRIMITIVE in
+  // isolation; these tests drive the REGISTERED plugin over real HTTP injection
+  // with a validator / session-pattern whose `reason` | `sessionId` | `category`
+  // carries control characters, and assert the ESCAPED form at each sink — removing
+  // the matching `sanitizeMeta(...)` wrap from src turns the corresponding test RED.
+  // The engine returns the validator's RAW `reason` to the plugin (`aggregateResults`
+  // does not pre-sanitize) and `SessionTracker` embeds the RAW `category` verbatim in
+  // its escalation reason, so each per-sink wrap is the genuine CWE-117 boundary. The
+  // plugin logs via `logger.warn` DIRECTLY (not core `logValidationFailure`, which
+  // sanitizes independently) so the spy-logger meta assertions are non-vacuous. Sinks
+  // are located by their plugin log-message / response-field strings, not line numbers:
+  //   - dev error-handler response-body `reason`
+  //   - '[Guardrails] Session escalated, blocking request' pre-validation log meta
+  //     (`reason` from the hostile session category + `sessionId` from the extractor)
+  //   - '[Guardrails] Session escalated after validation' post-validation log meta
+  //     (`reason` + `sessionId`)
+  //   - '[Guardrails] Request blocked' log meta (`reason` + request.url `path`)
+  //   - '[Guardrails] Response blocked' log meta + the dev-mode filtered-response body
+  //     `reason` (one shared `safeReason` sink) + request.url `path`
+  const NL = String.fromCharCode(10); // LF
+  const ESC = String.fromCharCode(27); // ESC
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+  const HOSTILE_SESSION_ID = `sess${NL}INJECTED${ESC}id`;
+  const HOSTILE_CATEGORY = `cat${NL}INJECTED${ESC}poison`;
+  const POISON = 'POISONMARK';
+
+  // Blocks only when the validated content contains the marker — lets a clean input
+  // pass so the model RESPONSE reaches its own (output) sink. Carries a control-char
+  // `reason` the plugin returns to the caller + logs.
+  const markerBlock = (reason: string) => ({
+    name: 'MarkerBlock',
+    validate: (input: unknown) =>
+      (typeof input === 'string' ? input : '').includes(POISON)
+        ? {
+            allowed: false,
+            blocked: true,
+            reason,
+            severity: 'critical' as const,
+            risk_level: 'HIGH' as const,
+            risk_score: 30,
+            findings: [],
+            timestamp: Date.now()
+          }
+        : {
+            allowed: true,
+            blocked: false,
+            severity: 'info' as const,
+            risk_level: 'LOW' as const,
+            risk_score: 0,
+            findings: [],
+            timestamp: Date.now()
+          }
+  });
+
+  // Never blocks, but emits a finding under the given `category` every turn so
+  // SessionTracker accumulates it toward the repeat-escalation threshold. The
+  // escalation reason embeds the raw `category` verbatim.
+  const categoryFinding = (category: string) => ({
+    name: 'CategoryFinding',
+    validate: () => ({
+      allowed: true,
+      blocked: false,
+      severity: 'critical' as const,
+      risk_level: 'HIGH' as const,
+      risk_score: 100,
+      findings: [{ category, severity: 'critical' as const, description: 'hostile pattern', weight: 1 }],
+      timestamp: Date.now()
+    })
+  });
+
+  const createSpyLogger = () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
+
+  const findWarnMeta = (
+    logger: ReturnType<typeof createSpyLogger>,
+    message: string
+  ): Record<string, unknown> | undefined =>
+    logger.warn.mock.calls.find(call => call[0] === message)?.[1] as Record<string, unknown> | undefined;
+
+  let app: FastifyInstance;
+
+  beforeEach(() => {
+    clearAllSessions();
+  });
+
+  afterEach(async () => {
+    await app?.close();
+    clearAllSessions();
+  });
+
+  it('escapes a control-char reason in the dev error-handler response body', async () => {
+    app = Fastify({ logger: false });
+    await app.register(guardrailsPlugin, {
+      validators: [markerBlock(RAW_REASON) as never],
+      productionMode: false,
+      logger: createSpyLogger()
+    });
+    app.post('/test', async () => ({ ok: true }));
+
+    const res = await app.inject({ method: 'POST', url: '/test', payload: { message: `hi ${POISON}` } });
+
+    expect(res.statusCode).toBe(400);
+    const body = res.json() as { reason?: string };
+    expect(body.reason).toContain('INJECTED');
+    expect(body.reason).not.toContain(NL);
+    expect(body.reason).not.toContain(ESC);
+  });
+
+  it('escapes a control-char reason in the request-blocked log meta', async () => {
+    const logger = createSpyLogger();
+    app = Fastify({ logger: false });
+    await app.register(guardrailsPlugin, {
+      validators: [markerBlock(RAW_REASON) as never],
+      productionMode: false,
+      logger
+    });
+    app.post('/test', async () => ({ ok: true }));
+
+    await app.inject({ method: 'POST', url: '/test', payload: { message: `hi ${POISON}` } });
+
+    const meta = findWarnMeta(logger, '[Guardrails] Request blocked');
+    // Guard: a future rename of the log message must fail loudly here, not make the
+    // escaped-form assertions below pass vacuously on an undefined meta.
+    expect(meta).toBeDefined();
+    expect(meta?.reason).toContain('INJECTED');
+    expect(meta?.reason).not.toContain(NL);
+    expect(meta?.reason).not.toContain(ESC);
+  });
+
+  it('escapes a control-char request.url path in the request-blocked log meta', async () => {
+    const logger = createSpyLogger();
+    app = Fastify({ logger: false });
+    await app.register(guardrailsPlugin, {
+      validators: [markerBlock(RAW_REASON) as never],
+      productionMode: false,
+      logger
+    });
+    app.post('/test', async () => ({ ok: true }));
+    // The HTTP transport (and `inject`) normalise raw control chars out of the URL,
+    // so plant the control char at `request.raw.url` — simulating an upstream proxy
+    // that forwarded a decoded control char into the request-target. That is exactly
+    // the caller-supplied-`request.url` CWE-117 vector the `path` wrap defends.
+    app.addHook('onRequest', async req => {
+      req.raw.url = `/test?x=hijack${NL}INJECTED${ESC}z`;
+    });
+
+    await app.inject({ method: 'POST', url: '/test', payload: { message: `hi ${POISON}` } });
+
+    const meta = findWarnMeta(logger, '[Guardrails] Request blocked');
+    expect(meta).toBeDefined();
+    expect(meta?.path).toContain('INJECTED');
+    expect(meta?.path).not.toContain(NL);
+    expect(meta?.path).not.toContain(ESC);
+  });
+
+  it('escapes a control-char reason in the filtered-response body and response-blocked log meta', async () => {
+    const logger = createSpyLogger();
+    app = Fastify({ logger: false });
+    await app.register(guardrailsPlugin, {
+      validators: [markerBlock(RAW_REASON) as never],
+      validateResponse: true,
+      productionMode: false,
+      logger
+    });
+    // Input passes (no marker); the model RESPONSE trips the output block, so the
+    // shared `safeReason` lands in BOTH the filtered-response body returned to the
+    // caller AND the response-blocked log meta.
+    app.post('/test', async () => ({ text: `response ${POISON}` }));
+
+    const res = await app.inject({ method: 'POST', url: '/test', payload: { message: 'clean prompt' } });
+
+    const body = res.json() as { reason?: string };
+    expect(body.reason).toContain('INJECTED');
+    expect(body.reason).not.toContain(NL);
+    expect(body.reason).not.toContain(ESC);
+    const meta = findWarnMeta(logger, '[Guardrails] Response blocked');
+    expect(meta).toBeDefined();
+    expect(meta?.reason).toContain('INJECTED');
+    expect(meta?.reason).not.toContain(NL);
+    expect(meta?.reason).not.toContain(ESC);
+  });
+
+  it('escapes a control-char request.url path in the response-blocked log meta', async () => {
+    const logger = createSpyLogger();
+    app = Fastify({ logger: false });
+    await app.register(guardrailsPlugin, {
+      validators: [markerBlock(RAW_REASON) as never],
+      validateResponse: true,
+      productionMode: false,
+      logger
+    });
+    app.post('/test', async () => ({ text: `response ${POISON}` }));
+    app.addHook('onRequest', async req => {
+      req.raw.url = `/test?x=hijack${NL}INJECTED${ESC}z`;
+    });
+
+    await app.inject({ method: 'POST', url: '/test', payload: { message: 'clean prompt' } });
+
+    const meta = findWarnMeta(logger, '[Guardrails] Response blocked');
+    expect(meta).toBeDefined();
+    expect(meta?.path).toContain('INJECTED');
+    expect(meta?.path).not.toContain(NL);
+    expect(meta?.path).not.toContain(ESC);
+  });
+
+  it('escapes a hostile-category escalation reason in the post-validation log meta', async () => {
+    const logger = createSpyLogger();
+    app = Fastify({ logger: false });
+    await app.register(guardrailsPlugin, {
+      validators: [categoryFinding(HOSTILE_CATEGORY) as never],
+      enableSessionTracking: true,
+      sessionIdExtractor: () => 'static-session',
+      productionMode: false,
+      logger
+    });
+    app.post('/test', async () => ({ ok: true }));
+
+    // Findings accumulate by category; the THRESHOLD-th turn fires the
+    // post-validation escalation (drive the loop from the exported constant so a
+    // future threshold change self-heals).
+    for (let i = 0; i < CATEGORY_REPEAT_THRESHOLD; i++) {
+      await app.inject({ method: 'POST', url: '/test', payload: { message: `turn ${i}` } });
+    }
+
+    const meta = findWarnMeta(logger, '[Guardrails] Session escalated after validation');
+    expect(meta).toBeDefined();
+    expect(meta?.reason).toContain('INJECTED');
+    expect(meta?.reason).not.toContain(NL);
+    expect(meta?.reason).not.toContain(ESC);
+  });
+
+  it('escapes a hostile sessionId in the post-validation escalation log meta', async () => {
+    const logger = createSpyLogger();
+    app = Fastify({ logger: false });
+    await app.register(guardrailsPlugin, {
+      validators: [categoryFinding('benign-category') as never],
+      enableSessionTracking: true,
+      sessionIdExtractor: () => HOSTILE_SESSION_ID,
+      productionMode: false,
+      logger
+    });
+    app.post('/test', async () => ({ ok: true }));
+
+    for (let i = 0; i < CATEGORY_REPEAT_THRESHOLD; i++) {
+      await app.inject({ method: 'POST', url: '/test', payload: { message: `turn ${i}` } });
+    }
+
+    const meta = findWarnMeta(logger, '[Guardrails] Session escalated after validation');
+    expect(meta).toBeDefined();
+    expect(meta?.sessionId).toContain('INJECTED');
+    expect(meta?.sessionId).not.toContain(NL);
+    expect(meta?.sessionId).not.toContain(ESC);
+  });
+
+  it('escapes a hostile-category escalation reason in the pre-validation log meta', async () => {
+    const logger = createSpyLogger();
+    app = Fastify({ logger: false });
+    await app.register(guardrailsPlugin, {
+      validators: [categoryFinding(HOSTILE_CATEGORY) as never],
+      enableSessionTracking: true,
+      sessionIdExtractor: () => 'static-session',
+      productionMode: false,
+      logger
+    });
+    app.post('/test', async () => ({ ok: true }));
+
+    // Loop one past the threshold: the first THRESHOLD turns escalate the session
+    // (post-validation), then the next turn's start-of-request `isSessionEscalated`
+    // check fires the pre-validation block whose `reason` carries the raw category.
+    for (let i = 0; i <= CATEGORY_REPEAT_THRESHOLD; i++) {
+      await app.inject({ method: 'POST', url: '/test', payload: { message: `turn ${i}` } });
+    }
+
+    const meta = findWarnMeta(logger, '[Guardrails] Session escalated, blocking request');
+    expect(meta).toBeDefined();
+    expect(meta?.reason).toContain('INJECTED');
+    expect(meta?.reason).not.toContain(NL);
+    expect(meta?.reason).not.toContain(ESC);
+  });
+
+  it('escapes a hostile sessionId in the pre-validation escalation log meta', async () => {
+    const logger = createSpyLogger();
+    app = Fastify({ logger: false });
+    await app.register(guardrailsPlugin, {
+      validators: [categoryFinding('benign-category') as never],
+      enableSessionTracking: true,
+      sessionIdExtractor: () => HOSTILE_SESSION_ID,
+      productionMode: false,
+      logger
+    });
+    app.post('/test', async () => ({ ok: true }));
+
+    for (let i = 0; i <= CATEGORY_REPEAT_THRESHOLD; i++) {
+      await app.inject({ method: 'POST', url: '/test', payload: { message: `turn ${i}` } });
+    }
+
+    const meta = findWarnMeta(logger, '[Guardrails] Session escalated, blocking request');
+    expect(meta).toBeDefined();
+    expect(meta?.sessionId).toContain('INJECTED');
+    expect(meta?.sessionId).not.toContain(NL);
+    expect(meta?.sessionId).not.toContain(ESC);
   });
 });
