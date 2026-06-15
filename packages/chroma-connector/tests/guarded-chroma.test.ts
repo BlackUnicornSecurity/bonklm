@@ -1341,3 +1341,108 @@ describe('ChromaDB Connector — CWE-117 batch-block reason sanitization (D-042)
     }
   });
 });
+
+describe('ChromaDB Connector — CWE-117 query/add reason sanitization is load-bearing (ADR-0001)', () => {
+  // ADR-0001 non-vacuity proof for the query-blocked and document-add-blocked
+  // `result.reason` sinks in src/guarded-chroma.ts. The sibling D-042 block
+  // above already covers the retrieved-document (batch + per-doc abort) sinks;
+  // these two paths were previously asserted only in isolation by
+  // cwe117-regression.test.ts. Each test drives the guarded wrapper with a
+  // validator whose `reason` carries control characters and asserts the ESCAPED
+  // form at the spy-logger meta AND the thrown message — so removing the
+  // matching `sanitizeMeta(...)` wrap from src turns the corresponding test RED.
+  const NL = String.fromCharCode(10); // LF
+  const ESC = String.fromCharCode(27); // ESC (terminal CSI lead-in)
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+
+  const alwaysBlock = (reason: string): Validator => ({
+    name: 'AlwaysBlock',
+    validate: () => ({
+      allowed: false,
+      blocked: true,
+      reason,
+      severity: Severity.CRITICAL,
+      risk_level: 'HIGH',
+      risk_score: 30,
+      findings: [{ category: 'test', severity: Severity.CRITICAL, description: 'blocked', weight: 30 }],
+      timestamp: Date.now()
+    })
+  });
+
+  const createSpyLogger = (): Logger =>
+    ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }) as unknown as Logger;
+
+  const emptyMockCollection = () => ({
+    query: vi.fn().mockResolvedValue({ documents: [[]], metadatas: [[]], ids: [[]], distances: [[]] }),
+    add: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined)
+  });
+
+  const findWarnMeta = (logger: Logger, message: string): { reason?: string } | undefined =>
+    (logger.warn as ReturnType<typeof vi.fn>).mock.calls.find(call => call[0] === message)?.[1] as
+      | { reason?: string }
+      | undefined;
+
+  it('escapes a control-char validator reason at the query-blocked log meta and thrown message', async () => {
+    const logger = createSpyLogger();
+    const guarded = createGuardedCollection(emptyMockCollection(), {
+      validators: [alwaysBlock(RAW_REASON)],
+      // Pin dev-mode so the throw carries the (escaped) reason regardless of
+      // ambient NODE_ENV — production mode would emit the generic message.
+      productionMode: false,
+      logger
+    });
+
+    await expect(guarded.query({ queryTexts: ['safe probe'], nResults: 3 })).rejects.toThrow(ESCAPED_REASON);
+
+    const warnMeta = findWarnMeta(logger, '[Guardrails] Query blocked');
+    // Guard: a future rename of the log message must fail loudly here, not make
+    // the escaped-form assertions below pass vacuously on an undefined meta.
+    expect(warnMeta).toBeDefined();
+    expect(warnMeta?.reason).toContain('INJECTED');
+    expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(ESC);
+  });
+
+  it('escapes a control-char validator reason at the document-add-blocked log meta and thrown message', async () => {
+    const logger = createSpyLogger();
+    const guarded = createGuardedCollection(emptyMockCollection(), {
+      validators: [alwaysBlock(RAW_REASON)],
+      productionMode: false,
+      logger
+    });
+
+    await expect(guarded.add({ documents: ['some document'] })).rejects.toThrow(ESCAPED_REASON);
+
+    const warnMeta = findWarnMeta(logger, '[Guardrails] Document add blocked');
+    expect(warnMeta).toBeDefined();
+    expect(warnMeta?.reason).toContain('INJECTED');
+    expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(ESC);
+  });
+
+  it('rejects a dangerous filter key and routes it through the consistency-only sanitizeMeta wrap', async () => {
+    const logger = createSpyLogger();
+    const guarded = createGuardedCollection(emptyMockCollection(), {
+      validators: [noOpValidator()],
+      logger
+    });
+
+    // `$in` passes the dangerous-PATTERN regex but is caught by the deep
+    // dangerous-KEY check, exercising the log/throw boundary that part (a)
+    // wrapped. The key is one of a fixed set of allow-listed constants
+    // (control-char-free by construction), so the sanitizeMeta wrap is
+    // consistency-only: this covers the rejection branch but cannot
+    // mutation-prove the wrap (sanitizeMeta('$in') === '$in') — see the src
+    // comment at that boundary.
+    await expect(guarded.query({ queryTexts: ['safe'], where: { ['$in']: ['a'] }, nResults: 3 })).rejects.toThrow(
+      'dangerous key: $in'
+    );
+
+    const keyWarn = (logger.warn as ReturnType<typeof vi.fn>).mock.calls.find(
+      call => call[0] === '[Guardrails] Dangerous filter key detected'
+    )?.[1] as { key?: string } | undefined;
+    expect(keyWarn?.key).toBe('$in');
+  });
+});

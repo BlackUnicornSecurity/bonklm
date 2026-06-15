@@ -7,7 +7,8 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { createGuardedIndex, PINECONE_NATIVE_QUERY_KEYS } from '../src/guarded-pinecone.js';
-import { PromptInjectionValidator, PIIGuard } from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, PIIGuard, Severity } from '@blackunicorn/bonklm';
+import type { Validator, GuardrailResult } from '@blackunicorn/bonklm';
 import { noOpValidator } from '@blackunicorn/bonklm/testing';
 
 // Mock Pinecone Index. `namespace(ns)` returns a namespaced index whose
@@ -401,5 +402,84 @@ describe('Pinecone Connector', () => {
       const body = mockIndex.query.mock.calls[0]?.[0] as Record<string, unknown>;
       expect(Object.keys(body).sort()).toEqual(['filter', 'topK', 'vector']);
     });
+  });
+});
+
+describe('Pinecone Connector — CWE-117 reason sanitization is load-bearing (ADR-0001)', () => {
+  // ADR-0001 non-vacuity proof for the query-blocked and vector-blocked-abort
+  // `result.reason` throw sinks in src/guarded-pinecone.ts. cwe117-regression.test.ts
+  // only asserts the sanitizer primitive in isolation; these tests drive the
+  // guarded wrapper with a validator whose `reason` carries control characters
+  // and assert the ESCAPED form in the thrown message — removing the matching
+  // `sanitizeMeta(...)` wrap from src turns the corresponding test RED.
+  const NL = String.fromCharCode(10); // LF
+  const ESC = String.fromCharCode(27); // ESC
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+
+  const blockResult = (reason: string): GuardrailResult => ({
+    allowed: false,
+    blocked: true,
+    reason,
+    severity: Severity.CRITICAL,
+    risk_level: 'HIGH',
+    risk_score: 30,
+    findings: [{ category: 'test', severity: Severity.CRITICAL, description: 'blocked', weight: 30 }],
+    timestamp: Date.now()
+  });
+
+  const allowResult = (): GuardrailResult => ({
+    allowed: true,
+    blocked: false,
+    severity: Severity.INFO,
+    risk_level: 'LOW',
+    risk_score: 0,
+    findings: [],
+    timestamp: Date.now()
+  });
+
+  // Always blocks — triggers the pre-retrieval query-blocked throw.
+  const alwaysBlock = (reason: string): Validator => ({
+    name: 'AlwaysBlock',
+    validate: () => blockResult(reason)
+  });
+
+  // Blocks only when the validated content contains the marker — lets the query
+  // context pass but blocks the retrieved match (drives the vector-blocked path).
+  const markerBlock = (marker: string, reason: string): Validator => ({
+    name: 'MarkerBlock',
+    validate: (input: unknown) =>
+      (typeof input === 'string' ? input : '').includes(marker) ? blockResult(reason) : allowResult()
+  });
+
+  const mockIndex = (matches: unknown[] = []) => ({
+    query: vi.fn().mockResolvedValue({ matches }),
+    namespace: vi.fn(),
+    namespacedQuery: vi.fn()
+  });
+
+  it('escapes a control-char validator reason at the query-blocked throw boundary', async () => {
+    // productionMode pinned false so the throw carries the (escaped) reason
+    // regardless of ambient NODE_ENV — production mode emits the generic message.
+    const guarded = createGuardedIndex(mockIndex(), {
+      validators: [alwaysBlock(RAW_REASON)],
+      productionMode: false
+    });
+
+    await expect(guarded.query({ vector: [0.1, 0.2, 0.3], topK: 5 })).rejects.toThrow(ESCAPED_REASON);
+  });
+
+  it('escapes a control-char validator reason at the vector-blocked abort throw boundary', async () => {
+    const POISON = 'POISONMARK';
+    const guarded = createGuardedIndex(
+      mockIndex([{ id: 'vec1', score: 0.9, metadata: { text: `${POISON} payload` } }]),
+      {
+        validators: [markerBlock(POISON, RAW_REASON)],
+        onBlockedVector: 'abort',
+        productionMode: false
+      }
+    );
+
+    await expect(guarded.query({ vector: [0.1, 0.2, 0.3], topK: 5 })).rejects.toThrow(ESCAPED_REASON);
   });
 });
