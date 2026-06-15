@@ -46,7 +46,7 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  * `QueryByVectorValues`). `topK` (normalized) and `filter` (sanitized) are set
  * explicitly by `query`; `namespace` is targeted via `index.namespace()`. Any
  * other key a (JS) caller adds is dropped so it cannot reach the client
- * unvalidated (D-040 defense-in-depth).
+ * unvalidated (defense-in-depth).
  *
  * Exported (off-barrel) solely so the `test-d` conformance lock can derive its
  * key union from this single source of truth — not part of the public API
@@ -85,7 +85,7 @@ const MAX_NAMESPACE_LENGTH = 255;
 
 /**
  * Structurally validates a Pinecone `namespace` before it reaches
- * `index.namespace()` (D-040). Rejects a non-string (`{}` / `123`),
+ * `index.namespace()`. Rejects a non-string (`{}` / `123`),
  * control-character, or over-long namespace. The namespace value is never
  * interpolated into the message (only a fixed reason), so this is not a
  * CWE-117 sink. Mirrors the qdrant collectionName guard.
@@ -374,7 +374,7 @@ export function createGuardedIndex(pineconeIndex: any, options: GuardedPineconeO
 
       // Step 2: Separate `namespace` (targeted via index.namespace(), NOT a
       // query-body member) and structurally validate it before it can reach
-      // the SDK (D-040 — mirrors the qdrant collectionName guard).
+      // the SDK (mirrors the qdrant collectionName guard).
       const { namespace, ...queryOptions } = options;
       if (namespace) {
         validateNamespace(namespace, productionMode);
@@ -383,7 +383,7 @@ export function createGuardedIndex(pineconeIndex: any, options: GuardedPineconeO
       // Step 3: Build the outgoing body from an allow-list of real Pinecone
       // query-body keys; `topK` (normalized) and `filter` (sanitized) are set
       // explicitly. Any other caller key is dropped so it cannot reach the
-      // client unvalidated (D-040 defense-in-depth).
+      // client unvalidated (defense-in-depth).
       const nativeQuery: Record<string, unknown> = {};
       for (const key of Object.keys(queryOptions)) {
         if (PINECONE_NATIVE_QUERY_KEY_SET.has(key)) {

@@ -26,7 +26,7 @@ const program = new Command();
 
 program.name('bonklm').description('BonkLM - LLM Security Guardrails').version(pkgVersion);
 
-// D-018 (Sprint 52 Gate 6 ST-06-007): NO default `program.action()`.
+// NO default `program.action()`.
 // Commander's behavior: if a default action is set, ANY unknown subcommand
 // is treated as an argument to that action instead of emitting the
 // `commander.unknownCommand` error, which means exitOverride below never
@@ -42,10 +42,10 @@ program.addCommand(connectorCommand);
 program.addCommand(statusCommand);
 program.addCommand(doctorCommand);
 
-// D-018 (Sprint 52 Gate 6 ST-06-007): exit 1 on user-input error
+// Exit 1 on user-input error
 // (unknown command, missing required argument, unknown option). Commander's
 // default behavior is to exit 0 after writing the error to stderr — which
-// passes a failing invocation as success to CI pipelines. Sprint 50 CLI
+// passes a failing invocation as success to CI pipelines. The CLI
 // contract specifies exit 1 on user-error per the documented exit-code
 // matrix (0 happy path, 1 user-error, 2 system-error).
 program.exitOverride(err => {

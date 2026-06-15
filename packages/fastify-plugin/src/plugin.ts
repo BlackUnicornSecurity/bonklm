@@ -315,7 +315,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (fas
   // Use preHandler hook which runs after body is parsed
   if (validateRequest) {
     fastify.addHook('preHandler', async (request, reply) => {
-      // MED-005: Fallback to url if routerPath is not available
+      // Fallback to url if routerPath is not available
       const path = (request as any).routerPath || request.url;
       if (!shouldProcessPath(path)) {
         return;
@@ -535,7 +535,7 @@ const guardrailsPlugin: FastifyPluginAsync<GuardrailsPluginOptions> = async (fas
   // Response validation hook
   if (validateResponse) {
     fastify.addHook('onSend', async (request, reply, payload) => {
-      // MED-005: Fallback to url if routerPath is not available
+      // Fallback to url if routerPath is not available
       const path = (request as any).routerPath || request.url;
       if (!shouldProcessPath(path)) {
         return payload;
