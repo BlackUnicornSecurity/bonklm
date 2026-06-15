@@ -273,7 +273,11 @@ export function createGuardedClient(qdrantClient: any, options: GuardedQdrantOpt
           // Check if decoded character is dangerous
           if (['$', '_', 'p', 'P', 'c', 'C'].some(char => decoded === char)) {
             // Could be obfuscation - reject
-            logger.warn('[Guardrails] Suspicious Unicode escape detected', { escape });
+            // CWE-117 (consistency only): `escape` is a `/\\u[0-9a-f]{4}/`
+            // match — control-char-free by construction — wrapped to keep every
+            // attacker-derived log value in this file uniform (see the key /
+            // reason load-bearing sinks).
+            logger.warn('[Guardrails] Suspicious Unicode escape detected', { escape: sanitizeMeta(escape) });
             throw new ConnectorValidationError(
               productionMode ? 'Invalid filter' : 'Filter contains suspicious Unicode escapes',
               'unicode_obfuscation'
@@ -316,9 +320,19 @@ export function createGuardedClient(qdrantClient: any, options: GuardedQdrantOpt
         for (const key of Object.keys(obj)) {
           // S012-006: More precise key checking - only exact matches, not partial
           if (dangerousKeys.includes(key.toLowerCase())) {
-            logger.warn('[Guardrails] Dangerous filter key detected', { key });
+            // CWE-117 (defense-in-depth / consistency only): the `includes(...)`
+            // guard above admits only a case-variant of one of the fixed
+            // `dangerousKeys` constants, so `key` cannot carry control characters
+            // here today. The `sanitizeMeta` wraps keep this boundary uniform with
+            // the connector's genuinely attacker-influenced log/throw sinks
+            // (validator `reason`, point `id`), so a future widening of the key
+            // source can never regress into a raw-interpolation gap. Intentionally
+            // NOT mutation-tested: the reachable input set is control-char-free by
+            // construction, so removing these wraps would not change observable
+            // output (see cwe117-regression.test.ts).
+            logger.warn('[Guardrails] Dangerous filter key detected', { key: sanitizeMeta(key) });
             throw new ConnectorValidationError(
-              productionMode ? 'Invalid filter' : `Filter contains dangerous key: ${key}`,
+              productionMode ? 'Invalid filter' : `Filter contains dangerous key: ${sanitizeMeta(key)}`,
               'dangerous_key'
             );
           }
@@ -387,7 +401,10 @@ export function createGuardedClient(qdrantClient: any, options: GuardedQdrantOpt
         if (consecutiveWildcardMatch) {
           for (const wildcards of consecutiveWildcardMatch) {
             if (wildcards.length > 3) {
-              logger.warn('[Guardrails] Pattern has too many consecutive wildcards', { pattern });
+              // CWE-117 consistency wrap (operator-supplied `pattern`; see the regex sinks below).
+              logger.warn('[Guardrails] Pattern has too many consecutive wildcards', {
+                pattern: sanitizeMeta(pattern)
+              });
               patternSkipped = true;
               break;
             }
@@ -430,7 +447,15 @@ export function createGuardedClient(qdrantClient: any, options: GuardedQdrantOpt
               const testPromise = Promise.resolve(regex.test(key));
 
               const result = await Promise.race([testPromise, timeoutPromise]).catch(() => {
-                logger.warn('[Guardrails] Regex test timeout', { key, pattern });
+                // CWE-117: `key` is an UNCONSTRAINED field name from the
+                // retrieved point payload (attacker/upstream-influenced) — the
+                // load-bearing wrap. `pattern` is an operator-supplied
+                // `allowedPayloadFields` entry — a consistency wrap, sanitized at
+                // every pattern sink in this function (see above/below).
+                logger.warn('[Guardrails] Regex test timeout', {
+                  key: sanitizeMeta(key),
+                  pattern: sanitizeMeta(pattern)
+                });
                 return false;
               });
 
@@ -438,12 +463,20 @@ export function createGuardedClient(qdrantClient: any, options: GuardedQdrantOpt
                 filtered[key] = payload[key];
               }
             } catch (e) {
-              // Skip if regex test fails (shouldn't happen with safe patterns)
-              logger.warn('[Guardrails] Regex test failed', { key, pattern });
+              // Skip if regex test fails (shouldn't happen with safe patterns).
+              // CWE-117: same boundary as the timeout sink above — `key` is the
+              // unconstrained retrieved-payload field name (load-bearing wrap);
+              // `pattern` is operator config (consistency wrap, like the other
+              // pattern sinks).
+              logger.warn('[Guardrails] Regex test failed', {
+                key: sanitizeMeta(key),
+                pattern: sanitizeMeta(pattern)
+              });
             }
           }
         } catch (e) {
-          logger.warn('[Guardrails] Invalid pattern regex', { pattern });
+          // CWE-117 consistency wrap (operator-supplied `pattern`; see the regex sinks above).
+          logger.warn('[Guardrails] Invalid pattern regex', { pattern: sanitizeMeta(pattern) });
         }
       }
     }

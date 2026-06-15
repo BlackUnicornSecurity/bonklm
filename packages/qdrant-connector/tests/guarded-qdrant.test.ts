@@ -2054,3 +2054,170 @@ describe('Qdrant Connector — CWE-117 reason/id sanitization is load-bearing (A
     expect(warnMeta?.reason).not.toContain(ESC);
   });
 });
+
+describe('Qdrant Connector — CWE-117 filterPayload + dangerous-key sanitization is load-bearing (ADR-0001)', () => {
+  // ADR-0001 non-vacuity proof for the filterPayload regex-path sinks
+  // ('[Guardrails] Regex test timeout' / '[Guardrails] Regex test failed') and
+  // coverage for the consistency-only dangerous-filter-key sink in
+  // src/guarded-qdrant.ts.
+  //
+  // The regex sinks interpolate `key` — an UNCONSTRAINED field name from the
+  // retrieved-point payload (the load-bearing wrap). Both sinks sit on defensive
+  // branches the public `search()` path cannot reach with a real RegExp (the
+  // timeout race resolves synchronously because `regex.test` is sync, and
+  // `RegExp.prototype.test` does not throw for string keys), so each test drives
+  // its branch by stubbing `RegExp.prototype.test` for the poisoned key only,
+  // then asserts the ESCAPED form at the spy-logger meta. Removing the matching
+  // `sanitizeMeta(key)` wrap from src turns the corresponding test RED.
+  //
+  // The dangerous-key sink is consistency-only: its `key` is gated to a
+  // case-variant of a fixed allow-listed constant (control-char-free by
+  // construction), so its test covers the branch but cannot mutation-prove the
+  // wrap — see the src comment at that boundary.
+  const NL = String.fromCharCode(10); // LF
+  const ESC = String.fromCharCode(27); // ESC
+  const POISON_KEY = `field${NL}INJECTED${ESC}poison`;
+
+  const createSpyLogger = (): Logger =>
+    ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }) as unknown as Logger;
+
+  const findWarnMeta = (logger: Logger, message: string): { key?: string; pattern?: string } | undefined =>
+    (logger.warn as ReturnType<typeof vi.fn>).mock.calls.find(call => call[0] === message)?.[1] as
+      | { key?: string; pattern?: string }
+      | undefined;
+
+  it('escapes a control-char retrieved-payload key at the regex-test-timeout log meta', async () => {
+    // Force the timeout `.catch`: `regex.test` returns a never-settling thenable
+    // for the poisoned key, so `Promise.resolve(...)` stays pending and the (low)
+    // regex-timeout bound wins the race. Real timers — the timeout promise IS
+    // passed to `Promise.race`, so its rejection is handled (no orphan).
+    const realTest = RegExp.prototype.test;
+    const testSpy = vi.spyOn(RegExp.prototype, 'test').mockImplementation(function (
+      this: RegExp,
+      str: string
+    ): boolean {
+      if (str === POISON_KEY) {
+        return new Promise<boolean>(() => {}) as unknown as boolean;
+      }
+      return realTest.call(this, str);
+    });
+
+    try {
+      const mockClient = {
+        search: vi.fn().mockResolvedValue([{ id: 'p1', score: 0.9, payload: { [POISON_KEY]: 'v', title: 'ok' } }]),
+        upsert: vi.fn().mockResolvedValue(undefined)
+      };
+      const logger = createSpyLogger();
+      const guarded = createGuardedClient(mockClient, {
+        validators: [noOpValidator()],
+        allowedPayloadFields: ['*'],
+        regexTimeout: 5,
+        productionMode: false,
+        logger
+      });
+
+      const result = await guarded.search({ collectionName: 'test_collection', vector: [0.1, 0.2, 0.3], limit: 5 });
+
+      // Restore the global RegExp spy before assertions: chai inspects values
+      // via `RegExp.prototype.test` internally, so feeding the poisoned key to a
+      // matcher under the active stub would re-trigger it. Restoring here (the
+      // `finally` repeat is idempotent) keeps every matcher on the real impl.
+      testSpy.mockRestore();
+
+      // The poisoned key hit the timeout branch (dropped from the filtered
+      // payload) while the clean field survived — confirms the sink fired, not
+      // the regex-match success path.
+      expect(Object.keys(result.points[0]?.payload ?? {})).toEqual(['title']);
+
+      const meta = findWarnMeta(logger, '[Guardrails] Regex test timeout');
+      // Guard: a future rename of the log message must fail loudly here, not make
+      // the escaped-form assertions pass vacuously on an undefined meta.
+      expect(meta).toBeDefined();
+      expect(meta?.key).toContain('INJECTED');
+      expect(meta?.key).not.toContain(NL);
+      expect(meta?.key).not.toContain(ESC);
+    } finally {
+      testSpy.mockRestore();
+    }
+  });
+
+  it('escapes a control-char retrieved-payload key at the regex-test-failed log meta', async () => {
+    // Force the inner `catch` (regex test failed): `regex.test` throws for the
+    // poisoned key only; the clean collection-name check is unaffected. The throw
+    // is synchronous and precedes the `Promise.race`, so the just-created timeout
+    // promise is orphaned — fake timers keep its `setTimeout` from ever rejecting
+    // (no unhandled rejection / stray timer); the rest of the path resolves via
+    // microtasks, not timers.
+    vi.useFakeTimers();
+    const realTest = RegExp.prototype.test;
+    const testSpy = vi.spyOn(RegExp.prototype, 'test').mockImplementation(function (
+      this: RegExp,
+      str: string
+    ): boolean {
+      if (str === POISON_KEY) {
+        throw new Error('regex boom');
+      }
+      return realTest.call(this, str);
+    });
+
+    try {
+      const mockClient = {
+        search: vi.fn().mockResolvedValue([{ id: 'p1', score: 0.9, payload: { [POISON_KEY]: 'v', title: 'ok' } }]),
+        upsert: vi.fn().mockResolvedValue(undefined)
+      };
+      const logger = createSpyLogger();
+      const guarded = createGuardedClient(mockClient, {
+        validators: [noOpValidator()],
+        allowedPayloadFields: ['*'],
+        productionMode: false,
+        logger
+      });
+
+      const result = await guarded.search({ collectionName: 'test_collection', vector: [0.1, 0.2, 0.3], limit: 5 });
+
+      // Restore the global RegExp spy before assertions (see the timeout test):
+      // chai inspects values via `RegExp.prototype.test`, which under the active
+      // throwing stub would re-trigger on the poisoned key.
+      testSpy.mockRestore();
+
+      // The poisoned key hit the failed branch (dropped from the filtered
+      // payload) while the clean field survived — confirms the sink fired, not
+      // the regex-match success path.
+      expect(Object.keys(result.points[0]?.payload ?? {})).toEqual(['title']);
+
+      const meta = findWarnMeta(logger, '[Guardrails] Regex test failed');
+      expect(meta).toBeDefined();
+      expect(meta?.key).toContain('INJECTED');
+      expect(meta?.key).not.toContain(NL);
+      expect(meta?.key).not.toContain(ESC);
+    } finally {
+      testSpy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it('rejects a dangerous filter key and routes it through the consistency-only sanitizeMeta wrap', async () => {
+    const mockClient = {
+      search: vi.fn().mockResolvedValue([]),
+      upsert: vi.fn().mockResolvedValue(undefined)
+    };
+    const logger = createSpyLogger();
+    const guarded = createGuardedClient(mockClient, {
+      validators: [noOpValidator()],
+      productionMode: false,
+      logger
+    });
+
+    // `parent` passes the dangerous-PATTERN regex but is caught by the deep
+    // dangerous-KEY check, exercising the log/throw boundary part (b) wrapped.
+    // The key is one of a fixed set of allow-listed constants (control-char-free
+    // by construction), so the sanitizeMeta wrap is consistency-only:
+    // sanitizeMeta('parent') === 'parent' — see the src comment at that boundary.
+    await expect(
+      guarded.search({ collectionName: 'test_collection', vector: [0.1, 0.2, 0.3], filter: { parent: 'x' } })
+    ).rejects.toThrow('dangerous key: parent');
+
+    const meta = findWarnMeta(logger, '[Guardrails] Dangerous filter key detected');
+    expect(meta?.key).toBe('parent');
+  });
+});
