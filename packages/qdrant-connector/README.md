@@ -82,22 +82,22 @@ console.log('Points blocked:', results.pointsBlocked);
 
 ### GuardedQdrantOptions
 
-| Option                    | Type                   | Default                     | Description                    |
-| ------------------------- | ---------------------- | --------------------------- | ------------------------------ |
-| `validators`              | `Validator[]`          | `[]`                        | Validators for queries         |
-| `guards`                  | `Guard[]`              | `[]`                        | Guards for content filtering   |
-| `logger`                  | `Logger`               | `console`                   | Logger instance                |
-| `validateRetrievedPoints` | `boolean`              | `true`                      | Validate retrieved points      |
-| `validateFilters`         | `boolean`              | `true`                      | Validate filter expressions    |
-| `allowedPayloadFields`    | `string[]`             | `[]`                        | Allowed payload field patterns |
-| `onBlockedPoint`          | `'filter' \| 'abort'`  | `'filter'`                  | Action when point is blocked   |
-| `productionMode`          | `boolean`              | `NODE_ENV === 'production'` | Generic errors in production   |
-| `validationTimeout`       | `number`               | `30000`                     | Validation timeout in ms       |
-| `maxLimit`                | `number`               | `100`                       | Maximum limit value            |
-| `maxFilterLength`         | `number`               | `10000`                     | Maximum filter string length   |
-| `maxPayloadSize`          | `number`               | `100000`                    | Maximum payload size in bytes  |
-| `regexTimeout`            | `number`               | `1000`                      | Regex timeout in ms            |
-| `onPointBlocked`          | `(id, result) => void` | -                           | Callback when point is blocked |
+| Option                    | Type                   | Default                     | Description                         |
+| ------------------------- | ---------------------- | --------------------------- | ----------------------------------- |
+| `validators`              | `Validator[]`          | `[]`                        | Validators for queries              |
+| `guards`                  | `Guard[]`              | `[]`                        | Guards for content filtering        |
+| `logger`                  | `Logger`               | `console`                   | Logger instance                     |
+| `validateRetrievedPoints` | `boolean`              | `true`                      | Validate retrieved points           |
+| `validateFilters`         | `boolean`              | `true`                      | Validate filter expressions         |
+| `allowedPayloadFields`    | `string[]`             | `[]`                        | Allowed payload field patterns      |
+| `onBlockedPoint`          | `'filter' \| 'abort'`  | `'filter'`                  | Action when point is blocked        |
+| `productionMode`          | `boolean`              | `NODE_ENV === 'production'` | Generic errors in production        |
+| `validationTimeout`       | `number`               | `30000`                     | Validation timeout in ms            |
+| `maxLimit`                | `number`               | `50`                        | Maximum limit value                 |
+| `maxFilterLength`         | `number`               | `10000`                     | Maximum filter string length        |
+| `maxPayloadSize`          | `number`               | `1048576`                   | Maximum payload size in bytes (1MB) |
+| `regexTimeout`            | `number`               | `5000`                      | Regex timeout in ms                 |
+| `onPointBlocked`          | `(id, result) => void` | -                           | Callback when point is blocked      |
 
 ---
 

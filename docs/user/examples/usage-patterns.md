@@ -287,8 +287,8 @@ const index = pinecone.index('documents');
 
 const guardedIndex = createGuardedIndex(index, {
   validators: [new PromptInjectionValidator()],
-  allowedNamespaces: ['public', 'verified'],
-  validateFilters: true,
+  validateRetrievedVectors: true,
+  sanitizeMetadataFilters: true,
 });
 
 await guardedIndex.query({

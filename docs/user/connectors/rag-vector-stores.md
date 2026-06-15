@@ -1,6 +1,6 @@
 # RAG & Vector Store Connectors
 
-Last updated: 2026-05-25
+Last updated: 2026-06-15
 
 This guide covers BonkLM connectors for Retrieval-Augmented Generation (RAG) systems, vector
 databases, and retriever pipelines.
@@ -213,45 +213,46 @@ const index = pinecone.index('my-index');
 
 const guardedIndex = createGuardedIndex(index, {
   validators: [new PromptInjectionValidator()],
-  allowedNamespaces: ['documents', 'articles'],
-  maxVectorDimension: 1536
+  validateRetrievedVectors: true,
+  sanitizeMetadataFilters: true
 });
 
+// The guarded index exposes a single query(options) method. `namespace`
+// is passed per-query and structurally validated (charset + length) before
+// it reaches index.namespace():
 const results = await guardedIndex.query({
   vector: embedding,
   topK: 10,
+  namespace: 'documents',
   includeMetadata: true
 });
-
-await guardedIndex.upsert([
-  {
-    id: 'doc1',
-    values: embedding,
-    metadata: { text: 'content here' }
-  }
-]);
 ```
+
+> The guarded Pinecone index wraps the **query** path only — query input and retrieved vectors are
+> validated. It does NOT wrap `upsert`; run writes through the raw `index`, or validate write
+> content yourself with `createMemoryWriteValidator` (as the LanceDB / Turbopuffer connectors do).
 
 ### Configuration Options
 
-| Option               | Type          | Default                     | Description                  |
-| -------------------- | ------------- | --------------------------- | ---------------------------- |
-| `validators`         | `Validator[]` | `[]`                        | Validators to apply          |
-| `guards`             | `Guard[]`     | `[]`                        | Guards to run                |
-| `allowedNamespaces`  | `string[]`    | `[]`                        | Namespace allowlist          |
-| `validateFilters`    | `boolean`     | `true`                      | Validate filter expressions  |
-| `validateMetadata`   | `boolean`     | `true`                      | Validate metadata            |
-| `maxVectorDimension` | `number`      | `100000`                    | Max vector dimension         |
-| `maxMetadataSize`    | `number`      | `102400`                    | Max metadata size (100KB)    |
-| `productionMode`     | `boolean`     | `NODE_ENV === 'production'` | Generic errors in production |
-| `validationTimeout`  | `number`      | `30000`                     | Timeout in milliseconds      |
-| `onQueryBlocked`     | `Function`    | —                           | Callback when query blocked  |
-| `onUpsertBlocked`    | `Function`    | —                           | Callback when upsert blocked |
+| Option                     | Type                    | Default                     | Description                              |
+| -------------------------- | ----------------------- | --------------------------- | ---------------------------------------- |
+| `validators`               | `Validator[]`           | `[]`                        | Validators to apply                      |
+| `guards`                   | `Guard[]`               | `[]`                        | Guards to run                            |
+| `logger`                   | `Logger`                | `console`                   | Logger instance                          |
+| `validateRetrievedVectors` | `boolean`               | `true`                      | Validate retrieved vectors               |
+| `onBlockedVector`          | `'filter' \| 'abort'`   | `'filter'`                  | Action when a retrieved vector blocked   |
+| `sanitizeMetadataFilters`  | `boolean`               | `true`                      | Sanitize metadata filter expressions     |
+| `maxTopK`                  | `number`                | `100`                       | Maximum `topK` value                     |
+| `retrievedDocValidator`    | `RetrievedDocValidator` | —                           | Opt-in batch retrieved-doc validator     |
+| `productionMode`           | `boolean`               | `NODE_ENV === 'production'` | Generic errors in production             |
+| `validationTimeout`        | `number`                | `30000`                     | Timeout in milliseconds                  |
+| `onQueryBlocked`           | `(result) => void`      | —                           | Callback when query blocked              |
+| `onVectorBlocked`          | `(id, result) => void`  | —                           | Callback when a retrieved vector blocked |
 
 ### Filter Sanitization
 
-The Pinecone connector automatically sanitizes filter expressions to prevent NoSQL injection.
-Dangerous operators (`$ne: null`, `$regex: '.*'`) are rejected before they reach the index.
+When `sanitizeMetadataFilters` is enabled (the default), the Pinecone connector sanitizes metadata
+filter expressions to prevent filter-injection before they reach the index.
 
 ---
 
@@ -401,47 +402,56 @@ import { PromptInjectionValidator } from '@blackunicorn/bonklm';
 const qdrant = new QdrantClient({ url: 'http://localhost:6333' });
 const guardedClient = createGuardedClient(qdrant, {
   validators: [new PromptInjectionValidator()],
-  allowedCollections: ['documents', 'articles']
+  validateRetrievedPoints: true,
+  allowedPayloadFields: ['title', 'content']
 });
 
-const results = await guardedClient.query('documents', {
-  query: embedding,
+// search(options) takes a single options object — the collection name,
+// query vector, and payload selection all live inside it:
+const results = await guardedClient.search({
+  collectionName: 'documents',
+  vector: embedding,
   limit: 10,
-  with_payload: true
+  withPayload: true
 });
 
-await guardedClient.upsert('documents', {
-  points: [
-    {
-      id: 'doc1',
-      vector: embedding,
-      payload: { text: 'content here' }
-    }
-  ]
-});
+// upsert(collectionName, points) takes the collection name positionally
+// and a bare array of points (each { id, vector, payload }):
+await guardedClient.upsert('documents', [
+  {
+    id: 'doc1',
+    vector: embedding,
+    payload: { text: 'content here' }
+  }
+]);
 ```
 
 ### Configuration Options
 
-| Option                 | Type          | Default                     | Description                  |
-| ---------------------- | ------------- | --------------------------- | ---------------------------- |
-| `validators`           | `Validator[]` | `[]`                        | Validators to apply          |
-| `guards`               | `Guard[]`     | `[]`                        | Guards to run                |
-| `allowedCollections`   | `string[]`    | `[]`                        | Collection allowlist         |
-| `validateFilters`      | `boolean`     | `true`                      | Validate filter expressions  |
-| `validatePayloads`     | `boolean`     | `true`                      | Validate point payloads      |
-| `allowedPayloadFields` | `string[]`    | `[]`                        | Payload field allowlist      |
-| `maxVectorDimension`   | `number`      | `100000`                    | Max vector dimension         |
-| `productionMode`       | `boolean`     | `NODE_ENV === 'production'` | Generic errors in production |
-| `validationTimeout`    | `number`      | `30000`                     | Timeout in milliseconds      |
-| `onQueryBlocked`       | `Function`    | —                           | Callback when query blocked  |
-| `onUpsertBlocked`      | `Function`    | —                           | Callback when upsert blocked |
+| Option                    | Type                    | Default                     | Description                           |
+| ------------------------- | ----------------------- | --------------------------- | ------------------------------------- |
+| `validators`              | `Validator[]`           | `[]`                        | Validators to apply                   |
+| `guards`                  | `Guard[]`               | `[]`                        | Guards to run                         |
+| `logger`                  | `Logger`                | `console`                   | Logger instance                       |
+| `validateRetrievedPoints` | `boolean`               | `true`                      | Validate retrieved points             |
+| `onBlockedPoint`          | `'filter' \| 'abort'`   | `'filter'`                  | Action when a point is blocked        |
+| `validateFilters`         | `boolean`               | `true`                      | Validate filter expressions           |
+| `allowedPayloadFields`    | `string[]`              | `[]`                        | Payload field allowlist (empty = all) |
+| `maxLimit`                | `number`                | `50`                        | Maximum search `limit`                |
+| `maxFilterLength`         | `number`                | `10000`                     | Max filter string length              |
+| `maxPayloadSize`          | `number`                | `1048576`                   | Max payload size in bytes (1MB)       |
+| `regexTimeout`            | `number`                | `5000`                      | Regex execution timeout (ms)          |
+| `retrievedDocValidator`   | `RetrievedDocValidator` | —                           | Opt-in batch retrieved-doc validator  |
+| `productionMode`          | `boolean`               | `NODE_ENV === 'production'` | Generic errors in production          |
+| `validationTimeout`       | `number`                | `30000`                     | Timeout in milliseconds               |
+| `onQueryBlocked`          | `(result) => void`      | —                           | Callback when query blocked           |
+| `onPointBlocked`          | `(id, result) => void`  | —                           | Callback when a point is blocked      |
 
 ### Filter Sanitization
 
 Dangerous filter operators (e.g. `{ key: '$where', match: { any: [] } }`) are rejected before they
-reach the index. The connector automatically sanitises filter expressions on both `query` and
-`search`.
+reach the index. The connector sanitises filter expressions on `search` and validates point payloads
+on `upsert`.
 
 ---
 
@@ -574,8 +584,9 @@ All RAG / vector-store connectors include:
 - **Document validation** — validate retrieved documents BEFORE they reach the LLM.
 - **Filter sanitization** — prevent NoSQL injection in filter expressions (Pinecone, Qdrant,
   Chroma).
-- **Namespace / collection access control** — restrict which collections / namespaces can be
-  accessed at all.
+- **Field / class access control** — restrict what can be retrieved: Weaviate `allowedClasses` /
+  `allowedFields`, Qdrant `allowedPayloadFields`. (Pinecone validates the query `namespace`
+  structurally — charset + length — rather than against an allowlist.)
 - **Metadata validation** — validate metadata fields and values.
 - **Vector dimension limits** — prevent oversized vectors.
 - **Distance-array filtering** — match filtered result rows with their distance scores so callers
