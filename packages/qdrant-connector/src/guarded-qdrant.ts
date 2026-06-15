@@ -613,7 +613,7 @@ export function createGuardedClient(qdrantClient: any, options: GuardedQdrantOpt
       // Qdrant `SearchRequest` keys. Anything else in `passthrough` (a
       // filter-bearing field that would bypass `validateFilter`, or any key
       // admitted by the `[key: string]: any` index signature) is dropped so it
-      // cannot reach the client unvalidated (D-040 defense-in-depth).
+      // cannot reach the client unvalidated (defense-in-depth).
       const nativeOptions: Record<string, unknown> = {};
       for (const key of Object.keys(passthrough)) {
         if (QDRANT_NATIVE_SEARCH_KEY_SET.has(key)) {

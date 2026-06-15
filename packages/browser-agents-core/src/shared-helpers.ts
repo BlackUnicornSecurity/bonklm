@@ -149,16 +149,16 @@ export function isUnsafeBinaryResult(result: unknown): boolean {
  * downstream observability surfaces.
  *
  * Used by `BrowserAgentGuardrailBlockedError` (base class) + the
- * Inngest result aggregator (sec CS3 closure — Inngest's
- * `BonklmInngestValidateResult.reason` was previously unsanitized).
+ * Inngest result aggregator, whose
+ * `BonklmInngestValidateResult.reason` was previously unsanitized.
  *
- * D-015 (Sprint 52 Day 2 Gate 5.10 audit): this is a re-export of the
- * canonical `sanitizeReasonText` from `@blackunicorn/bonklm/core/connector-utils`.
- * The previous local implementation predated B.4 (Sprint 51) and silently
- * dropped TAB (\x09) instead of hex-escaping it — reopening the TSV
- * phantom-column injection vector that B.4 closed in the canonical impl.
- * Re-exporting ensures ADR-0001 D#2 alignment with no duplication risk.
- * The canonical impl already includes the 200-char cap.
+ * This is a re-export of the canonical `sanitizeReasonText` from
+ * `@blackunicorn/bonklm/core/connector-utils`. An earlier local
+ * implementation silently dropped TAB (\x09) instead of hex-escaping
+ * it — reopening the TSV phantom-column injection vector that the
+ * canonical impl closes. Re-exporting ensures ADR-0001 D#2 alignment
+ * with no duplication risk. The canonical impl already includes the
+ * 200-char cap.
  */
 export { sanitizeReasonText } from '@blackunicorn/bonklm/core/connector-utils';
 
