@@ -121,9 +121,18 @@ export const connectorAddCommand = new Command('add')
   .action(async (id: string, options: AddOptions) => {
     const audit = new AuditLogger();
 
+    // Display-only sanitized form of the user-supplied id. Echoed in the
+    // invalid-connector-id sink below (the reachable hostile path) and, for
+    // defence in depth, the unknown-connector sink (a hostile id is unreachable
+    // there while the format guard + registry stay consistent). Equivalent to
+    // connector-test.ts's `safeId` for CWE-117 — there via sanitizeLogString,
+    // here via sanitizeMeta (= sanitizeLogString(String(id))). The raw `id` is
+    // still used for registry lookup, credential collection, and audit logging.
+    const safeId = sanitizeMeta(id);
+
     // SECURITY: Validate connector ID format before processing
     if (!validateConnectorId(id)) {
-      p.cancel(`Invalid connector ID: ${id}`);
+      p.cancel(`Invalid connector ID: ${safeId}`);
       p.log.info(`Available connectors: ${formatAvailableConnectors()}`);
       p.log.info(
         'Connector IDs must start with a lowercase letter and contain only lowercase letters, numbers, and hyphens'
@@ -134,7 +143,7 @@ export const connectorAddCommand = new Command('add')
     // Validate connector exists
     const connector = getConnector(id);
     if (!connector) {
-      p.cancel(`Unknown connector: ${id}`);
+      p.cancel(`Unknown connector: ${safeId}`);
       p.log.info(`Available connectors: ${formatAvailableConnectors()}`);
       process.exit(1);
     }
@@ -155,8 +164,14 @@ export const connectorAddCommand = new Command('add')
       if (Object.keys(existingCredentials).length > 0) {
         p.log.info(`Found existing credentials in environment:`);
         for (const [key, value] of Object.entries(existingCredentials)) {
-          // Use maskKey utility for consistent masking
-          p.log.message(`  ${key}=${maskKey(value)}`);
+          // Sanitize the displayed line: maskKey reveals the raw credential's
+          // first-2 / last-4 chars verbatim (only for values longer than 8
+          // chars — shorter ones mask to '***'), so a control byte in those edge
+          // chars would otherwise reach the TTY (CWE-117). The env-var name
+          // `key` is frozen registry metadata, wrapped only for uniformity /
+          // defence in depth. maskKey itself is left unchanged — its output
+          // shape is load-bearing for isMasked() and its other callers.
+          p.log.message(`  ${sanitizeMeta(key)}=${sanitizeMeta(maskKey(value))}`);
         }
 
         const useExisting = await p.confirm({
@@ -223,7 +238,11 @@ export const connectorAddCommand = new Command('add')
     } catch (error) {
       if (error instanceof WizardError) {
         if (error.exitCode === ExitCode.ERROR) {
-          p.cancel(error.message);
+          // Defensive parity with the other human-path sinks: today every
+          // ERROR-code WizardError message is a static internal literal, but
+          // sanitize so a future interpolated message cannot carry control /
+          // bidi sequences to the TTY (CWE-117).
+          p.cancel(sanitizeMeta(error.message));
           process.exit(1);
         }
         throw error;
