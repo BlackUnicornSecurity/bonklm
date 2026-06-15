@@ -12,17 +12,25 @@
  * - DEV-002: Proper logger integration
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 // Sprint 31: switched from CommonJS `require(...)` in test bodies to
 // canonical ESM import. The previous pattern produced "Cannot find
 // module" errors in Node ≥20 ESM mode (8 tests). The "avoid mock
 // issues" comment that justified the require() pattern was stale —
-// this file has no vi.mock setup that would conflict with top-level
-// import order.
+// the only vi.mock here is the `ai` peer (below), declared at module
+// scope where vitest hoists it above these imports, so import order is fine.
 import { createGuardedAI, messagesToText } from '../src/guarded-ai.js';
-import { PromptInjectionValidator } from '@blackunicorn/bonklm';
-import type { CoreMessage } from 'ai';
+import { PromptInjectionValidator, Severity } from '@blackunicorn/bonklm';
+import type { GuardrailResult, Validator } from '@blackunicorn/bonklm';
+import type { CoreMessage, LanguageModelV1 } from 'ai';
+// The guarded wrapper reaches the upstream SDK via `await import('ai')`; the
+// load-bearing block below drives every `sanitizeMeta` sink, so the `ai`
+// entry points are mocked. vitest's mock module backs both the static import
+// here and the wrapper's dynamic `import('ai')` (same singleton namespace).
+import { generateText as aiGenerateText, streamText as aiStreamText } from 'ai';
 import { noOpValidator } from '@blackunicorn/bonklm/testing';
+
+vi.mock('ai', () => ({ generateText: vi.fn(), streamText: vi.fn() }));
 
 describe('messagesToText utility', () => {
   it('should extract text from complex messages', () => {
@@ -234,5 +242,184 @@ describe('Configuration options', () => {
     });
 
     expect(guardedAI).toBeDefined();
+  });
+});
+
+describe('vercel — CWE-117 reason sanitization is load-bearing (ADR-0001)', () => {
+  // ADR-0001 non-vacuity proof for every `sanitizeMeta(*.reason)` sink in
+  // src/guarded-ai.ts: the input-blocked dev-mode throw (validateInput), the
+  // non-streaming output-blocked dev-mode throw (generateText), and the
+  // buffer-mode stream-blocked JSON error chunk streamed to the client
+  // (streamText). cwe117-regression.test.ts only asserts the sanitizer
+  // primitive in isolation; these tests drive each guarded path with a
+  // validator whose `reason` carries control characters and assert the ESCAPED
+  // form at the boundary — removing the matching `sanitizeMeta(...)` wrap from
+  // src turns the corresponding test (and only that one) RED.
+  //
+  // vercel has NO direct logger.warn sink: every blocked path logs via core
+  // `logValidationFailure` (which sanitizes independently → a spy-logger
+  // assertion would pass vacuously even with the wrap removed). Every sink
+  // is throw / client-output, so the assertion target is the CAUGHT error
+  // message (input/output throws) or the JSON-parsed streamed chunk (stream),
+  // never a spy logger. The engine returns the validator's RAW reason to the
+  // connector (`aggregateResults` does not pre-sanitize), so each per-sink wrap
+  // is the genuine CWE-117 boundary. Every sink is dev-mode-gated
+  // (`productionMode ? '<generic>' : '… ${sanitizeMeta(reason)}'`), so each path
+  // is driven with `productionMode: false`.
+  const NL = String.fromCharCode(10); // LF
+  const ESC = String.fromCharCode(27); // ESC
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const POISON = 'POISONMARK';
+
+  // A typed stand-in for the upstream model handle: the `ai` entry points are
+  // mocked, so the value is never dereferenced — only its shape is type-checked.
+  const MODEL = {} as unknown as LanguageModelV1;
+  const msgs = (content: string): CoreMessage[] => [{ role: 'user', content }];
+  const asMock = (fn: unknown): Mock => fn as unknown as Mock;
+
+  const blockResult = (reason: string): GuardrailResult => ({
+    allowed: false,
+    blocked: true,
+    reason,
+    severity: Severity.CRITICAL,
+    risk_level: 'HIGH',
+    risk_score: 30,
+    findings: [{ category: 'test', severity: Severity.CRITICAL, description: 'blocked', weight: 30 }],
+    timestamp: Date.now()
+  });
+
+  const allowResult = (): GuardrailResult => ({
+    allowed: true,
+    blocked: false,
+    severity: Severity.INFO,
+    risk_level: 'LOW',
+    risk_score: 0,
+    findings: [],
+    timestamp: Date.now()
+  });
+
+  // Blocks only when the validated content carries the marker — lets a clean
+  // input pass so the model's RESPONSE / accumulated stream reaches its OWN
+  // downstream sink, and (for the input sink) blocks before the upstream SDK is
+  // ever called.
+  const markerBlock = (reason: string): Validator => ({
+    name: 'MarkerBlock',
+    validate: (input: unknown) =>
+      (typeof input === 'string' ? input : '').includes(POISON) ? blockResult(reason) : allowResult()
+  });
+
+  // Drive a guarded path that MUST throw, then prove the thrown message carries
+  // the ESCAPED reason and no raw control characters. `toBeInstanceOf(Error)`
+  // guards against a vacuous pass if the path does not throw at all.
+  async function expectEscapedThrow(run: () => unknown): Promise<void> {
+    let caught: unknown;
+    try {
+      await run();
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    const message = (caught as Error).message;
+    expect(message).toContain(ESCAPED_REASON);
+    expect(message).not.toContain(NL);
+    expect(message).not.toContain(ESC);
+  }
+
+  // Byte-stream stand-in for `result.toDataStream()` — the wrapper decodes each
+  // Uint8Array chunk, accumulates, then (buffer mode) validates at completion.
+  const mkByteStream = (parts: string[]): ReadableStream<Uint8Array> => {
+    const encoder = new TextEncoder();
+    return new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const part of parts) controller.enqueue(encoder.encode(part));
+        controller.close();
+      }
+    });
+  };
+
+  // Drain the wrapper's buffer-mode `toDataStream()`. That ReadableStream
+  // ACCUMULATES every source chunk and `enqueue`s exactly once — the error
+  // chunk — at stream end. WHATWG back-pressure will not re-`pull` a single
+  // outstanding read after a non-enqueueing pull, so a sequential reader (and
+  // `for await` / `Response.text()`) DEADLOCKS: the chunk-pull's read never
+  // resolves, so the done-pull is never triggered (verified empirically). A
+  // fresh `read()` on the now-idle stream is what kicks the next pull, so the
+  // single-chunk source (one chunk → exactly two pulls) is drained by keeping
+  // TWO reads outstanding across the closing pull: readA triggers the
+  // chunk-pull; readB — issued once that pull has settled (a macrotask later) —
+  // triggers the done-pull, which enqueues the error chunk that resolves readA.
+  const drainBlockedStream = async (stream: ReadableStream<Uint8Array>): Promise<string> => {
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    const readA = reader.read();
+    await new Promise(resolve => setTimeout(resolve, 0));
+    const readB = reader.read();
+    let out = '';
+    for (const chunk of [await readA, await readB]) {
+      if (!chunk.done && chunk.value) out += decoder.decode(chunk.value, { stream: true });
+    }
+    out += decoder.decode();
+    return out;
+  };
+
+  beforeEach(() => {
+    // resetAllMocks (not clearAllMocks) so a `mockResolvedValue` set by one test
+    // never leaks its implementation into the next — each test below sets the
+    // return it needs (or, for the input throw, blocks before the SDK is called).
+    vi.resetAllMocks();
+  });
+
+  // ── :202 — input-blocked dev-mode throw (validateInput) ──────────────────
+  it('escapes a control-char input-blocked reason at the dev-mode throw', async () => {
+    const guarded = createGuardedAI({ validators: [markerBlock(RAW_REASON)], productionMode: false });
+
+    await expectEscapedThrow(() => guarded.generateText({ model: MODEL, messages: msgs(`hi ${POISON}`) }));
+    // Input is blocked before the upstream SDK (`await import('ai')`) is reached.
+    expect(asMock(aiGenerateText)).not.toHaveBeenCalled();
+  });
+
+  // ── :233 — output-blocked dev-mode throw (generateText) ──────────────────
+  it('escapes a control-char output-blocked reason at the dev-mode throw', async () => {
+    // Clean input passes; the model RESPONSE carries the marker, so the reason
+    // lands in the output-leg throw.
+    asMock(aiGenerateText).mockResolvedValue({ text: `reply ${POISON}` });
+    const guarded = createGuardedAI({ validators: [markerBlock(RAW_REASON)], productionMode: false });
+
+    await expectEscapedThrow(() => guarded.generateText({ model: MODEL, messages: msgs('clean prompt') }));
+  });
+
+  // ── :372 — buffer-mode stream-blocked JSON error chunk (streamText) ───────
+  it('escapes a control-char stream-blocked reason in the buffer-mode JSON error chunk (client-output surface)', async () => {
+    // Clean input passes; the accumulated stream carries the marker, so the
+    // reason lands in the JSON `error` field streamed back to the client.
+    asMock(aiStreamText).mockResolvedValue({ toDataStream: () => mkByteStream([`safe ${POISON} payload`]) });
+    const guarded = createGuardedAI({
+      validators: [markerBlock(RAW_REASON)],
+      validateStreaming: true,
+      streamingMode: 'buffer',
+      productionMode: false,
+      onStreamBlocked: vi.fn()
+    });
+
+    const wrapped = (await guarded.streamText({ model: MODEL, messages: msgs('clean prompt'), stream: true })) as {
+      toDataStream: () => ReadableStream<Uint8Array>;
+    };
+    const raw = await drainBlockedStream(wrapped.toDataStream());
+
+    // The chunk is JSON-encoded bytes streamed to the HTTP client. `JSON.stringify`
+    // escapes a RAW control char on its own, so asserting on the raw chunk text
+    // is vacuous (it passes with the wrap removed). The genuine boundary is the
+    // value a downstream JSON parser RECOVERS — which must already be the
+    // sanitized (escaped) form, not raw control characters.
+    const parsed = JSON.parse(raw) as { type: string; error: string };
+    expect(parsed.type).toBe('error');
+    expect(parsed.error).toContain('Content filtered:');
+    expect(parsed.error).toContain(ESCAPED_REASON);
+    expect(parsed.error).not.toContain(NL);
+    expect(parsed.error).not.toContain(ESC);
+    // Buffer mode withholds the flagged model output on block: the marked
+    // attacker content is replaced by the error chunk, never released raw.
+    expect(raw).not.toContain(POISON);
   });
 });
