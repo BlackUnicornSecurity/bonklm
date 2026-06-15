@@ -1,25 +1,36 @@
 /**
- * Sprint 43 cross-connector CWE-117 sweep — openai-connector regression.
+ * CWE-117 sanitization primitive contract — openai-connector.
  *
- * Four src sites in `guarded-openai.ts` carry attacker-influenced
- * template-literal log calls + dev-mode error messages:
- *   - line 225 (`logger.warn('[Guardrails] Input blocked', { reason })`)
- *   - line 232 (`throw new Error(\`Content blocked: ${blocked.reason}\`)`)
- *   - line 306 (`logger.warn('[Guardrails] Output blocked', { reason })`)
- *   - line 317 (`filteredContent = \`[Content filtered by guardrails: ${reason}]\``)
+ * `createGuardedOpenAI` in `guarded-openai.ts` wraps every attacker-influenced
+ * log-meta value and caller-facing interpolation with the canonical
+ * `sanitizeMeta` primitive. The wrapped boundaries (located by their
+ * log/message strings, not line numbers):
+ *   - `'[Guardrails] Input blocked'` log meta + the dev-mode `Content blocked: ...`
+ *     input throw.
+ *   - `'[Guardrails] Output blocked'` log meta + the `[Content filtered by
+ *     guardrails: ...]` marker placed in `response.choices[0].message.content`
+ *     (returned to the LLM caller — frontend / agent transcript — where raw
+ *     control chars could hijack rendering).
+ *   - the buffer-mode `[Content filtered by guardrails: ...]` marker chunk
+ *     streamed in place of withheld content.
  *
- * Sprint 43 wraps each with `sanitizeMeta`. The filteredContent site
- * is particularly hot — the value lands in `response.choices[0].message.content`
- * which the application returns to the LLM caller (frontend, agent
- * transcript, etc.) where raw control chars can hijack rendering.
+ * This contract-lock asserts the canonical primitive is reachable from the
+ * import surface and behaves as expected on representative attacker inputs.
+ * The END-TO-END proof that each guarded path actually applies `sanitizeMeta`
+ * (and FAILS if a wrap is removed — the ADR-0001 non-vacuity standard) lives in
+ * `guarded-openai.test.ts` › "CWE-117 reason sanitization is load-bearing
+ * (ADR-0001)": those tests drive the guarded wrapper with control-char payloads
+ * and assert the escaped form at each boundary.
  *
- * Sprint 42 architect LOW deferral → Sprint 43 closure.
+ * History: introduced as a cross-connector CWE-117 sweep (primitive-isolation
+ * asserts only) → boundary-driving tests added when the import-only contract was
+ * found vacuous (ADR-0001 anti-pattern).
  */
 import { describe, expect, it } from 'vitest';
 
 import { sanitizeLogString, sanitizeMeta, serializeError } from '@blackunicorn/bonklm';
 
-describe('openai-connector — Sprint 43 CWE-117 sanitization contract', () => {
+describe('openai-connector — CWE-117 sanitization primitive contract', () => {
   it('imports sanitizeMeta from the core barrel', () => {
     expect(typeof sanitizeMeta).toBe('function');
     expect(sanitizeMeta('a\nb')).toBe('a\\nb');
