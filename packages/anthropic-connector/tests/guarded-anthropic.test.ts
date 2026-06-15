@@ -14,8 +14,9 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createGuardedAnthropic, messagesToText } from '../src/guarded-anthropic';
-import { PromptInjectionValidator, JailbreakValidator } from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, JailbreakValidator, Severity } from '@blackunicorn/bonklm';
 import type Anthropic from '@anthropic-ai/sdk';
+import type { GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
 import { noOpValidator } from '@blackunicorn/bonklm/testing';
 
 // Create a mock client factory
@@ -2300,5 +2301,208 @@ describe('Anthropic Guarded Wrapper', () => {
         expect(stopEvents.length).toBeGreaterThan(0);
       });
     });
+  });
+});
+
+describe('Anthropic Guarded Wrapper — CWE-117 reason sanitization is load-bearing (ADR-0001)', () => {
+  // ADR-0001 non-vacuity proof for the input-blocked (validateInput) log-meta +
+  // dev-mode throw, the non-streaming output-blocked log-meta + filtered-content
+  // marker, the incremental-stream final-block marker, and the buffer-mode
+  // stream-blocked marker `reason` sinks in src/guarded-anthropic.ts.
+  // cwe117-regression.test.ts only asserts the sanitizer primitive in isolation;
+  // these tests drive the guarded wrapper with a validator whose `reason`
+  // carries control characters and assert the ESCAPED form at the spy-logger
+  // meta, the thrown message, AND the caller-facing content markers — removing
+  // the matching `sanitizeMeta(...)` wrap from src turns the corresponding test
+  // RED. The engine returns the validator's RAW reason to the connector
+  // (`aggregateResults` does not pre-sanitize), so each per-sink wrap is the
+  // genuine CWE-117 boundary.
+  const NL = String.fromCharCode(10); // LF
+  const ESC = String.fromCharCode(27); // ESC
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const POISON = 'POISONMARK';
+
+  const blockResult = (reason: string): GuardrailResult => ({
+    allowed: false,
+    blocked: true,
+    reason,
+    severity: Severity.CRITICAL,
+    risk_level: 'HIGH',
+    risk_score: 30,
+    findings: [{ category: 'test', severity: Severity.CRITICAL, description: 'blocked', weight: 30 }],
+    timestamp: Date.now()
+  });
+
+  const allowResult = (): GuardrailResult => ({
+    allowed: true,
+    blocked: false,
+    severity: Severity.INFO,
+    risk_level: 'LOW',
+    risk_score: 0,
+    findings: [],
+    timestamp: Date.now()
+  });
+
+  // Blocks only when the validated content contains the marker — lets a clean
+  // input pass so the model's RESPONSE / stream text reaches its own sink, and
+  // (for the input sink) blocks before the upstream client is ever called.
+  const markerBlock = (reason: string): Validator => ({
+    name: 'MarkerBlock',
+    validate: (input: unknown) =>
+      (typeof input === 'string' ? input : '').includes(POISON) ? blockResult(reason) : allowResult()
+  });
+
+  const createSpyLogger = (): Logger =>
+    ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }) as unknown as Logger;
+
+  const findWarnMeta = (logger: Logger, message: string): { reason?: string } | undefined =>
+    (logger.warn as ReturnType<typeof vi.fn>).mock.calls.find(call => call[0] === message)?.[1] as
+      | { reason?: string }
+      | undefined;
+
+  // A text_delta stream whose final chunk carries the POISON marker. Fewer than
+  // VALIDATION_INTERVAL (10) deltas → the incremental mid-stream check never
+  // fires, so execution reaches the final-block / buffered-validation path.
+  const poisonTextStream = async function* (): AsyncGenerator<unknown> {
+    yield { type: 'message_start', message: { id: 'msg-1', type: 'message' } };
+    yield { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } };
+    yield { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'safe ' } };
+    yield { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: `${POISON} payload` } };
+    yield { type: 'content_block_stop', index: 0 };
+    yield { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 5 } };
+    yield { type: 'message_stop' };
+  };
+
+  const collectDeltaText = async (stream: unknown): Promise<string[]> => {
+    const out: string[] = [];
+    for await (const ev of stream as AsyncIterable<{ delta?: { text?: unknown } }>) {
+      const t = ev?.delta?.text;
+      if (typeof t === 'string') out.push(t);
+    }
+    return out;
+  };
+
+  it('escapes a control-char input-blocked reason at the log meta and dev-mode throw', async () => {
+    const { mockClient, mockCreate } = createMockClient();
+    const logger = createSpyLogger();
+    const guarded = createGuardedAnthropic(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false,
+      logger
+    });
+
+    await expect(
+      guarded.messages.create({
+        model: 'claude-3-opus-20240229',
+        messages: [{ role: 'user', content: `hi ${POISON}` }],
+        max_tokens: 100
+      })
+    ).rejects.toThrow(ESCAPED_REASON);
+
+    const warnMeta = findWarnMeta(logger, '[Guardrails] Input blocked');
+    // Guard: a future rename of the log message must fail loudly here, not make
+    // the escaped-form assertions below pass vacuously on an undefined meta.
+    expect(warnMeta).toBeDefined();
+    expect(warnMeta?.reason).toContain('INJECTED');
+    expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(ESC);
+    // Input is blocked before the upstream client is ever called.
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('escapes a control-char output-blocked reason at the log meta and the filtered-content marker returned to the caller', async () => {
+    const { mockClient, mockCreate } = createMockClient();
+    mockCreate.mockResolvedValue({
+      id: 'msg-123',
+      type: 'message',
+      role: 'assistant',
+      content: [{ type: 'text', text: `here ${POISON}` }],
+      model: 'claude-3-opus-20240229',
+      stop_reason: 'end_turn',
+      usage: { input_tokens: 10, output_tokens: 20 }
+    });
+    const logger = createSpyLogger();
+    const guarded = createGuardedAnthropic(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false,
+      logger
+    });
+
+    // Input passes (no marker); the model's RESPONSE trips the block, so the
+    // reason lands in the filtered-content marker returned to the caller.
+    const result = await guarded.messages.create({
+      model: 'claude-3-opus-20240229',
+      messages: [{ role: 'user', content: 'clean prompt' }],
+      max_tokens: 100
+    });
+
+    const filtered = (result as { content: { text: string }[] }).content[0].text;
+    expect(filtered).toContain('[Content filtered by guardrails:');
+    expect(filtered).toContain(ESCAPED_REASON);
+    expect(filtered).not.toContain(NL);
+    expect(filtered).not.toContain(ESC);
+
+    const warnMeta = findWarnMeta(logger, '[Guardrails] Output blocked');
+    expect(warnMeta).toBeDefined();
+    expect(warnMeta?.reason).toContain('INJECTED');
+    expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(ESC);
+  });
+
+  it('escapes a control-char stream-blocked reason in the incremental-mode final-block marker', async () => {
+    const { mockClient, mockCreate } = createMockClient();
+    mockCreate.mockResolvedValue(poisonTextStream());
+    const guarded = createGuardedAnthropic(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      validateStreaming: true,
+      streamingMode: 'incremental',
+      productionMode: false,
+      logger: createSpyLogger(),
+      onStreamBlocked: vi.fn()
+    });
+
+    const stream = await guarded.messages.create({
+      model: 'claude-3-opus-20240229',
+      messages: [{ role: 'user', content: 'clean prompt' }],
+      max_tokens: 100,
+      stream: true
+    });
+
+    const marker = (await collectDeltaText(stream)).find(t => t.includes('Content filtered by guardrails:'));
+    expect(marker).toBeDefined();
+    // The marker's own "\n\n" prefix is the only raw newline; the reason's
+    // embedded LF/ESC must arrive escaped, not raw.
+    expect((marker!.match(/\n/g) ?? []).length).toBe(2);
+    expect(marker).toContain(ESCAPED_REASON);
+    expect(marker).not.toContain(ESC);
+  });
+
+  it('escapes a control-char stream-blocked reason in the buffer-mode filtered marker', async () => {
+    const { mockClient, mockCreate } = createMockClient();
+    mockCreate.mockResolvedValue(poisonTextStream());
+    const guarded = createGuardedAnthropic(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      validateStreaming: true,
+      streamingMode: 'buffer',
+      productionMode: false,
+      logger: createSpyLogger(),
+      onStreamBlocked: vi.fn()
+    });
+
+    const stream = await guarded.messages.create({
+      model: 'claude-3-opus-20240229',
+      messages: [{ role: 'user', content: 'clean prompt' }],
+      max_tokens: 100,
+      stream: true
+    });
+
+    const joined = (await collectDeltaText(stream)).join('');
+    expect(joined).toContain('[Stream blocked by guardrails:');
+    expect(joined).toContain(ESCAPED_REASON);
+    expect(joined).not.toContain(NL);
+    expect(joined).not.toContain(ESC);
+    // The withheld attacker payload never reaches the caller.
+    expect(joined).not.toContain('payload');
   });
 });

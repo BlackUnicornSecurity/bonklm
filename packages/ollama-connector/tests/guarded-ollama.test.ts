@@ -14,8 +14,9 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createGuardedOllama, messagesToText } from '../src/guarded-ollama';
-import { PromptInjectionValidator, JailbreakValidator } from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, JailbreakValidator, Severity } from '@blackunicorn/bonklm';
 import type { Ollama, ChatResponse, GenerateResponse } from 'ollama';
+import type { GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
 import { noOpValidator } from '@blackunicorn/bonklm/testing';
 
 // Create a mock Ollama client factory
@@ -2961,5 +2962,304 @@ describe('Ollama Guarded Wrapper', () => {
 
       expect(result).toBeDefined();
     });
+  });
+});
+
+describe('Ollama Guarded Wrapper — CWE-117 reason sanitization is load-bearing (ADR-0001)', () => {
+  // ADR-0001 non-vacuity proof for every `sanitizeMeta(reason)` sink in
+  // src/guarded-ollama.ts: the shared input `safeReason` (log meta + dev-mode
+  // throw), the chat + generate non-streaming output `safeReason` (log meta +
+  // filtered-content marker), the chat + generate incremental-stream final-block
+  // marker, and the chat + generate buffer-mode marker. cwe117-regression.test.ts
+  // only asserts the sanitizer primitive in isolation; these tests drive the
+  // guarded wrapper with a validator whose `reason` carries control characters
+  // and assert the ESCAPED form at the spy-logger meta, the thrown message, AND
+  // the caller-facing content markers — removing the matching `sanitizeMeta(...)`
+  // wrap from src turns the corresponding test RED. The engine returns the
+  // validator's RAW reason to the connector (`aggregateResults` does not
+  // pre-sanitize), so each per-sink wrap is the genuine CWE-117 boundary.
+  const NL = String.fromCharCode(10); // LF
+  const ESC = String.fromCharCode(27); // ESC
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const POISON = 'POISONMARK';
+
+  const blockResult = (reason: string): GuardrailResult => ({
+    allowed: false,
+    blocked: true,
+    reason,
+    severity: Severity.CRITICAL,
+    risk_level: 'HIGH',
+    risk_score: 30,
+    findings: [{ category: 'test', severity: Severity.CRITICAL, description: 'blocked', weight: 30 }],
+    timestamp: Date.now()
+  });
+
+  const allowResult = (): GuardrailResult => ({
+    allowed: true,
+    blocked: false,
+    severity: Severity.INFO,
+    risk_level: 'LOW',
+    risk_score: 0,
+    findings: [],
+    timestamp: Date.now()
+  });
+
+  // Blocks only when the validated content contains the marker — lets a clean
+  // input pass so the model's RESPONSE / stream text reaches its own sink, and
+  // (for the input sink) blocks before the upstream client is ever called.
+  const markerBlock = (reason: string): Validator => ({
+    name: 'MarkerBlock',
+    validate: (input: unknown) =>
+      (typeof input === 'string' ? input : '').includes(POISON) ? blockResult(reason) : allowResult()
+  });
+
+  const createSpyLogger = (): Logger =>
+    ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }) as unknown as Logger;
+
+  const findWarnMeta = (logger: Logger, message: string): { reason?: string } | undefined =>
+    (logger.warn as ReturnType<typeof vi.fn>).mock.calls.find(call => call[0] === message)?.[1] as
+      | { reason?: string }
+      | undefined;
+
+  // Two chunks (< VALIDATION_INTERVAL = 10) → no mid-stream incremental check
+  // fires, so execution reaches the final-block / buffered-validation path; the
+  // final chunk carries the POISON marker.
+  const poisonChatStream = async function* (): AsyncGenerator<ChatResponse> {
+    yield {
+      model: 'llama3.1',
+      created_at: new Date('2024-01-01T00:00:00Z'),
+      message: { role: 'assistant', content: 'safe ' },
+      done: false,
+      done_reason: ''
+    } as ChatResponse;
+    yield {
+      model: 'llama3.1',
+      created_at: new Date('2024-01-01T00:00:00Z'),
+      message: { role: 'assistant', content: `${POISON} payload` },
+      done: true,
+      done_reason: 'stop'
+    } as ChatResponse;
+  };
+
+  const poisonGenerateStream = async function* (): AsyncGenerator<GenerateResponse> {
+    yield {
+      model: 'llama3.1',
+      created_at: new Date('2024-01-01T00:00:00Z'),
+      response: 'safe ',
+      done: false,
+      done_reason: '',
+      context: []
+    } as unknown as GenerateResponse;
+    yield {
+      model: 'llama3.1',
+      created_at: new Date('2024-01-01T00:00:00Z'),
+      response: `${POISON} payload`,
+      done: true,
+      done_reason: 'stop',
+      context: []
+    } as unknown as GenerateResponse;
+  };
+
+  const collectChatContent = async (stream: unknown): Promise<string[]> => {
+    const out: string[] = [];
+    for await (const c of stream as AsyncIterable<{ message?: { content?: unknown } }>) {
+      const t = c?.message?.content;
+      if (typeof t === 'string') out.push(t);
+    }
+    return out;
+  };
+
+  const collectGenerateContent = async (stream: unknown): Promise<string[]> => {
+    const out: string[] = [];
+    for await (const c of stream as AsyncIterable<{ response?: unknown }>) {
+      const t = c?.response;
+      if (typeof t === 'string') out.push(t);
+    }
+    return out;
+  };
+
+  it('escapes a control-char input-blocked reason at the log meta and dev-mode throw', async () => {
+    const { mockClient, mockChat } = createMockClient();
+    const logger = createSpyLogger();
+    const guarded = createGuardedOllama(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false,
+      logger
+    });
+
+    await expect(
+      guarded.chat({ model: 'llama3.1', messages: [{ role: 'user', content: `hi ${POISON}` }] })
+    ).rejects.toThrow(ESCAPED_REASON);
+
+    const warnMeta = findWarnMeta(logger, '[Guardrails] Input blocked');
+    // Guard: a future rename of the log message must fail loudly here, not make
+    // the escaped-form assertions below pass vacuously on an undefined meta.
+    expect(warnMeta).toBeDefined();
+    expect(warnMeta?.reason).toContain('INJECTED');
+    expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(ESC);
+    // Input is blocked before the upstream client is ever called.
+    expect(mockChat).not.toHaveBeenCalled();
+  });
+
+  it('escapes a control-char chat output-blocked reason at the log meta and the filtered-content marker returned to the caller', async () => {
+    const { mockClient, mockChat } = createMockClient();
+    mockChat.mockResolvedValue({
+      model: 'llama3.1',
+      created_at: new Date('2024-01-01T00:00:00Z'),
+      message: { role: 'assistant', content: `here ${POISON}` },
+      done: true,
+      done_reason: 'stop'
+    });
+    const logger = createSpyLogger();
+    const guarded = createGuardedOllama(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false,
+      logger
+    });
+
+    const result = await guarded.chat({ model: 'llama3.1', messages: [{ role: 'user', content: 'clean prompt' }] });
+
+    const filtered = (result as { message: { content: string } }).message.content;
+    expect(filtered).toContain('[Content filtered by guardrails:');
+    expect(filtered).toContain(ESCAPED_REASON);
+    expect(filtered).not.toContain(NL);
+    expect(filtered).not.toContain(ESC);
+
+    const warnMeta = findWarnMeta(logger, '[Guardrails] Output blocked');
+    expect(warnMeta).toBeDefined();
+    expect(warnMeta?.reason).toContain('INJECTED');
+    expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(ESC);
+  });
+
+  it('escapes a control-char generate output-blocked reason at the log meta and the filtered-content marker returned to the caller', async () => {
+    const { mockClient, mockGenerate } = createMockClient();
+    mockGenerate.mockResolvedValue({
+      model: 'llama3.1',
+      created_at: new Date('2024-01-01T00:00:00Z'),
+      response: `here ${POISON}`,
+      done: true,
+      done_reason: 'stop',
+      context: []
+    });
+    const logger = createSpyLogger();
+    const guarded = createGuardedOllama(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false,
+      logger
+    });
+
+    const result = await guarded.generate({ model: 'llama3.1', prompt: 'clean prompt' });
+
+    const filtered = (result as { response: string }).response;
+    expect(filtered).toContain('[Content filtered by guardrails:');
+    expect(filtered).toContain(ESCAPED_REASON);
+    expect(filtered).not.toContain(NL);
+    expect(filtered).not.toContain(ESC);
+
+    const warnMeta = findWarnMeta(logger, '[Guardrails] Output blocked');
+    expect(warnMeta).toBeDefined();
+    expect(warnMeta?.reason).toContain('INJECTED');
+    expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(ESC);
+  });
+
+  it('escapes a control-char stream-blocked reason in the chat incremental-mode final-block marker', async () => {
+    const { mockClient, mockChat } = createMockClient();
+    mockChat.mockResolvedValue(poisonChatStream());
+    const guarded = createGuardedOllama(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      validateStreaming: true,
+      streamingMode: 'incremental',
+      productionMode: false,
+      logger: createSpyLogger(),
+      onStreamBlocked: vi.fn()
+    });
+
+    const stream = await guarded.chat({
+      model: 'llama3.1',
+      messages: [{ role: 'user', content: 'clean prompt' }],
+      stream: true
+    });
+
+    const marker = (await collectChatContent(stream)).find(t => t.includes('Content filtered by guardrails:'));
+    expect(marker).toBeDefined();
+    // The marker's own "\n\n" prefix is the only raw newline; the reason's
+    // embedded LF/ESC must arrive escaped, not raw.
+    expect((marker!.match(/\n/g) ?? []).length).toBe(2);
+    expect(marker).toContain(ESCAPED_REASON);
+    expect(marker).not.toContain(ESC);
+  });
+
+  it('escapes a control-char stream-blocked reason in the generate incremental-mode final-block marker', async () => {
+    const { mockClient, mockGenerate } = createMockClient();
+    mockGenerate.mockResolvedValue(poisonGenerateStream());
+    const guarded = createGuardedOllama(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      validateStreaming: true,
+      streamingMode: 'incremental',
+      productionMode: false,
+      logger: createSpyLogger(),
+      onStreamBlocked: vi.fn()
+    });
+
+    const stream = await guarded.generate({ model: 'llama3.1', prompt: 'clean prompt', stream: true });
+
+    const marker = (await collectGenerateContent(stream)).find(t => t.includes('Content filtered by guardrails:'));
+    expect(marker).toBeDefined();
+    expect((marker!.match(/\n/g) ?? []).length).toBe(2);
+    expect(marker).toContain(ESCAPED_REASON);
+    expect(marker).not.toContain(ESC);
+  });
+
+  it('escapes a control-char stream-blocked reason in the chat buffer-mode filtered marker', async () => {
+    const { mockClient, mockChat } = createMockClient();
+    mockChat.mockResolvedValue(poisonChatStream());
+    const guarded = createGuardedOllama(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      validateStreaming: true,
+      streamingMode: 'buffer',
+      productionMode: false,
+      logger: createSpyLogger(),
+      onStreamBlocked: vi.fn()
+    });
+
+    const stream = await guarded.chat({
+      model: 'llama3.1',
+      messages: [{ role: 'user', content: 'clean prompt' }],
+      stream: true
+    });
+
+    const joined = (await collectChatContent(stream)).join('');
+    expect(joined).toContain('[Content filtered by guardrails:');
+    expect(joined).toContain(ESCAPED_REASON);
+    expect(joined).not.toContain(NL);
+    expect(joined).not.toContain(ESC);
+    // The withheld attacker payload never reaches the caller.
+    expect(joined).not.toContain('payload');
+  });
+
+  it('escapes a control-char stream-blocked reason in the generate buffer-mode filtered marker', async () => {
+    const { mockClient, mockGenerate } = createMockClient();
+    mockGenerate.mockResolvedValue(poisonGenerateStream());
+    const guarded = createGuardedOllama(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      validateStreaming: true,
+      streamingMode: 'buffer',
+      productionMode: false,
+      logger: createSpyLogger(),
+      onStreamBlocked: vi.fn()
+    });
+
+    const stream = await guarded.generate({ model: 'llama3.1', prompt: 'clean prompt', stream: true });
+
+    const joined = (await collectGenerateContent(stream)).join('');
+    expect(joined).toContain('[Content filtered by guardrails:');
+    expect(joined).toContain(ESCAPED_REASON);
+    expect(joined).not.toContain(NL);
+    expect(joined).not.toContain(ESC);
+    expect(joined).not.toContain('payload');
   });
 });
