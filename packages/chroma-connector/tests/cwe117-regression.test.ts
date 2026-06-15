@@ -1,14 +1,31 @@
 /**
- * Sprint 43 cross-connector CWE-117 sweep — chroma-connector regression.
+ * CWE-117 sanitization primitive contract — chroma-connector.
  *
- * Four src sites in `guarded-chroma.ts` (peer of weaviate/pinecone):
- *   - line ~270 (query-blocked log raw reason).
- *   - line ~276 (query-blocked dev-mode throw raw reason).
- *   - line ~616 (document-add-blocked log raw reason).
- *   - line ~617 (document-add-blocked dev-mode throw raw reason).
+ * `createGuardedCollection` in `guarded-chroma.ts` wraps every
+ * attacker-influenced log-meta value and dev-mode error interpolation with the
+ * canonical `sanitizeMeta` primitive. The principal wrapped boundaries (located
+ * by their log/message strings, not line numbers):
+ *   - `'[Guardrails] Query blocked'` log meta + the `Query blocked: ...` throw.
+ *   - `'[Guardrails] Document blocked'` log meta + the `Document blocked: ...`
+ *     abort throw, and the inline 2D-batch `Document batch blocked: ...` throw.
+ *   - `'[Guardrails] Document add blocked'` log meta + the `Document blocked: ...`
+ *     throw (add path).
+ *   - `'[Guardrails] Document structure validation failed'` log meta
+ *     (`id` + validation `reason`).
  *
- * Sprint 43 architect CRITICAL #2 closure — initial scoping missed
- * chroma alongside its peers.
+ * This contract-lock asserts the canonical primitive is reachable from the
+ * import surface and behaves as expected on representative attacker inputs.
+ * The END-TO-END proof that each guarded path actually applies `sanitizeMeta`
+ * (and FAILS if a wrap is removed — the ADR-0001 non-vacuity standard) lives in
+ * `guarded-chroma.test.ts`: the retrieved-document (batch + per-doc abort) sinks
+ * under "CWE-117 batch-block reason sanitization (D-042)", and the query/add
+ * sinks under "CWE-117 query/add reason sanitization is load-bearing
+ * (ADR-0001)". Those tests drive a spy logger with control-char payloads and
+ * assert the escaped form at each boundary.
+ *
+ * History: Sprint 43 cross-connector CWE-117 closure (original four boundaries)
+ * → boundary-driving tests added when the import-only contract was found vacuous
+ * (ADR-0001 anti-pattern).
  */
 import { describe, expect, it } from 'vitest';
 

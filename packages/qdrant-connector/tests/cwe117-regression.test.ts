@@ -1,13 +1,26 @@
 /**
- * Sprint 43 cross-connector CWE-117 sweep — qdrant-connector regression.
+ * CWE-117 sanitization primitive contract — qdrant-connector.
  *
- * Three src sites in `guarded-qdrant.ts` (peer of weaviate/pinecone):
- *   - line ~487 (point-blocked log raw `id` + raw `reason`).
- *   - line ~496 (point-blocked dev-mode throw raw reason).
- *   - line ~578 (point-upsert-blocked log + throw raw reason).
+ * `createGuardedClient` in `guarded-qdrant.ts` wraps every attacker-influenced
+ * log-meta value and dev-mode error interpolation with the canonical
+ * `sanitizeMeta` primitive. The wrapped boundaries (located by their
+ * log/message strings, not line numbers):
+ *   - `'[Guardrails] Point blocked'` (search) log meta (`point.id`,
+ *     `result.reason`) and the dev-mode `Point blocked: ...` abort throw.
+ *   - `'[Guardrails] Point upsert blocked'` log meta and the dev-mode
+ *     `Point blocked: ...` throw (`result.reason`).
  *
- * Sprint 43 architect CRITICAL #3 closure — initial scoping missed
- * qdrant alongside its peers.
+ * This contract-lock asserts the canonical primitive is reachable from the
+ * import surface and behaves as expected on representative attacker inputs.
+ * The END-TO-END proof that each guarded path actually applies `sanitizeMeta`
+ * (and FAILS if a wrap is removed — the ADR-0001 non-vacuity standard) lives in
+ * `guarded-qdrant.test.ts` › "CWE-117 reason/id sanitization is load-bearing
+ * (ADR-0001)": those tests drive a spy logger with control-char payloads and
+ * assert the escaped form at each boundary.
+ *
+ * History: Sprint 43 cross-connector CWE-117 closure (original three
+ * boundaries) → boundary-driving tests added when the import-only contract was
+ * found vacuous (ADR-0001 anti-pattern).
  */
 import { describe, expect, it } from 'vitest';
 

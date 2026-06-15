@@ -7,7 +7,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createGuardedClient, QDRANT_NATIVE_SEARCH_KEYS } from '../src/guarded-qdrant';
-import { PromptInjectionValidator } from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, Severity } from '@blackunicorn/bonklm';
+import type { Validator, GuardrailResult, Logger } from '@blackunicorn/bonklm';
 import { noOpValidator } from '@blackunicorn/bonklm/testing';
 
 describe('Qdrant Connector', () => {
@@ -1941,5 +1942,115 @@ describe('Qdrant Connector', () => {
       const body = mockClient.search.mock.calls[0]?.[1] as Record<string, unknown>;
       expect(Object.keys(body).sort()).toEqual(['limit', 'vector']);
     });
+  });
+});
+
+describe('Qdrant Connector — CWE-117 reason/id sanitization is load-bearing (ADR-0001)', () => {
+  // ADR-0001 non-vacuity proof for the point-blocked (search) and
+  // point-upsert-blocked `result.reason` + `point.id` sinks in
+  // src/guarded-qdrant.ts. cwe117-regression.test.ts only asserts the sanitizer
+  // primitive in isolation; these tests drive the guarded wrapper with a
+  // validator whose `reason` carries control characters (and, for search, a
+  // control-char point id) and assert the ESCAPED form at the spy-logger meta
+  // AND the thrown message — removing the matching `sanitizeMeta(...)` wrap from
+  // src turns the corresponding test RED.
+  const NL = String.fromCharCode(10); // LF
+  const ESC = String.fromCharCode(27); // ESC
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const POISON = 'POISONMARK';
+
+  const blockResult = (reason: string): GuardrailResult => ({
+    allowed: false,
+    blocked: true,
+    reason,
+    severity: Severity.CRITICAL,
+    risk_level: 'HIGH',
+    risk_score: 30,
+    findings: [{ category: 'test', severity: Severity.CRITICAL, description: 'blocked', weight: 30 }],
+    timestamp: Date.now()
+  });
+
+  const allowResult = (): GuardrailResult => ({
+    allowed: true,
+    blocked: false,
+    severity: Severity.INFO,
+    risk_level: 'LOW',
+    risk_score: 0,
+    findings: [],
+    timestamp: Date.now()
+  });
+
+  // Blocks only when the validated content contains the marker — the search
+  // query / upsert vector pass, the marked payload is blocked.
+  const markerBlock = (reason: string): Validator => ({
+    name: 'MarkerBlock',
+    validate: (input: unknown) =>
+      (typeof input === 'string' ? input : '').includes(POISON) ? blockResult(reason) : allowResult()
+  });
+
+  const createSpyLogger = (): Logger =>
+    ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }) as unknown as Logger;
+
+  const findWarnMeta = (logger: Logger, message: string): { reason?: string; id?: string } | undefined =>
+    (logger.warn as ReturnType<typeof vi.fn>).mock.calls.find(call => call[0] === message)?.[1] as
+      | { reason?: string; id?: string }
+      | undefined;
+
+  it('escapes a control-char validator reason and point id at the search point-blocked log meta and abort throw', async () => {
+    const poisonId = `pt${ESC}1`;
+    const mockClient = {
+      search: vi.fn().mockResolvedValue([{ id: poisonId, score: 0.9, payload: { content: `${POISON} payload` } }]),
+      upsert: vi.fn().mockResolvedValue(undefined)
+    };
+    const logger = createSpyLogger();
+    const guarded = createGuardedClient(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      onBlockedPoint: 'abort',
+      // Pin dev-mode so the throw carries the (escaped) reason regardless of
+      // ambient NODE_ENV — production mode would emit the generic message.
+      productionMode: false,
+      logger
+    });
+
+    await expect(
+      guarded.search({ collectionName: 'test_collection', vector: [0.1, 0.2, 0.3], limit: 5 })
+    ).rejects.toThrow(ESCAPED_REASON);
+
+    const warnMeta = findWarnMeta(logger, '[Guardrails] Point blocked');
+    // Guard: a future rename of the log message must fail loudly here, not make
+    // the escaped-form assertions below pass vacuously on an undefined meta.
+    expect(warnMeta).toBeDefined();
+    expect(warnMeta?.reason).toContain('INJECTED');
+    expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(ESC);
+    // `point.id` is caller/upstream-supplied — its own sanitizeMeta wrap.
+    expect(warnMeta?.id).toContain('pt');
+    expect(warnMeta?.id).not.toContain(ESC);
+  });
+
+  it('escapes a control-char validator reason at the upsert point-blocked log meta and thrown message', async () => {
+    const mockClient = {
+      search: vi.fn().mockResolvedValue([]),
+      upsert: vi.fn().mockResolvedValue(undefined)
+    };
+    const logger = createSpyLogger();
+    const guarded = createGuardedClient(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false,
+      logger
+    });
+
+    await expect(
+      guarded.upsert('test_collection', [
+        { id: 'p1', vector: [0.1, 0.2, 0.3], payload: { content: `${POISON} payload` } }
+      ])
+    ).rejects.toThrow(ESCAPED_REASON);
+
+    const warnMeta = findWarnMeta(logger, '[Guardrails] Point upsert blocked');
+    expect(warnMeta).toBeDefined();
+    expect(warnMeta?.reason).toContain('INJECTED');
+    expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(ESC);
   });
 });

@@ -1,17 +1,26 @@
 /**
- * Sprint 43 cross-connector CWE-117 sweep — pinecone-connector regression.
+ * CWE-117 sanitization primitive contract — pinecone-connector.
  *
- * Two src sites in `guarded-pinecone.ts` embed raw `result.reason` in
- * dev-mode `ConnectorValidationError` messages:
- *   - line 221 (`Query blocked: ${result.reason}`)
- *   - line 292 (`Vector blocked: ${result.reason}`)
+ * `createGuardedIndex` in `guarded-pinecone.ts` wraps the attacker-influenced
+ * `result.reason` in its dev-mode `ConnectorValidationError` throw boundaries
+ * with the canonical `sanitizeMeta` primitive (located by their message
+ * strings, not line numbers):
+ *   - the `Query blocked: ...` throw (query-side validation failure).
+ *   - the `Vector blocked: ...` abort throw (retrieved-vector validation).
+ * The sibling `logValidationFailure` log calls are already sanitized internally
+ * by that shared helper (via the canonical `sanitizeLogString`).
  *
- * Sprint 43 wraps both with `sanitizeMeta`. The existing
- * `logValidationFailure` calls (lines 217, 285) were already
- * sanitized via `stripLogControlChars` internally — Sprint 43 covers
- * the throw-site boundary that grep-by-function-name missed.
+ * This contract-lock asserts the canonical primitive is reachable from the
+ * import surface and behaves as expected on representative attacker inputs.
+ * The END-TO-END proof that each guarded path actually applies `sanitizeMeta`
+ * (and FAILS if a wrap is removed — the ADR-0001 non-vacuity standard) lives in
+ * `guarded-pinecone.test.ts` › "CWE-117 reason sanitization is load-bearing
+ * (ADR-0001)": those tests drive the guarded wrapper with control-char payloads
+ * and assert the escaped form at each throw boundary.
  *
- * Sprint 42 architect LOW deferral → Sprint 43 closure.
+ * History: Sprint 43 cross-connector CWE-117 closure (throw-site boundaries) →
+ * boundary-driving tests added when the import-only contract was found vacuous
+ * (ADR-0001 anti-pattern).
  */
 import { describe, expect, it } from 'vitest';
 

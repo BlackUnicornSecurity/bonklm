@@ -210,9 +210,19 @@ export function createGuardedCollection(
 
           // Check exact matches first
           if (dangerousKeys.includes(key)) {
-            logger.warn('[Guardrails] Dangerous filter key detected', { key });
+            // CWE-117 (defense-in-depth / consistency only): `key` is provably
+            // one of the fixed `dangerousKeys` constants here — the
+            // `includes()` guard above admits nothing else — so it cannot carry
+            // control characters today. The `sanitizeMeta` wraps keep this
+            // boundary uniform with the connector's genuinely attacker-influenced
+            // log/throw sinks (validator `reason`, document `id`), so a future
+            // widening of the key source can never regress into a raw-
+            // interpolation gap. Intentionally NOT mutation-tested: the reachable
+            // input set is control-char-free by construction, so removing these
+            // wraps would not change observable output (see cwe117-regression.test.ts).
+            logger.warn('[Guardrails] Dangerous filter key detected', { key: sanitizeMeta(key) });
             throw new ConnectorValidationError(
-              productionMode ? 'Invalid filter' : `Filter contains dangerous key: ${key}`,
+              productionMode ? 'Invalid filter' : `Filter contains dangerous key: ${sanitizeMeta(key)}`,
               'dangerous_key'
             );
           }
