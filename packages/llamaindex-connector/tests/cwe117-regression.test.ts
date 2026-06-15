@@ -1,24 +1,34 @@
 /**
- * Sprint 43 cross-connector CWE-117 sweep — llamaindex-connector regression.
+ * CWE-117 sanitization primitive contract — llamaindex-connector.
  *
- * Nine src sites flagged by security review HIGH #3 in
- * `guarded-engine.ts` across query/document/response/retrieval paths:
- *   - lines 133-139 (query-blocked log + throw, raw reason).
- *   - lines 165-174 (document-blocked log + throw, raw reason +
- *     documentPreview content slice).
- *   - line 212 (response-blocked log, raw reason).
- *   - lines 307-313 (retrieval-query-blocked log + throw, raw reason).
- *   - lines 338-347 (retrieved-document-blocked log + throw, raw
- *     reason + documentPreview).
+ * `createGuardedQueryEngine` / `createGuardedRetriever` in `guarded-engine.ts`
+ * wrap every attacker-influenced log-meta value and dev-mode error
+ * interpolation with the canonical `sanitizeMeta` primitive. The wrapped
+ * boundaries (located by their log/message strings, not line numbers):
+ *   - `'[Guardrails] Query blocked'` / `'[Guardrails] Retrieval query blocked'`
+ *     log meta + the dev-mode `Query blocked: ...` throw.
+ *   - `'[Guardrails] Document blocked'` / `'[Guardrails] Retrieved document
+ *     blocked'` log meta (`reason` AND the retrieved-doc `documentPreview`
+ *     slice) + the `onBlockedDocument: 'abort'` `Document blocked: ...` throw.
+ *   - `'[Guardrails] Response blocked'` log meta (`reason`).
  *
- * Sprint 43 wraps all nine. documentPreview is a slice of attacker-
- * controlled retrieved doc content — sanitize at the boundary.
+ * This contract-lock asserts the canonical primitive is reachable from the
+ * import surface and behaves as expected on representative attacker inputs.
+ * The END-TO-END proof that each guarded path actually applies `sanitizeMeta`
+ * (and FAILS if a wrap is removed — the ADR-0001 non-vacuity standard) lives in
+ * `guarded-engine.test.ts` › "CWE-117 reason/documentPreview sanitization is
+ * load-bearing (ADR-0001)": those tests drive the guarded wrapper with
+ * control-char payloads and assert the escaped form at each boundary.
+ *
+ * History: introduced as a cross-connector CWE-117 sweep (primitive-isolation
+ * asserts only) → boundary-driving tests added when the import-only contract was
+ * found vacuous (ADR-0001 anti-pattern).
  */
 import { describe, expect, it } from 'vitest';
 
 import { sanitizeLogString, sanitizeMeta, serializeError } from '@blackunicorn/bonklm';
 
-describe('llamaindex-connector — Sprint 43 CWE-117 sanitization contract', () => {
+describe('llamaindex-connector — CWE-117 sanitization primitive contract', () => {
   it('imports sanitizeMeta from the core barrel', () => {
     expect(typeof sanitizeMeta).toBe('function');
     expect(sanitizeMeta('a\nb')).toBe('a\\nb');
@@ -29,7 +39,7 @@ describe('llamaindex-connector — Sprint 43 CWE-117 sanitization contract', () 
     expect(typeof serializeError).toBe('function');
   });
 
-  it('sanitizes validator-extracted reason across all 9 sites', () => {
+  it('sanitizes a validator-extracted reason carrying control characters', () => {
     const reason = 'matched RAG-injection-pattern\nINJECTED:CRITICAL fake';
     expect(sanitizeMeta(reason)).toBe('matched RAG-injection-pattern\\nINJECTED:CRITICAL fake');
   });

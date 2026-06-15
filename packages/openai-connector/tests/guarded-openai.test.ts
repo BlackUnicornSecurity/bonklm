@@ -14,8 +14,9 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createGuardedOpenAI, messagesToText } from '../src/guarded-openai';
-import { PromptInjectionValidator, JailbreakValidator } from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, JailbreakValidator, Severity } from '@blackunicorn/bonklm';
 import type OpenAI from 'openai';
+import type { GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
 import { noOpValidator } from '@blackunicorn/bonklm/testing';
 
 // Create a mock client factory
@@ -2057,5 +2058,165 @@ describe('OpenAI Guarded Wrapper', () => {
         expect(allContent).toContain('MALICIOUS CONTENT');
       });
     });
+  });
+});
+
+describe('OpenAI Guarded Wrapper — CWE-117 reason sanitization is load-bearing (ADR-0001)', () => {
+  // ADR-0001 non-vacuity proof for the input-blocked (validateInput), non-
+  // streaming output-blocked, and buffer-mode stream-blocked `reason` sinks in
+  // src/guarded-openai.ts. cwe117-regression.test.ts only asserts the sanitizer
+  // primitive in isolation; these tests drive the guarded wrapper with a
+  // validator whose `reason` carries control characters and assert the ESCAPED
+  // form at the spy-logger meta, the thrown message, AND the filtered-content
+  // marker returned to the caller — removing the matching `sanitizeMeta(...)`
+  // wrap from src turns the corresponding test RED.
+  const NL = String.fromCharCode(10); // LF
+  const ESC = String.fromCharCode(27); // ESC
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const POISON = 'POISONMARK';
+
+  const blockResult = (reason: string): GuardrailResult => ({
+    allowed: false,
+    blocked: true,
+    reason,
+    severity: Severity.CRITICAL,
+    risk_level: 'HIGH',
+    risk_score: 30,
+    findings: [{ category: 'test', severity: Severity.CRITICAL, description: 'blocked', weight: 30 }],
+    timestamp: Date.now()
+  });
+
+  const allowResult = (): GuardrailResult => ({
+    allowed: true,
+    blocked: false,
+    severity: Severity.INFO,
+    risk_level: 'LOW',
+    risk_score: 0,
+    findings: [],
+    timestamp: Date.now()
+  });
+
+  // Blocks only when the validated content contains the marker — lets a clean
+  // input pass so the model's RESPONSE / stream text reaches its own sink, and
+  // (for the input sink) blocks before the upstream client is ever called.
+  const markerBlock = (reason: string): Validator => ({
+    name: 'MarkerBlock',
+    validate: (input: unknown) =>
+      (typeof input === 'string' ? input : '').includes(POISON) ? blockResult(reason) : allowResult()
+  });
+
+  const createSpyLogger = (): Logger =>
+    ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }) as unknown as Logger;
+
+  const findWarnMeta = (logger: Logger, message: string): { reason?: string } | undefined =>
+    (logger.warn as ReturnType<typeof vi.fn>).mock.calls.find(call => call[0] === message)?.[1] as
+      | { reason?: string }
+      | undefined;
+
+  const streamChunk = (content: string) => ({
+    id: 'chatcmpl-stream',
+    object: 'chat.completion.chunk',
+    created: 0,
+    model: 'gpt-4',
+    choices: [{ index: 0, delta: { content }, finish_reason: null }]
+  });
+
+  it('escapes a control-char input-blocked reason at the log meta and dev-mode throw', async () => {
+    const { mockClient, mockCreate } = createMockClient();
+    const logger = createSpyLogger();
+    const guarded = createGuardedOpenAI(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false,
+      logger
+    });
+
+    await expect(
+      guarded.chat.completions.create({ model: 'gpt-4', messages: [{ role: 'user', content: `hi ${POISON}` }] })
+    ).rejects.toThrow(ESCAPED_REASON);
+
+    const warnMeta = findWarnMeta(logger, '[Guardrails] Input blocked');
+    // Guard: a future rename of the log message must fail loudly here, not make
+    // the escaped-form assertions below pass vacuously on an undefined meta.
+    expect(warnMeta).toBeDefined();
+    expect(warnMeta?.reason).toContain('INJECTED');
+    expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(ESC);
+    // Input is blocked before the upstream client is ever called.
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('escapes a control-char output-blocked reason at the log meta and the filtered-content marker returned to the caller', async () => {
+    const { mockClient, mockCreate } = createMockClient();
+    mockCreate.mockResolvedValue({
+      id: 'chatcmpl-123',
+      object: 'chat.completion',
+      created: 0,
+      model: 'gpt-4',
+      choices: [{ index: 0, message: { role: 'assistant', content: `here ${POISON}` }, finish_reason: 'stop' }]
+    });
+    const logger = createSpyLogger();
+    const guarded = createGuardedOpenAI(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false,
+      logger
+    });
+
+    // Input passes (no marker); the model's RESPONSE trips the block, so the
+    // reason lands in the filtered-content marker returned to the caller.
+    const result = await guarded.chat.completions.create({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: 'clean prompt' }]
+    });
+
+    const filtered = (result as { choices: { message: { content: string } }[] }).choices[0].message.content;
+    expect(filtered).toContain('[Content filtered by guardrails:');
+    expect(filtered).toContain(ESCAPED_REASON);
+    expect(filtered).not.toContain(NL);
+    expect(filtered).not.toContain(ESC);
+
+    const warnMeta = findWarnMeta(logger, '[Guardrails] Output blocked');
+    expect(warnMeta).toBeDefined();
+    expect(warnMeta?.reason).toContain('INJECTED');
+    expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(ESC);
+  });
+
+  it('escapes a control-char stream-blocked reason in the buffer-mode filtered marker chunk', async () => {
+    const { mockClient, mockCreate } = createMockClient();
+    mockCreate.mockResolvedValue({
+      async *[Symbol.asyncIterator]() {
+        yield streamChunk('evil ');
+        yield streamChunk(`${POISON} payload`);
+      }
+    });
+    const logger = createSpyLogger();
+    const guarded = createGuardedOpenAI(mockClient, {
+      validators: [markerBlock(RAW_REASON)],
+      validateStreaming: true,
+      streamingMode: 'buffer',
+      productionMode: false,
+      logger
+    });
+
+    const stream = await guarded.chat.completions.create({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: 'clean prompt' }],
+      stream: true
+    });
+
+    const contents: string[] = [];
+    for await (const chunk of stream as any) {
+      const c = chunk.choices?.[0]?.delta?.content;
+      if (c) contents.push(c);
+    }
+    const joined = contents.join('');
+    // The buffered text is withheld; a single filtered marker is emitted instead.
+    expect(joined).toContain('[Content filtered by guardrails:');
+    expect(joined).toContain(ESCAPED_REASON);
+    expect(joined).not.toContain(NL);
+    expect(joined).not.toContain(ESC);
+    // The withheld attacker payload never reaches the caller.
+    expect(joined).not.toContain('payload');
   });
 });
