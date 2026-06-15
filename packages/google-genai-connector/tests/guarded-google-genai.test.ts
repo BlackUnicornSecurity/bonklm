@@ -8,7 +8,8 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { noOpValidator } from '@blackunicorn/bonklm/testing';
-import { PromptInjectionValidator, SecretGuard } from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, SecretGuard, Severity } from '@blackunicorn/bonklm';
+import type { GuardrailResult, Validator } from '@blackunicorn/bonklm';
 import {
   contentsToText,
   createGuardedGoogleGenAI,
@@ -663,5 +664,274 @@ describe('Audit-loop regressions (Story 1.7)', () => {
     ).rejects.toThrow();
     // logValidationFailure prefixes "[Validation Failed]" — see core/connector-utils/logger.ts.
     expect(logs.some(l => /validation|blocked|live_message/i.test(l))).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────
+// CWE-117 reason sanitization is load-bearing (ADR-0001)
+// ─────────────────────────────────────────────────────────────────────
+
+describe('google-genai — CWE-117 reason sanitization is load-bearing (ADR-0001)', () => {
+  // ADR-0001 non-vacuity proof for all 18 `sanitizeMeta(*.reason)` sinks
+  // across the four entry points of src/guarded-google-genai.ts
+  // (wrapGenerateContent / wrapGenerateContentStream / wrapChat / wrapLive).
+  // cwe117-regression.test.ts only asserts the sanitizer primitive in
+  // isolation; these tests drive each guarded entry point with a validator
+  // whose `reason` carries control characters and assert the ESCAPED form on
+  // the CAUGHT error message.
+  //
+  // These sinks sanitize the THROWN `ConnectorValidationError` message — the
+  // log path delegates to core `logValidationFailure`, which sanitizes
+  // independently, so a spy-logger assertion would pass vacuously even with
+  // the wrap removed. The throw is the connector's own load-bearing sink:
+  // removing the matching `sanitizeMeta(...)` wrap from src turns the
+  // corresponding test (and only that one) RED. Every sink is dev-mode-gated
+  // (`productionMode ? '<generic>' : '<label>: ${sanitizeMeta(reason)}'`), so
+  // each path is driven with `productionMode: false`.
+  const NL = String.fromCharCode(10); // LF
+  const ESC = String.fromCharCode(27); // ESC
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const POISON = 'POISONMARK';
+
+  const blockResult = (reason: string): GuardrailResult => ({
+    allowed: false,
+    blocked: true,
+    reason,
+    severity: Severity.CRITICAL,
+    risk_level: 'HIGH',
+    risk_score: 30,
+    findings: [{ category: 'test', severity: Severity.CRITICAL, description: 'blocked', weight: 30 }],
+    timestamp: Date.now()
+  });
+
+  const allowResult = (): GuardrailResult => ({
+    allowed: true,
+    blocked: false,
+    severity: Severity.INFO,
+    risk_level: 'LOW',
+    risk_score: 0,
+    findings: [],
+    timestamp: Date.now()
+  });
+
+  // Blocks only when the validated content carries the marker — lets a clean
+  // input/prompt pass so the model's response, a streamed chunk, or
+  // function-call args reach their OWN downstream sink, and (for an input
+  // sink) blocks before the upstream SDK is ever called.
+  const markerBlock = (reason: string): Validator => ({
+    name: 'MarkerBlock',
+    validate: (input: unknown) =>
+      (typeof input === 'string' ? input : '').includes(POISON) ? blockResult(reason) : allowResult()
+  });
+
+  // Drive a guarded path that MUST throw, then prove the thrown message
+  // carries the ESCAPED reason and no raw control characters.
+  // `toBeInstanceOf(Error)` guards against a vacuous pass if the path does
+  // not throw at all.
+  async function expectEscapedThrow(run: () => unknown): Promise<void> {
+    let caught: unknown;
+    try {
+      await run();
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    const message = (caught as Error).message;
+    expect(message).toContain(ESCAPED_REASON);
+    expect(message).not.toContain(NL);
+    expect(message).not.toContain(ESC);
+  }
+
+  const chatWith = (overrides: {
+    sendMessage?: () => Promise<GoogleGenerateContentResponse>;
+    sendMessageStream?: () => Promise<AsyncIterable<GoogleGenerateContentResponse>>;
+  }): GoogleGenAIChatsLike =>
+    ({
+      create: vi.fn(() => ({
+        sendMessage: vi.fn(overrides.sendMessage ?? (async () => mkResponse('safe'))),
+        sendMessageStream: vi.fn(overrides.sendMessageStream ?? (async () => asyncIter([mkResponse('safe')])))
+      }))
+    }) as unknown as GoogleGenAIChatsLike;
+
+  const drain = async (iter: AsyncIterable<GoogleGenerateContentResponse>): Promise<void> => {
+    for await (const _ of iter) {
+      /* drain */
+    }
+  };
+
+  // ── wrapGenerateContent (non-streaming) ──────────────────────────────────
+
+  it('escapes the reason at the non-streaming input-blocked throw', async () => {
+    const models = mockModels();
+    const wrapped = wrapGenerateContent(models, { validators: [markerBlock(RAW_REASON)], productionMode: false });
+    await expectEscapedThrow(() => wrapped({ model: 'gemini-2.0-flash', contents: `hi ${POISON}` }));
+    expect(models.generateContent).not.toHaveBeenCalled();
+  });
+
+  it('escapes the reason at the non-streaming output-blocked throw', async () => {
+    const models = mockModels();
+    models.generateContent.mockResolvedValueOnce(mkResponse(`reply ${POISON}`));
+    const wrapped = wrapGenerateContent(models, { validators: [markerBlock(RAW_REASON)], productionMode: false });
+    await expectEscapedThrow(() => wrapped({ model: 'gemini-2.0-flash', contents: 'clean prompt' }));
+  });
+
+  it('escapes the reason at the non-streaming function-call-blocked throw', async () => {
+    const models = mockModels();
+    models.generateContent.mockResolvedValueOnce(mkFunctionCallResponse('send_email', { body: `x ${POISON}` }));
+    const wrapped = wrapGenerateContent(models, { validators: [markerBlock(RAW_REASON)], productionMode: false });
+    await expectEscapedThrow(() => wrapped({ model: 'gemini-2.0-flash', contents: 'clean prompt' }));
+  });
+
+  // ── wrapGenerateContentStream ────────────────────────────────────────────
+
+  it('escapes the reason at the streaming pre-call input-blocked throw', async () => {
+    const models = mockModels();
+    const wrapped = wrapGenerateContentStream(models, { validators: [markerBlock(RAW_REASON)], productionMode: false });
+    await expectEscapedThrow(() => wrapped({ model: 'gemini-2.0-flash', contents: `go ${POISON}` }));
+    expect(models.generateContentStream).not.toHaveBeenCalled();
+  });
+
+  it('escapes the reason at the streaming per-chunk-blocked throw', async () => {
+    const models = mockModels();
+    models.generateContentStream.mockResolvedValueOnce(asyncIter([mkResponse(`chunk ${POISON}`)]));
+    const wrapped = wrapGenerateContentStream(models, {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false,
+      validationInterval: 1 // validate on every chunk → in-loop `process()` sink
+    });
+    await expectEscapedThrow(async () => drain(await wrapped({ model: 'gemini-2.0-flash', contents: 'clean prompt' })));
+  });
+
+  it('escapes the reason at the streaming in-stream function-call-blocked throw (finishReason set)', async () => {
+    const models = mockModels();
+    models.generateContentStream.mockResolvedValueOnce(
+      asyncIter([mkFunctionCallResponse('tool', { arg: `x ${POISON}` }, 'STOP')])
+    );
+    const wrapped = wrapGenerateContentStream(models, {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false,
+      validationInterval: 1
+    });
+    await expectEscapedThrow(async () => drain(await wrapped({ model: 'gemini-2.0-flash', contents: 'clean prompt' })));
+  });
+
+  it('escapes the reason at the streaming tail-blocked throw', async () => {
+    const models = mockModels();
+    models.generateContentStream.mockResolvedValueOnce(asyncIter([mkResponse(`tail ${POISON}`)]));
+    const wrapped = wrapGenerateContentStream(models, {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false,
+      validationInterval: 2 // one chunk never reaches the interval boundary → `finalize()` tail sink
+    });
+    await expectEscapedThrow(async () => drain(await wrapped({ model: 'gemini-2.0-flash', contents: 'clean prompt' })));
+  });
+
+  it('escapes the reason at the streaming end-of-stream function-call-blocked throw (no finishReason)', async () => {
+    const models = mockModels();
+    // No `finishReason` on the candidate → the accumulator is NOT flushed in
+    // the loop (the in-stream fc sink) but in the post-loop end-of-stream pass.
+    // Built inline because passing `undefined` to mkFunctionCallResponse would
+    // trigger its `finishReason = 'STOP'` default and route through the in-loop
+    // sink instead.
+    const fcChunk: GoogleGenerateContentResponse = {
+      candidates: [{ content: { parts: [{ functionCall: { name: 'tool', args: { arg: `x ${POISON}` } } }] } }]
+    };
+    models.generateContentStream.mockResolvedValueOnce(asyncIter([fcChunk]));
+    const wrapped = wrapGenerateContentStream(models, {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false,
+      validationInterval: 1
+    });
+    await expectEscapedThrow(async () => drain(await wrapped({ model: 'gemini-2.0-flash', contents: 'clean prompt' })));
+  });
+
+  // ── wrapChat → sendMessage / sendMessageStream ───────────────────────────
+
+  it('escapes the reason at the chat sendMessage input-blocked throw', async () => {
+    const wrapped = wrapChat(chatWith({}), { validators: [markerBlock(RAW_REASON)], productionMode: false });
+    const session = wrapped({ model: 'gemini-2.0-flash' });
+    await expectEscapedThrow(() => session.sendMessage({ message: `hi ${POISON}` }));
+  });
+
+  it('escapes the reason at the chat sendMessage output-blocked throw', async () => {
+    const wrapped = wrapChat(chatWith({ sendMessage: async () => mkResponse(`reply ${POISON}`) }), {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false
+    });
+    const session = wrapped({ model: 'gemini-2.0-flash' });
+    await expectEscapedThrow(() => session.sendMessage({ message: 'clean prompt' }));
+  });
+
+  it('escapes the reason at the chat sendMessageStream input-blocked throw', async () => {
+    const wrapped = wrapChat(chatWith({}), { validators: [markerBlock(RAW_REASON)], productionMode: false });
+    const session = wrapped({ model: 'gemini-2.0-flash' });
+    await expectEscapedThrow(() => session.sendMessageStream({ message: `go ${POISON}` }));
+  });
+
+  it('escapes the reason at the chat sendMessageStream per-chunk-blocked throw', async () => {
+    const wrapped = wrapChat(chatWith({ sendMessageStream: async () => asyncIter([mkResponse(`chunk ${POISON}`)]) }), {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false,
+      validationInterval: 1
+    });
+    const session = wrapped({ model: 'gemini-2.0-flash' });
+    await expectEscapedThrow(async () => drain(await session.sendMessageStream({ message: 'clean prompt' })));
+  });
+
+  it('escapes the reason at the chat sendMessageStream tail-blocked throw', async () => {
+    const wrapped = wrapChat(chatWith({ sendMessageStream: async () => asyncIter([mkResponse(`tail ${POISON}`)]) }), {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false,
+      validationInterval: 2
+    });
+    const session = wrapped({ model: 'gemini-2.0-flash' });
+    await expectEscapedThrow(async () => drain(await session.sendMessageStream({ message: 'clean prompt' })));
+  });
+
+  // ── wrapLive → onmessage / sendRealtimeInput / sendClientContent / sendToolResponse ─
+
+  it('escapes the reason at the live message-blocked throw', async () => {
+    const live = mockLive();
+    const wrapped = wrapLive(live, { validators: [markerBlock(RAW_REASON)], productionMode: false });
+    await wrapped({ model: 'gemini-2.0-flash-exp', callbacks: { onmessage: vi.fn() } });
+    await expectEscapedThrow(() =>
+      live.__triggerMessage({ serverContent: { inputTranscription: { text: `hi ${POISON}` } } })
+    );
+  });
+
+  it('escapes the reason at the live tool-call function-call-blocked throw', async () => {
+    const live = mockLive();
+    const wrapped = wrapLive(live, { validators: [markerBlock(RAW_REASON)], productionMode: false });
+    await wrapped({ model: 'gemini-2.0-flash-exp', callbacks: { onmessage: vi.fn() } });
+    await expectEscapedThrow(() =>
+      live.__triggerMessage({ toolCall: { functionCalls: [{ name: 'transfer', args: { memo: `x ${POISON}` } }] } })
+    );
+  });
+
+  it('escapes the reason at the live sendRealtimeInput-blocked throw', async () => {
+    const live = mockLive();
+    const wrapped = wrapLive(live, { validators: [markerBlock(RAW_REASON)], productionMode: false });
+    const session = await wrapped({ model: 'gemini-2.0-flash-exp', callbacks: { onmessage: vi.fn() } });
+    await expectEscapedThrow(() => session.sendRealtimeInput?.({ text: `hi ${POISON}` }));
+  });
+
+  it('escapes the reason at the live sendClientContent-blocked throw', async () => {
+    const live = mockLive();
+    const wrapped = wrapLive(live, { validators: [markerBlock(RAW_REASON)], productionMode: false });
+    const session = await wrapped({ model: 'gemini-2.0-flash-exp', callbacks: { onmessage: vi.fn() } });
+    await expectEscapedThrow(() =>
+      session.sendClientContent?.({ turns: [{ role: 'user', parts: [{ text: `hi ${POISON}` }] }] })
+    );
+  });
+
+  it('escapes the reason at the live sendToolResponse-blocked throw', async () => {
+    const live = mockLive();
+    (live.__session as unknown as { sendToolResponse: ReturnType<typeof vi.fn> }).sendToolResponse = vi.fn();
+    const wrapped = wrapLive(live, { validators: [markerBlock(RAW_REASON)], productionMode: false });
+    const session = await wrapped({ model: 'gemini-2.0-flash-exp', callbacks: { onmessage: vi.fn() } });
+    await expectEscapedThrow(() =>
+      session.sendToolResponse?.({ functionResponses: [{ name: 'lookup', response: { text: `x ${POISON}` } }] })
+    );
   });
 });
