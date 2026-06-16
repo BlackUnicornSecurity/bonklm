@@ -1352,9 +1352,14 @@ describe('ChromaDB Connector — CWE-117 query/add reason sanitization is load-b
   // form at the spy-logger meta AND the thrown message — so removing the
   // matching `sanitizeMeta(...)` wrap from src turns the corresponding test RED.
   const NL = String.fromCharCode(10); // LF
+  const CR = String.fromCharCode(13); // CR
   const ESC = String.fromCharCode(27); // ESC (terminal CSI lead-in)
-  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
-  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const TAB = String.fromCharCode(9); // TAB
+  const CRLF = `${CR}${NL}`; // CRLF (Windows line ending)
+  // sanitizeLogString hex-escapes CR→\x0d and TAB→\x09 (and CRLF→\x0d\n) in its
+  // control-char pass, which runs BEFORE the \n-collapse — so only LF maps to \n.
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison${CR}carriage${CRLF}windows${TAB}tab`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison\\x0dcarriage\\x0d\\nwindows\\x09tab';
 
   const alwaysBlock = (reason: string): Validator => ({
     name: 'AlwaysBlock',
@@ -1402,7 +1407,9 @@ describe('ChromaDB Connector — CWE-117 query/add reason sanitization is load-b
     expect(warnMeta).toBeDefined();
     expect(warnMeta?.reason).toContain('INJECTED');
     expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(CR);
     expect(warnMeta?.reason).not.toContain(ESC);
+    expect(warnMeta?.reason).not.toContain(TAB);
   });
 
   it('escapes a control-char validator reason at the document-add-blocked log meta and thrown message', async () => {
@@ -1419,7 +1426,9 @@ describe('ChromaDB Connector — CWE-117 query/add reason sanitization is load-b
     expect(warnMeta).toBeDefined();
     expect(warnMeta?.reason).toContain('INJECTED');
     expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(CR);
     expect(warnMeta?.reason).not.toContain(ESC);
+    expect(warnMeta?.reason).not.toContain(TAB);
   });
 
   it('rejects a dangerous filter key and routes it through the consistency-only sanitizeMeta wrap', async () => {

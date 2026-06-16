@@ -2071,9 +2071,14 @@ describe('OpenAI Guarded Wrapper — CWE-117 reason sanitization is load-bearing
   // marker returned to the caller — removing the matching `sanitizeMeta(...)`
   // wrap from src turns the corresponding test RED.
   const NL = String.fromCharCode(10); // LF
+  const CR = String.fromCharCode(13); // CR
   const ESC = String.fromCharCode(27); // ESC
-  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
-  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const TAB = String.fromCharCode(9); // TAB
+  const CRLF = `${CR}${NL}`; // CRLF (Windows line ending)
+  // sanitizeLogString hex-escapes CR→\x0d and TAB→\x09 (and CRLF→\x0d\n) in its
+  // control-char pass, which runs BEFORE the \n-collapse — so only LF maps to \n.
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison${CR}carriage${CRLF}windows${TAB}tab`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison\\x0dcarriage\\x0d\\nwindows\\x09tab';
   const POISON = 'POISONMARK';
 
   const blockResult = (reason: string): GuardrailResult => ({
@@ -2141,7 +2146,9 @@ describe('OpenAI Guarded Wrapper — CWE-117 reason sanitization is load-bearing
     expect(warnMeta).toBeDefined();
     expect(warnMeta?.reason).toContain('INJECTED');
     expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(CR);
     expect(warnMeta?.reason).not.toContain(ESC);
+    expect(warnMeta?.reason).not.toContain(TAB);
     // Input is blocked before the upstream client is ever called.
     expect(mockCreate).not.toHaveBeenCalled();
   });
@@ -2173,13 +2180,17 @@ describe('OpenAI Guarded Wrapper — CWE-117 reason sanitization is load-bearing
     expect(filtered).toContain('[Content filtered by guardrails:');
     expect(filtered).toContain(ESCAPED_REASON);
     expect(filtered).not.toContain(NL);
+    expect(filtered).not.toContain(CR);
     expect(filtered).not.toContain(ESC);
+    expect(filtered).not.toContain(TAB);
 
     const warnMeta = findWarnMeta(logger, '[Guardrails] Output blocked');
     expect(warnMeta).toBeDefined();
     expect(warnMeta?.reason).toContain('INJECTED');
     expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(CR);
     expect(warnMeta?.reason).not.toContain(ESC);
+    expect(warnMeta?.reason).not.toContain(TAB);
   });
 
   it('escapes a control-char stream-blocked reason in the buffer-mode filtered marker chunk', async () => {
@@ -2215,7 +2226,9 @@ describe('OpenAI Guarded Wrapper — CWE-117 reason sanitization is load-bearing
     expect(joined).toContain('[Content filtered by guardrails:');
     expect(joined).toContain(ESCAPED_REASON);
     expect(joined).not.toContain(NL);
+    expect(joined).not.toContain(CR);
     expect(joined).not.toContain(ESC);
+    expect(joined).not.toContain(TAB);
     // The withheld attacker payload never reaches the caller.
     expect(joined).not.toContain('payload');
   });

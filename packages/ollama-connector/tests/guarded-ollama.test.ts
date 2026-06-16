@@ -2979,9 +2979,14 @@ describe('Ollama Guarded Wrapper — CWE-117 reason sanitization is load-bearing
   // validator's RAW reason to the connector (`aggregateResults` does not
   // pre-sanitize), so each per-sink wrap is the genuine CWE-117 boundary.
   const NL = String.fromCharCode(10); // LF
+  const CR = String.fromCharCode(13); // CR
   const ESC = String.fromCharCode(27); // ESC
-  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
-  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const TAB = String.fromCharCode(9); // TAB
+  const CRLF = `${CR}${NL}`; // CRLF (Windows line ending)
+  // sanitizeLogString hex-escapes CR→\x0d and TAB→\x09 (and CRLF→\x0d\n) in its
+  // control-char pass, which runs BEFORE the \n-collapse — so only LF maps to \n.
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison${CR}carriage${CRLF}windows${TAB}tab`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison\\x0dcarriage\\x0d\\nwindows\\x09tab';
   const POISON = 'POISONMARK';
 
   const blockResult = (reason: string): GuardrailResult => ({
@@ -3098,7 +3103,9 @@ describe('Ollama Guarded Wrapper — CWE-117 reason sanitization is load-bearing
     expect(warnMeta).toBeDefined();
     expect(warnMeta?.reason).toContain('INJECTED');
     expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(CR);
     expect(warnMeta?.reason).not.toContain(ESC);
+    expect(warnMeta?.reason).not.toContain(TAB);
     // Input is blocked before the upstream client is ever called.
     expect(mockChat).not.toHaveBeenCalled();
   });
@@ -3125,13 +3132,17 @@ describe('Ollama Guarded Wrapper — CWE-117 reason sanitization is load-bearing
     expect(filtered).toContain('[Content filtered by guardrails:');
     expect(filtered).toContain(ESCAPED_REASON);
     expect(filtered).not.toContain(NL);
+    expect(filtered).not.toContain(CR);
     expect(filtered).not.toContain(ESC);
+    expect(filtered).not.toContain(TAB);
 
     const warnMeta = findWarnMeta(logger, '[Guardrails] Output blocked');
     expect(warnMeta).toBeDefined();
     expect(warnMeta?.reason).toContain('INJECTED');
     expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(CR);
     expect(warnMeta?.reason).not.toContain(ESC);
+    expect(warnMeta?.reason).not.toContain(TAB);
   });
 
   it('escapes a control-char generate output-blocked reason at the log meta and the filtered-content marker returned to the caller', async () => {
@@ -3157,13 +3168,17 @@ describe('Ollama Guarded Wrapper — CWE-117 reason sanitization is load-bearing
     expect(filtered).toContain('[Content filtered by guardrails:');
     expect(filtered).toContain(ESCAPED_REASON);
     expect(filtered).not.toContain(NL);
+    expect(filtered).not.toContain(CR);
     expect(filtered).not.toContain(ESC);
+    expect(filtered).not.toContain(TAB);
 
     const warnMeta = findWarnMeta(logger, '[Guardrails] Output blocked');
     expect(warnMeta).toBeDefined();
     expect(warnMeta?.reason).toContain('INJECTED');
     expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(CR);
     expect(warnMeta?.reason).not.toContain(ESC);
+    expect(warnMeta?.reason).not.toContain(TAB);
   });
 
   it('escapes a control-char stream-blocked reason in the chat incremental-mode final-block marker', async () => {
@@ -3187,10 +3202,12 @@ describe('Ollama Guarded Wrapper — CWE-117 reason sanitization is load-bearing
     const marker = (await collectChatContent(stream)).find(t => t.includes('Content filtered by guardrails:'));
     expect(marker).toBeDefined();
     // The marker's own "\n\n" prefix is the only raw newline; the reason's
-    // embedded LF/ESC must arrive escaped, not raw.
+    // embedded LF/CR/ESC/TAB must arrive escaped, not raw.
     expect((marker!.match(/\n/g) ?? []).length).toBe(2);
     expect(marker).toContain(ESCAPED_REASON);
+    expect(marker).not.toContain(CR);
     expect(marker).not.toContain(ESC);
+    expect(marker).not.toContain(TAB);
   });
 
   it('escapes a control-char stream-blocked reason in the generate incremental-mode final-block marker', async () => {
@@ -3211,7 +3228,9 @@ describe('Ollama Guarded Wrapper — CWE-117 reason sanitization is load-bearing
     expect(marker).toBeDefined();
     expect((marker!.match(/\n/g) ?? []).length).toBe(2);
     expect(marker).toContain(ESCAPED_REASON);
+    expect(marker).not.toContain(CR);
     expect(marker).not.toContain(ESC);
+    expect(marker).not.toContain(TAB);
   });
 
   it('escapes a control-char stream-blocked reason in the chat buffer-mode filtered marker', async () => {
@@ -3236,7 +3255,9 @@ describe('Ollama Guarded Wrapper — CWE-117 reason sanitization is load-bearing
     expect(joined).toContain('[Content filtered by guardrails:');
     expect(joined).toContain(ESCAPED_REASON);
     expect(joined).not.toContain(NL);
+    expect(joined).not.toContain(CR);
     expect(joined).not.toContain(ESC);
+    expect(joined).not.toContain(TAB);
     // The withheld attacker payload never reaches the caller.
     expect(joined).not.toContain('payload');
   });
@@ -3259,7 +3280,9 @@ describe('Ollama Guarded Wrapper — CWE-117 reason sanitization is load-bearing
     expect(joined).toContain('[Content filtered by guardrails:');
     expect(joined).toContain(ESCAPED_REASON);
     expect(joined).not.toContain(NL);
+    expect(joined).not.toContain(CR);
     expect(joined).not.toContain(ESC);
+    expect(joined).not.toContain(TAB);
     expect(joined).not.toContain('payload');
   });
 });

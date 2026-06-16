@@ -413,9 +413,14 @@ describe('Pinecone Connector — CWE-117 reason sanitization is load-bearing (AD
   // and assert the ESCAPED form in the thrown message — removing the matching
   // `sanitizeMeta(...)` wrap from src turns the corresponding test RED.
   const NL = String.fromCharCode(10); // LF
+  const CR = String.fromCharCode(13); // CR
   const ESC = String.fromCharCode(27); // ESC
-  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
-  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const TAB = String.fromCharCode(9); // TAB
+  const CRLF = `${CR}${NL}`; // CRLF (Windows line ending)
+  // sanitizeLogString hex-escapes CR→\x0d and TAB→\x09 (and CRLF→\x0d\n) in its
+  // control-char pass, which runs BEFORE the \n-collapse — so only LF maps to \n.
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison${CR}carriage${CRLF}windows${TAB}tab`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison\\x0dcarriage\\x0d\\nwindows\\x09tab';
 
   const blockResult = (reason: string): GuardrailResult => ({
     allowed: false,

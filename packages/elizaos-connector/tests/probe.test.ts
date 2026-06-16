@@ -309,8 +309,13 @@ describe('applyProbeOutcome — CWE-117 reason sanitization is load-bearing (ADR
   // is interpolated into the template-literal message, not a meta field) — removing
   // the matching `sanitizeMeta(...)` wrap from src turns the corresponding test RED.
   const NL = String.fromCharCode(10); // LF
+  const CR = String.fromCharCode(13); // CR
   const ESC = String.fromCharCode(27); // ESC
-  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+  const TAB = String.fromCharCode(9); // TAB
+  const CRLF = `${CR}${NL}`; // CRLF (Windows line ending)
+  // sanitizeLogString hex-escapes CR→\x0d and TAB→\x09 (and CRLF→\x0d\n) in its
+  // control-char pass, which runs BEFORE the \n-collapse — so only LF maps to \n.
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison${CR}carriage${CRLF}windows${TAB}tab`;
 
   const createSpyLogger = () => ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
   const findMessage = (mock: ReturnType<typeof vi.fn>, includes: string): string | undefined =>
@@ -319,7 +324,10 @@ describe('applyProbeOutcome — CWE-117 reason sanitization is load-bearing (ADR
   it('escapes a control-char reason in the "Probe completed" info-branch message', () => {
     const logger = createSpyLogger();
     // The reason MUST start with "Probe completed" to reach the info branch.
-    const outcome: ProbeOutcome = { kind: 'unreachable', reason: `Probe completed${NL}INJECTED${ESC}poison` };
+    const outcome: ProbeOutcome = {
+      kind: 'unreachable',
+      reason: `Probe completed${NL}INJECTED${ESC}poison${CR}carriage${CRLF}windows${TAB}tab`
+    };
 
     applyProbeOutcome(outcome, { logger, productionMode: false });
 
@@ -327,7 +335,9 @@ describe('applyProbeOutcome — CWE-117 reason sanitization is load-bearing (ADR
     expect(msg).toBeDefined();
     expect(msg).toContain('INJECTED');
     expect(msg).not.toContain(NL);
+    expect(msg).not.toContain(CR);
     expect(msg).not.toContain(ESC);
+    expect(msg).not.toContain(TAB);
   });
 
   it('escapes a control-char reason in the network-failure warn-branch message', () => {
@@ -340,7 +350,9 @@ describe('applyProbeOutcome — CWE-117 reason sanitization is load-bearing (ADR
     expect(msg).toBeDefined();
     expect(msg).toContain('INJECTED');
     expect(msg).not.toContain(NL);
+    expect(msg).not.toContain(CR);
     expect(msg).not.toContain(ESC);
+    expect(msg).not.toContain(TAB);
   });
 
   it('escapes a control-char reason in the skipped info-branch message', () => {
@@ -353,6 +365,8 @@ describe('applyProbeOutcome — CWE-117 reason sanitization is load-bearing (ADR
     expect(msg).toBeDefined();
     expect(msg).toContain('INJECTED');
     expect(msg).not.toContain(NL);
+    expect(msg).not.toContain(CR);
     expect(msg).not.toContain(ESC);
+    expect(msg).not.toContain(TAB);
   });
 });

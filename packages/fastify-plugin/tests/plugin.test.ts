@@ -1153,8 +1153,15 @@ describe('Fastify Guardrails Plugin — CWE-117 sanitization is load-bearing (AD
   //   - '[Guardrails] Response blocked' log meta + the dev-mode filtered-response body
   //     `reason` (one shared `safeReason` sink) + request.url `path`
   const NL = String.fromCharCode(10); // LF
+  const CR = String.fromCharCode(13); // CR
   const ESC = String.fromCharCode(27); // ESC
-  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+  const TAB = String.fromCharCode(9); // TAB
+  const CRLF = `${CR}${NL}`; // CRLF (Windows line ending)
+  // sanitizeLogString hex-escapes CR→\x0d and TAB→\x09 (and CRLF→\x0d\n) in its
+  // control-char pass, which runs BEFORE the \n-collapse — so only LF maps to \n.
+  // Extended on the shared RAW_REASON only; the connector-specific sessionId /
+  // category / path sinks keep their existing NL/ESC coverage (out of scope here).
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison${CR}carriage${CRLF}windows${TAB}tab`;
   const HOSTILE_SESSION_ID = `sess${NL}INJECTED${ESC}id`;
   const HOSTILE_CATEGORY = `cat${NL}INJECTED${ESC}poison`;
   const POISON = 'POISONMARK';
@@ -1237,7 +1244,9 @@ describe('Fastify Guardrails Plugin — CWE-117 sanitization is load-bearing (AD
     const body = res.json() as { reason?: string };
     expect(body.reason).toContain('INJECTED');
     expect(body.reason).not.toContain(NL);
+    expect(body.reason).not.toContain(CR);
     expect(body.reason).not.toContain(ESC);
+    expect(body.reason).not.toContain(TAB);
   });
 
   it('escapes a control-char reason in the request-blocked log meta', async () => {
@@ -1258,7 +1267,9 @@ describe('Fastify Guardrails Plugin — CWE-117 sanitization is load-bearing (AD
     expect(meta).toBeDefined();
     expect(meta?.reason).toContain('INJECTED');
     expect(meta?.reason).not.toContain(NL);
+    expect(meta?.reason).not.toContain(CR);
     expect(meta?.reason).not.toContain(ESC);
+    expect(meta?.reason).not.toContain(TAB);
   });
 
   it('escapes a control-char request.url path in the request-blocked log meta', async () => {
@@ -1306,12 +1317,16 @@ describe('Fastify Guardrails Plugin — CWE-117 sanitization is load-bearing (AD
     const body = res.json() as { reason?: string };
     expect(body.reason).toContain('INJECTED');
     expect(body.reason).not.toContain(NL);
+    expect(body.reason).not.toContain(CR);
     expect(body.reason).not.toContain(ESC);
+    expect(body.reason).not.toContain(TAB);
     const meta = findWarnMeta(logger, '[Guardrails] Response blocked');
     expect(meta).toBeDefined();
     expect(meta?.reason).toContain('INJECTED');
     expect(meta?.reason).not.toContain(NL);
+    expect(meta?.reason).not.toContain(CR);
     expect(meta?.reason).not.toContain(ESC);
+    expect(meta?.reason).not.toContain(TAB);
   });
 
   it('escapes a control-char request.url path in the response-blocked log meta', async () => {
