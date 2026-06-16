@@ -209,7 +209,7 @@ Prevents hanging on slow or malicious inputs. Uses AbortController for timeout e
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn
 
 ## Contributing
 

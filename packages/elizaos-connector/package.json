@@ -46,8 +46,8 @@
     "validation",
     "agent"
   ],
-  "author": "Black Unicorn <info@blackunicorn.tech>",
-  "license": "MIT",
+  "author": "BlackUnicorn <info@blackunicorn.tech>",
+  "license": "Apache-2.0",
   "dependencies": {
     "@blackunicorn/bonklm": "workspace:*",
     "secure-json-parse": "^2.5.0"

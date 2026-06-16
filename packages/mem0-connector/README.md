@@ -114,4 +114,4 @@ Not covered by this connector: `text_input` / `text_output` / `tool_call` / `ret
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

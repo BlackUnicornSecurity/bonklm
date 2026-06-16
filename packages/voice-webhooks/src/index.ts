@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `@blackunicorn/bonklm-voice-webhooks` — Vapi (HTTP) + Retell (WebSocket)
  * webhook validators for BonkLM.

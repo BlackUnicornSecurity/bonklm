@@ -160,4 +160,4 @@ Note: the engine determines the actual finding categories — these primitives o
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

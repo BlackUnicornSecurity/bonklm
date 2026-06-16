@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `@blackunicorn/bonklm-livekit` — LiveKit Agents (v1.x) connector for BonkLM.
  *

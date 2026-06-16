@@ -152,4 +152,4 @@ See `docs/user/known-limitations.md` sections 17–20 for the full list. Headlin
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

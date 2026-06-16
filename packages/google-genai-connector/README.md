@@ -126,4 +126,4 @@ Gemini Developer API and Vertex AI modes — no per-mode code branching at the c
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

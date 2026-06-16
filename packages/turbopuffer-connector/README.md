@@ -137,4 +137,4 @@ See `GuardedNamespaceOptions` in `src/types.ts` for the full option surface with
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

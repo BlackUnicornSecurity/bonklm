@@ -1,7 +1,7 @@
 # @blackunicorn/bonklm-copilotkit
 
 [![npm version](https://badge.fury.io/js/%40blackunicorn%2Fbonklm-copilotkit.svg)](https://www.npmjs.com/package/@blackunicorn/bonklm-copilotkit)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 > CopilotKit integration for BonkLM
 
@@ -163,7 +163,7 @@ Creates a guardrail integration object with hook functions.
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn
 
 ## Support
 

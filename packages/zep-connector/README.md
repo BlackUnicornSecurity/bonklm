@@ -121,4 +121,4 @@ illustrative-only and **not exported** by this package.
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

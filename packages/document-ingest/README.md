@@ -105,4 +105,4 @@ All three wrappers apply the Sprint 20 cumulative-audit closures:
 
 ## License
 
-MIT. (c) Black Unicorn Security.
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

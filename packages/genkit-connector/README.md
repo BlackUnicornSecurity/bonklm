@@ -1,7 +1,7 @@
 # @blackunicorn/bonklm-genkit
 
 [![npm version](https://badge.fury.io/js/%40blackunicorn%2Fbonklm-genkit.svg)](https://www.npmjs.com/package/@blackunicorn/bonklm-genkit)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 > Google Genkit plugin for BonkLM
 
@@ -216,7 +216,7 @@ Wraps a Genkit flow with automatic guardrail hooks.
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn
 
 ## Support
 

@@ -74,4 +74,4 @@ const groq = wrapGroq(new Groq({ apiKey }), {
 
 ## License
 
-MIT. (c) Black Unicorn Security.
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

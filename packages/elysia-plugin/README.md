@@ -136,4 +136,4 @@ project's `package.json`:
 
 ## License
 
-MIT (c) Black Unicorn
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

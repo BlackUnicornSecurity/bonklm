@@ -189,4 +189,4 @@ app.use(
 
 ## License
 
-MIT © Black Unicorn
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

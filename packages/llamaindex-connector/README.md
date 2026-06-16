@@ -88,4 +88,4 @@ See `examples/` directory for a complete RAG application with guardrails.
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

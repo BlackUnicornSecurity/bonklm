@@ -318,8 +318,8 @@ project's `package.json`:
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn
 
 ---
 
-**@blackunicorn/bonklm-nestjs** - Part of the BonkLM ecosystem by Black Unicorn
+**@blackunicorn/bonklm-nestjs** - Part of the BonkLM ecosystem by BlackUnicorn

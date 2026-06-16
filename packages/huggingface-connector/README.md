@@ -122,4 +122,4 @@ See `examples/` directory for a complete inference application with guardrails.
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

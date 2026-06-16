@@ -46,4 +46,4 @@ For provider-specific wraps see the connector READMEs in
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

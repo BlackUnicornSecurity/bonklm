@@ -138,4 +138,4 @@ The mapping from vendor method → surface is the adapter's responsibility, not 
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

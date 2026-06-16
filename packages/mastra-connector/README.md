@@ -1,7 +1,7 @@
 # @blackunicorn/bonklm-mastra
 
 [![npm version](https://badge.fury.io/js/%40blackunicorn%2Fbonklm-mastra.svg)](https://www.npmjs.com/package/@blackunicorn/bonklm-mastra)
-[![License: MIT](https://badge.fury.io/js/%40blackunicorn%2Fbonklm-mastra.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 > Mastra framework connector for BonkLM
 
@@ -222,7 +222,7 @@ Wraps a Mastra agent with automatic guardrail hooks.
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn
 
 ## Support
 

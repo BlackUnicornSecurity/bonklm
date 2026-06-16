@@ -3,7 +3,7 @@
 > Vercel AI SDK connector for BonkLM with streaming validation support
 
 [![npm version](https://badge.fury.io/js/%40blackunicorn%2Fbonklm-vercel.svg)](https://www.npmjs.com/package/@blackunicorn/bonklm-vercel)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ## Features
 
@@ -257,7 +257,7 @@ This connector addresses critical security vulnerabilities:
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn
 
 ## Support
 

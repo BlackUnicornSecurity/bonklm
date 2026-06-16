@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `@blackunicorn/bonklm-elysia` — Elysia plugin for BonkLM (Story 3.9).
  *

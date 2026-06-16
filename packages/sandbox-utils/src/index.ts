@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `@blackunicorn/bonklm-sandbox-utils` — shared validation primitives
  * for E2B / Daytona / future sandbox adapters.

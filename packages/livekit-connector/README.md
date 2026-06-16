@@ -111,4 +111,4 @@ export default defineAgent({
 
 ## License
 
-MIT. © Black Unicorn Security.
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

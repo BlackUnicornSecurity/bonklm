@@ -33,7 +33,7 @@
     "workerd",
     "bonklm"
   ],
-  "author": "Black Unicorn <info@blackunicorn.tech>",
+  "author": "BlackUnicorn <info@blackunicorn.tech>",
   "license": "MIT",
   "peerDependencies": {
     "eslint": "^9.0.0 || ^10.0.0"

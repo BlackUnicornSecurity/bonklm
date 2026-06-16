@@ -233,4 +233,4 @@ Image runs as a non-root `bonklm` user, exposes `4123/tcp`, and includes a `/hea
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

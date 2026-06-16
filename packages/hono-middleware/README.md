@@ -164,4 +164,4 @@ rate-limiter advisory after acknowledging the policy, add to your project's `pac
 
 ## License
 
-MIT (c) Black Unicorn
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

@@ -46,7 +46,7 @@
   },
   "homepage": "https://github.com/BlackUnicornSecurity/bonklm/tree/main/packages/cloudflare-agents-connector#readme",
   "bugs": "https://github.com/BlackUnicornSecurity/bonklm/issues",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "engines": {
     "node": ">=20.4.0"
   }
