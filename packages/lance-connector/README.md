@@ -106,4 +106,4 @@ See `GuardedLanceTableOptions` in `src/types.ts` for the full option surface wit
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

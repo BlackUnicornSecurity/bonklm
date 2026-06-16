@@ -46,8 +46,8 @@
   "bugs": {
     "url": "https://github.com/BlackUnicornSecurity/bonklm/issues"
   },
-  "author": "Black Unicorn <info@blackunicorn.tech>",
-  "license": "MIT",
+  "author": "BlackUnicorn <info@blackunicorn.tech>",
+  "license": "Apache-2.0",
   "dependencies": {
     "@blackunicorn/bonklm": "workspace:*"
   },

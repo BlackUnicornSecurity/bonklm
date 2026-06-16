@@ -211,4 +211,4 @@ See the [Security Guide](./guides/security-guide.md) for complete best practices
 
 ## License
 
-MIT © Black Unicorn
+Apache-2.0 © 2026 BlackUnicorn

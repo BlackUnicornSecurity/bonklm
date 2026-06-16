@@ -94,4 +94,4 @@ See `examples/` directory for a complete vector search application with guardrai
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

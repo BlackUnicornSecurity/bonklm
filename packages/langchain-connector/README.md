@@ -196,7 +196,7 @@ The GuardrailsCallbackHandler integrates with LangChain's callback system:
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn
 
 ## Contributing
 

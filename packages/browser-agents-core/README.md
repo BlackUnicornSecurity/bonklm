@@ -87,4 +87,4 @@ chars) to prevent attacker-controlled validator output from polluting downstream
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

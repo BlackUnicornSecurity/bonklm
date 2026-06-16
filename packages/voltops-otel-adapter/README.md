@@ -111,4 +111,4 @@ validation surfaces are decided by whatever connector ran `engine.validate(...)`
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

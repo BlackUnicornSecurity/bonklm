@@ -108,4 +108,4 @@ Tracked as Story 1.6 backlog and split into follow-up PRs:
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

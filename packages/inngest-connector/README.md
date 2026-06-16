@@ -109,4 +109,4 @@ See `BonklmInngestMiddlewareOptions` in `src/types.ts` for the full surface. Def
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

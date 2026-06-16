@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `@blackunicorn/bonklm-document-ingest` — Document Ingest Hooks
  * for BonkLM (Story 3.7).

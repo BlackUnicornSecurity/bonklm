@@ -88,4 +88,4 @@ close (`packages/core/benchmarks/sandbox-attack-corpus/`).
 
 ## License
 
-MIT. (c) Black Unicorn Security.
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

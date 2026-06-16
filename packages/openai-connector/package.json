@@ -34,7 +34,7 @@
     "jailbreak-detection",
     "content-filtering"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "dependencies": {
     "@blackunicorn/bonklm": "workspace:*"
   },

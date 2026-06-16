@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `@blackunicorn/bonklm-voltops-otel` — VoltOps OTel adapter (Story 3.10).
  *

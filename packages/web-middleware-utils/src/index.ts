@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `@blackunicorn/bonklm-web-middleware-utils` — shared HTTP middleware
  * primitives for the Elysia plugin (Story 3.9) + Next.js helpers

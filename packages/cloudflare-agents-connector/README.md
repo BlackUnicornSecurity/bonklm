@@ -130,4 +130,4 @@ See [threat-surfaces.md](../../docs/user/threat-surfaces.md) for the full taxono
 
 ## License
 
-MIT (c) Black Unicorn
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

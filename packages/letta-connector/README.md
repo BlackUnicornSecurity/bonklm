@@ -123,4 +123,4 @@ The per-method coverage is gated by `LETTA_METHODS` (`create`, `send_message`, `
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

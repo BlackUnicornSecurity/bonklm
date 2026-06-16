@@ -28,8 +28,8 @@
     "validation",
     "transformers"
   ],
-  "author": "Black Unicorn",
-  "license": "MIT",
+  "author": "BlackUnicorn",
+  "license": "Apache-2.0",
   "dependencies": {
     "@blackunicorn/bonklm": "workspace:*"
   },

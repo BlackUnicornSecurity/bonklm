@@ -4,7 +4,7 @@
 
 ### **Core Security Engine for BonkLM**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Node.js Version](https://img.shields.io/node/v/%40blackunicorn%2Fbonklm.svg)](https://nodejs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
 
@@ -436,4 +436,4 @@ for await (const result of streamResult) {
 
 ## License
 
-MIT © Black Unicorn <info@blackunicorn.tech>
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

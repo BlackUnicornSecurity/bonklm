@@ -34,7 +34,7 @@
     "tool-validation",
     "prompt-injection"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "dependencies": {
     "@blackunicorn/bonklm": "workspace:*"
   },

@@ -739,4 +739,21 @@ See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+BonkLM uses a dual-license model: the community core is **Apache-2.0** and the enterprise tier is
+**BSL-1.1** (see [`LICENSING.md`](LICENSING.md)). Community contributions are accepted into the
+Apache-2.0 core.
+
+### Developer Certificate of Origin (DCO)
+
+All contributions are made under the
+[Developer Certificate of Origin](https://developercertificate.org/). Sign off every commit with
+`git commit -s`, which appends a `Signed-off-by` line certifying that you wrote the contribution (or
+otherwise have the right to submit it) and agree to license it under this project's terms.
+
+### Relicensing clause
+
+So that BonkLM can sustain its open-core model, by contributing you grant BlackUnicorn a perpetual,
+worldwide, royalty-free license to use, relicense, and sublicense your contribution — including the
+right to include it under the Apache-2.0 community core **and** the BSL-1.1 enterprise tier, and to
+set or adjust the BSL Change Date. This clause is deliberately narrow: it covers only the
+contribution you submit, and the community core remains Apache-2.0 for everyone.

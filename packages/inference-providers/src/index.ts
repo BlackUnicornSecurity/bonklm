@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: Apache-2.0
 /**
  * `@blackunicorn/bonklm-inference-providers` — Groq + Cerebras +
  * Together wrappers for BonkLM. All 3 use the shared internal

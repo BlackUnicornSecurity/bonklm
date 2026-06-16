@@ -79,4 +79,4 @@ If the validator throws or times out, the wrapper defaults to BLOCK. Opt-out via
 
 ## License
 
-MIT. (c) Black Unicorn Security.
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn

@@ -120,4 +120,4 @@ Tracked across the roadmap split:
 
 ## License
 
-MIT
+[Apache-2.0](./LICENSE) © 2026 BlackUnicorn
