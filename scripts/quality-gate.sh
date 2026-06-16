@@ -192,6 +192,15 @@ run_gate "changeset-linked" node tools/check-changeset-linked.js
 # so it runs in fast mode too, mirroring the CI `workspace-policy` job.
 run_gate "workspace-policy" node tools/check-workspace-policy.js
 
+# ---- OSS↔EE license-boundary gate ----------------------------------------
+# Classify every packages/* package OSS (Apache-2.0) vs EE (BUSL-1.1) and fail if
+# an OSS package imports an EE package (static or dynamic), enforcing that the
+# Apache core builds/tests with packages/bonklm-ee/* absent. Dependency-free +
+# instant (reads package.json + source text), so it runs in fast mode too,
+# mirroring the CI `ee-boundary` job. At v1.0 (zero ee packages) it passes
+# trivially — a tripwire for the first v1.1 ee package.
+run_gate "ee-boundary" node tools/check-ee-boundary.js
+
 # ---- Tests + coverage ----------------------------------------------------
 # Coverage thresholds in vitest.config.ts are the ratchet floor (only moves up;
 # policy target is 100% — see CONTRIBUTING "Test coverage"). A drop below the

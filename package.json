@@ -12,6 +12,7 @@
     "verify:surface": "node scripts/verify-publish-surface.mjs",
     "check:changeset-linked": "node tools/check-changeset-linked.js",
     "check:workspace-policy": "node tools/check-workspace-policy.js",
+    "check:ee-boundary": "node tools/check-ee-boundary.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:types": "pnpm -r --if-present test:types",

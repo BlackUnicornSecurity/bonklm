@@ -26,7 +26,8 @@ export default defineConfig({
         'packages/core/src/**/*.ts',
         'packages/*/src/**/*.ts',
         'tools/check-changeset-linked.js',
-        'tools/check-workspace-policy.js'
+        'tools/check-workspace-policy.js',
+        'tools/check-ee-boundary.js'
       ],
       exclude: [
         '**/*.d.ts',
@@ -89,6 +90,15 @@ export default defineConfig({
         // packages/*; pin it to 100% so its coverage is enforced by the standard
         // gate, not merely asserted (CONTRIBUTING "documented -> enforced").
         'tools/check-workspace-policy.js': {
+          lines: 100,
+          functions: 100,
+          branches: 100,
+          statements: 100
+        },
+        // The OSS↔EE license-boundary gate is dependency-free tooling outside
+        // packages/*; pin it to 100% so its coverage is enforced by the standard
+        // gate, not merely asserted (CONTRIBUTING "documented -> enforced").
+        'tools/check-ee-boundary.js': {
           lines: 100,
           functions: 100,
           branches: 100,
