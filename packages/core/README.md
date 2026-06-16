@@ -437,3 +437,10 @@ for await (const result of streamResult) {
 ## License
 
 [Apache-2.0](./LICENSE) © 2026 BlackUnicorn
+
+## Privacy
+
+BonkLM runs entirely in your own process and collects nothing about you — there is no telemetry
+uplink to us. See the
+[Privacy Policy](https://github.com/BlackUnicornSecurity/bonklm/blob/main/PRIVACY.md) for the full
+data-handling statement.

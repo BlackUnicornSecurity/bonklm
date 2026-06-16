@@ -144,3 +144,8 @@ appears in the release notes for the fixing version and in this section.
 
 _No entries yet. If you report a valid vulnerability we will add your name or handle here (with your
 permission)._
+
+## Privacy
+
+For what the software collects (nothing) and how we handle the limited data you send us directly,
+see the [Privacy Policy](./PRIVACY.md).
