@@ -1214,8 +1214,13 @@ describe('ChromaDB Connector — CWE-117 batch-block reason sanitization (D-042)
   const ESC = String.fromCharCode(27);
   const NL = String.fromCharCode(10);
   const CR = String.fromCharCode(13);
-  const RAW_CONTROL = [ESC, NL, CR];
-  const CONTROL_REASON = `evil${ESC}[31m${NL}FAKE-LOG${CR}injected`;
+  const TAB = String.fromCharCode(9);
+  const CRLF = `${CR}${NL}`; // CRLF (Windows line ending)
+  const RAW_CONTROL = [ESC, NL, CR, TAB];
+  // CONTROL_REASON and the mock id below both drive the full ESC/LF/CR/CRLF/TAB
+  // class so every RAW_CONTROL `.not.toContain` loop is non-vacuous for each char
+  // (the id previously omitted CR/TAB, making those loop iterations vacuous).
+  const CONTROL_REASON = `evil${ESC}[31m${NL}FAKE-LOG${CR}injected${CRLF}win${TAB}col`;
 
   // A custom RetrievedDocValidator whose batch result carries a control-char
   // reason. Chroma's inline 2D batch path throws this reason, so its throw is
@@ -1240,7 +1245,7 @@ describe('ChromaDB Connector — CWE-117 batch-block reason sanitization (D-042)
     query: vi.fn().mockResolvedValue({
       documents: [['TRIGGER me']],
       metadatas: [[{ source: 'web' }]],
-      ids: [[`bad-id${ESC}${NL}fake`]],
+      ids: [[`bad-id${ESC}${NL}fake${CR}x${TAB}y`]],
       distances: [[0.1]]
     }),
     add: vi.fn().mockResolvedValue(undefined),
@@ -1262,6 +1267,11 @@ describe('ChromaDB Connector — CWE-117 batch-block reason sanitization (D-042)
     expect(err).toBeDefined();
     const message = (err as Error).message;
     expect(message).toContain('Document batch blocked');
+    // Non-vacuity: the escaped CRLF (\x0d\n) and TAB (\x09) genuinely land in the
+    // thrown message, so the RAW_CONTROL `.not.toContain` loop below cannot pass
+    // on an un-reached char (removing the wrap reds it).
+    expect(message).toContain('\\x0d\\n');
+    expect(message).toContain('\\x09');
     for (const ch of RAW_CONTROL) {
       expect(message).not.toContain(ch);
     }
@@ -1323,6 +1333,7 @@ describe('ChromaDB Connector — CWE-117 batch-block reason sanitization (D-042)
     expect(err).toBeDefined();
     const message = (err as Error).message;
     expect(message).toContain('Document blocked');
+    expect(message).toContain('\\x09'); // escaped TAB present → message loop is non-vacuous
     for (const ch of RAW_CONTROL) {
       expect(message).not.toContain(ch);
     }
@@ -1335,6 +1346,10 @@ describe('ChromaDB Connector — CWE-117 batch-block reason sanitization (D-042)
     const ctx = blockedWarn!.context as Record<string, unknown>;
     const id = String(ctx.id ?? '');
     const reason = String(ctx.reason ?? '');
+    // Both id and reason carry the escaped TAB (\x09) in the green case, so the
+    // .not.toContain loop is non-vacuous for the newly-driven CR/TAB classes.
+    expect(id).toContain('\\x09');
+    expect(reason).toContain('\\x09');
     for (const ch of RAW_CONTROL) {
       expect(id).not.toContain(ch);
       expect(reason).not.toContain(ch);

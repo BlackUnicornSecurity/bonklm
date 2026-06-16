@@ -234,6 +234,11 @@ describe('LlamaIndex Connector — CWE-117 reason/documentPreview sanitization i
   // control-char pass, which runs BEFORE the \n-collapse — so only LF maps to \n.
   const RAW_REASON = `matched${NL}INJECTED${ESC}poison${CR}carriage${CRLF}windows${TAB}tab`;
   const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison\\x0dcarriage\\x0d\\nwindows\\x09tab';
+  // documentPreview is a slice of attacker-controlled retrieved-doc content — it
+  // carries its OWN control-char class and its OWN sanitizeMeta wrap. ESCAPED_DOC
+  // is derived from the real primitive (the doc is < the 100-char preview window,
+  // so the full escaped form lands in the meta).
+  const ESCAPED_DOC = 'POISONMARK\\nINJECTED\\x1bdocpoison\\x0dcarriage\\x0d\\nwindows\\x09tab';
   const POISON = 'POISONMARK';
 
   const blockResult = (reason: string): GuardrailResult => ({
@@ -299,7 +304,7 @@ describe('LlamaIndex Connector — CWE-117 reason/documentPreview sanitization i
   });
 
   it('escapes a control-char document reason AND the document-content preview at the query-engine doc-blocked log meta and abort throw', async () => {
-    const poisonDoc = `${POISON}${NL}INJECTED${ESC}docpoison`;
+    const poisonDoc = `${POISON}${NL}INJECTED${ESC}docpoison${CR}carriage${CRLF}windows${TAB}tab`;
     const mockEngine = {
       query: vi.fn().mockResolvedValue({
         response: 'clean response',
@@ -326,9 +331,11 @@ describe('LlamaIndex Connector — CWE-117 reason/documentPreview sanitization i
     expect(warnMeta?.reason).not.toContain(TAB);
     // `documentPreview` is a slice of the (attacker-controlled) retrieved-doc
     // content — it carries its OWN control chars and its OWN sanitizeMeta wrap.
-    expect(warnMeta?.documentPreview).toContain('INJECTED');
+    expect(warnMeta?.documentPreview).toContain(ESCAPED_DOC);
     expect(warnMeta?.documentPreview).not.toContain(NL);
+    expect(warnMeta?.documentPreview).not.toContain(CR);
     expect(warnMeta?.documentPreview).not.toContain(ESC);
+    expect(warnMeta?.documentPreview).not.toContain(TAB);
   });
 
   it('escapes a control-char response-blocked reason at the query-engine response log meta', async () => {
@@ -380,7 +387,7 @@ describe('LlamaIndex Connector — CWE-117 reason/documentPreview sanitization i
   });
 
   it('escapes a control-char document reason AND the document-content preview at the retriever doc-blocked log meta and abort throw', async () => {
-    const poisonDoc = `${POISON}${NL}INJECTED${ESC}docpoison`;
+    const poisonDoc = `${POISON}${NL}INJECTED${ESC}docpoison${CR}carriage${CRLF}windows${TAB}tab`;
     const mockRetriever = { retrieve: vi.fn().mockResolvedValue([{ getContent: () => poisonDoc }]) };
     const logger = createSpyLogger();
     const guarded = createGuardedRetriever(mockRetriever, {
@@ -400,8 +407,10 @@ describe('LlamaIndex Connector — CWE-117 reason/documentPreview sanitization i
     expect(warnMeta?.reason).not.toContain(CR);
     expect(warnMeta?.reason).not.toContain(ESC);
     expect(warnMeta?.reason).not.toContain(TAB);
-    expect(warnMeta?.documentPreview).toContain('INJECTED');
+    expect(warnMeta?.documentPreview).toContain(ESCAPED_DOC);
     expect(warnMeta?.documentPreview).not.toContain(NL);
+    expect(warnMeta?.documentPreview).not.toContain(CR);
     expect(warnMeta?.documentPreview).not.toContain(ESC);
+    expect(warnMeta?.documentPreview).not.toContain(TAB);
   });
 });
