@@ -261,5 +261,5 @@ This connector addresses critical security vulnerabilities:
 
 ## Support
 
-- GitHub: [blackunicorn/bonklm](https://github.com/blackunicorn/bonklm)
+- GitHub: [BlackUnicornSecurity/bonklm](https://github.com/BlackUnicornSecurity/bonklm)
 - Documentation: [bonklm.dev](https://bonklm.dev)

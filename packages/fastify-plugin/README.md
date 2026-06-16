@@ -149,4 +149,5 @@ project's `package.json`:
 
 ---
 
-**BlackUnicorn** • [github.com/blackunicorn-bonklm](https://github.com/blackunicorn-bonklm)
+**BlackUnicorn** •
+[github.com/BlackUnicornSecurity/bonklm](https://github.com/BlackUnicornSecurity/bonklm)

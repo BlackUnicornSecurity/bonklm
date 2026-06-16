@@ -322,10 +322,12 @@ is source-available under **BSL-1.1** ([`LICENSE-BUSL-1.1.txt`](LICENSE-BUSL-1.1
 
 ## 🔗 Links
 
-- **GitHub**: [github.com/blackunicorn/bonklm](https://github.com/blackunicorn/bonklm)
+- **GitHub**:
+  [github.com/BlackUnicornSecurity/bonklm](https://github.com/BlackUnicornSecurity/bonklm)
 - **npm**:
   [npmjs.com/package/@blackunicorn/bonklm](https://www.npmjs.com/package/@blackunicorn/bonklm)
-- **Issues**: [github.com/blackunicorn/bonklm/issues](https://github.com/blackunicorn/bonklm/issues)
+- **Issues**:
+  [github.com/BlackUnicornSecurity/bonklm/issues](https://github.com/BlackUnicornSecurity/bonklm/issues)
 - **Security**: [SECURITY.md](./SECURITY.md) — vulnerability reporting and disclosure policy
 - **Privacy**: [PRIVACY.md](./PRIVACY.md) — what the library collects (nothing) and how we handle
   data

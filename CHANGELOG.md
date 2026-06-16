@@ -1699,5 +1699,5 @@ work:
 
 MIT License - See LICENSE file for details
 
-[Unreleased]: https://github.com/blackunicorn/bonklm/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/blackunicorn/bonklm/releases/tag/v1.0.0
+[Unreleased]: https://github.com/BlackUnicornSecurity/bonklm/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/BlackUnicornSecurity/bonklm/releases/tag/v1.0.0

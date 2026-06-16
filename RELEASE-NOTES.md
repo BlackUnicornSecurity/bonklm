@@ -134,4 +134,4 @@ now reflects the actual package version instead of `0.1.0`.
 
 - CHANGELOG: [CHANGELOG.md](./CHANGELOG.md)
 - Development notes: maintained internally (gitignored)
-- Issue tracker: https://github.com/blackunicorn/bonklm/issues
+- Issue tracker: https://github.com/BlackUnicornSecurity/bonklm/issues

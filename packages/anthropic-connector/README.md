@@ -354,5 +354,5 @@ import type {
 
 ## Support
 
-- GitHub Issues: https://github.com/blackunicorn/bonklm/issues
+- GitHub Issues: https://github.com/BlackUnicornSecurity/bonklm/issues
 - Documentation: https://bonklm.dev
