@@ -7,7 +7,7 @@ Hono / Elysia / Next.js) and durable-execution frameworks (Restate / Temporal / 
 Inngest) as middleware or plugins.
 
 For voice + realtime webhooks see
-[LLM Provider Connectors → Voice webhooks](./llm-providers.md#voice-webhooks).
+[LLM Provider Connectors → Voice webhooks](./llm-providers.md#voice-webhooks-vapi--retell).
 
 ## Available Connectors
 

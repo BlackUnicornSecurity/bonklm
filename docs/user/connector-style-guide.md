@@ -380,9 +380,9 @@ Regardless of which shape you pick, every connector MUST:
    types — consumers across connectors recover via the same `errorCategory` taxonomy.
 
 4. **Log validation failures via `logValidationFailure`** from
-   `@blackunicorn/bonklm/core/connector-utils`. The helper sanitises log control characters
-   (`stripLogControlChars`) so attacker-controlled metadata cannot inject ANSI escapes or null bytes
-   into log lines.
+   `@blackunicorn/bonklm/core/connector-utils`. The helper hex-escapes log control characters
+   (`sanitizeLogString`, per ADR-0001) so attacker-controlled metadata cannot inject ANSI escapes or
+   null bytes into log lines.
 
 5. **Declare peer dependencies in `packages/<name>/package.json`** with TIGHT pre-1.0 vendor SDK
    ranges (e.g. `"@openai/agents": "^0.11.0"`, not `"*"`). Vendor SDKs change shape between minors

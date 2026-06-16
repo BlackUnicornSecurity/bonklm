@@ -7,7 +7,7 @@ databases, and retriever pipelines.
 
 For LLM provider connectors that may sit downstream of the retriever see
 [LLM Provider Connectors](./llm-providers.md); for memory-client connectors (Letta / Mem0 / Zep) see
-[AI SDK Connectors](./ai-sdks.md#letta-memory-client).
+[AI SDK Connectors](./ai-sdks.md#letta-memory-client-connector).
 
 ## Available Connectors
 
@@ -53,7 +53,7 @@ const guardedEngine = createGuardedQueryEngine(queryEngine, {
   validators: [new PromptInjectionValidator()]
 });
 
-const response = await guardedEngine.query({ query: userInput });
+const response = await guardedEngine.query(userInput);
 ```
 
 ### Basic Usage — Retriever
@@ -63,8 +63,8 @@ import { createGuardedRetriever } from '@blackunicorn/bonklm-llamaindex';
 
 const guardedRetriever = createGuardedRetriever(retriever, {
   validators: [new PromptInjectionValidator()],
-  validateRetrievalQuery: true,
-  validateRetrievedDocuments: true
+  validateRetrievedDocs: true,
+  onBlockedDocument: 'filter'
 });
 
 const nodes = await guardedRetriever.retrieve(userQuery);
@@ -72,19 +72,18 @@ const nodes = await guardedRetriever.retrieve(userQuery);
 
 ### Configuration Options
 
-| Option                       | Type          | Default                     | Description                     |
-| ---------------------------- | ------------- | --------------------------- | ------------------------------- |
-| `validators`                 | `Validator[]` | `[]`                        | Validators to apply             |
-| `guards`                     | `Guard[]`     | `[]`                        | Guards to run                   |
-| `validateQueryInput`         | `boolean`     | `true`                      | Validate query input            |
-| `validateQueryOutput`        | `boolean`     | `true`                      | Validate query output           |
-| `validateRetrievalQuery`     | `boolean`     | `true`                      | Validate retrieval queries      |
-| `validateRetrievedDocuments` | `boolean`     | `true`                      | Validate retrieved docs         |
-| `productionMode`             | `boolean`     | `NODE_ENV === 'production'` | Generic errors in production    |
-| `validationTimeout`          | `number`      | `30000`                     | Timeout in milliseconds         |
-| `onQueryBlocked`             | `Function`    | —                           | Callback when query blocked     |
-| `onRetrievalBlocked`         | `Function`    | —                           | Callback when retrieval blocked |
-| `onDocumentBlocked`          | `Function`    | —                           | Callback when document blocked  |
+| Option                  | Type                               | Default                     | Description                       |
+| ----------------------- | ---------------------------------- | --------------------------- | --------------------------------- |
+| `validators`            | `Validator[]`                      | `[]`                        | Validators to apply               |
+| `guards`                | `Guard[]`                          | `[]`                        | Guards to run                     |
+| `validateRetrievedDocs` | `boolean`                          | `true`                      | Validate each retrieved document  |
+| `onBlockedDocument`     | `'filter' \| 'abort' \| 'replace'` | `'filter'`                  | Action when a document is blocked |
+| `maxRetrievedDocs`      | `number`                           | `10`                        | Max documents to retrieve         |
+| `productionMode`        | `boolean`                          | `NODE_ENV === 'production'` | Generic errors in production      |
+| `validationTimeout`     | `number`                           | `30000`                     | Timeout in milliseconds           |
+| `onQueryBlocked`        | `Function`                         | —                           | Callback when query blocked       |
+| `onDocumentBlocked`     | `Function`                         | —                           | Callback when a document blocked  |
+| `onResponseBlocked`     | `Function`                         | —                           | Callback when response blocked    |
 
 ---
 
@@ -595,8 +594,8 @@ All RAG / vector-store connectors include:
 The `memory_write` + `composed_context` surfaces in `@blackunicorn/bonklm-lance` and
 `@blackunicorn/bonklm-turbopuffer` use the same `MemoryWriteValidator` + `RetrievedDocValidator`
 primitives as the memory-client connectors (Letta, Mem0, Zep — see
-[AI SDK Connectors](./ai-sdks.md#letta-memory-client)) so the threat model and `onFailure` knobs
-(`'block-write'` / `'filter'`) line up across vector stores AND memory backends.
+[AI SDK Connectors](./ai-sdks.md#letta-memory-client-connector)) so the threat model and `onFailure`
+knobs (`'block-write'` / `'filter'`) line up across vector stores AND memory backends.
 
 ## Choosing a Vector-Store Connector
 
