@@ -115,8 +115,7 @@ Tracked across the roadmap split:
 - **Levenshtein-distance ≤ 2 typo-squat detection** for both Construct B refuse-write AND Construct
   D plugin audit.
 - **30-day-post-v0.5.0 EOL flag** in `package.json.deprecated`.
-- **Coordinated-disclosure pipeline gate** — `team/upstream-disclosure-status.md` check at RC tag
-  time.
+- **Coordinated-disclosure pipeline gate** — enforced at RC-tag time.
 
 ## License
 
