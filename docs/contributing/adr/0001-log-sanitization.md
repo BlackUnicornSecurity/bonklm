@@ -76,6 +76,23 @@ consolidated.
      `U+202E` RIGHT-TO-LEFT OVERRIDE in an attacker-controlled string can reverse subsequent
      characters in any Unicode-aware terminal or SIEM UI — making the rendered log line differ from
      the byte stream a parser reads. Hex-escaping makes the attack visible.
+   - Hex-escapes the zero-width / Unicode-format (Cf) class — `U+061C` (ALM), `U+200B`–`U+200F`
+     (zero-width space/joiners + the LRM/RLM directional marks), `U+2060`–`U+2064` (word joiner +
+     the invisible math operators), and `U+FEFF` (BOM) — to `\uNNNN` markers. These code points
+     render as nothing yet survive in the byte stream, so an attacker can smuggle invisible content
+     into a log line (homoglyph / zero-width spoof — e.g. `ad<ZWSP>min` rendering as `admin` while a
+     naive `grep admin` misses the forged record) or wedge a Unicode-aware parser. They live above
+     0x7F so the control-char regex misses them, and they are disjoint from the bidi
+     override/isolate range above. Hex-escaping preserves forensic signal. NOTE: this is the LOG
+     sink, which ESCAPES; the detection-layer text-normalizer STRIPS the same class before injection
+     matching — a different sink with a different goal. This LOG set is intentionally NARROWER than
+     the detection-layer strip set and deliberately omits the astral TAG block (`U+E0000`–`U+E007F`,
+     the "ASCII smuggling" channel) plus assorted other Cf points (`U+00AD`, `U+180E`,
+     `U+206A`–`U+206F`, `U+FFF9`–`U+FFFB`, …) — those need an astral-aware escape (the BMP `\uNNNN`
+     formula mis-escapes surrogate pairs) and are tracked as a follow-up. NOTE also: this primitive
+     sanitizes LOG output; do NOT route end-user-display text through it where `U+200C` / `U+200D`
+     are orthographically load-bearing (Persian ZWNJ, Indic / emoji ZWJ) — escaping them there
+     mangles legitimate non-Latin content; use a display-safe path instead.
    - Caps output at 500 chars + appends `…[truncated]` marker.
 
 2. **`stripLogControlChars` is `@public` + `@deprecated` through 1.x; internal callers migrated to
@@ -95,6 +112,10 @@ consolidated.
    ### Decision history
    - 2026-05-26: extended escape-set to bidi-override (U+202A..E) + bidi-isolates (U+2066..9).
      Sister-sanitizer `sanitizeReasonText` aligned to TAB hex-escape.
+   - 2026-06-16: extended escape-set to the zero-width / Unicode-format class (U+061C, U+200B..F,
+     U+2060..4, U+FEFF). Closes the invisible-content / homoglyph log-spoof gap in the canonical
+     primitive; inherited by `sanitizeMeta` and every connector sink. Mutation-proven per the
+     load-bearing regression corpus in `packages/core/tests/unit/common/index.test.ts`.
 
 3. **`sanitiseShell` stays inline in `bash-safety.ts`.** Not exported, not part of any contract. The
    local closure makes the use-case boundary explicit.

@@ -86,4 +86,64 @@ describe('langchain-connector — CWE-117 sanitizer primitive contract', () => {
     expect(meta.runId).not.toContain('\n');
     expect(meta.runId).toContain('INJECTED');
   });
+
+  it('end-to-end: escapes a zero-width U+200B in runId at the stream-buffer-exceeded log site (D-049)', async () => {
+    // D-049: core `sanitizeLogString` now hex-escapes the zero-width / Unicode-
+    // format class. Drive the real buffer-exceeded warn with a runId carrying
+    // U+200B and assert the spy logger captured the ESCAPED form. With the core
+    // format-escape pass removed, the raw zero-width char would land in the meta
+    // unchanged — this test is load-bearing on the core primitive (ADR-0001).
+    // The raw char is derived via String.fromCodePoint so no invisible byte is
+    // embedded in the test source.
+    const spyLogger = {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn()
+    };
+    const handler = new GuardrailsCallbackHandler({
+      validators: [
+        {
+          name: 'NoOp',
+          validate: () => ({
+            allowed: true,
+            blocked: false,
+            severity: 'info' as const,
+            risk_level: 'low' as const,
+            risk_score: 0,
+            findings: [],
+            timestamp: Date.now()
+          })
+        } as never
+      ],
+      logger: spyLogger,
+      validateStreaming: true,
+      maxStreamBufferSize: 16,
+      productionMode: false
+    });
+
+    const zwsp = String.fromCodePoint(0x200b);
+    const hostileRunId = `run-ad${zwsp}min:fake_runid_audit=PASS`;
+    const parentRunId = 'parent-1';
+    const indices: NewTokenIndices = { prompt: 0, completion: 0 };
+
+    let thrown: unknown = null;
+    try {
+      for (let i = 0; i < 10; i++) {
+        await handler.handleLLMNewToken('x'.repeat(8), indices, hostileRunId, parentRunId);
+      }
+    } catch (err) {
+      thrown = err;
+    }
+    expect(thrown).toBeInstanceOf(Error);
+
+    const bufferExceededCall = spyLogger.warn.mock.calls.find(
+      call => typeof call[0] === 'string' && call[0].includes('Stream buffer exceeded')
+    );
+    expect(bufferExceededCall).toBeDefined();
+    const meta = bufferExceededCall![1] as { runId?: string };
+    expect(meta.runId).toBeDefined();
+    expect(meta.runId).not.toContain(zwsp);
+    expect(meta.runId).toContain('\\u200b');
+  });
 });
