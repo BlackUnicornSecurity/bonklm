@@ -21,7 +21,8 @@ import {
   type CopilotKitMessage,
   type CopilotKitAction
 } from '../src/index.js';
-import { PromptInjectionValidator } from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, Severity } from '@blackunicorn/bonklm';
+import type { GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
 import { noOpValidator } from '@blackunicorn/bonklm/testing';
 
 describe('CopilotKit Guardrail Integration', () => {
@@ -322,5 +323,126 @@ describe('CopilotKit Guardrail Integration', () => {
         expect(result.allowed).toBe(true);
       });
     });
+  });
+});
+
+describe('copilotkit — CWE-117 reason/actionName sanitization is load-bearing (ADR-0001)', () => {
+  // ADR-0001 non-vacuity proof for the four unsanitized sinks in
+  // src/copilotkit-guardrail.ts: the three UNCONDITIONAL `actionName`
+  // log-meta sinks in `isActionNameAllowed` (length-exceeded / blocked-list /
+  // not-in-allowed-list) and the dev-mode `createErrorMessage` reason sink.
+  // cwe117-regression.test.ts only asserts the sanitizer primitive in
+  // isolation; these tests drive the guarded integration with a control-char
+  // `actionName` (or validator `reason`) and assert the ESCAPED form at the
+  // sink. The actionName meta sinks are NOT productionMode-gated (an
+  // attacker-named action always reaches the log), so they are driven with
+  // `productionMode: true` to prove the wrap fires unconditionally; the
+  // createErrorMessage sink is dev-mode-gated and driven with
+  // `productionMode: false`. Removing the matching `sanitizeMeta(...)` wrap
+  // from src turns the corresponding test (and only that one) RED.
+  const NL = String.fromCharCode(10); // LF
+  const ESC = String.fromCharCode(27); // ESC
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const POISON = 'POISONMARK';
+
+  const blockResult = (reason: string): GuardrailResult => ({
+    allowed: false,
+    blocked: true,
+    reason,
+    severity: Severity.CRITICAL,
+    risk_level: 'HIGH',
+    risk_score: 30,
+    findings: [{ category: 'test', severity: Severity.CRITICAL, description: 'blocked', weight: 30 }],
+    timestamp: Date.now()
+  });
+
+  const allowResult = (): GuardrailResult => ({
+    allowed: true,
+    blocked: false,
+    severity: Severity.INFO,
+    risk_level: 'LOW',
+    risk_score: 0,
+    findings: [],
+    timestamp: Date.now()
+  });
+
+  const markerBlock = (reason: string): Validator => ({
+    name: 'MarkerBlock',
+    validate: (input: unknown) =>
+      (typeof input === 'string' ? input : '').includes(POISON) ? blockResult(reason) : allowResult()
+  });
+
+  const createSpyLogger = (): Logger =>
+    ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }) as unknown as Logger;
+
+  const findWarnMeta = (logger: Logger, message: string): { actionName?: string } | undefined =>
+    (logger.warn as ReturnType<typeof vi.fn>).mock.calls.find(call => call[0] === message)?.[1] as
+      | { actionName?: string }
+      | undefined;
+
+  it('escapes a control-char actionName at the length-exceeded log meta (unconditional)', async () => {
+    const logger = createSpyLogger();
+    const guard = createGuardedCopilotKit({
+      validators: [noOpValidator()],
+      logger,
+      productionMode: true,
+      maxActionNameLength: 10
+    });
+    // Length check runs first in isActionNameAllowed → this branch fires.
+    const result = await guard.validateActionCall({ name: `aaaaaaaaaaa${RAW_REASON}`, args: {} });
+    expect(result.allowed).toBe(false);
+    const meta = findWarnMeta(logger, '[CopilotKit Guardrails] Action name exceeds maximum length');
+    expect(meta).toBeDefined();
+    expect(meta?.actionName).toContain('INJECTED');
+    expect(meta?.actionName).not.toContain(NL);
+    expect(meta?.actionName).not.toContain(ESC);
+  });
+
+  it('escapes a control-char actionName at the blocked-list log meta (unconditional)', async () => {
+    const logger = createSpyLogger();
+    const guard = createGuardedCopilotKit({
+      validators: [noOpValidator()],
+      logger,
+      productionMode: true,
+      blockedActionNames: ['danger*']
+    });
+    // ESC survives the `^danger.*$` match (regex `.` is not stopped by ESC,
+    // only by line terminators) so the blocked-list branch is reached with a
+    // raw control char in the name.
+    const result = await guard.validateActionCall({ name: `danger${ESC}INJECTED`, args: {} });
+    expect(result.allowed).toBe(false);
+    const meta = findWarnMeta(logger, '[CopilotKit Guardrails] Action name is blocked');
+    expect(meta).toBeDefined();
+    expect(meta?.actionName).toContain('INJECTED');
+    expect(meta?.actionName).not.toContain(ESC);
+  });
+
+  it('escapes a control-char actionName at the not-in-allowed-list log meta (unconditional)', async () => {
+    const logger = createSpyLogger();
+    const guard = createGuardedCopilotKit({
+      validators: [noOpValidator()],
+      logger,
+      productionMode: true,
+      allowedActionNames: ['safeonly']
+    });
+    // Name matches no default blocked pattern and is not in the allowlist →
+    // the not-in-allowed-list branch fires with both LF + ESC in the name.
+    const result = await guard.validateActionCall({ name: `bogus${RAW_REASON}`, args: {} });
+    expect(result.allowed).toBe(false);
+    const meta = findWarnMeta(logger, '[CopilotKit Guardrails] Action name not in allowed list');
+    expect(meta).toBeDefined();
+    expect(meta?.actionName).toContain('INJECTED');
+    expect(meta?.actionName).not.toContain(NL);
+    expect(meta?.actionName).not.toContain(ESC);
+  });
+
+  it('escapes the reason in the dev-mode blockedReason from createErrorMessage', async () => {
+    const guard = createGuardedCopilotKit({ validators: [markerBlock(RAW_REASON)], productionMode: false });
+    const result = await guard.beforeSendMessage([{ role: 'user', content: `hi ${POISON}` }]);
+    expect(result.allowed).toBe(false);
+    expect(result.blockedReason).toContain(ESCAPED_REASON);
+    expect(result.blockedReason).not.toContain(NL);
+    expect(result.blockedReason).not.toContain(ESC);
   });
 });

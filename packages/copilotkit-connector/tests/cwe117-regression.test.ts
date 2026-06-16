@@ -1,20 +1,21 @@
 /**
- * Sprint 43 cross-connector CWE-117 sweep — copilotkit-connector regression.
+ * copilotkit-connector — CWE-117 sanitizer primitive contract.
  *
- * Two src sites in `copilotkit-guardrail.ts`:
- *   - line ~337 (input-blocked log raw reason).
- *   - line ~362 (output-blocked log raw reason).
- *
- * Sprint 43 wraps both with `sanitizeMeta`. The `blockedReason` field
- * passed to `createErrorMessage` is separately formatted and is the
- * caller's responsibility — Sprint 43 covers the log-meta boundary
- * only per the established Sprint 42 elizaos pattern.
+ * This file asserts the canonical `sanitizeMeta` / `sanitizeLogString`
+ * primitives in ISOLATION (re-exported from the core barrel). The
+ * end-to-end, load-bearing proof that each connector sink actually wraps its
+ * attacker-influenced `actionName` / `reason` lives in
+ * `copilotkit-guardrail.test.ts` ("CWE-117 reason/actionName sanitization is
+ * load-bearing (ADR-0001)"), which drives the guarded integration and asserts
+ * the ESCAPED form at every actionName log-meta sink and the dev-mode
+ * createErrorMessage reason sink. Per ADR-0001 a test that still passes with
+ * the sanitizer removed is not a regression test — see that driving block.
  */
 import { describe, expect, it } from 'vitest';
 
 import { sanitizeLogString, sanitizeMeta, serializeError } from '@blackunicorn/bonklm';
 
-describe('copilotkit-connector — Sprint 43 CWE-117 sanitization contract', () => {
+describe('copilotkit-connector — CWE-117 sanitizer primitive contract', () => {
   it('imports sanitizeMeta from the core barrel', () => {
     expect(typeof sanitizeMeta).toBe('function');
     expect(sanitizeMeta('a\nb')).toBe('a\\nb');
@@ -23,10 +24,5 @@ describe('copilotkit-connector — Sprint 43 CWE-117 sanitization contract', () 
   it('imports sanitizeLogString + serializeError', () => {
     expect(typeof sanitizeLogString).toBe('function');
     expect(typeof serializeError).toBe('function');
-  });
-
-  it('sanitizes validator-extracted reason for input/output log paths', () => {
-    const reason = 'matched copilot-pattern\nINJECTED:fake_status';
-    expect(sanitizeMeta(reason)).toBe('matched copilot-pattern\\nINJECTED:fake_status');
   });
 });
