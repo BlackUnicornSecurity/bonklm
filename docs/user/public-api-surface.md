@@ -59,7 +59,9 @@ post-rc.3 hardening). This document enumerates what is **PUBLIC** (frozen for v2
 - `applyRetrievedDocValidatorToMatches` (function)
 - `adaptValidatorToUniversalInput` (function)
 - `extractStringContent` (function)
-- `assertNotWrapped` / `markWrapped` / `ensureWrappedOnce` (functions)
+- `assertNotWrapped` / `markWrapped` / `ensureWrappedOnce` (functions) — imported from the
+  `@blackunicorn/bonklm/core/connector-utils` subpath (these three are intentionally NOT re-exported
+  from the root barrel)
 - **`validateWithTimeoutSecure` (function)** — Sprint 30 SEC-008 canonical timeout primitive. ALL
   connector authors MUST use this instead of rolling their own AbortController-based timeout (the
   AbortSignal does not propagate to `engine.validate()`).
@@ -121,6 +123,33 @@ telemetry sinks.
 - **`OptionalRule` semantics (Sprint 29)**: short-circuits on `undefined` only. Explicit `null`
   flows into the inner rule (typically rejected by `TypeRule`). Callers should omit the key or pass
   `undefined` to signal absence — the JS-canonical pattern.
+
+#### Additional PUBLIC surface (root-barrel exports referenced in the user guides)
+
+Per the policy above, every non-`_` symbol re-exported from the root barrel is `@public`. These are
+documented in the Getting Started / security guides but were not previously enumerated here;
+catalogued for completeness (not a surface change):
+
+- **Function-form validators** — `validatePromptInjection`, `validateSecrets` (functions; one-shot
+  wrappers over the validator classes).
+- **Logging** — `MonitoringLogger` (class) / `createMonitoringLogger` (factory) /
+  `MonitoringLogLevel` (enum); `ConsoleLogger` / `NullLogger` (classes);
+  `createLogger('console' | 'null' | 'custom')` (factory); `Logger` (interface).
+- **Additional guards** — `PIIGuard` (class); `checkBashSafety` (function — function form of
+  `BashSafetyGuard`).
+- **Connector error classes** — `ConnectorValidationError`, `StreamValidationError`,
+  `ConnectorConfigurationError`, `ConnectorTimeoutError` (also exported from the
+  `@blackunicorn/bonklm/core/connector-utils` subpath).
+- **Edge hooks** — `EdgeHookManager` (class) + `HookPhase` (enum); edge-portable surface via the
+  `@blackunicorn/bonklm/edge` subpath.
+- **Rate limiting** — `RateLimiter` (class) / `createRateLimiter` (factory) / `CommonRateLimiters`
+  (presets) / `DEFAULT_RATE_LIMIT`; opt-in per-instance limiter (see
+  `docs/user/security/rate-limiting.md`).
+
+> Note: the root barrel currently re-exports a number of lower-level helpers (pattern arrays,
+> `analyze*` / `detect*` families, internal constants) that are intended as **INTERNAL / tactical**
+> (see below) despite being reachable from the barrel. A maintainer-led full surface re-audit to
+> reconcile the "barrel = `@public`" policy with these tactical exports is tracked as a follow-up.
 
 ### INTERNAL — may change without notice
 

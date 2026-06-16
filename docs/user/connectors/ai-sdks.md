@@ -91,13 +91,18 @@ for await (const chunk of stream) {
 
 ### Tool Call Validation
 
+`createGuardedOpenAI` applies your configured validators to the request — it does not expose
+OpenAI-specific tool options:
+
 ```typescript
 const guardedOpenAI = createGuardedOpenAI(openai, {
-  validators: [new PromptInjectionValidator()],
-  allowedTools: ['search', 'calculator'],
-  maxToolArgumentSize: 100 * 1024 // 100KB
+  validators: [new PromptInjectionValidator()]
 });
 ```
+
+> Per-tool **allowlisting** (`allowedTools`) and tool-argument validation are exposed by the
+> [MCP SDK Connector](#mcp-sdk-connector) (`@blackunicorn/bonklm-mcp`), not by
+> `createGuardedOpenAI`.
 
 ---
 
@@ -593,8 +598,8 @@ export default defineAgent({
 Pass the SAME `audioStreamValidator` instance to both `BonklmAgent` and `wrapLiveKitAgentSession` so
 partial-path AC state flows into the final-path `validateFinal` call.
 
-See [LLM Provider Connectors](./llm-providers.md#voice-providers) for provider-adjacent voice
-integrations (Vapi + Retell webhooks).
+See [LLM Provider Connectors](./llm-providers.md#voice-webhooks-vapi--retell) for provider-adjacent
+voice integrations (Vapi + Retell webhooks).
 
 ---
 

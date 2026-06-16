@@ -203,10 +203,13 @@ Replace with a `ValidatorInput` discriminated union:
 
 ```ts
 // CURRENT — v0.4+:
-validator.validate({ kind: 'text_input', text: 'user input' });
+validator.validate({ kind: 'text', content: 'user input' });
 ```
 
-R2-10 surface vocabulary (frozen at v1.0):
+The `ValidatorInput` `kind` values accepted by `validate()` are: `text`, `tool_call`,
+`retrieved_docs`, `memory_write`, `composed_context`, `audio_partial`. Distinct from these `kind`s
+is the **R2-10 telemetry / hook _surface_ vocabulary** (the `surface` field on hooks and OTel spans;
+frozen at v1.0):
 
 - `text_input` — user-supplied input (chat message, form field)
 - `text_output` — model-generated output (pre-stream chunk)
@@ -391,7 +394,7 @@ import {
   assertNotWrapped,
   markWrapped,
   ensureWrappedOnce // combo helper
-} from '@blackunicorn/bonklm';
+} from '@blackunicorn/bonklm/core/connector-utils';
 
 const SENTINEL = Symbol.for('myconnector.wired');
 

@@ -260,14 +260,14 @@ import { PromptInjectionValidator } from '@blackunicorn/bonklm';
 
 const guardedEngine = createGuardedQueryEngine(queryEngine, {
   validators: [new PromptInjectionValidator()],
-  validateQueryInput: true,
-  validateQueryOutput: true,
+  validateRetrievedDocs: true,
+  onBlockedDocument: 'filter',
   onQueryBlocked: (result) => {
     console.warn('Query blocked:', result.reason);
   },
 });
 
-const response = await guardedEngine.query({ query: question });
+const response = await guardedEngine.query(question);
 ```
 
 `createGuardedRetriever(retriever, options?)` accepts the same
@@ -372,20 +372,24 @@ For SDKs that expose a client object with mutation methods:
 ```typescript
 import { GuardrailEngine, PromptInjectionValidator } from '@blackunicorn/bonklm';
 import { wrapMemoryClient } from '@blackunicorn/bonklm-memory-utils';
-// Per-vendor adapter (one of):
-// import { mem0Adapter } from '@blackunicorn/bonklm-mem0';
-// import { zepAdapter } from '@blackunicorn/bonklm-zep';
-// import { lettaAdapter } from '@blackunicorn/bonklm-letta';
+// Per-vendor adapter factory (one of) — each takes the same getTenantId:
+import { buildMem0Adapter } from '@blackunicorn/bonklm-mem0';
+// import { buildZepAdapter } from '@blackunicorn/bonklm-zep';
+// import { buildLettaAdapter } from '@blackunicorn/bonklm-letta';
 
 const engine = new GuardrailEngine({
   validators: [new PromptInjectionValidator()],
 });
 
+// getTenantId MUST be a function `(ctx) => string` — pass the SAME one to the
+// adapter factory and to wrapMemoryClient.
+const getTenantId = (ctx) => ctx.userId;
+
 const wrappedClient = wrapMemoryClient(client, {
-  adapter: mem0Adapter, // pick the adapter that matches the SDK
+  adapter: buildMem0Adapter(getTenantId), // or buildZepAdapter / buildLettaAdapter
   engine,
   validators: [new PromptInjectionValidator()], // REQUIRED, non-empty
-  getTenantId: (ctx) => ctx.userId, // function, NOT a string
+  getTenantId,
 });
 
 // Use the wrapped client exactly like the original — Proxy preserves
@@ -604,15 +608,16 @@ const telemetry = new TelemetryService({
 
 // Most users wire it via OTLP spans:
 import { bonklmTrace } from '@blackunicorn/bonklm';
+import { trace } from '@opentelemetry/api';
 
-await bonklmTrace({
-  surface: 'text_input',
-  action: 'validate',
-  // ...
-}, async (span) => {
-  const result = await engine.validate(input);
-  span.setAttribute('bonklm.risk_score', result.risk_score);
-  return result;
+const tracer = trace.getTracer('my-app');
+
+// bonklmTrace(result, options) is synchronous, emits one OTLP span, and returns
+// the result unchanged. Caller provides the tracer (bonklm bundles no SDK).
+const result = bonklmTrace(await engine.validate(input), {
+  tracer,
+  validator: 'prompt-injection',
+  surface: 'text_input', // R2-10 locked vocab
 });
 ```
 
@@ -636,9 +641,10 @@ console.log(engine.getCircuitBreakerState());
 // { state: 'CLOSED' | 'OPEN' | 'HALF_OPEN', violations: number, ... }
 ```
 
-Older docs showed `new CircuitBreaker(...)` + a `circuitBreaker` config
-field. That API no longer exists — use the threshold / timeout fields
-above.
+The engine no longer takes a `circuitBreaker` config object — use the threshold /
+timeout fields above. (The standalone `CircuitBreaker` class is still exported for
+connectors that accept one — e.g. the Anthropic SDK connector's `circuitBreaker`
+option.)
 
 ### Attack logging
 
