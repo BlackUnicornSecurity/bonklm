@@ -102,6 +102,29 @@ jobs:
       - name: Assert tools/* workspace tiering policy
         run: node tools/check-workspace-policy.js
 
+  ee-boundary:
+    name: EE License Boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Dependency-free Node script (reads packages/*/package.json + each OSS
+      # package's source tree) — no pnpm install or build needed. Classifies every
+      # package OSS (Apache-2.0) vs EE (BUSL-1.1) and fails if an OSS package
+      # imports an EE package (static or dynamic), enforcing the load-bearing
+      # invariant that the Apache core builds/tests with packages/bonklm-ee/* absent.
+      # At v1.0 (zero ee packages) it passes trivially — a tripwire for the first
+      # v1.1 ee package.
+      - name: Assert OSS-EE license boundary
+        run: node tools/check-ee-boundary.js
+
   type-check:
     name: Type Check
     runs-on: ubuntu-latest

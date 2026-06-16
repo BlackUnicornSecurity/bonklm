@@ -2,6 +2,7 @@
   "name": "@blackunicorn/bonklm-wizard",
   "version": "1.0.0-rc.4",
   "private": true,
+  "license": "Apache-2.0",
   "deprecated": "This package has been merged into @blackunicorn/bonklm. Please install @blackunicorn/bonklm instead — the `bonklm` CLI is shipped from there now.",
   "description": "DEPRECATED: merged into @blackunicorn/bonklm. Install @blackunicorn/bonklm instead.",
   "type": "module",
