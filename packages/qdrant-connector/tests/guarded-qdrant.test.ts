@@ -2003,7 +2003,10 @@ describe('Qdrant Connector — CWE-117 reason/id sanitization is load-bearing (A
       | undefined;
 
   it('escapes a control-char validator reason and point id at the search point-blocked log meta and abort throw', async () => {
-    const poisonId = `pt${ESC}1`;
+    // `point.id` carries the same CR/CRLF/TAB control-char class as the reason
+    // (its own sanitizeMeta wrap), derived from the real primitive.
+    const poisonId = `pt${ESC}1${CR}carriage${CRLF}windows${TAB}tab`;
+    const ESCAPED_ID = 'pt\\x1b1\\x0dcarriage\\x0d\\nwindows\\x09tab';
     const mockClient = {
       search: vi.fn().mockResolvedValue([{ id: poisonId, score: 0.9, payload: { content: `${POISON} payload` } }]),
       upsert: vi.fn().mockResolvedValue(undefined)
@@ -2032,8 +2035,11 @@ describe('Qdrant Connector — CWE-117 reason/id sanitization is load-bearing (A
     expect(warnMeta?.reason).not.toContain(ESC);
     expect(warnMeta?.reason).not.toContain(TAB);
     // `point.id` is caller/upstream-supplied — its own sanitizeMeta wrap.
-    expect(warnMeta?.id).toContain('pt');
+    expect(warnMeta?.id).toContain(ESCAPED_ID);
+    expect(warnMeta?.id).not.toContain(NL);
+    expect(warnMeta?.id).not.toContain(CR);
     expect(warnMeta?.id).not.toContain(ESC);
+    expect(warnMeta?.id).not.toContain(TAB);
   });
 
   it('escapes a control-char validator reason at the upsert point-blocked log meta and thrown message', async () => {
@@ -2084,8 +2090,14 @@ describe('Qdrant Connector — CWE-117 filterPayload + dangerous-key sanitizatio
   // construction), so its test covers the branch but cannot mutation-prove the
   // wrap — see the src comment at that boundary.
   const NL = String.fromCharCode(10); // LF
+  const CR = String.fromCharCode(13); // CR
   const ESC = String.fromCharCode(27); // ESC
-  const POISON_KEY = `field${NL}INJECTED${ESC}poison`;
+  const TAB = String.fromCharCode(9); // TAB
+  const CRLF = `${CR}${NL}`; // CRLF (Windows line ending)
+  // sanitizeLogString hex-escapes CR→\x0d and TAB→\x09 (and CRLF→\x0d\n) in its
+  // control-char pass, which runs BEFORE the \n-collapse — so only LF maps to \n.
+  const POISON_KEY = `field${NL}INJECTED${ESC}poison${CR}carriage${CRLF}windows${TAB}tab`;
+  const ESCAPED_KEY = 'field\\nINJECTED\\x1bpoison\\x0dcarriage\\x0d\\nwindows\\x09tab';
 
   const createSpyLogger = (): Logger =>
     ({ debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }) as unknown as Logger;
@@ -2142,9 +2154,11 @@ describe('Qdrant Connector — CWE-117 filterPayload + dangerous-key sanitizatio
       // Guard: a future rename of the log message must fail loudly here, not make
       // the escaped-form assertions pass vacuously on an undefined meta.
       expect(meta).toBeDefined();
-      expect(meta?.key).toContain('INJECTED');
+      expect(meta?.key).toContain(ESCAPED_KEY);
       expect(meta?.key).not.toContain(NL);
+      expect(meta?.key).not.toContain(CR);
       expect(meta?.key).not.toContain(ESC);
+      expect(meta?.key).not.toContain(TAB);
     } finally {
       testSpy.mockRestore();
     }
@@ -2196,9 +2210,11 @@ describe('Qdrant Connector — CWE-117 filterPayload + dangerous-key sanitizatio
 
       const meta = findWarnMeta(logger, '[Guardrails] Regex test failed');
       expect(meta).toBeDefined();
-      expect(meta?.key).toContain('INJECTED');
+      expect(meta?.key).toContain(ESCAPED_KEY);
       expect(meta?.key).not.toContain(NL);
+      expect(meta?.key).not.toContain(CR);
       expect(meta?.key).not.toContain(ESC);
+      expect(meta?.key).not.toContain(TAB);
     } finally {
       testSpy.mockRestore();
       vi.useRealTimers();

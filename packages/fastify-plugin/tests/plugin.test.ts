@@ -1159,11 +1159,20 @@ describe('Fastify Guardrails Plugin — CWE-117 sanitization is load-bearing (AD
   const CRLF = `${CR}${NL}`; // CRLF (Windows line ending)
   // sanitizeLogString hex-escapes CR→\x0d and TAB→\x09 (and CRLF→\x0d\n) in its
   // control-char pass, which runs BEFORE the \n-collapse — so only LF maps to \n.
-  // Extended on the shared RAW_REASON only; the connector-specific sessionId /
-  // category / path sinks keep their existing NL/ESC coverage (out of scope here).
+  // The shared RAW_REASON AND the connector-specific sessionId / category / path
+  // sinks all drive the full LF/CR/CRLF/TAB/ESC class; each ESCAPED_* form below
+  // is derived from the real primitive (not hand-guessed).
   const RAW_REASON = `matched${NL}INJECTED${ESC}poison${CR}carriage${CRLF}windows${TAB}tab`;
-  const HOSTILE_SESSION_ID = `sess${NL}INJECTED${ESC}id`;
-  const HOSTILE_CATEGORY = `cat${NL}INJECTED${ESC}poison`;
+  const HOSTILE_SESSION_ID = `sess${NL}INJECTED${ESC}id${CR}carriage${CRLF}windows${TAB}tab`;
+  const ESCAPED_SESSION_ID = 'sess\\nINJECTED\\x1bid\\x0dcarriage\\x0d\\nwindows\\x09tab';
+  const HOSTILE_CATEGORY = `cat${NL}INJECTED${ESC}poison${CR}carriage${CRLF}windows${TAB}tab`;
+  // Embedded verbatim in the SessionTracker escalation reason; sanitizeMeta is
+  // char-by-char, so the sanitized category appears as a contiguous substring.
+  const ESCAPED_CATEGORY = 'cat\\nINJECTED\\x1bpoison\\x0dcarriage\\x0d\\nwindows\\x09tab';
+  // Planted at request.raw.url to simulate an upstream proxy forwarding decoded
+  // control chars into the request-target (the `path` CWE-117 vector).
+  const HOSTILE_URL = `/test?x=hijack${NL}INJECTED${ESC}z${CR}carriage${CRLF}windows${TAB}tab`;
+  const ESCAPED_PATH = '/test?x=hijack\\nINJECTED\\x1bz\\x0dcarriage\\x0d\\nwindows\\x09tab';
   const POISON = 'POISONMARK';
 
   // Blocks only when the validated content contains the marker — lets a clean input
@@ -1286,16 +1295,18 @@ describe('Fastify Guardrails Plugin — CWE-117 sanitization is load-bearing (AD
     // that forwarded a decoded control char into the request-target. That is exactly
     // the caller-supplied-`request.url` CWE-117 vector the `path` wrap defends.
     app.addHook('onRequest', async req => {
-      req.raw.url = `/test?x=hijack${NL}INJECTED${ESC}z`;
+      req.raw.url = HOSTILE_URL;
     });
 
     await app.inject({ method: 'POST', url: '/test', payload: { message: `hi ${POISON}` } });
 
     const meta = findWarnMeta(logger, '[Guardrails] Request blocked');
     expect(meta).toBeDefined();
-    expect(meta?.path).toContain('INJECTED');
+    expect(meta?.path).toContain(ESCAPED_PATH);
     expect(meta?.path).not.toContain(NL);
+    expect(meta?.path).not.toContain(CR);
     expect(meta?.path).not.toContain(ESC);
+    expect(meta?.path).not.toContain(TAB);
   });
 
   it('escapes a control-char reason in the filtered-response body and response-blocked log meta', async () => {
@@ -1340,16 +1351,18 @@ describe('Fastify Guardrails Plugin — CWE-117 sanitization is load-bearing (AD
     });
     app.post('/test', async () => ({ text: `response ${POISON}` }));
     app.addHook('onRequest', async req => {
-      req.raw.url = `/test?x=hijack${NL}INJECTED${ESC}z`;
+      req.raw.url = HOSTILE_URL;
     });
 
     await app.inject({ method: 'POST', url: '/test', payload: { message: 'clean prompt' } });
 
     const meta = findWarnMeta(logger, '[Guardrails] Response blocked');
     expect(meta).toBeDefined();
-    expect(meta?.path).toContain('INJECTED');
+    expect(meta?.path).toContain(ESCAPED_PATH);
     expect(meta?.path).not.toContain(NL);
+    expect(meta?.path).not.toContain(CR);
     expect(meta?.path).not.toContain(ESC);
+    expect(meta?.path).not.toContain(TAB);
   });
 
   it('escapes a hostile-category escalation reason in the post-validation log meta', async () => {
@@ -1373,9 +1386,11 @@ describe('Fastify Guardrails Plugin — CWE-117 sanitization is load-bearing (AD
 
     const meta = findWarnMeta(logger, '[Guardrails] Session escalated after validation');
     expect(meta).toBeDefined();
-    expect(meta?.reason).toContain('INJECTED');
+    expect(meta?.reason).toContain(ESCAPED_CATEGORY);
     expect(meta?.reason).not.toContain(NL);
+    expect(meta?.reason).not.toContain(CR);
     expect(meta?.reason).not.toContain(ESC);
+    expect(meta?.reason).not.toContain(TAB);
   });
 
   it('escapes a hostile sessionId in the post-validation escalation log meta', async () => {
@@ -1396,9 +1411,11 @@ describe('Fastify Guardrails Plugin — CWE-117 sanitization is load-bearing (AD
 
     const meta = findWarnMeta(logger, '[Guardrails] Session escalated after validation');
     expect(meta).toBeDefined();
-    expect(meta?.sessionId).toContain('INJECTED');
+    expect(meta?.sessionId).toContain(ESCAPED_SESSION_ID);
     expect(meta?.sessionId).not.toContain(NL);
+    expect(meta?.sessionId).not.toContain(CR);
     expect(meta?.sessionId).not.toContain(ESC);
+    expect(meta?.sessionId).not.toContain(TAB);
   });
 
   it('escapes a hostile-category escalation reason in the pre-validation log meta', async () => {
@@ -1422,9 +1439,11 @@ describe('Fastify Guardrails Plugin — CWE-117 sanitization is load-bearing (AD
 
     const meta = findWarnMeta(logger, '[Guardrails] Session escalated, blocking request');
     expect(meta).toBeDefined();
-    expect(meta?.reason).toContain('INJECTED');
+    expect(meta?.reason).toContain(ESCAPED_CATEGORY);
     expect(meta?.reason).not.toContain(NL);
+    expect(meta?.reason).not.toContain(CR);
     expect(meta?.reason).not.toContain(ESC);
+    expect(meta?.reason).not.toContain(TAB);
   });
 
   it('escapes a hostile sessionId in the pre-validation escalation log meta', async () => {
@@ -1445,8 +1464,10 @@ describe('Fastify Guardrails Plugin — CWE-117 sanitization is load-bearing (AD
 
     const meta = findWarnMeta(logger, '[Guardrails] Session escalated, blocking request');
     expect(meta).toBeDefined();
-    expect(meta?.sessionId).toContain('INJECTED');
+    expect(meta?.sessionId).toContain(ESCAPED_SESSION_ID);
     expect(meta?.sessionId).not.toContain(NL);
+    expect(meta?.sessionId).not.toContain(CR);
     expect(meta?.sessionId).not.toContain(ESC);
+    expect(meta?.sessionId).not.toContain(TAB);
   });
 });
