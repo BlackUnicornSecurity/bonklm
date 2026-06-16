@@ -17,7 +17,8 @@ import {
   wrapRealtime
 } from '../src/guarded-openai-agents.js';
 import type { AgentLike, HandoffLike, RealtimeSessionLike } from '../src/types.js';
-import { GuardrailEngine, PromptInjectionValidator, SecretGuard } from '@blackunicorn/bonklm';
+import { GuardrailEngine, PromptInjectionValidator, SecretGuard, Severity } from '@blackunicorn/bonklm';
+import type { GuardrailResult, Validator } from '@blackunicorn/bonklm';
 import { ConnectorValidationError } from '@blackunicorn/bonklm/core/connector-utils';
 
 function makeEngine(): GuardrailEngine {
@@ -449,5 +450,96 @@ describe('wrapRealtime', () => {
     };
     wrapRealtime(session, engine, { validators: [new PromptInjectionValidator()] });
     expect(addEventListener).toHaveBeenCalledWith('input_audio_transcription.completed', expect.any(Function));
+  });
+});
+
+describe('openai-agents — CWE-117 reason sanitization is load-bearing (ADR-0001)', () => {
+  // ADR-0001 non-vacuity proof for the three dev-mode tripwire
+  // `outputInfo.reason` sinks in src/guarded-openai-agents.ts
+  // (defineInputGuardrail / defineOutputGuardrail / defineToolInputGuardrail).
+  // cwe117-regression.test.ts only asserts the sanitizer primitive in
+  // isolation; these tests drive each guarded factory with a validator whose
+  // `reason` carries control characters and assert the ESCAPED form on the
+  // `outputInfo.reason` field returned to the @openai/agents SDK (it flows
+  // into the SDK run-history / transcript surface). The engine returns the
+  // validator's RAW reason to the connector (`aggregateResults` does not
+  // pre-sanitize), so each per-sink wrap is the genuine CWE-117 boundary —
+  // removing the matching `sanitizeMeta(...)` wrap from src turns the
+  // corresponding test (and only that one) RED. Every sink is dev-mode-gated
+  // (`productionMode ? '<generic>' : sanitizeMeta(reason)`), so each path is
+  // driven with `productionMode: false`.
+  const NL = String.fromCharCode(10); // LF
+  const ESC = String.fromCharCode(27); // ESC
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const POISON = 'POISONMARK';
+
+  const blockResult = (reason: string): GuardrailResult => ({
+    allowed: false,
+    blocked: true,
+    reason,
+    severity: Severity.CRITICAL,
+    risk_level: 'HIGH',
+    risk_score: 30,
+    findings: [{ category: 'test', severity: Severity.CRITICAL, description: 'blocked', weight: 30 }],
+    timestamp: Date.now()
+  });
+
+  const allowResult = (): GuardrailResult => ({
+    allowed: true,
+    blocked: false,
+    severity: Severity.INFO,
+    risk_level: 'LOW',
+    risk_score: 0,
+    findings: [],
+    timestamp: Date.now()
+  });
+
+  // Blocks only when the validated content/leaf carries the marker — lets a
+  // clean input pass so a downstream sink can be reached deterministically.
+  const markerBlock = (reason: string): Validator => ({
+    name: 'MarkerBlock',
+    validate: (input: unknown) =>
+      (typeof input === 'string' ? input : '').includes(POISON) ? blockResult(reason) : allowResult()
+  });
+
+  const engineWith = (reason: string): GuardrailEngine => new GuardrailEngine({ validators: [markerBlock(reason)] });
+
+  const reasonOf = (result: { outputInfo?: unknown }): string | undefined =>
+    (result.outputInfo as { reason?: string } | undefined)?.reason;
+
+  it('escapes the reason in the input-guardrail tripwire outputInfo.reason field', async () => {
+    const guard = defineInputGuardrail(engineWith(RAW_REASON), { productionMode: false });
+    const result = await guard.execute({ input: `hi ${POISON}` });
+    expect(result.tripwireTriggered).toBe(true);
+    const reason = reasonOf(result);
+    expect(reason).toContain(ESCAPED_REASON);
+    expect(reason).not.toContain(NL);
+    expect(reason).not.toContain(ESC);
+  });
+
+  it('escapes the reason in the output-guardrail tripwire outputInfo.reason field', async () => {
+    const guard = defineOutputGuardrail(engineWith(RAW_REASON), { productionMode: false });
+    const result = await guard.execute({ input: 'x', agentOutput: { text: `reply ${POISON}` } });
+    expect(result.tripwireTriggered).toBe(true);
+    const reason = reasonOf(result);
+    expect(reason).toContain(ESCAPED_REASON);
+    expect(reason).not.toContain(NL);
+    expect(reason).not.toContain(ESC);
+  });
+
+  it('escapes the reason in the tool-input-guardrail tripwire outputInfo.reason field', async () => {
+    // Tool-input runs `createToolCallArgsValidator` over `options.validators`
+    // (NOT the engine), surfacing the blocked leaf's RAW reason verbatim.
+    const guard = defineToolInputGuardrail(engineWith(RAW_REASON), {
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false
+    });
+    const result = await guard.execute({ toolName: 'send_email', toolArgs: { body: `x ${POISON}` } });
+    expect(result.tripwireTriggered).toBe(true);
+    const reason = reasonOf(result);
+    expect(reason).toContain(ESCAPED_REASON);
+    expect(reason).not.toContain(NL);
+    expect(reason).not.toContain(ESC);
   });
 });

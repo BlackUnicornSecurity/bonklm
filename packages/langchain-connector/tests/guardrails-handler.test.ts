@@ -18,7 +18,8 @@ import {
   isGuardrailsViolationError,
   isStreamValidationError
 } from '../src/guardrails-handler';
-import { PromptInjectionValidator, JailbreakValidator } from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, JailbreakValidator, Severity } from '@blackunicorn/bonklm';
+import type { GuardrailResult, Validator } from '@blackunicorn/bonklm';
 import type { NewTokenIndices } from '@langchain/core/callbacks/base';
 import { noOpValidator } from '@blackunicorn/bonklm/testing';
 
@@ -2192,5 +2193,90 @@ describe('GuardrailsCallbackHandler', () => {
       // Verify the callback was actually called
       expect(throwingCallback).toHaveBeenCalled();
     });
+  });
+});
+
+describe('langchain — CWE-117 reason sanitization is load-bearing (ADR-0001)', () => {
+  // ADR-0001 non-vacuity proof for the two dev-mode `Error.message` sinks in
+  // src/guardrails-handler.ts: the `validateAndThrow` violation message and
+  // the `handleLLMEnd` stream-final violation message. cwe117-regression.test.ts
+  // only asserts the sanitizer primitive in isolation; these tests drive the
+  // real callback handler with a validator whose `reason` carries control
+  // characters and assert the ESCAPED form on the CAUGHT error message. The
+  // existing `[Guardrails] Content blocked` log meta is sanitized
+  // independently, so the THROWN message is the connector's own load-bearing
+  // sink: removing the matching `sanitizeMeta(...)` wrap from src turns the
+  // corresponding test (and only that one) RED. Both sinks are dev-mode-gated,
+  // so each is driven with `productionMode: false`.
+  const NL = String.fromCharCode(10); // LF
+  const ESC = String.fromCharCode(27); // ESC
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const POISON = 'POISONMARK';
+
+  const blockResult = (reason: string): GuardrailResult => ({
+    allowed: false,
+    blocked: true,
+    reason,
+    severity: Severity.CRITICAL,
+    risk_level: 'HIGH',
+    risk_score: 30,
+    findings: [{ category: 'test', severity: Severity.CRITICAL, description: 'blocked', weight: 30 }],
+    timestamp: Date.now()
+  });
+
+  const allowResult = (): GuardrailResult => ({
+    allowed: true,
+    blocked: false,
+    severity: Severity.INFO,
+    risk_level: 'LOW',
+    risk_score: 0,
+    findings: [],
+    timestamp: Date.now()
+  });
+
+  const markerBlock = (reason: string): Validator => ({
+    name: 'MarkerBlock',
+    validate: (input: unknown) =>
+      (typeof input === 'string' ? input : '').includes(POISON) ? blockResult(reason) : allowResult()
+  });
+
+  async function expectEscapedThrow(run: () => unknown): Promise<void> {
+    let caught: unknown;
+    try {
+      await run();
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    const message = (caught as Error).message;
+    expect(message).toContain(ESCAPED_REASON);
+    expect(message).not.toContain(NL);
+    expect(message).not.toContain(ESC);
+  }
+
+  it('escapes the reason in the validateAndThrow violation message', async () => {
+    const handler = new GuardrailsCallbackHandler({
+      validators: [markerBlock(RAW_REASON)],
+      productionMode: false,
+      logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    });
+    await expectEscapedThrow(() => handler.handleLLMStart({ name: 'llm' }, [`hi ${POISON}`], 'run-1'));
+  });
+
+  it('escapes the reason in the handleLLMEnd stream-final violation message', async () => {
+    const handler = new GuardrailsCallbackHandler({
+      validators: [markerBlock(RAW_REASON)],
+      validateStreaming: true,
+      productionMode: false,
+      logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() }
+    });
+    const idx: NewTokenIndices = { prompt: 0, completion: 0 };
+    // Accumulate a stream buffer carrying the marker, then close the run so the
+    // stream-final validation path (NOT validateAndThrow) builds the message.
+    handler.handleLLMNewToken(`${POISON} payload`, idx, 'stream-run');
+    await expectEscapedThrow(() =>
+      handler.handleLLMEnd({ generations: [[{ text: '' }]], llmOutput: {} }, 'stream-run')
+    );
   });
 });

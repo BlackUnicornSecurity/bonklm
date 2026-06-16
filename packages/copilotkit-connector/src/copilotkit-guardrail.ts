@@ -137,7 +137,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
     // Check name length
     if (actionName.length > maxActionNameLength) {
       logger.warn('[CopilotKit Guardrails] Action name exceeds maximum length', {
-        actionName,
+        actionName: sanitizeMeta(actionName),
         length: actionName.length
       });
       return false;
@@ -165,7 +165,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
         }
       });
       if (isBlocked) {
-        logger.warn('[CopilotKit Guardrails] Action name is blocked', { actionName });
+        logger.warn('[CopilotKit Guardrails] Action name is blocked', { actionName: sanitizeMeta(actionName) });
         return false;
       }
     }
@@ -192,7 +192,9 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
         }
       });
       if (!isAllowed) {
-        logger.warn('[CopilotKit Guardrails] Action name not in allowed list', { actionName });
+        logger.warn('[CopilotKit Guardrails] Action name not in allowed list', {
+          actionName: sanitizeMeta(actionName)
+        });
         return false;
       }
     }
@@ -283,7 +285,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
     if (productionMode) {
       return 'Content blocked by security policy';
     }
-    return `Content blocked: ${result.reason}`;
+    return `Content blocked: ${sanitizeMeta(result.reason)}`;
   };
 
   /**

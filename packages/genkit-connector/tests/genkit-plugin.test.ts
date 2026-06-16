@@ -22,7 +22,8 @@ import {
   type GenkitMessage,
   type GenkitToolCall
 } from '../src/index.js';
-import { PromptInjectionValidator } from '@blackunicorn/bonklm';
+import { PromptInjectionValidator, Severity } from '@blackunicorn/bonklm';
+import type { GuardrailResult, Validator } from '@blackunicorn/bonklm';
 import { noOpValidator } from '@blackunicorn/bonklm/testing';
 
 describe('Genkit Guardrail Plugin', () => {
@@ -418,5 +419,80 @@ describe('Genkit Guardrail Plugin', () => {
       expect(result1.allowed).toBe(false);
       expect(result2.allowed).toBe(false);
     });
+  });
+});
+
+describe('genkit — CWE-117 reason sanitization is load-bearing (ADR-0001)', () => {
+  // ADR-0001 non-vacuity proof for the dev-mode `createErrorMessage` sink in
+  // src/genkit-plugin.ts. Sanitizing INSIDE that helper covers BOTH the
+  // returned `blockedReason` field AND every path that throws it
+  // (`StreamValidationError` / `wrapFlow`'s `Error`). cwe117-regression.test.ts
+  // only asserts the sanitizer primitive in isolation; this test drives the
+  // guarded plugin with a validator whose `reason` carries control characters
+  // and asserts the ESCAPED form on both the returned and thrown surfaces. The
+  // engine returns the validator's RAW reason to the connector, so the wrap is
+  // the genuine CWE-117 boundary — removing `sanitizeMeta(...)` from the helper
+  // turns this test RED. The sink is dev-mode-gated, so it is driven with
+  // `productionMode: false`.
+  const NL = String.fromCharCode(10); // LF
+  const ESC = String.fromCharCode(27); // ESC
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const POISON = 'POISONMARK';
+
+  const blockResult = (reason: string): GuardrailResult => ({
+    allowed: false,
+    blocked: true,
+    reason,
+    severity: Severity.CRITICAL,
+    risk_level: 'HIGH',
+    risk_score: 30,
+    findings: [{ category: 'test', severity: Severity.CRITICAL, description: 'blocked', weight: 30 }],
+    timestamp: Date.now()
+  });
+
+  const allowResult = (): GuardrailResult => ({
+    allowed: true,
+    blocked: false,
+    severity: Severity.INFO,
+    risk_level: 'LOW',
+    risk_score: 0,
+    findings: [],
+    timestamp: Date.now()
+  });
+
+  const markerBlock = (reason: string): Validator => ({
+    name: 'MarkerBlock',
+    validate: (input: unknown) =>
+      (typeof input === 'string' ? input : '').includes(POISON) ? blockResult(reason) : allowResult()
+  });
+
+  async function expectEscapedThrow(run: () => unknown): Promise<void> {
+    let caught: unknown;
+    try {
+      await run();
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(Error);
+    const message = (caught as Error).message;
+    expect(message).toContain(ESCAPED_REASON);
+    expect(message).not.toContain(NL);
+    expect(message).not.toContain(ESC);
+  }
+
+  it('escapes the reason in the createErrorMessage helper (returned blockedReason AND thrown message)', async () => {
+    // Returned path: beforeFlow surfaces `blockedReason = createErrorMessage(...)`.
+    const plugin = createGenkitGuardrailsPlugin({ validators: [markerBlock(RAW_REASON)], productionMode: false });
+    const result = await plugin.beforeFlow(`hi ${POISON}`);
+    expect(result.allowed).toBe(false);
+    expect(result.blockedReason).toContain(ESCAPED_REASON);
+    expect(result.blockedReason).not.toContain(NL);
+    expect(result.blockedReason).not.toContain(ESC);
+
+    // Thrown path: wrapFlow throws `new Error(blockedReason)` on input block,
+    // so the SAME helper output reaches a thrown message.
+    const guarded = wrapFlow(async (i: string) => i, { validators: [markerBlock(RAW_REASON)], productionMode: false });
+    await expectEscapedThrow(() => guarded(`go ${POISON}`));
   });
 });

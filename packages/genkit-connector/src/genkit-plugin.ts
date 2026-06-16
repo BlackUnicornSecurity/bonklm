@@ -162,7 +162,7 @@ export function createGenkitGuardrailsPlugin(options: GuardedGenkitOptions = {})
     if (productionMode) {
       return 'Content blocked by security policy';
     }
-    return `Content blocked: ${result.reason}`;
+    return `Content blocked: ${sanitizeMeta(result.reason)}`;
   };
 
   /**

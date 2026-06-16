@@ -163,7 +163,7 @@ export function defineInputGuardrail(
         return {
           tripwireTriggered: true,
           outputInfo: {
-            reason: productionMode ? 'Input blocked' : r.reason
+            reason: productionMode ? 'Input blocked' : sanitizeMeta(r.reason)
           }
         };
       }
@@ -201,7 +201,7 @@ export function defineOutputGuardrail(
         return {
           tripwireTriggered: true,
           outputInfo: {
-            reason: productionMode ? 'Output blocked' : r.reason
+            reason: productionMode ? 'Output blocked' : sanitizeMeta(r.reason)
           }
         };
       }
@@ -254,7 +254,7 @@ export function defineToolInputGuardrail(
         return {
           tripwireTriggered: true,
           outputInfo: {
-            reason: productionMode ? 'Tool input blocked' : r.reason
+            reason: productionMode ? 'Tool input blocked' : sanitizeMeta(r.reason)
           }
         };
       }

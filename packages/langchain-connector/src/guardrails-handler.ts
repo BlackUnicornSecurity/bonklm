@@ -234,7 +234,7 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
       // SEC-007: Production mode - generic error message only
       // In production, don't expose sensitive details via error object properties
       const violationError = new Error(
-        this.productionMode ? 'Content blocked' : `Content blocked: ${blocked.reason}`
+        this.productionMode ? 'Content blocked' : `Content blocked: ${sanitizeMeta(blocked.reason)}`
       ) as GuardrailsViolationError;
 
       // Only attach detailed properties in development mode to prevent data leakage
@@ -465,7 +465,9 @@ export class GuardrailsCallbackHandler extends BaseCallbackHandler {
           // SEC-007: Production mode - generic error message only
           // In production, don't expose sensitive details via error object properties
           const violationError = new Error(
-            this.productionMode ? 'Content blocked' : `Content blocked: ${blocked?.reason || 'validation failed'}`
+            this.productionMode
+              ? 'Content blocked'
+              : `Content blocked: ${sanitizeMeta(blocked?.reason || 'validation failed')}`
           ) as GuardrailsViolationError;
 
           // Only attach detailed properties in development mode to prevent data leakage
