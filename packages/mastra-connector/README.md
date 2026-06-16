@@ -226,5 +226,5 @@ Wraps a Mastra agent with automatic guardrail hooks.
 
 ## Support
 
-- GitHub Issues: https://github.com/blackunicorn/bonklm/issues
-- Documentation: https://github.com/blackunicorn/bonklm
+- GitHub Issues: https://github.com/BlackUnicornSecurity/bonklm/issues
+- Documentation: https://github.com/BlackUnicornSecurity/bonklm

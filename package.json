@@ -89,12 +89,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/blackunicorn/bonklm"
+    "url": "https://github.com/BlackUnicornSecurity/bonklm"
   },
   "bugs": {
-    "url": "https://github.com/blackunicorn/bonklm/issues"
+    "url": "https://github.com/BlackUnicornSecurity/bonklm/issues"
   },
-  "homepage": "https://github.com/blackunicorn/bonklm#readme",
+  "homepage": "https://github.com/BlackUnicornSecurity/bonklm#readme",
   "dependencies": {
     "dotenv": "^17.3.1"
   }
