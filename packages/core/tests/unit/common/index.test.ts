@@ -409,3 +409,107 @@ describe('sanitizeLogString — C1 control-range regression', () => {
     expect(result).toContain('-b_c.d');
   });
 });
+
+// ---------------------------------------------------------------------------
+// sanitizeLogString zero-width / Unicode-format hex-escape (D-049)
+// The bidi pass above neutralises directional OVERRIDES + ISOLATES, but the
+// invisible "format" (Cf) class -- zero-width spaces/joiners, the LRM/RLM/ALM
+// directional MARKS, the word-joiner + invisible math operators, and the BOM --
+// was passing through raw. These code points render as nothing yet survive in
+// the byte stream: an attacker can smuggle invisible content into a log line
+// (homoglyph / zero-width spoof) or wedge a naive Unicode-aware parser. They
+// all live above 0x7F so the control-char regex misses them, and they are
+// disjoint from the bidi override/isolate range. Hex-escape to \uNNNN markers
+// (preserve forensic signal -- mirror the bidi pass). Distinct from the
+// detection-layer text-normalizer, which STRIPS these for injection matching;
+// the log sanitizer ESCAPES them so a SOC analyst still sees the attempt.
+//
+// Covered (12 code points): U+061C ALM; U+200B ZWSP; U+200C ZWNJ; U+200D ZWJ;
+// U+200E LRM; U+200F RLM; U+2060 WORD JOINER; U+2061 FUNCTION APPLICATION;
+// U+2062 INVISIBLE TIMES; U+2063 INVISIBLE SEPARATOR; U+2064 INVISIBLE PLUS;
+// U+FEFF ZERO WIDTH NO-BREAK SPACE (BOM).
+// ---------------------------------------------------------------------------
+describe('sanitizeLogString -- zero-width / Unicode-format regression corpus', () => {
+  // [codePoint, expectedLiteralEscape]. Raw chars are derived from the hex code
+  // point via String.fromCodePoint at runtime (NO embedded invisible bytes --
+  // those are unreviewable + trip ESLint no-irregular-whitespace, see the C1
+  // block's String.fromCharCode idiom); the expected escape is hardcoded (NOT
+  // recomputed via the source formula) so a bug in the escape expression cannot
+  // mask itself.
+  const FORMAT_POINTS: ReadonlyArray<readonly [number, string]> = [
+    [0x061c, '\\u061c'], // ARABIC LETTER MARK
+    [0x200b, '\\u200b'], // ZERO WIDTH SPACE
+    [0x200c, '\\u200c'], // ZERO WIDTH NON-JOINER
+    [0x200d, '\\u200d'], // ZERO WIDTH JOINER
+    [0x200e, '\\u200e'], // LEFT-TO-RIGHT MARK
+    [0x200f, '\\u200f'], // RIGHT-TO-LEFT MARK
+    [0x2060, '\\u2060'], // WORD JOINER
+    [0x2061, '\\u2061'], // FUNCTION APPLICATION
+    [0x2062, '\\u2062'], // INVISIBLE TIMES
+    [0x2063, '\\u2063'], // INVISIBLE SEPARATOR
+    [0x2064, '\\u2064'], // INVISIBLE PLUS
+    [0xfeff, '\\ufeff'] // ZERO WIDTH NO-BREAK SPACE (BOM)
+  ];
+
+  it('hex-escapes every zero-width / Unicode-format code point and preserves surrounding text', () => {
+    for (const [cp, escaped] of FORMAT_POINTS) {
+      const raw = String.fromCodePoint(cp);
+      const result = sanitizeLogString(`before${raw}after`);
+      expect(result).not.toContain(raw); // raw invisible char neutralised
+      expect(result).toContain(escaped); // forensic signal preserved
+      expect(result).toContain('before');
+      expect(result).toContain('after');
+    }
+  });
+
+  it('combo: all 12 code points in a single payload are each hex-escaped', () => {
+    const allFormat = FORMAT_POINTS.map(([cp]) => String.fromCodePoint(cp)).join('');
+    const result = sanitizeLogString(allFormat);
+    for (const [cp, escaped] of FORMAT_POINTS) {
+      expect(result).not.toContain(String.fromCodePoint(cp));
+      expect(result).toContain(escaped);
+    }
+  });
+
+  it('neutralises a zero-width log-spoof: ad<ZWSP>min cannot masquerade as admin', () => {
+    // Classic attack: U+200B between "ad" and "min" renders as "admin" in a
+    // Unicode-aware viewer but is a different byte sequence -- used to forge a
+    // privileged-user log record that a naive grep for "admin" would miss.
+    const zwsp = String.fromCodePoint(0x200b);
+    const input = `user=ad${zwsp}min action=delete`;
+    const result = sanitizeLogString(input);
+    expect(result).not.toContain(zwsp);
+    expect(result).toContain('\\u200b');
+    expect(result).toContain('user=ad');
+    expect(result).toContain('min action=delete');
+  });
+
+  it('leaves legitimate Unicode (accents, CJK, emoji, spaces) intact -- no false positives', () => {
+    // False-positive guard: the format-class escape must NOT touch ordinary
+    // printable Unicode (accented Latin, CJK, emoji). Built from code points so
+    // this guard file stays ASCII; must remain GREEN across the change.
+    const cafe = `caf${String.fromCodePoint(0xe9)}`; // cafe + e-acute
+    const cjk = String.fromCodePoint(0x65e5, 0x672c, 0x8a9e); // CJK: nihongo
+    const emoji = String.fromCodePoint(0x1f600); // grinning face
+    const input = `${cafe} ${cjk} ${emoji} spaced text`;
+    const result = sanitizeLogString(input);
+    expect(result).toBe(input);
+  });
+
+  it('escapes a ZWJ inside a legitimate emoji sequence (intentional log-sink trade-off)', () => {
+    // U+200D ZERO WIDTH JOINER is orthographically load-bearing in emoji ZWJ
+    // sequences (and in Indic / Arabic shaping; U+200C ZWNJ in Persian). This
+    // LOG sanitizer ESCAPES it ON PURPOSE — forensic byte-accuracy beats display
+    // fidelity in a log line. Pinned so the trade-off is intentional, not
+    // accidental (ADR-0001: do NOT route end-user-DISPLAY text through this
+    // primitive). Also covers the multi-code-point case the single-emoji benign
+    // guard above does not.
+    const manTechnologist = String.fromCodePoint(0x1f468, 0x200d, 0x1f4bb); // person + ZWJ + laptop
+    const result = sanitizeLogString(manTechnologist);
+    expect(result).not.toContain(String.fromCodePoint(0x200d)); // joiner neutralised
+    expect(result).toContain('\\u200d'); // forensic signal preserved
+    // The visible astral glyphs themselves are BMP-out-of-range -> untouched.
+    expect(result).toContain(String.fromCodePoint(0x1f468));
+    expect(result).toContain(String.fromCodePoint(0x1f4bb));
+  });
+});

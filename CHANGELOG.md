@@ -46,6 +46,16 @@ Sprint 52 Day 2 — Gate 2 unblocking + Gate 5.8 reproducibility:
 
 ### Security
 
+- **`sanitizeLogString` / `sanitizeMeta` now neutralize the zero-width / Unicode-format character class.**
+  The canonical CWE-117 log-sanitization primitive hex-escapes `U+061C`, `U+200B`–`U+200F`,
+  `U+2060`–`U+2064`, and `U+FEFF` (zero-width spaces/joiners, the directional marks, the word joiner +
+  invisible math operators, and the BOM) to `\uNNNN` markers, alongside the control, newline, and
+  bidi-override/isolate classes already handled. This closes an invisible-content / homoglyph
+  log-spoof gap: such code points render as nothing yet survive in the byte stream, letting an
+  attacker-influenced string smuggle hidden content into a log line or wedge a Unicode-aware parser.
+  Hex-escaping preserves forensic signal, and the fix is inherited by every connector and engine sink
+  routing attacker-influenced strings through the shared primitive. Legitimate Unicode log content
+  (accented Latin, CJK, emoji) is unaffected.
 - **Tarball reproducibility verified at v1.0.0-rc.4.** Two consecutive `npm pack` passes produced byte-identical SHA-256 hashes across the release-surface tarballs. Reproducibility evidence is retained privately under the project QA policy.
 
 (Sprint 51 Day 1 closure landed in 1.0.0-rc.4 below.)

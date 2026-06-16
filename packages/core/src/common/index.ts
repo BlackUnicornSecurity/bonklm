@@ -122,10 +122,13 @@ export function isExpectedSecretFile(filePath: string): boolean {
 /**
  * Sanitize a string for safe inclusion in structured-logger output.
  *
- * Defeats CWE-117 log injection: strips control characters
- * (`\x00-\x08 \x0b-\x1f \x7f`) and escapes newlines to literal `\n`
- * markers so an attacker-controlled string cannot forge log records in
- * downstream aggregators (Datadog, Splunk, ELK, OTel collectors).
+ * Defeats CWE-117 log injection: hex-escapes control characters
+ * (C0/C1/DEL + TAB), folds newlines / line-separators to a literal `\n`
+ * marker, and hex-escapes the Unicode bidi-override/isolate and
+ * zero-width/format classes (CWE-1007 visual-spoof + invisible-content
+ * smuggle) — so an attacker-controlled string cannot forge log records
+ * in downstream aggregators (Datadog, Splunk, ELK, OTel collectors) nor
+ * visually spoof / hide content in a Unicode-rendering SIEM UI.
  * Caps output at `maxLen` (default 500 chars).
  *
  * @public Sprint 33 — extracted from `timeout-wrapper.ts` (Sprint 31)
@@ -187,7 +190,45 @@ export function sanitizeLogString(input: string, maxLen: number = DEFAULT_MAX_LO
     /[\u202a-\u202e\u2066-\u2069]/g,
     c => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`
   );
-  return bidiSafe.length > maxLen ? `${bidiSafe.slice(0, maxLen)}…[truncated]` : bidiSafe;
+  // Hex-escape the zero-width / Unicode-format (Cf) class. These code
+  // points render as nothing yet survive in the byte stream, so an attacker can
+  // smuggle invisible content into a log line (homoglyph / zero-width spoof --
+  // e.g. "ad<ZWSP>min" rendering as "admin" while a naive grep for "admin"
+  // misses it) or wedge a Unicode-aware parser. They live above 0x7F (missed by
+  // the control-char regex) and are disjoint from the bidi override/isolate
+  // range escaped above. Hex-escaping to \uNNNN preserves forensic signal -- a
+  // SOC analyst sees the smuggle attempt rather than an invisible gap. NOTE:
+  // this ESCAPES, unlike the detection-layer text-normalizer which STRIPS the
+  // same class before injection matching (a separate sink, different goal).
+  //
+  // Scope is the BMP Cf subset below; it is intentionally narrower than the
+  // detection-layer strip set and deliberately omits the astral TAG block
+  // (U+E0000..U+E007F, the "ASCII smuggling" channel) and assorted other Cf
+  // points -- those need an astral-aware escape and are tracked separately.
+  //
+  // Code points covered:
+  //   U+061C  ARABIC LETTER MARK (bidi-related directional mark)
+  //   U+200B  ZERO WIDTH SPACE
+  //   U+200C  ZERO WIDTH NON-JOINER
+  //   U+200D  ZERO WIDTH JOINER
+  //   U+200E  LEFT-TO-RIGHT MARK
+  //   U+200F  RIGHT-TO-LEFT MARK
+  //   U+2060  WORD JOINER
+  //   U+2061  FUNCTION APPLICATION   (invisible math operator)
+  //   U+2062  INVISIBLE TIMES
+  //   U+2063  INVISIBLE SEPARATOR
+  //   U+2064  INVISIBLE PLUS
+  //   U+FEFF  ZERO WIDTH NO-BREAK SPACE (BOM)
+  //
+  // All 12 are BMP, so the shared \uNNNN escape (charCodeAt -> 4 hex) is correct.
+  // Extending EITHER \uNNNN pass to astral code points would require codePointAt
+  // + a /u-flag regex: charCodeAt returns a lone surrogate for an astral char and
+  // would mis-escape.
+  const formatSafe = bidiSafe.replace(
+    /[\u061c\u200b-\u200f\u2060-\u2064\ufeff]/g,
+    c => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`
+  );
+  return formatSafe.length > maxLen ? `${formatSafe.slice(0, maxLen)}…[truncated]` : formatSafe;
 }
 
 /**
