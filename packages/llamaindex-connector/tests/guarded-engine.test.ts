@@ -226,9 +226,14 @@ describe('LlamaIndex Connector — CWE-117 reason/documentPreview sanitization i
   // thrown message — removing the matching `sanitizeMeta(...)` wrap from src
   // turns the corresponding test RED.
   const NL = String.fromCharCode(10); // LF
+  const CR = String.fromCharCode(13); // CR
   const ESC = String.fromCharCode(27); // ESC
-  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
-  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const TAB = String.fromCharCode(9); // TAB
+  const CRLF = `${CR}${NL}`; // CRLF (Windows line ending)
+  // sanitizeLogString hex-escapes CR→\x0d and TAB→\x09 (and CRLF→\x0d\n) in its
+  // control-char pass, which runs BEFORE the \n-collapse — so only LF maps to \n.
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison${CR}carriage${CRLF}windows${TAB}tab`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison\\x0dcarriage\\x0d\\nwindows\\x09tab';
   const POISON = 'POISONMARK';
 
   const blockResult = (reason: string): GuardrailResult => ({
@@ -286,7 +291,9 @@ describe('LlamaIndex Connector — CWE-117 reason/documentPreview sanitization i
     expect(warnMeta).toBeDefined();
     expect(warnMeta?.reason).toContain('INJECTED');
     expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(CR);
     expect(warnMeta?.reason).not.toContain(ESC);
+    expect(warnMeta?.reason).not.toContain(TAB);
     // The query is blocked before retrieval — the wrapped engine is never hit.
     expect(mockEngine.query).not.toHaveBeenCalled();
   });
@@ -314,7 +321,9 @@ describe('LlamaIndex Connector — CWE-117 reason/documentPreview sanitization i
     expect(warnMeta).toBeDefined();
     expect(warnMeta?.reason).toContain('INJECTED');
     expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(CR);
     expect(warnMeta?.reason).not.toContain(ESC);
+    expect(warnMeta?.reason).not.toContain(TAB);
     // `documentPreview` is a slice of the (attacker-controlled) retrieved-doc
     // content — it carries its OWN control chars and its OWN sanitizeMeta wrap.
     expect(warnMeta?.documentPreview).toContain('INJECTED');
@@ -344,7 +353,9 @@ describe('LlamaIndex Connector — CWE-117 reason/documentPreview sanitization i
     expect(warnMeta).toBeDefined();
     expect(warnMeta?.reason).toContain('INJECTED');
     expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(CR);
     expect(warnMeta?.reason).not.toContain(ESC);
+    expect(warnMeta?.reason).not.toContain(TAB);
   });
 
   it('escapes a control-char query-blocked reason at the retriever log meta and dev-mode throw', async () => {
@@ -362,7 +373,9 @@ describe('LlamaIndex Connector — CWE-117 reason/documentPreview sanitization i
     expect(warnMeta).toBeDefined();
     expect(warnMeta?.reason).toContain('INJECTED');
     expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(CR);
     expect(warnMeta?.reason).not.toContain(ESC);
+    expect(warnMeta?.reason).not.toContain(TAB);
     expect(mockRetriever.retrieve).not.toHaveBeenCalled();
   });
 
@@ -384,7 +397,9 @@ describe('LlamaIndex Connector — CWE-117 reason/documentPreview sanitization i
     expect(warnMeta).toBeDefined();
     expect(warnMeta?.reason).toContain('INJECTED');
     expect(warnMeta?.reason).not.toContain(NL);
+    expect(warnMeta?.reason).not.toContain(CR);
     expect(warnMeta?.reason).not.toContain(ESC);
+    expect(warnMeta?.reason).not.toContain(TAB);
     expect(warnMeta?.documentPreview).toContain('INJECTED');
     expect(warnMeta?.documentPreview).not.toContain(NL);
     expect(warnMeta?.documentPreview).not.toContain(ESC);

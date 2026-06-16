@@ -689,9 +689,14 @@ describe('google-genai — CWE-117 reason sanitization is load-bearing (ADR-0001
   // (`productionMode ? '<generic>' : '<label>: ${sanitizeMeta(reason)}'`), so
   // each path is driven with `productionMode: false`.
   const NL = String.fromCharCode(10); // LF
+  const CR = String.fromCharCode(13); // CR
   const ESC = String.fromCharCode(27); // ESC
-  const RAW_REASON = `matched${NL}INJECTED${ESC}poison`;
-  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison';
+  const TAB = String.fromCharCode(9); // TAB
+  const CRLF = `${CR}${NL}`; // CRLF (Windows line ending)
+  // sanitizeLogString hex-escapes CR→\x0d and TAB→\x09 (and CRLF→\x0d\n) in its
+  // control-char pass, which runs BEFORE the \n-collapse — so only LF maps to \n.
+  const RAW_REASON = `matched${NL}INJECTED${ESC}poison${CR}carriage${CRLF}windows${TAB}tab`;
+  const ESCAPED_REASON = 'matched\\nINJECTED\\x1bpoison\\x0dcarriage\\x0d\\nwindows\\x09tab';
   const POISON = 'POISONMARK';
 
   const blockResult = (reason: string): GuardrailResult => ({
@@ -740,7 +745,9 @@ describe('google-genai — CWE-117 reason sanitization is load-bearing (ADR-0001
     const message = (caught as Error).message;
     expect(message).toContain(ESCAPED_REASON);
     expect(message).not.toContain(NL);
+    expect(message).not.toContain(CR);
     expect(message).not.toContain(ESC);
+    expect(message).not.toContain(TAB);
   }
 
   const chatWith = (overrides: {
