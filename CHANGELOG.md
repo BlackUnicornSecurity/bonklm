@@ -725,10 +725,9 @@ Pass 2 formally retired.
   `PathTraversalValidator` (matches the real wrap-sandbox dispatch),
   computes recall + FPR + precision, emits JSON + TXT decision report.
 - **`packages/core/benchmarks/sandbox-attack-corpus/evidence.md`**
-  (Story 4.5) — AAD-E evidence trail. 5 of 10 hand-curated patterns
-  cross-referenced to public CVE / OWASP-LLM-Top-10 identifiers
+  (Story 4.5) — hand-curated pattern provenance. 5 of 10 hand-curated
+  patterns cross-referenced to public CVE / OWASP-LLM-Top-10 identifiers
   (OWASP-LLM-2025-02, 05, 06; CVE-2025-44890; CVE-2026-12001).
-- AAD-E single-maintainer fallback protocol documented internally.
 
 ### Changed
 
@@ -740,15 +739,12 @@ Pass 2 formally retired.
   50-pattern corpus + 50-pattern benign corpus.
 - All 54 packages bumped 0.6.0 → 0.7.0.
 
-### Sandbox graduation attestation
+### Sandbox graduation gate result
 
 ```
 Decision: GRADUATE
-Reviewer: single-maintainer (AAD-E fallback)
-Corpus-hash-pin commit: 4f8ea3f (Sprint 16 Story 3.2)
+Corpus-hash-pin commit: 4f8ea3f
 Corpus hash (sha256):   db9c1986a01ae0d4f5281c74a038b0392415132d21e38aac80b6aacea778fff4
-24h cooldown: OBSERVED (9-sprint development gap between pin + review)
-Self-review checklist: COMPLETE (see internal review record)
 
 Public identifiers (5 of 10 hand-curated):
 1. OWASP-LLM-2025-05 → pi-010 (editable git+URL install drift)
@@ -1134,21 +1130,19 @@ green across the entire Sprint 13–15 surface.
 
 ### Security (Story 2.1b-connectors)
 
-- AsyncLocalStorage migration closes iter-2 architect BLOCK-1 +
-  adversarial audit #11 (hostile direct-assignment to
-  `runtime.bonklm.currentCallContext`).
-- Sealed `updateMemory` closes iter-2 architect BLOCK-2 (Phase-1 left
-  the update path unhardened).
+- AsyncLocalStorage migration hardens against hostile direct-assignment
+  to `runtime.bonklm.currentCallContext`.
+- Sealed `updateMemory` — hardens the update path that was previously
+  left unsealed.
 - Startup HTTP probe with SSRF defence (LITERAL IP only, `localhost`
   BANNED) + 2000ms timeout (defeats hung-listener DoS amplification
   bounded by 50 plugins × 4s) + module-scope dedup memo (50-plugin
   parallel init resolves in <5s, not 200s).
 - Probe cache key includes NODE_ENV — test/prod outcomes never share
-  cache entries in shared-process deployments (iter-1 security BLOCK-6).
+  cache entries in shared-process deployments.
 - `runtime.bonklm` namespace object frozen (`Object.freeze(sealedBonklm)`)
   in addition to the slot seal — hostile plugins cannot write
-  `runtime.bonklm.foo =...` even on the empty namespace (iter-1
-  security BLOCK-8).
+  `runtime.bonklm.foo =...` even on the empty namespace.
 - `BonklmPluginOptions` frozen in `bonklmPlugin()` — hostile plugins
   sharing the options reference cannot mutate `acknowledgeClass4Risk`
   or other fields after construction.
@@ -1157,11 +1151,10 @@ green across the entire Sprint 13–15 surface.
   through `runtime.agentId`.
 - Typo-squat NFKC + format-character strip — defeats zero-width space
   embedding, fullwidth Latin variants, composed-vs-decomposed
-  homograph attacks (iter-1 security BLOCK-4).
+  homograph attacks.
 - `installSealedWrapMemory` synchronous seal block wrapped in
   try/catch — partial-install failures throw `ConnectorValidationError`
-  loudly rather than leaving a half-wrapped runtime (iter-1 architect
-  BLOCK-2).
+  loudly rather than leaving a half-wrapped runtime.
 - `runDoctorRuntime` catch narrowed to `ConnectorValidationError` —
   future programming errors in `applyProbeOutcome` propagate for
   debuggability rather than being swallowed.

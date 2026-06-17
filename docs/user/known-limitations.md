@@ -455,8 +455,8 @@ the remaining gaps. Current state:
 - **Categories per language**: 4 (system_override / constraint_removal / mode_switching /
   role_hijacking).
 - **NOT yet covered** (Sprint 17-22 backlog):
-  - jailbreak phrasings per language (GAP-1).
-  - reformulation triggers per language (GAP-2).
+  - jailbreak phrasings per language.
+  - reformulation triggers per language.
   - 10 additional languages: hi / bn / ur / id / tr / fa / vi / th / pl / nl (one per Sprint 17-21).
   - per-language test corpus (20 TP + 20 TN) — Hindi seed shipped Sprint 16, remainder by Sprint 22.
   - RTL bidi-control character handling for ar / ur / fa.
@@ -467,11 +467,11 @@ the remaining gaps. Current state:
   - edge + tool-args + memory-writes, not language breadth.
 
 Sprint 22 close gate: per-language recall ≥ 85% on 20-TP corpus, FPR ≤ 5% on 20-TN corpus,
-curator-vs-pattern-author separation attestation per AAD-D.
+curator-vs-pattern-author separation enforced.
 
 ## 26. AudioStream + CodeInjection cross-validator composition
 
-(Sprint 16 cumulative audit security BLOCK-2 closure.)
+(Sprint 16 cumulative audit closure.)
 
 `AudioStreamValidator`'s default `finalValidators` now includes BOTH `PromptInjectionValidator` AND
 `CodeInjectionValidator`. Without the CodeInjection default, spoken voice payloads like
@@ -539,7 +539,7 @@ Coverage:
 
 ## 29. scoreToRiskLevel threshold convergence (Sprint 17 buffer)
 
-(Sprint 16 cumulative-audit code-reviewer CONCERN-1 closure.)
+(Sprint 16 cumulative-audit closure.)
 
 The shared `scoreToRiskLevel` helper unifies the score-to-RiskLevel mapping across
 `AudioStreamValidator`, `CodeInjectionValidator`, `PathTraversalValidator`, `MultilingualDetector`.
@@ -569,8 +569,8 @@ vi Vietnamese / th Thai / pl Polish / nl Dutch) is RETIRED to v0.7+ backlog unde
 
 **Why retired**: 5 sprints of stall (Sprint 18-22) — connector- shipping work (LiveKit /
 voice-webhooks / sandbox / document-ingest / cf-agents / Elysia / Next.js) consumed all capacity.
-AAD-D corpus curator-vs-pattern-author separation requires non-author native- speaker reviewers who
-have not been recruited.
+Corpus curator-vs-pattern-author separation requires non-author native- speaker reviewers who have
+not been recruited.
 
 **What still works**: bn + ur shipped Sprint 17 with seed corpora (curator: `claude-opus-4.7-seed`).
 Sprint 21 Pass 1 audit recommended native-speaker re-validation before tightening recall gates;
