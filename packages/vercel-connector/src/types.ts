@@ -8,6 +8,7 @@
 
 import type { CoreMessage, LanguageModelV1 } from 'ai';
 import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
+import type { ClientSafeStreamOptions } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * Configuration options for the guarded AI wrapper.
@@ -20,7 +21,7 @@ import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bo
  * - SEC-008: Validation timeout
  * - DEV-002: Logger type instead of GenericLogger
  */
-export interface GuardedAIOptions {
+export interface GuardedAIOptions extends ClientSafeStreamOptions {
   /**
    * Validators to apply to inputs and outputs.
    */

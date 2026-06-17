@@ -28,10 +28,12 @@ import {
   validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
 import {
+  ClientSafeStreamGate,
   ConnectorValidationError,
   createStreamValidatorState,
   logValidationFailure,
   StreamValidationError,
+  StreamValidator,
   updateStreamValidatorState,
   validateBufferBeforeAccumulation
 } from '@blackunicorn/bonklm/core/connector-utils';
@@ -130,6 +132,11 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
     logger = DEFAULT_LOGGER, // DEV-002: Use proper logger
     validateStreaming = false,
     streamingMode = 'incremental', // SEC-002: Default to incremental
+    streamReleaseMode = 'trailing', // D-058: opt-in validate-before-release
+    minBufferBeforeRelease,
+    chainHasSecretOrPii,
+    detectSentenceBoundary,
+    minSentenceLength,
     maxStreamBufferSize = DEFAULT_MAX_BUFFER_SIZE, // SEC-003: Default 1MB
     productionMode = process.env.NODE_ENV === 'production', // SEC-007
     validationTimeout = DEFAULT_VALIDATION_TIMEOUT, // SEC-008: Default 30s
@@ -274,6 +281,82 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
       const originalStream = result.toDataStream();
 
       if (streamingMode === 'incremental') {
+        // D-058 opt-in: validate-before-release. Hold byte chunks until the
+        // release gate clears their decoded text, then enqueue the ORIGINAL
+        // bytes so the data-stream framing is preserved. No unvalidated output
+        // reaches the client (contrast the trailing path below, which enqueues
+        // each chunk before validating it).
+        if (streamReleaseMode === 'gated') {
+          const decoder = new TextDecoder();
+          const gate = new ClientSafeStreamGate<Uint8Array>(
+            StreamValidator.create(
+              { validate: (content: string) => validateWithTimeout(content, 'output') },
+              {
+                logger,
+                maxBufferSize: maxStreamBufferSize,
+                minBufferBeforeRelease,
+                chainHasSecretOrPii,
+                detectSentenceBoundary,
+                minSentenceLength,
+                onBlocked: accumulated => onStreamBlocked?.(accumulated)
+              }
+            ),
+            // `{ stream: true }` carries a multi-byte UTF-8 sequence split across
+            // byte frames over to the next chunk, so the validated text matches
+            // the bytes the client will reassemble — a per-frame decode would
+            // emit replacement chars at the boundary and could mask a flagged
+            // token straddling it. The ORIGINAL bytes are still what gets
+            // forwarded; this decode only produces the text fed to validation.
+            (bytes: Uint8Array) => decoder.decode(bytes, { stream: true })
+          );
+          const mkError = (reason?: string): Uint8Array =>
+            new TextEncoder().encode(
+              JSON.stringify({
+                type: 'error',
+                error: productionMode ? 'Content filtered' : `Content filtered: ${sanitizeMeta(reason)}`
+              })
+            );
+          return {
+            ...result,
+            toDataStream: () => {
+              const reader = originalStream.getReader();
+              return new ReadableStream({
+                // Each pull MUST enqueue ≥1 chunk or close — a pull that reads
+                // an upstream chunk but enqueues nothing (held) would deadlock a
+                // single-outstanding-read consumer (the stream does not auto-pull
+                // again). So loop internally, draining upstream until the gate
+                // releases a batch or the stream ends.
+                async pull(controller) {
+                  for (;;) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                      const tail = await gate.finish();
+                      if (tail.blocked) {
+                        controller.enqueue(mkError(tail.reason));
+                      } else {
+                        for (const v of tail.released) controller.enqueue(v);
+                      }
+                      controller.close();
+                      return;
+                    }
+                    const r = await gate.push(value);
+                    if (r.blocked) {
+                      controller.enqueue(mkError(r.reason));
+                      controller.close();
+                      return;
+                    }
+                    if (r.released.length > 0) {
+                      for (const v of r.released) controller.enqueue(v);
+                      return;
+                    }
+                    // Held: nothing released yet — keep draining upstream.
+                  }
+                }
+              });
+            }
+          };
+        }
+
         // S012-005: Incremental stream validation with early termination
         // Using connector-utils for buffer validation
 
