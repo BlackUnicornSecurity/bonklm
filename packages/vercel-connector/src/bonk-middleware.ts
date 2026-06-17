@@ -234,7 +234,7 @@ export function bonkMiddleware(
         logValidationFailure(logger, r.reason ?? 'Input blocked', { context: 'bonk_middleware_input' });
         onInputBlocked?.(r.reason ?? 'input_blocked');
         throw new ConnectorValidationError(
-          productionMode ? 'Input blocked' : `Input blocked: ${r.reason}`,
+          productionMode ? 'Input blocked' : `Input blocked: ${sanitizeMeta(r.reason)}`,
           'validation_failed'
         );
       }
@@ -248,7 +248,7 @@ export function bonkMiddleware(
         if (!r.allowed) {
           logValidationFailure(logger, r.reason ?? 'Output blocked', { context: 'bonk_middleware_output' });
           throw new ConnectorValidationError(
-            productionMode ? 'Output blocked' : `Output blocked: ${r.reason}`,
+            productionMode ? 'Output blocked' : `Output blocked: ${sanitizeMeta(r.reason)}`,
             'validation_failed'
           );
         }
