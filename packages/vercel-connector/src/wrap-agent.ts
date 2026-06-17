@@ -12,7 +12,7 @@
  * @package @blackunicorn/bonklm-vercel
  */
 
-import { createLogger, type GuardrailEngine, type Logger, type Validator } from '@blackunicorn/bonklm';
+import { createLogger, type GuardrailEngine, type Logger, sanitizeMeta, type Validator } from '@blackunicorn/bonklm';
 import { createRetrievedDocValidator } from '@blackunicorn/bonklm';
 import { ConnectorValidationError, logValidationFailure } from '@blackunicorn/bonklm/core/connector-utils';
 
@@ -72,7 +72,7 @@ export function wrapAgent(
           if (!r.allowed) {
             logValidationFailure(logger, r.reason ?? 'Agent input blocked', { context: 'wrap_agent_input' });
             throw new ConnectorValidationError(
-              productionMode ? 'Input blocked' : `Input blocked: ${r.reason}`,
+              productionMode ? 'Input blocked' : `Input blocked: ${sanitizeMeta(r.reason)}`,
               'validation_failed'
             );
           }
@@ -84,7 +84,7 @@ export function wrapAgent(
           if (!r.allowed) {
             logValidationFailure(logger, r.reason ?? 'Agent output blocked', { context: 'wrap_agent_output' });
             throw new ConnectorValidationError(
-              productionMode ? 'Output blocked' : `Output blocked: ${r.reason}`,
+              productionMode ? 'Output blocked' : `Output blocked: ${sanitizeMeta(r.reason)}`,
               'validation_failed'
             );
           }
