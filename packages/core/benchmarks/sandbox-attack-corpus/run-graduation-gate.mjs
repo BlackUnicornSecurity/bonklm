@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Story 4.5 — Sandbox Graduation Gate (Sprint 24)
+ * Sandbox Graduation Gate
  *
  * Runs `CodeInjectionValidator` against the R2-13 hash-pinned attack
  * corpus + a labelled benign corpus. Computes recall + FPR +
  * precision and emits a JSON decision report.
  *
- * Thresholds (Sprint 24 AC):
+ * Thresholds:
  *   - recall ≥ 95%
  *   - FPR ≤ 5%
  *   - precision ≥ 80%
@@ -14,12 +14,8 @@
  * If ALL three pass → graduation candidate.
  * If ANY fail → keep `experimental: true`, document gap categories.
  *
- * AAD-E protocol per Sprint 23 Story 3.12 retirement decision tooling:
- *   - 24h cooldown between corpus-evidence selection and graduation
- *     review.
- *   - Self-review checklist at `team/audit-baselines/sandbox-graduation-checklist.md`.
- *   - PR attestation enumerates corpus-hash-pin commit SHA + CVE/OWASP
- *     identifiers.
+ * The graduation PR enumerates the corpus-hash-pin commit SHA + the
+ * CVE/OWASP identifiers backing each hand-curated pattern.
  *
  * Run:
  *   node packages/core/benchmarks/sandbox-attack-corpus/run-graduation-gate.mjs
@@ -42,7 +38,7 @@ const BENIGN_PATH = join(__dirname, 'benign-corpus.json');
 const REPORT_JSON_PATH = join(__dirname, 'graduation-report.json');
 const REPORT_TXT_PATH = join(__dirname, 'graduation-report.txt');
 
-// Thresholds per Story 4.5 AC.
+// Recall / FPR / precision thresholds.
 const RECALL_THRESHOLD = 0.95;
 const FPR_THRESHOLD = 0.05;
 const PRECISION_THRESHOLD = 0.8;
@@ -147,7 +143,7 @@ const precisionPass = precision >= PRECISION_THRESHOLD;
 const allPass = recallPass && fprPass && precisionPass;
 
 // =============================================================================
-// Gap categories (per Story 4.5 AC — "document specific gap categories")
+// Gap categories — document specific gap categories on a fail.
 // =============================================================================
 
 const falseNegativesByCategory = {};
@@ -214,7 +210,7 @@ const report = {
 
 writeFileSync(REPORT_JSON_PATH, JSON.stringify(report, null, 2) + '\n', 'utf-8');
 
-const txt = `# Sandbox Graduation Gate Report — Sprint 24 / Story 4.5
+const txt = `# Sandbox Graduation Gate Report
 
 Provenance: deterministic — a pure function of the corpus hash below and the validator build at this commit; per-run timestamp omitted so this committed report stays byte-stable across re-runs.
 Corpus hash (R2-13): ${expectedHash}

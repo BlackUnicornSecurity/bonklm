@@ -1,10 +1,10 @@
 # Hindi (hi) — Multilingual Corpus
 
-**Status**: Sprint 16 SEED corpus (Story 3.12 Pass 1). Patterns themselves land Sprint 21; this
-corpus exists FIRST so curator-vs-pattern-author separation is enforceable (AAD-D pattern).
+**Status**: SEED corpus (Pass 1). Patterns themselves land later; this corpus exists FIRST so
+curator-vs-pattern-author separation is enforceable.
 
 **Script**: Devanagari (देवनागरी). Left-to-right. **Speakers**: 600M+ native + L2. **Curator**: TBD
-(Sprint 21 reviewer). Sprint 16 seed authored by Claude-Opus-4.7 from English templates — explicitly
+(pending native reviewer). Seed authored by Claude-Opus-4.7 from English templates — explicitly
 marked `curator: "claude-opus-4.7-seed"` to flag that the entries MUST be reviewed by a native
 speaker before recall measurements anchor any decision.
 
@@ -29,15 +29,14 @@ speaker before recall measurements anchor any decision.
 ## Known limitations of this seed
 
 - Translations are direct; may not capture native idiom for attacks.
-- Romanized (transliterated to Latin) variants NOT included in seed — Sprint 21 backfill.
-- No mixed-script (Hindi + English) entries — Sprint 21 backfill.
+- Romanized (transliterated to Latin) variants NOT included in seed — planned backfill.
+- No mixed-script (Hindi + English) entries — planned backfill.
 
-## Sprint 21 hand-off checklist
+## Hand-off checklist
 
 - [ ] Native Hindi speaker reviews + revises all 40 entries.
 - [ ] Curator field populated with reviewer name (non-anonymous).
-- [ ] Reviewer is NOT the author of the corresponding `hi_*` regex patterns landing in the same
-      sprint (AAD-D).
+- [ ] Reviewer is NOT the author of the corresponding `hi_*` regex patterns.
 - [ ] Romanized variants added.
 - [ ] Mixed-script (hi+en) added.
 - [ ] Recall measurement re-run.
