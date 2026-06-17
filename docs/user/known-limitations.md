@@ -100,17 +100,42 @@ budget.
 **Mitigation**: rely on the upstream memory-write defence (`createMemoryWriteValidator`) to catch
 poisoned individual entries BEFORE they reach the composed-context recall path. Defence in depth.
 
-## 9. Streaming connectors use the legacy lifecycle
+## 9. Streaming output: trailing validation by default, opt-in validate-before-release
 
-The new middleware-style connectors (vercel `bonkMiddleware`, google-genai
-`wrapGenerateContentStream`, openai-agents `wrapRealtime`, langchain `createBonklmMiddleware`)
-currently use the legacy `StreamValidator.process()` / `.finalize()` lifecycle. The Story 1.1b
-release-gate `processForClient` / `finalizeForClient` API exists but is not yet wired through these
-connectors. Stream output reaches the client before validation has completed.
+By default, streaming connectors validate output on a **trailing** schedule: each chunk is forwarded
+to the client as it arrives and validated shortly after (per-chunk or at stream end), so output can
+reach the client before validation completes. This is the low-latency streaming trade-off — see §5,
+where full-response mode is noted as the only 100% leak-prevention setting.
 
-**Mitigation**: when full-response mode (Infinity buffer) is set on the engine, the legacy lifecycle
-does not change the leak posture because per-chunk forwarding is already disabled at the engine
-level. For partial-buffer mode, Phase-2 will migrate each connector to `processForClient`.
+Two connectors now expose an **opt-in client-safe lifecycle** that holds each chunk until the text
+extracted from it has passed validation, then forwards the _original_ chunk unchanged — so no chunk
+reaches the client before its extracted text is validated. (This scans the same content the trailing
+path does; gated mode changes _when_ validation runs — before release rather than after — not _what_
+is scanned, so detection still depends on the connector's text extraction.) Enable it with
+`streamReleaseMode: 'gated'`:
+
+- **vercel** — `createGuardedAI({ streamingMode: 'incremental', streamReleaseMode: 'gated' })` and
+  `bonkMiddleware(engine, { streamReleaseMode: 'gated' })`. (Vercel's `streamingMode: 'buffer'`
+  already validates the whole response before releasing anything.)
+- **google-genai** — `wrapGenerateContentStream` and `wrapChat` accept
+  `{ streamReleaseMode: 'gated' }`.
+
+Gated mode adds latency (up to `minBufferBeforeRelease` characters — or the whole response under
+`minBufferBeforeRelease: Infinity`, which is the default when a Secret or PII validator is in the
+chain) and delivers chunks in bursts at release boundaries. It is **off by default** to preserve
+streaming latency; choose the threshold per your leak-tolerance vs. latency budget.
+
+Two connectors named in earlier revisions of this section do **not** use the shared stream validator
+and are unaffected by the above:
+
+- **openai-agents** `wrapRealtime` registers a per-delta output guardrail through the
+  `@openai/agents` SDK, which owns forwarding and terminates the response on a tripwire. It
+  validates each delta in isolation; buffering realtime audio-derived output would break the
+  realtime latency contract, so the client-safe gate does not apply here. Cross-delta accumulation
+  remains future work (the Story 3.1 `AudioStreamValidator`).
+- **langchain** `createBonklmMiddleware` validates the **complete** response in its `afterModel`
+  hook and throws before returning, so output is never forwarded ahead of validation. It has no
+  incremental streaming hook today (a streaming `wrapModelCall` is future work).
 
 ## 10. Guards on `validateInput` structured surfaces — JSON-encoded-field residual
 

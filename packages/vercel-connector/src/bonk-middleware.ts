@@ -8,9 +8,13 @@
  * and `wrapStream` to validate input + output through a BonkLM
  * `GuardrailEngine`.
  *
- * Phase-1 scope (this commit): basic input + output validation via
- * `wrapGenerate` + `wrapStream`. Stream is accumulated and validated
- * once at finish (`StreamValidator` legacy lifecycle).
+ * Input + output validation via `wrapGenerate` + `wrapStream`. By default the
+ * stream is forwarded and the accumulated text is validated on a trailing
+ * schedule (output can reach the client before validation completes). Pass
+ * `streamReleaseMode: 'gated'` for the opt-in validate-before-release lifecycle
+ * — each part is held until the text extracted from it validates, then the
+ * original part is forwarded unchanged (no part reaches the client before its
+ * extracted text is validated — the same content the trailing path scans).
  *
  * Phase-2+ follow-ups (tracked in Story 1.4 spec, deferred to follow-up
  * PRs):
@@ -24,8 +28,20 @@
  * @package @blackunicorn/bonklm-vercel
  */
 
-import { createLogger, GuardrailEngine, type Logger, validateWithTimeoutSecure } from '@blackunicorn/bonklm';
-import { ConnectorValidationError, logValidationFailure } from '@blackunicorn/bonklm/core/connector-utils';
+import {
+  createLogger,
+  GuardrailEngine,
+  type Logger,
+  sanitizeMeta,
+  validateWithTimeoutSecure
+} from '@blackunicorn/bonklm';
+import {
+  ClientSafeStreamGate,
+  type ClientSafeStreamOptions,
+  ConnectorValidationError,
+  logValidationFailure,
+  StreamValidator
+} from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
  * Minimal duck-typed shape of the v5/v6 LanguageModelV2 middleware
@@ -36,7 +52,8 @@ import { ConnectorValidationError, logValidationFailure } from '@blackunicorn/bo
  * `transformParams` runs BEFORE `wrapGenerate` / `wrapStream` — input
  * validation happens here so the model is never invoked on blocked
  * content. `wrapGenerate` validates the response after; `wrapStream`
- * validates each text chunk + the accumulated tail at finish.
+ * validates streamed output (trailing by default; `streamReleaseMode: 'gated'`
+ * holds each part until it validates before forwarding).
  */
 export interface BonkLanguageModelV2Middleware {
   middlewareVersion: 'v2';
@@ -67,7 +84,7 @@ export interface BonkLanguageModelV2Middleware {
  * `GuardedAIOptions` — only the fields relevant to the middleware
  * pattern are accepted here (production mode, timeout, callbacks).
  */
-export interface BonkMiddlewareOptions {
+export interface BonkMiddlewareOptions extends ClientSafeStreamOptions {
   /** Logger. @default `createLogger('console')` */
   logger?: Logger;
   /** Production mode generic error messages. @default `process.env.NODE_ENV === 'production'` */
@@ -113,6 +130,45 @@ export function messagesToTextDucked(messages: unknown[] | undefined): string {
   return parts.join('\n');
 }
 
+/** v5/v6 stream part shape the middleware forwards. */
+type StreamPart = { type: string; textDelta?: string; [k: string]: unknown };
+
+/**
+ * D-058: extract the validatable text carried by a single v5/v6 stream part.
+ * Centralises the accumulation rules so the trailing and gated `wrapStream`
+ * paths validate IDENTICAL text — only the release timing differs. Covers
+ * text/reasoning/tool-input deltas (`textDelta`), `source` URL/title citations,
+ * and static `tool-call` name + args. Returns `''` for parts with no scannable
+ * text.
+ */
+export function extractStreamPartText(part: { type?: string; textDelta?: unknown; [k: string]: unknown }): string {
+  const td = part.textDelta;
+  if (typeof td === 'string' && td.length > 0) {
+    return td;
+  }
+  if (part.type === 'source') {
+    const src = part as { url?: unknown; title?: unknown };
+    let out = '';
+    if (typeof src.url === 'string' && src.url.length > 0) out += `${src.url}\n`;
+    if (typeof src.title === 'string' && src.title.length > 0) out += `${src.title}\n`;
+    return out;
+  }
+  if (part.type === 'tool-call') {
+    const tc = part as { toolName?: unknown; args?: unknown };
+    let out = '';
+    if (typeof tc.toolName === 'string') out += `${tc.toolName} `;
+    if (tc.args !== undefined) {
+      try {
+        out += `${JSON.stringify(tc.args)}\n`;
+      } catch {
+        /* circular / non-serialisable args — skip */
+      }
+    }
+    return out;
+  }
+  return '';
+}
+
 /**
  * Build a v5/v6 `LanguageModelV2Middleware` that pipes input + output
  * through the supplied `GuardrailEngine`.
@@ -141,7 +197,15 @@ export function bonkMiddleware(
   const logger = options.logger ?? createLogger('console');
   const productionMode = options.productionMode ?? process.env.NODE_ENV === 'production';
   const timeout = options.validationTimeout ?? DEFAULT_VALIDATION_TIMEOUT;
-  const { onInputBlocked, onStreamBlocked } = options;
+  const {
+    onInputBlocked,
+    onStreamBlocked,
+    streamReleaseMode = 'trailing',
+    minBufferBeforeRelease,
+    chainHasSecretOrPii,
+    detectSentenceBoundary,
+    minSentenceLength
+  } = options;
 
   const validate = async (content: string, context: string) => {
     const r = await validateWithTimeoutSecure({
@@ -195,53 +259,22 @@ export function bonkMiddleware(
       const result = await doStream();
       const upstream = result.stream;
 
-      // Cumulative-audit BLOCK fix: accumulate text from EVERY
-      // event-type that carries free-form text — not just `text-delta`
-      // / `text`. v5/v6 emits `reasoning-delta` (chain-of-thought the
-      // client may render), `source` (titles/URLs from RAG retrievals),
-      // and `tool-input-delta` (streamed tool args). All can carry
-      // attacker-influenced strings to the client unscanned if missed.
+      // Validate text from EVERY event-type that carries free-form text — not
+      // just `text-delta` / `text`. v5/v6 emits `reasoning-delta`
+      // (chain-of-thought the client may render), `source` (titles/URLs from
+      // RAG retrievals), and `tool-input-delta` (streamed tool args). All can
+      // carry attacker-influenced strings to the client unscanned if missed.
+      // `extractStreamPartText` centralises the rules so the trailing + gated
+      // paths validate IDENTICAL text.
       //
-      // The validator runs over the merged accumulator at stream end.
-      // Per-event semantics (e.g. blocking `tool-input-delta` BEFORE
-      // it reaches the client mid-stream) remain Phase-2+ scope; this
-      // fix closes the unvalidated-text bypass without changing the
-      // tail-validation policy.
-      async function* guardedStream(): AsyncGenerator<{
-        type: string;
-        textDelta?: string;
-        [k: string]: unknown;
-      }> {
+      // Trailing path (default): forward each part, validate the merged
+      // accumulator at stream end — output can reach the client before
+      // validation completes (known-limitations §5/§9).
+      async function* trailingStream(): AsyncGenerator<StreamPart> {
         let accumulated = '';
         try {
           for await (const part of upstream) {
-            const td = (part as { textDelta?: unknown }).textDelta;
-            if (typeof td === 'string' && td.length > 0) {
-              // Covers: text-delta, text, reasoning-delta,
-              // tool-input-delta, source (when it carries textDelta).
-              accumulated += td;
-            } else if (part.type === 'source') {
-              // `source` events may carry `.url` / `.title` strings
-              // (RAG-style citations). Concatenate any string fields
-              // defensively so injected URLs / titles are scanned.
-              const src = part as { url?: unknown; title?: unknown };
-              if (typeof src.url === 'string' && src.url.length > 0) accumulated += `${src.url}\n`;
-              if (typeof src.title === 'string' && src.title.length > 0) accumulated += `${src.title}\n`;
-            } else if (part.type === 'tool-call') {
-              // Static (non-streamed) tool calls land in a single
-              // event with a `.toolName` + `.args` blob. Accumulate
-              // the JSON form so the validator sees the full args
-              // even if no `tool-input-delta` preceded.
-              const tc = part as { toolName?: unknown; args?: unknown };
-              if (typeof tc.toolName === 'string') accumulated += `${tc.toolName} `;
-              if (tc.args !== undefined) {
-                try {
-                  accumulated += `${JSON.stringify(tc.args)}\n`;
-                } catch {
-                  /* circular / non-serialisable args — skip */
-                }
-              }
-            }
+            accumulated += extractStreamPartText(part);
             yield part;
           }
           if (accumulated.length > 0) {
@@ -250,7 +283,7 @@ export function bonkMiddleware(
               logValidationFailure(logger, r.reason ?? 'Stream blocked', { context: 'bonk_middleware_stream_output' });
               onStreamBlocked?.(accumulated, r.reason ?? 'stream_blocked');
               throw new ConnectorValidationError(
-                productionMode ? 'Stream blocked' : `Stream blocked: ${r.reason}`,
+                productionMode ? 'Stream blocked' : `Stream blocked: ${sanitizeMeta(r.reason)}`,
                 'validation_failed'
               );
             }
@@ -261,7 +294,48 @@ export function bonkMiddleware(
         }
       }
 
-      return { ...result, stream: guardedStream() };
+      // D-058 opt-in gated path: hold parts until the release gate clears their
+      // extracted text, then forward the ORIGINAL parts — so no part reaches the
+      // client before its extracted text validates (block-before-forward, not
+      // tail-only; same content the trailing path scans).
+      async function* gatedStream(): AsyncGenerator<StreamPart> {
+        const gate = new ClientSafeStreamGate<StreamPart>(
+          StreamValidator.create(
+            { validate: (content: string) => validate(content, 'bonk_middleware_stream_output') },
+            {
+              logger,
+              minBufferBeforeRelease,
+              chainHasSecretOrPii,
+              detectSentenceBoundary,
+              minSentenceLength,
+              onBlocked: (accumulated, reason) => onStreamBlocked?.(accumulated, reason)
+            }
+          ),
+          extractStreamPartText
+        );
+        for await (const part of upstream) {
+          const r = await gate.push(part);
+          if (r.blocked) {
+            logValidationFailure(logger, r.reason ?? 'Stream blocked', { context: 'bonk_middleware_stream_output' });
+            throw new ConnectorValidationError(
+              productionMode ? 'Stream blocked' : `Stream blocked: ${sanitizeMeta(r.reason)}`,
+              'validation_failed'
+            );
+          }
+          for (const out of r.released) yield out;
+        }
+        const tail = await gate.finish();
+        if (tail.blocked) {
+          logValidationFailure(logger, tail.reason ?? 'Stream blocked', { context: 'bonk_middleware_stream_output' });
+          throw new ConnectorValidationError(
+            productionMode ? 'Stream blocked' : `Stream blocked: ${sanitizeMeta(tail.reason)}`,
+            'validation_failed'
+          );
+        }
+        for (const out of tail.released) yield out;
+      }
+
+      return { ...result, stream: streamReleaseMode === 'gated' ? gatedStream() : trailingStream() };
     }
   };
 }

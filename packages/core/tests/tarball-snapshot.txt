@@ -216,6 +216,10 @@ dist/connector-utils/buffered-release-gate.d.ts
 dist/connector-utils/buffered-release-gate.d.ts.map
 dist/connector-utils/buffered-release-gate.js
 dist/connector-utils/buffered-release-gate.js.map
+dist/connector-utils/client-safe-stream.d.ts
+dist/connector-utils/client-safe-stream.d.ts.map
+dist/connector-utils/client-safe-stream.js
+dist/connector-utils/client-safe-stream.js.map
 dist/connector-utils/content-extractor.d.ts
 dist/connector-utils/content-extractor.d.ts.map
 dist/connector-utils/content-extractor.js

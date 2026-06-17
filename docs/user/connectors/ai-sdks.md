@@ -229,18 +229,28 @@ For v6 upgrade notes see [vercel-v6-migration.md](./vercel-v6-migration.md).
 
 ### Configuration Options (createGuardedAI)
 
-| Option                | Type                        | Default                     | Description                   |
-| --------------------- | --------------------------- | --------------------------- | ----------------------------- |
-| `validators`          | `Validator[]`               | `[]`                        | Validators to apply           |
-| `guards`              | `Guard[]`                   | `[]`                        | Guards to run                 |
-| `validateStreaming`   | `boolean`                   | `false`                     | Enable stream validation      |
-| `streamingMode`       | `'incremental' \| 'buffer'` | `'incremental'`             | Stream validation mode        |
-| `maxStreamBufferSize` | `number`                    | `1048576`                   | Max buffer size (1MB)         |
-| `productionMode`      | `boolean`                   | `NODE_ENV === 'production'` | Generic errors in production  |
-| `validationTimeout`   | `number`                    | `30000`                     | Timeout in milliseconds       |
-| `onBlocked`           | `Function`                  | —                           | Callback when content blocked |
-| `onStreamBlocked`     | `Function`                  | —                           | Callback when stream blocked  |
+| Option                   | Type                        | Default                     | Description                      |
+| ------------------------ | --------------------------- | --------------------------- | -------------------------------- |
+| `validators`             | `Validator[]`               | `[]`                        | Validators to apply              |
+| `guards`                 | `Guard[]`                   | `[]`                        | Guards to run                    |
+| `validateStreaming`      | `boolean`                   | `false`                     | Enable stream validation         |
+| `streamingMode`          | `'incremental' \| 'buffer'` | `'incremental'`             | Stream validation mode           |
+| `streamReleaseMode`      | `'trailing' \| 'gated'`     | `'trailing'`                | Validate-before-release (see §9) |
+| `minBufferBeforeRelease` | `number`                    | `256` / `Infinity`\*        | Gated-mode release threshold     |
+| `maxStreamBufferSize`    | `number`                    | `1048576`                   | Max buffer size (1MB)            |
+| `productionMode`         | `boolean`                   | `NODE_ENV === 'production'` | Generic errors in production     |
+| `validationTimeout`      | `number`                    | `30000`                     | Timeout in milliseconds          |
+| `onBlocked`              | `Function`                  | —                           | Callback when content blocked    |
+| `onStreamBlocked`        | `Function`                  | —                           | Callback when stream blocked     |
 
+> `streamReleaseMode: 'gated'` (also accepted by `bonkMiddleware`) holds each chunk until the text
+> extracted from it has passed validation, then forwards the original chunk — so no chunk reaches
+> the client before its extracted text is validated (the same content the trailing path scans; only
+> the timing changes). It applies to `streamingMode: 'incremental'` (`'buffer'` already validates
+> the whole response first) and trades latency for safety. \*`minBufferBeforeRelease` defaults to
+> `256`, or `Infinity` (full-response) when a Secret/PII validator is in the chain. See
+> [known-limitations §9](../known-limitations.md).
+>
 > Sprint 26 v1.0-RC1 API freeze removed the `messagesToTextLegacy` alias; rename to
 > `messagesToText`.
 
@@ -291,6 +301,26 @@ The wrapper covers four entry points: `wrapGenerateContent` (non-stream),
 `wrapGenerateContentStream`, `wrapChat` (multi-turn), and `wrapLive` (bidirectional Live API with
 audio transcription). Google's built-in `HarmCategory` filters do NOT cover the prompt-injection
 class — this wrapper plugs that gap.
+
+### Streaming output validation
+
+By default, streaming output is validated on a **trailing** schedule (chunks are forwarded as they
+arrive, validated at `validationInterval` boundaries). Opt into **validate-before-release** with
+`streamReleaseMode: 'gated'` — each chunk is held until the text extracted from it has passed
+validation, then the original response object is forwarded unchanged (the same content the trailing
+path scans; only the timing changes). Tune the release point with `minBufferBeforeRelease` (default
+`256`, or `Infinity` for full-response mode — the default when a Secret/PII validator is in the
+chain):
+
+```typescript
+const guarded = createGuardedGoogleGenAI(client, {
+  validators: [new PromptInjectionValidator()],
+  streamReleaseMode: 'gated' // held until its extracted text validates
+});
+```
+
+Gated mode trades streaming latency for leak prevention. See
+[known-limitations §9](../known-limitations.md).
 
 ---
 

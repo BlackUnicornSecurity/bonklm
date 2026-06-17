@@ -47,6 +47,7 @@ import {
   validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
 import {
+  ClientSafeStreamGate,
   ConnectorValidationError,
   logValidationFailure,
   StreamValidator
@@ -270,6 +271,11 @@ export function wrapGenerateContentStream(
     validationTimeout = DEFAULT_VALIDATION_TIMEOUT,
     maxBufferSize = DEFAULT_MAX_BUFFER_SIZE,
     validationInterval = DEFAULT_VALIDATION_INTERVAL,
+    streamReleaseMode = 'trailing',
+    minBufferBeforeRelease,
+    chainHasSecretOrPii,
+    detectSentenceBoundary,
+    minSentenceLength,
     onInputBlocked,
     onStreamBlocked,
     onFunctionCallBlocked
@@ -298,15 +304,35 @@ export function wrapGenerateContentStream(
     }
 
     const streamSrc = await models.generateContentStream(params);
-    const streamValidator = validateStreaming
-      ? StreamValidator.create(
-          { validate: (content: string) => validate(content, 'google_genai_stream_output') },
-          {
+    const gated = validateStreaming && streamReleaseMode === 'gated';
+    const streamEngine = { validate: (content: string) => validate(content, 'google_genai_stream_output') };
+    // Legacy trailing lifecycle (default): forward each chunk, validate on a
+    // chunk-count schedule. Output can reach the client before validation.
+    const streamValidator =
+      validateStreaming && !gated
+        ? StreamValidator.create(streamEngine, {
             logger,
             maxBufferSize,
             validationInterval,
             onBlocked: (accumulated, reason) => onStreamBlocked?.(accumulated, reason)
-          }
+          })
+        : null;
+    // D-058 opt-in gated lifecycle: hold chunks until the release gate clears
+    // their extracted text, then forward the original response objects — so none
+    // reaches the client before its extracted text validates (same content the
+    // trailing path scans; only the timing changes).
+    const gate = gated
+      ? new ClientSafeStreamGate<GoogleGenerateContentResponse>(
+          StreamValidator.create(streamEngine, {
+            logger,
+            maxBufferSize,
+            minBufferBeforeRelease,
+            chainHasSecretOrPii,
+            detectSentenceBoundary,
+            minSentenceLength,
+            onBlocked: (accumulated, reason) => onStreamBlocked?.(accumulated, reason)
+          }),
+          responseToText
         )
       : null;
 
@@ -320,7 +346,21 @@ export function wrapGenerateContentStream(
           // disabled would be a class-of-bypass.
           accumulateFunctionCalls(fnAcc, chunk);
 
-          if (streamValidator) {
+          // Text-output validation. `released` holds the chunks cleared to
+          // forward this iteration: the chunk itself under the trailing /
+          // streaming-disabled paths; whatever the release gate clears under
+          // the opt-in gated path (possibly nothing yet — the chunk is held).
+          let released: GoogleGenerateContentResponse[] = [chunk];
+          if (gate) {
+            const gateResult = await gate.push(chunk);
+            if (gateResult.blocked) {
+              throw new ConnectorValidationError(
+                productionMode ? 'Stream blocked' : `Stream blocked: ${sanitizeMeta(gateResult.reason)}`,
+                'validation_failed'
+              );
+            }
+            released = gateResult.released;
+          } else if (streamValidator) {
             const chunkText = responseToText(chunk);
             if (chunkText.length > 0) {
               const r = await streamValidator.process(chunkText);
@@ -360,12 +400,21 @@ export function wrapGenerateContentStream(
             }
           }
 
-          yield chunk;
+          for (const out of released) yield out;
         }
 
-        // End-of-stream: final-flush the stream validator + any
+        // End-of-stream: final-flush the stream validator / release gate + any
         // function-call accumulators that never saw a finishReason.
-        if (streamValidator) {
+        if (gate) {
+          const tail = await gate.finish();
+          if (tail.blocked) {
+            throw new ConnectorValidationError(
+              productionMode ? 'Stream tail blocked' : `Stream tail blocked: ${sanitizeMeta(tail.reason)}`,
+              'validation_failed'
+            );
+          }
+          for (const out of tail.released) yield out;
+        } else if (streamValidator) {
           const tail = await streamValidator.finalize();
           if (tail && !tail.allowed) {
             throw new ConnectorValidationError(
@@ -421,6 +470,11 @@ export function wrapChat(
     validationTimeout = DEFAULT_VALIDATION_TIMEOUT,
     maxBufferSize = DEFAULT_MAX_BUFFER_SIZE,
     validationInterval = DEFAULT_VALIDATION_INTERVAL,
+    streamReleaseMode = 'trailing',
+    minBufferBeforeRelease,
+    chainHasSecretOrPii,
+    detectSentenceBoundary,
+    minSentenceLength,
     onInputBlocked,
     onStreamBlocked
   } = options;
@@ -486,22 +540,47 @@ export function wrapChat(
         }
       }
       const streamSrc = await session.sendMessageStream(payload);
-      const streamValidator = validateStreaming
-        ? StreamValidator.create(
-            { validate: (content: string) => validate(content, 'google_genai_chat_stream_output') },
-            {
+      const gated = validateStreaming && streamReleaseMode === 'gated';
+      const streamEngine = { validate: (content: string) => validate(content, 'google_genai_chat_stream_output') };
+      const streamValidator =
+        validateStreaming && !gated
+          ? StreamValidator.create(streamEngine, {
               logger,
               maxBufferSize,
               validationInterval,
               onBlocked: (accumulated, reason) => onStreamBlocked?.(accumulated, reason)
-            }
+            })
+          : null;
+      // D-058 opt-in gated lifecycle — see wrapGenerateContentStream.
+      const gate = gated
+        ? new ClientSafeStreamGate<GoogleGenerateContentResponse>(
+            StreamValidator.create(streamEngine, {
+              logger,
+              maxBufferSize,
+              minBufferBeforeRelease,
+              chainHasSecretOrPii,
+              detectSentenceBoundary,
+              minSentenceLength,
+              onBlocked: (accumulated, reason) => onStreamBlocked?.(accumulated, reason)
+            }),
+            responseToText
           )
         : null;
 
       async function* guardedIter(): AsyncGenerator<GoogleGenerateContentResponse> {
         try {
           for await (const chunk of streamSrc) {
-            if (streamValidator) {
+            let released: GoogleGenerateContentResponse[] = [chunk];
+            if (gate) {
+              const gateResult = await gate.push(chunk);
+              if (gateResult.blocked) {
+                throw new ConnectorValidationError(
+                  productionMode ? 'Stream blocked' : `Stream blocked: ${sanitizeMeta(gateResult.reason)}`,
+                  'validation_failed'
+                );
+              }
+              released = gateResult.released;
+            } else if (streamValidator) {
               const chunkText = responseToText(chunk);
               if (chunkText.length > 0) {
                 const r = await streamValidator.process(chunkText);
@@ -513,9 +592,18 @@ export function wrapChat(
                 }
               }
             }
-            yield chunk;
+            for (const out of released) yield out;
           }
-          if (streamValidator) {
+          if (gate) {
+            const tail = await gate.finish();
+            if (tail.blocked) {
+              throw new ConnectorValidationError(
+                productionMode ? 'Stream tail blocked' : `Stream tail blocked: ${sanitizeMeta(tail.reason)}`,
+                'validation_failed'
+              );
+            }
+            for (const out of tail.released) yield out;
+          } else if (streamValidator) {
             const tail = await streamValidator.finalize();
             if (tail && !tail.allowed) {
               throw new ConnectorValidationError(

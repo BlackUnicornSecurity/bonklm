@@ -4,6 +4,7 @@
  * Public option / result types for the `@google/genai` v2 connector.
  */
 import type { Guard, GuardrailResult, Logger, Validator } from '@blackunicorn/bonklm';
+import type { ClientSafeStreamOptions } from '@blackunicorn/bonklm/core/connector-utils';
 
 /** Default validation timeout (ms). */
 export const DEFAULT_VALIDATION_TIMEOUT = 30_000;
@@ -20,7 +21,7 @@ export const DEFAULT_VALIDATION_INTERVAL = 10;
  * (`new GoogleGenAI({ vertexai: true, project, location })`) modes —
  * mode is chosen on the caller's SDK constructor, not here.
  */
-export interface GuardedGoogleGenAIOptions {
+export interface GuardedGoogleGenAIOptions extends ClientSafeStreamOptions {
   /** Validators applied to input text + tool-call args + retrieved-doc-shaped responses. */
   validators?: Validator[];
   /** Guards applied to retrieved content (e.g. function-call arg strings). */
