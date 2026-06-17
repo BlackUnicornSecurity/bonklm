@@ -11,9 +11,16 @@ regenerate.
 - Runtime: Node 22, no LLM-in-loop validators enabled
 - Each row reports `hz` (operations/sec), `mean` (ms), `p75`, `p99`, `p99.9` — sampled until `±rme`
   stabilises
-- Number citations on bonklm.com cite the `mean` column unless noted
+- Number citations on bonklm.com cite the `mean` column of the canonical suite (above the indicative
+  section) unless noted
+- Indicative micro-benchmarks: `pnpm benchmark:micro` (log-sanitizer hot path + credential / PII
+  scrubber overhead) and `pnpm benchmark:cold-start` (package import / cold-start cost)
+- Canonical engine target: full-engine **P99 < 200 ms** (long-form, ≤ 6 KB) / **< 100 ms**
+  (short–medium); per-validator **5–50 ms**. Most numbers here clear it by 2–3 orders of magnitude
+  (the long-form full-engine row by ~1).
 
-Last run: **2026-05-26** (commit checked into source control).
+Last run: **2026-05-26** (marketing-canonical suite, committed). Indicative micro-benchmarks
+(log-sanitizer / scrubber / cold-start) added **2026-06-17** — see the indicative section below.
 
 ## Single Validator — PromptInjectionValidator
 
@@ -48,6 +55,46 @@ Last run: **2026-05-26** (commit checked into source control).
 | Input                                    |    hz |         mean |      p75 |      p99 |
 | ---------------------------------------- | ----: | -----------: | -------: | -------: |
 | 10 concurrent validations (100ms target) | 1,222 | **0.818 ms** | 0.855 ms | 1.070 ms |
+
+## Indicative micro-benchmarks (dev — NOT marketing-canonical)
+
+Single-core Apple Silicon (M-series), Node 25, @ source `73061e4`. These are dev-indicative hot-path
+numbers for the log sanitizer and the secret / PII scrubbers — re-run with `pnpm benchmark:micro`.
+Do **not** cite these in marketing copy; cite the canonical suite above.
+
+### Log-sanitizer hot path — `sanitizeLogString`
+
+`sanitizeLogString` truncates to `maxLen` (default 500), so the hot path is bounded at ~500 chars.
+
+| Input                                                     |     hz |          mean |       p75 |       p99 |
+| --------------------------------------------------------- | -----: | ------------: | --------: | --------: |
+| clean short (~40 chars, fast path)                        |  4.1 M | **0.0002 ms** | 0.0003 ms | 0.0004 ms |
+| clean ~560 chars (engages maxLen=500 truncation)          |  1.7 M | **0.0006 ms** | 0.0006 ms | 0.0007 ms |
+| control/bidi-dense at cap (~500 chars, work path)         | 36.8 k |  **0.027 ms** |  0.027 ms |  0.035 ms |
+| control/bidi-dense ~6 KB, `maxLen`=100k (unbounded worst) |  3.1 k |  **0.324 ms** |  0.323 ms |  0.430 ms |
+
+### Scrubber overhead — credential + PII redaction
+
+| Input                                             |     hz |          mean |       p75 |       p99 |
+| ------------------------------------------------- | -----: | ------------: | --------: | --------: |
+| `redactCredentials` — clean prose (no redaction)  | 2.19 M | **0.0005 ms** | 0.0005 ms | 0.0006 ms |
+| `redactCredentials` — secret-laden                |  172 k | **0.0058 ms** | 0.0058 ms |  0.012 ms |
+| `redactPIIInStringSync` — clean prose (no hit)    |  457 k | **0.0022 ms** | 0.0021 ms | 0.0071 ms |
+| `redactPIIInStringSync` — PII-laden               |  242 k | **0.0041 ms** | 0.0040 ms |  0.010 ms |
+| `redactPIIInStringSync` — clean ~6 KB (full scan) | 13.0 k |  **0.077 ms** |  0.078 ms |  0.113 ms |
+
+### Cold-start / import-cost — `pnpm benchmark:cold-start`
+
+Fresh `node` process per sample (20 samples). `import` = module load + eval; full = node boot +
+import.
+
+| Metric                               | median |  mean |   p95 |
+| ------------------------------------ | -----: | ----: | ----: |
+| `import('@blackunicorn/bonklm')`     |  34 ms | 34 ms | 35 ms |
+| full cold-start (node boot + import) |  85 ms | 86 ms | 90 ms |
+
+> StreamValidator streaming throughput is measured separately on the reference Linux/GPU host and is
+> not part of this single-core macOS sheet.
 
 ## Citation-safe phrasing for marketing copy
 
