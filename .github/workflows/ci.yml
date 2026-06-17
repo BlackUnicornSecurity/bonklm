@@ -438,7 +438,7 @@ jobs:
     # graduation gate MUST re-verify on every commit. The gate script
     # exits non-zero if recall < 95% OR FPR > 5% OR precision < 80%, OR
     # if the corpus hash drifts from the Sprint 24 pin
-    # (db9c19...8fff4). Failing this job blocks the build.
+    # (e3661e...5302b). Failing this job blocks the build.
     steps:
       - name: Checkout
         uses: actions/checkout@v4

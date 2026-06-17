@@ -636,7 +636,7 @@ ahead of v1.0.0 final.
   documented Sprint 23 retirement).
 - Temporal middleware: **21/21** passing (`MockActivityEnvironment`).
 - Sandbox graduation: **100% recall / 0% FPR / 100% precision** against
-  R2-13 corpus (hash `db9c19...8fff4`, pin commit `4f8ea3f`).
+  R2-13 corpus (hash `e3661e...5302b`, pin commit `4f8ea3f`).
 - Build: all 54 packages build clean at `1.0.0-rc.2`.
 
 ## [1.0.0-rc.1] — 2026-05-23 (Sprint 26)
@@ -744,7 +744,7 @@ Pass 2 formally retired.
 ```
 Decision: GRADUATE
 Corpus-hash-pin commit: 4f8ea3f
-Corpus hash (sha256):   db9c1986a01ae0d4f5281c74a038b0392415132d21e38aac80b6aacea778fff4
+Corpus hash (sha256):   e3661e5c808ac604d894e6ead5dcc27960143f45927928d64ebfe64629b5302b
 
 Public identifiers (5 of 10 hand-curated):
 1. OWASP-LLM-2025-05 → pi-010 (editable git+URL install drift)

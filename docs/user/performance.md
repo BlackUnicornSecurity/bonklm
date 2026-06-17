@@ -106,7 +106,7 @@ non-zero on ANY of:
 - FPR > 5 % against the 50-benign corpus.
 - Precision < 80 %.
 - Corpus hash drift from the Sprint 24 pin
-  (`db9c1986a01ae0d4f5281c74a038b0392415132d21e38aac80b6aacea778fff4`).
+  (`e3661e5c808ac604d894e6ead5dcc27960143f45927928d64ebfe64629b5302b`).
 
 Report files (`graduation-report.json` + `.txt`) are uploaded as `sandbox-graduation-report`
 artifact for 30 days.

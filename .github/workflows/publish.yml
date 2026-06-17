@@ -94,7 +94,7 @@ jobs:
         run: pnpm run uat
 
       - name: Run R2-13 sandbox graduation gate (Sprint 34 — release-blocker)
-        # Re-verifies the hash-pinned corpus (db9c19...8fff4 per Sprint 24
+        # Re-verifies the hash-pinned corpus (e3661e...5302b per Sprint 24
         # pin). Exits non-zero on recall < 95% OR FPR > 5% OR precision
         # < 80% OR hash drift.
         run: node packages/core/benchmarks/sandbox-attack-corpus/run-graduation-gate.mjs

@@ -454,7 +454,7 @@ describe('validatePromptInjection', () => {
    interface/contract violations, not noise).
 5. **Sandbox graduation gate** — `packages/core/benchmarks/sandbox-attack-corpus/`. The R2-13 gate
    enforces recall ≥ 95% / FPR ≤ 5% / precision ≥ 80% against a hash-pinned corpus (Sprint 24 pin
-   `db9c19…8fff4`). Hash drift fails the build.
+   `e3661e…5302b`). Hash drift fails the build.
 6. **Temporal integration** — `packages/temporal-middleware/tests/test-workflow-environment.test.ts`
    runs against a real `TestWorkflowEnvironment` (gated by `BONKLM_TEMPORAL_INTEGRATION_TESTS=1`,
    default-OFF for local-dev).
