@@ -3,10 +3,9 @@
  * tools/check-workspace-policy.js
  * ================================
  *
- * Story 2.1b iter-3 adversarial BLOCK-ADV-2: programmatic enforcement
- * of the Tier A / Tier B `tools/*` policy from `tools/WORKSPACE-POLICY.md`.
- * Self-attestation collapses to reviewer fatigue under single-maintainer
- * reality; this script enforces the contract at CI.
+ * Programmatic enforcement of the Tier A / Tier B `tools/*` policy from
+ * `tools/WORKSPACE-POLICY.md`. Enforcing the contract in CI keeps the policy
+ * reliable instead of depending on manual review.
  *
  * Tier A (default — internal-only):
  *   - `private: true` in package.json (prevents accidental npm publish).
@@ -240,7 +239,7 @@ export function main(opts) {
  * `run`/`exit` are injectable so the entrypoint + error paths are unit-testable
  * without spawning a process. Wrapping `run` in try/catch turns a malformed
  * package.json (parse error in readJson) into a controlled exit + clear
- * diagnostic rather than an uncaught-exception stack trace (review-BLOCK-O).
+ * diagnostic rather than an uncaught-exception stack trace.
  */
 export function runCli({ argv1, scriptUrl, run = main, exit = process.exit }) {
   if (argv1 !== fileURLToPath(scriptUrl)) return false;
