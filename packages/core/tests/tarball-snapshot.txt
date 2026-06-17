@@ -136,6 +136,10 @@ dist/cli/index.d.ts
 dist/cli/index.d.ts.map
 dist/cli/index.js
 dist/cli/index.js.map
+dist/cli/program.d.ts
+dist/cli/program.d.ts.map
+dist/cli/program.js
+dist/cli/program.js.map
 dist/cli/testing/display.d.ts
 dist/cli/testing/display.d.ts.map
 dist/cli/testing/display.js
