@@ -276,6 +276,10 @@ dist/engine/cached-validator.d.ts
 dist/engine/cached-validator.d.ts.map
 dist/engine/cached-validator.js
 dist/engine/cached-validator.js.map
+dist/engine/guard-content.d.ts
+dist/engine/guard-content.d.ts.map
+dist/engine/guard-content.js
+dist/engine/guard-content.js.map
 dist/engine/index.d.ts
 dist/engine/index.d.ts.map
 dist/engine/index.js

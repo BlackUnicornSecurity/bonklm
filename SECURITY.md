@@ -115,8 +115,10 @@ Key limitations relevant to security posture:
   (§5, §9).
 - Sandbox validators (`CodeInjectionValidator`, `PathTraversalValidator`) are first-line defence
   only — sandbox isolation is true containment (§24).
-- Guards do not fire on `validateInput` paths used by browser-agent, Inngest, and Eko connectors
-  (§10).
+- Guards fire on both `engine.validate` and `engine.validateInput`; the residual is that structured
+  fields (`tool_call` args, doc/memory metadata) are JSON-encoded for guard inspection, so a
+  quote-delimited source-syntax secret (`api_key = "…"`, the AWS _secret_ access key) may need an
+  additional `engine.validate(rawValue)` pass (§10).
 - `AudioStreamValidator.validatePartial` is ASCII-fold only; homoglyph / mixed-script attacks
   require `validateFinal` (§22).
 

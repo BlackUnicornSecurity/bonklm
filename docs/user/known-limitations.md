@@ -112,32 +112,34 @@ connectors. Stream output reaches the client before validation has completed.
 does not change the leak posture because per-chunk forwarding is already disabled at the engine
 level. For partial-buffer mode, Phase-2 will migrate each connector to `processForClient`.
 
-## 10. Guards do NOT fire on browser-agent / Inngest / Eko surfaces
+## 10. Guards on `validateInput` structured surfaces — JSON-encoded-field residual
 
 `SecretGuard`, `BashSafetyGuard`, and any other `Guard`-shaped check attached to `GuardrailEngine`
-via `guards: [...]` **only fire on `engine.validate(content: string)` call paths**. The connectors
-added in v0.5.0 — `@blackunicorn/bonklm-stagehand`, `@blackunicorn/bonklm-eko`,
-`@blackunicorn/bonklm-browser-agents-core`, `@blackunicorn/bonklm-inngest` — route validation
-through `engine.validateInput(input: ValidatorInput)` which deliberately skips the guards pipeline
-(guards take a `string`
+via `guards: [...]` now fire on **both** engine entry points: `engine.validate(content: string)`
+**and** `engine.validateInput(input: ValidatorInput)`. The structured surfaces routed through
+`validateInput` — browser-agent `tool_call` (Stagehand `act`, Eko `file.write`), `retrieved_docs`,
+`memory_write`, `composed_context`, and `audio_partial` — are reduced to a canonical text surface
+that guards inspect, after the validator phase and under the same short-circuit gate as
+`validate()`. A consumer wiring `SecretGuard` to catch a credential in Stagehand `act` args, an Eko
+`file.write` payload, or an Inngest tool-args invocation now gets guard coverage on those surfaces.
 
-- optional `context`; the discriminated-union doesn't map cleanly).
+**Residual (narrow)**: structured (non-text) fields are JSON-encoded before guard inspection —
+`tool_call` args, `retrieved_docs[]` id + metadata, and `memory_write` metadata / userId / sessionId
+(the primary text fields — each surface's `content`, `composed_context` entries, transcript text —
+are inspected verbatim, so a credential in metadata is still surfaced to guards). Standalone-token
+secrets (AWS access-key id `AKIA…`, GitHub `ghp_…`, Stripe `sk_live_…`, Anthropic `sk-ant-…`, opaque
+high-entropy tokens, `curl … | bash` substrings) still match through the encoding. A secret whose
+detection depends on **source-syntax context** — a quote-delimited `key = "value"` pattern, e.g.
+generic `api_key = "…"` **and the AWS _secret_ access key** — may not match once the surrounding
+quotes are JSON-escaped. If you need that, extract the raw value and pass it through
+`engine.validate(rawValue)` as well, or express the check as a `Validator` (validators receive the
+structured `ValidatorInput` on every surface).
 
-**Concrete impact**: a consumer wiring `SecretGuard` expecting it to fire on a Stagehand `act`
-tool-call args, an Eko `file.write` payload, or an Inngest `validateToolArgs` invocation will get
-**zero** guard coverage. Only `Validator`-shaped checks (e.g. `SecretValidator`,
-`BashSafetyValidator` if you build them) run on these surfaces.
-
-**Mitigation**:
-
-1. Re-implement security-critical guards AS validators (subclass `Validator` rather than `Guard`).
-   Validators receive the discriminated-union ValidatorInput and run on every surface.
-2. For high-blast-radius surfaces (file.write content, MCP tool args), additionally invoke
-   `engine.validate(JSON.stringify(args))` yourself before dispatch so guards fire on the
-   stringified form.
-
-A future release (Sprint 14+) may unify the two pipelines so guards fire on `validateInput` too —
-but the type-safety + result-shape unification is non-trivial and currently a known gap.
+**Notes**: guards are skipped on `validateInput` only when a validator has already blocked under
+`shortCircuit: true` (identical to `validate()`); an engine configured with no guards is unaffected;
+guards run with no `context` argument here (a `ValidatorInput` has no file-path surface), so
+file-path-dependent guard behaviour differs from `validate(content, filePath)`; the override-token
+bypass is intentionally not honoured on the `validateInput` path.
 
 ## 11. CRIU-checkpoint heap exposure of cache-adapter credentials
 

@@ -33,8 +33,8 @@ engine.onIntercept(callback: InterceptCallback): void;
 
 **Fires for**:
 
-- `engine.validate(content, context?)` outcomes (`GuardrailEngine.ts:466, 518, 534`).
-- `engine.validateInput(input)` outcomes (`GuardrailEngine.ts:588, 623`).
+- `engine.validate(content, context?)` outcomes (`GuardrailEngine.ts:459, 511, 527`).
+- `engine.validateInput(input)` outcomes (`GuardrailEngine.ts:601, 650`).
 - Cached-validator paths via `engine.notifyCachedResult(results, content, ctx?)`
   (`GuardrailEngine.ts:350` — Inngest / Trigger / Lance / Turbopuffer / Pinecone / Weaviate / Qdrant
   connectors call this after their own `cachedValidate`).
