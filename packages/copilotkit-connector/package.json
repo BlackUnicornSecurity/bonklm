@@ -36,6 +36,11 @@
     "react",
     "hooks"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/copilotkit-connector"
+  },
   "license": "Apache-2.0",
   "dependencies": {
     "@blackunicorn/bonklm": "workspace:*"

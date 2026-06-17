@@ -36,6 +36,11 @@
     "jailbreak",
     "ai-safety"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/express-middleware"
+  },
   "author": "BlackUnicorn <info@blackunicorn.tech>",
   "license": "Apache-2.0",
   "dependencies": {

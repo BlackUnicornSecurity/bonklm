@@ -38,6 +38,11 @@
     "attack-logger",
     "security-observability"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/logger"
+  },
   "author": "BlackUnicorn <info@blackunicorn.tech>",
   "license": "Apache-2.0",
   "devDependencies": {

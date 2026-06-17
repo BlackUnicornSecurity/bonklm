@@ -243,6 +243,29 @@ if [ "$FAST" -eq 0 ]; then
     skip_gate "security-regression" "script not present (gitignored team/ tree)"
   fi
 
+  # ---- Tarball secret-scan (blocking) -----------------------------------
+  # Packs every publishable package and gitleaks-scans the extracted tarball
+  # bytes — the exact files a consumer downloads — so no secret can ship even if
+  # one slips past the workspace-level scan. Requires gitleaks on PATH; skipped
+  # (not failed) when absent so the gate stays runnable on a bare box. Findings
+  # are redacted; route evidence to a local, gitignored path.
+  if command -v gitleaks >/dev/null 2>&1; then
+    run_gate "tarball-secret-scan" bash scripts/scan-tarballs.sh
+  else
+    skip_gate "tarball-secret-scan" "gitleaks not on PATH"
+  fi
+
+  # ---- Supply-chain gates (blocking) -------------------------------------
+  # Shipped-closure scope: BonkLM ships connectors that declare third-party SDKs
+  # as peerDependencies, so a workspace-wide audit surfaces dozens of upstream
+  # peer-SDK advisories that are NOT in any BonkLM tarball. These two gates
+  # measure only what BonkLM actually ships (the `dependencies` closure, peers
+  # excluded) and block on a HIGH/CRITICAL advisory or a non-permissive license
+  # there. The peer-SDK set is surfaced as consumer guidance, not a ship-blocker.
+  # See docs/contributing/adr/0008-supply-chain-posture.md.
+  run_gate "supply-chain (shipped advisories)" node scripts/supply-chain-audit.mjs
+  run_gate "licenses (shipped closure)" node scripts/license-audit.mjs
+
   # ---- Dependency advisory surface (non-blocking, mirrors CI) ------------
   run_advisory "dep-audit" pnpm audit --audit-level=high
 fi

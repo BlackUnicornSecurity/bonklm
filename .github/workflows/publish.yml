@@ -146,8 +146,27 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # npm build provenance. The `id-token: write` permission
+          # granted at the workflow level is only consumed when provenance is
+          # actually requested: with this flag npm signs every published tarball
+          # with a Sigstore attestation binding it to this workflow run, commit
+          # SHA, and source repo. Requires each published package to declare a
+          # `repository` field — all publishable packages now do. Consumers
+          # verify with `npm audit signatures`. See docs/user/supply-chain.md.
+          NPM_CONFIG_PROVENANCE: 'true'
+          # Version comes from the validate job, which derived it from the pushed
+          # tag and format-validated it (semver only: digits, dots, hyphen,
+          # alphanumerics) — no shell metacharacters, safe to use below.
+          RELEASE_VERSION: ${{ needs.validate.outputs.version }}
         run: |
-          pnpm exec changeset publish
+          # Derive the npm dist-tag so prereleases never move `latest` (ADR-0008
+          # §5): a prerelease semver (one containing `-`, e.g. 1.0.0-rc.4) publishes
+          # under `next`; a stable release under `latest`. `changeset publish`
+          # defaults to `latest` regardless of prerelease status, so the tag is
+          # passed explicitly.
+          if [[ "$RELEASE_VERSION" == *-* ]]; then DIST_TAG=next; else DIST_TAG=latest; fi
+          echo "Publishing $RELEASE_VERSION under npm dist-tag: $DIST_TAG"
+          pnpm exec changeset publish --tag "$DIST_TAG"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
