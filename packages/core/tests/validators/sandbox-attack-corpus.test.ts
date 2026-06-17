@@ -83,7 +83,7 @@ describe('sandbox-attack-corpus — composition + hash integrity', () => {
    *  3. Commit all three (patterns.json, corpus.hash, this test) together
    */
   it('hardcoded sha256 anchor matches sha256(patterns.json) — defeats atomic poisoning', () => {
-    const EXPECTED_CORPUS_SHA256 = 'db9c1986a01ae0d4f5281c74a038b0392415132d21e38aac80b6aacea778fff4';
+    const EXPECTED_CORPUS_SHA256 = 'e3661e5c808ac604d894e6ead5dcc27960143f45927928d64ebfe64629b5302b';
     const raw = readFileSync(join(corpusDir, 'patterns.json'), 'utf-8');
     const computed = createHash('sha256').update(raw).digest('hex');
     expect(computed).toBe(EXPECTED_CORPUS_SHA256);

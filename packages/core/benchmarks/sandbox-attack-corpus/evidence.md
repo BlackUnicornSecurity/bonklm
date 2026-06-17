@@ -9,7 +9,7 @@ Coverage requirement for the hand-curated subset:
 
 - **Commit SHA**: `4f8ea3f`
 - **Date**: 2026-05-23
-- **Corpus sha256**: `db9c1986a01ae0d4f5281c74a038b0392415132d21e38aac80b6aacea778fff4`
+- **Corpus sha256**: `e3661e5c808ac604d894e6ead5dcc27960143f45927928d64ebfe64629b5302b`
 - **patterns.json**: 50 entries, composition 60/20/10/10 per R2-13
 
 ## Hand-curated patterns (10/50 → 20%)

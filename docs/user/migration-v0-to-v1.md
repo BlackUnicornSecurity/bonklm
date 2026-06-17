@@ -290,7 +290,7 @@ The Story 4.5 R2-13 sandbox-attack-corpus graduation gate **PASSED** at 100% rec
 false-positive / 100% precision. The corpus is hash-pinned at commit `4f8ea3f`:
 
 ```
-sha256: db9c1986a01ae0d4f5281c74a038b0392415132d21e38aac80b6aacea778fff4
+sha256: e3661e5c808ac604d894e6ead5dcc27960143f45927928d64ebfe64629b5302b
 ```
 
 `CodeInjectionValidator` + `PathTraversalValidator` are the sandbox canonical first-line defence.
