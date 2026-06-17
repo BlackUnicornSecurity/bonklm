@@ -175,8 +175,17 @@ export function wrapMCPClient(
             }))
           );
           if (batch.result.blocked) {
+            // Defense-in-depth only: with the hardcoded `onPerDocFailure: 'drop'`
+            // above, this branch is unreachable (drop filters per-doc and never sets
+            // `batch.result.blocked`), and the one mode that does set it
+            // (`block-all`) already escapes the reason via core `sanitizeLogString`
+            // (retrieved-doc.ts). The `sanitizeMeta` wrap keeps this sink consistent
+            // with the connector's other CWE-117 dev-mode boundaries (ADR-0001)
+            // regardless of future mode changes; it has no RED-on-revert regression
+            // test because removing it reintroduces no raw control characters. See
+            // the reachable-behaviour lock in tests/bonk-middleware.test.ts.
             throw new ConnectorValidationError(
-              productionMode ? 'MCP resource blocked' : `MCP resource blocked: ${batch.result.reason}`,
+              productionMode ? 'MCP resource blocked' : `MCP resource blocked: ${sanitizeMeta(batch.result.reason)}`,
               'validation_failed'
             );
           }
