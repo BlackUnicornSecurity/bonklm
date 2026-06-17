@@ -44,6 +44,8 @@ Integrate guardrails with your favorite frameworks and platforms:
 ### Guides
 
 - [Security Guide](./guides/security-guide.md) - Security best practices and attack prevention
+- [Supply-chain & Provenance](./supply-chain.md) - Verify provenance, SBOM, license posture,
+  dist-tags
 - [Usage Examples](./examples/usage-patterns.md) - Common patterns and code examples
 
 ---

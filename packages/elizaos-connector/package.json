@@ -46,6 +46,11 @@
     "validation",
     "agent"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/elizaos-connector"
+  },
   "author": "BlackUnicorn <info@blackunicorn.tech>",
   "license": "Apache-2.0",
   "dependencies": {

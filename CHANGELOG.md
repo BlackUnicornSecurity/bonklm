@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Supply-chain hardening: npm build provenance, SBOM, and shipped-closure audit/license gates.**
+  Stable releases now publish with npm build provenance — a Sigstore attestation binding each tarball
+  to its CI build, commit, and source repository (verify with `npm audit signatures`) — and every
+  published package now declares `repository` metadata, and the publish workflow tags prereleases
+  `next` so they never move `latest`. New tooling — a production-closure advisory and license audit
+  (`pnpm audit:prod`, `pnpm license-check`) and a published-tarball secret scan (`pnpm scan:tarballs`),
+  all wired into the quality gate, plus an on-demand CycloneDX SBOM generator (`pnpm sbom`). The new
+  [Supply-chain & provenance guide](docs/user/supply-chain.md) documents signature verification, the
+  `latest`/`next` dist-tag policy, and recommended version pins for advisories that originate in
+  third-party peer SDKs (not in any BonkLM tarball).
+
 - **`streamingMode: 'buffer'` is now implemented for the openai, anthropic, and ollama connectors.**
   Previously these connectors logged a warning and fell back to no stream validation when `'buffer'`
   was requested; they now perform real buffered full-stream validation. Buffer mode holds every

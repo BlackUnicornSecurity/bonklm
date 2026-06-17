@@ -28,6 +28,11 @@
     "validation",
     "transformers"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/huggingface-connector"
+  },
   "author": "BlackUnicorn",
   "license": "Apache-2.0",
   "dependencies": {

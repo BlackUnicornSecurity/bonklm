@@ -37,6 +37,11 @@
     "jailbreak-detection",
     "content-filtering"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/google-genai-connector"
+  },
   "license": "Apache-2.0",
   "dependencies": {
     "@blackunicorn/bonklm": "workspace:*"

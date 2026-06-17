@@ -1,0 +1,22 @@
+# BonkLM gitleaks configuration.
+#
+# Used by the published-tarball secret-scan (scripts/scan-tarballs.sh)
+# and available for ad-hoc `gitleaks detect --config .gitleaks.toml` runs. It
+# extends gitleaks' bundled default ruleset (so every upstream rule still fires)
+# and allowlists only documented, deliberately-fake placeholders.
+title = "BonkLM gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documented fake placeholders that are NOT real secrets"
+# The core README's SecretGuard usage example passes a deliberately-fake,
+# sequential demo key to the secret detector to *demonstrate* detection
+# (packages/core/README.md). It is published in the npm tarball on purpose as
+# documentation. This allowlist is intentionally narrow — it matches only this
+# exact placeholder, so any other apiKey-shaped string in any shipped file is
+# still reported (the scan stays non-vacuous).
+regexes = [
+  '''sk-1234567890abcdef''',
+]
