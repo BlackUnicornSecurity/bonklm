@@ -307,9 +307,9 @@ catch regressions.
 **Released: v0.6.0, Sprint 23**
 
 Multilingual prompt-injection Pass 2 (next 10 languages: Bengali, Urdu, Vietnamese, Thai, Tamil,
-Telugu, Marathi, Punjabi, Gujarati, Persian) was retired after 5 sprints of stall against
-single-maintainer capacity + no native-reviewer pipeline. The current shipping corpus covers 10
-languages with native-reviewer-validated patterns.
+Telugu, Marathi, Punjabi, Gujarati, Persian) was retired after 5 sprints of stall against limited
+maintainer capacity + no native-reviewer pipeline. The current shipping corpus covers 10 languages
+with native-reviewer-validated patterns.
 
 Multilingual Pass 2 is **deferred to v0.7+ Story 4.2 CONDITIONAL** — will reopen only when a
 native-reviewer pipeline materialises.

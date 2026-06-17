@@ -37,8 +37,8 @@ outside this matrix.
 | `@blackunicorn/bonklm-daytona`       | 🟢 NODE | `@daytonaio/sdk ~0.175.0`      | **STABLE (Sprint 24 graduation)** |
 
 Sprint 24 Story 4.5 graduation gate passed at 100% recall / 0% FPR / 100% precision against the
-R2-13 hash-pinned 50-pattern corpus + 50-pattern benign corpus. Full attestation in CHANGELOG
-§0.7.0.
+R2-13 hash-pinned 50-pattern corpus + 50-pattern benign corpus. Full gate result in the CHANGELOG
+§0.7.0 "Sandbox graduation gate result" section.
 
 ## Inference providers
 
