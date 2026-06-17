@@ -1,5 +1,5 @@
 /**
- * Story 1.3a — Composed-Context Validator Performance Benchmark
+ * Composed-Context Validator Performance Benchmark
  *
  * Target (R2-11): P99 < 200ms on 32KB input.
  *

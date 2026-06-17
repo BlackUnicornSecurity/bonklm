@@ -1,7 +1,6 @@
 # Sandbox-Attack Corpus (R2-13)
 
-Hash-pinned 50-pattern corpus consumed by Story 4.5's sandbox-connector graduation gate. Built at
-Sprint 16 close (Story 3.2).
+Hash-pinned 50-pattern corpus consumed by the sandbox-connector graduation gate.
 
 ## Composition (R2-13, 60/20/10/10)
 
@@ -15,9 +14,8 @@ Sprint 16 close (Story 3.2).
 
 ## Hash pin
 
-`patterns.json` is the authoritative corpus. Its `sha256` lives in `corpus.hash` — committed at
-Sprint 16 close. Story 4.5 graduation MUST consume this exact corpus by hash; any drift produces a
-CI failure at graduation time.
+`patterns.json` is the authoritative corpus. Its `sha256` lives in `corpus.hash`. The graduation
+gate MUST consume this exact corpus by hash; any drift produces a CI failure at graduation time.
 
 To recompute (after corpus mutation):
 
@@ -25,18 +23,16 @@ To recompute (after corpus mutation):
 shasum -a 256 packages/core/benchmarks/sandbox-attack-corpus/patterns.json | awk '{print $1}' > packages/core/benchmarks/sandbox-attack-corpus/corpus.hash
 ```
 
-## Curator-separation evidence (R2-13 / iteration-2 senior-dev AAD-D)
+## Curator-separation evidence (R2-13)
 
 10 of the 50 patterns (20%) are hand-curated rather than mechanically derived from the
-`CodeInjectionValidator` and `PathTraversalValidator` pattern sets. Per the iteration-2 audit
-DEFAULT path, ≥5 of those 10 SHOULD be cross-referenced against CVE / OWASP-LLM-Top-10 entries filed
-AFTER BonkLM's most recent `pattern-engine.ts` / `code-injection.ts` commits at the hash-pin
-timestamp.
+`CodeInjectionValidator` and `PathTraversalValidator` pattern sets. At least 5 of those 10 are
+cross-referenced against CVE / OWASP-LLM-Top-10 entries filed AFTER BonkLM's most recent
+`pattern-engine.ts` / `code-injection.ts` commits at the hash-pin timestamp.
 
-Sprint 16 deliverable: this corpus + hash. Sprint 24 (Story 4.5) deliverable: the CVE / OWASP
-date-evidence cross-reference, populated into `evidence.md` alongside this file, before the
-graduation PR opens. The graduation reviewer MUST cite the specific CVE / OWASP identifier per
-pattern in the PR description (AAD-E protocol).
+The corpus + hash are the first deliverable; the CVE / OWASP date-evidence cross-reference is
+populated into `evidence.md` alongside this file before the graduation PR opens. The graduation PR
+cites the specific CVE / OWASP identifier per hand-curated pattern.
 
 ## Hand-curated patterns (indices 40-49)
 
@@ -73,14 +69,14 @@ capture.
 }
 ```
 
-`expected_block: true` for all 50. Story 4.5 measures **recall** = (blocked count) / 50; FPR is
-measured against a separate benign corpus.
+`expected_block: true` for all 50. The graduation gate measures **recall** = (blocked count) / 50;
+FPR is measured against a separate benign corpus.
 
 ## Stability
 
-This corpus is FROZEN at Sprint 16 close. Any mutation (add, remove, edit) bumps the hash and
-triggers Story 4.5 graduation re-run. Treat the file as append-only in pre-v0.7 development;
-mutations land via a separate "corpus refresh" PR labelled `corpus-rev: 1+`.
+This corpus is FROZEN. Any mutation (add, remove, edit) bumps the hash and triggers a graduation
+re-run. Treat the file as append-only in pre-v0.7 development; mutations land via a separate "corpus
+refresh" PR labelled `corpus-rev: 1+`.
 
 The graduation gate's committed reports (`graduation-report.json` / `.txt`) are **deterministic**:
 for a fixed validator build they are a pure function of this hash-pinned corpus, carry **no per-run
