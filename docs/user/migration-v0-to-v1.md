@@ -369,13 +369,15 @@ See `docs/user/otel-vendor-recipes.md` for per-vendor wiring recipes.
 
 ---
 
-## §12 — Engine semantics unchanged (informational)
+## §12 — Engine entry-point semantics (informational)
 
-**No change in v1.0** — listed for clarity because operators ask:
+**Mostly unchanged in v1.0** — listed for clarity because operators ask. The one behavioural change:
+`validateInput` now runs guards (previously it skipped them).
 
 - `engine.validate(input)` runs validators **AND** guards.
-- `engine.validateInput(input)` deliberately **skips guards** (covered in
-  `docs/user/known-limitations.md` §10 — by design for input-only validation paths).
+- `engine.validateInput(input)` also runs validators **AND** guards — v1.0 unifies guard execution
+  across both entry points; guards inspect a canonical text surface derived from the structured
+  input (see `docs/user/known-limitations.md` §10 for the `tool_call` args JSON-encode residual).
 - `engine.notifyCachedResult(result)` is **telemetry-only**, never a validation entry point.
 - `createUnsaltedKeyFn(...)` is **explicit opt-in** — never default-routed when a cache is provided.
   Per-engine salt (`createSaltedKeyFn(engine.getInstanceId())`) prevents cross-instance cache

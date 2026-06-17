@@ -74,7 +74,7 @@ The per-surface composite validators (`createToolCallArgsValidator`, `createRetr
 | `GuardrailEngine`                                                | Orchestrator: runs `validators[]` then `guards[]`, short-circuits on first block, aggregates findings, fires `onIntercept` callbacks. Holds a per-instance `instanceId` for cache-salt isolation.                                                                                               | `packages/core/src/engine/GuardrailEngine.ts`                                      |
 | `Validator` interface                                            | `validate(input: string \| ValidatorInput): GuardrailResult \| Promise<GuardrailResult>`. Frozen `@public` at v1.0-RC1.                                                                                                                                                                         | `packages/core/src/engine/GuardrailEngine.types.ts:84-98`                          |
 | Validators (pattern + composite)                                 | `PromptInjectionValidator`, `JailbreakValidator`, `ReformulationDetector`, `MultilingualDetector`, `AudioStreamValidator`, `CodeInjectionValidator`, `PathTraversalValidator` + the four composites in §2.                                                                                      | `packages/core/src/validators/` (20 files; barrel at `index.ts`)                   |
-| `Guard` interface                                                | `validate(content: string, context?: string): GuardrailResult \| Promise<GuardrailResult>`. Frozen `@public`. Fires only on `engine.validate(string)`, **not** on `engine.validateInput(ValidatorInput)` — see §10 trade-off note.                                                              | `packages/core/src/engine/GuardrailEngine.types.ts:107-117`                        |
+| `Guard` interface                                                | `validate(content: string, context?: string): GuardrailResult \| Promise<GuardrailResult>`. Frozen `@public`. Fires on both `engine.validate(string)` and `engine.validateInput(ValidatorInput)` (the union is reduced to a text surface before guards run) — see §10 residual note.            | `packages/core/src/engine/GuardrailEngine.types.ts:107-117`                        |
 | Guards                                                           | `SecretGuard`, `PIIGuard`, `BashSafetyGuard`, `XSSGuard`, `ProductionGuard` (env helpers).                                                                                                                                                                                                      | `packages/core/src/guards/` (barrel at `index.ts`)                                 |
 | `HookManager` / `HookSandbox` / `EdgeHookManager`                | Lifecycle hooks per `HookPhase × HookSurface`. `HookSandbox` runs string handlers in `node:vm` with a deny-list pattern check; `EdgeHookManager` refuses string handlers (no `node:vm` on edge).                                                                                                | `packages/core/src/hooks/index.ts`, `HookSandbox.ts`, `EdgeHookManager.ts`         |
 | `TelemetryService` + `bonklmTrace`                               | Centralised event collector (sample-rated, buffered) + OTLP span exporter with the R2-10 locked attribute vocabulary. Caller-provides `Tracer`; works with any `@opentelemetry/api`-compatible implementation.                                                                                  | `packages/core/src/telemetry/TelemetryService.ts`, `otlp-export.ts`                |
@@ -184,7 +184,7 @@ accepted by `new GuardrailEngine({…})`:
 | Field                                               | Type                                        | Default         | Notes                                                                                  |
 | --------------------------------------------------- | ------------------------------------------- | --------------- | -------------------------------------------------------------------------------------- |
 | `validators`                                        | `Validator[]`                               | `[]`            | Empty list THROWS unless `allowEmptyForTesting: true` (Story 0.1 fail-safe).           |
-| `guards`                                            | `Guard[]`                                   | `[]`            | Run AFTER validators. Skipped by `validateInput`.                                      |
+| `guards`                                            | `Guard[]`                                   | `[]`            | Run AFTER validators, on both `validate()` and `validateInput()`.                      |
 | `shortCircuit`                                      | `boolean`                                   | `true`          | Stop at first `blocked: true`.                                                         |
 | `executionOrder`                                    | `'sequential' \| 'parallel'`                | `'sequential'`  | Parallel disables short-circuit at validator phase.                                    |
 | `sensitivity`                                       | `'strict' \| 'standard' \| 'permissive'`    | `'standard'`    | Global hint; individual validators may override.                                       |
@@ -293,16 +293,18 @@ Asymmetry: vector-DB write-path BLOCKs throw synchronously instead of firing the
   be tamper-resistant. Forces in-place mutation of `runtime` (documented exception to the "return
   new object" rule in `connector-style-guide.md`).
 
-### Guards skip `validateInput` (orthogonal trade-off worth flagging)
+### Guards run on `validateInput` too (structured-surface unification)
 
-`SecretGuard` / `BashSafetyGuard` / `XSSGuard` / `PIIGuard` only fire on
-`engine.validate(content: string, context?)`. The discriminated-union
+`SecretGuard` / `BashSafetyGuard` / `XSSGuard` / `PIIGuard` fire on **both**
+`engine.validate(content: string, context?)` and the discriminated-union
 `engine.validateInput(input: ValidatorInput)` path (used by Stagehand, Eko, browser-agents-core,
-Inngest, Trigger.dev) deliberately skips guards because the `Guard.validate(content, context?)`
-signature doesn't map cleanly to the union. Consumers needing guard coverage on structured surfaces
-must either reimplement the check as a `Validator` subclass or call
-`engine.validate(JSON.stringify(args))` themselves (`known-limitations.md` §10). Unification is
-tracked for a future release.
+Inngest, Trigger.dev). Because `Guard.validate(content, context?)` takes a string, each
+`ValidatorInput` is reduced to a canonical text surface (`deriveGuardContent`) before guards run —
+after validators, under the same short-circuit gate as `validate()`. The one residual: structured
+fields (`tool_call` args, doc/memory metadata) are JSON-encoded for guard inspection, so a
+quote-delimited source-syntax secret (`api_key = "…"`, the AWS _secret_ access key) may not match;
+pass the raw value through `engine.validate(...)` or use a `Validator` if you need that
+(`known-limitations.md` §10).
 
 ## 11. Related documents
 

@@ -12,6 +12,7 @@ import { hashContent, OverrideTokenValidator, parseOverrideTokenConfig } from '.
 import { StreamValidationError } from '../connector-utils/errors.js';
 import { sanitizeLogString, serializeError } from '../common/index.js';
 import { CircuitBreaker, type CircuitBreakerMetrics } from './CircuitBreaker.js';
+import { deriveGuardContent, safeJsonStringify } from './guard-content.js';
 
 // Re-export so existing consumers importing StreamValidationError from this module
 // continue to work without a path change.
@@ -540,17 +541,38 @@ export class GuardrailEngine {
    * for telemetry / audit get hits from browser-agent + Inngest + any
    * other structured-input surface — no silent observability gap.
    *
-   * Guards are NOT run here (they take `(content: string, context?: string)`
-   * which doesn't map cleanly to a discriminated union). Consumers
-   * needing guards on structured surfaces should derive a string
-   * representation themselves and call `validate(content)` in addition.
+   * Guards ARE run here. Because guards take `(content: string,
+   * context?: string)`, the structured `ValidatorInput` is reduced to a
+   * canonical text surface via `deriveGuardContent(input)` (text-bearing
+   * fields pass through verbatim for best pattern fidelity; structured
+   * fields — `tool_call` args, doc/memory metadata — are JSON-encoded).
+   * Guards run after validators with the same short-circuit gate as
+   * `validate()`, so `SecretGuard` / `BashSafetyGuard` and any other
+   * `Guard`-shaped check now fire on browser-agent / Inngest / Eko
+   * structured surfaces — closing the guard-coverage gap previously
+   * documented in known-limitations.
+   *
+   * Residual: a secret in a JSON-encoded structured field whose
+   * detection depends on source-syntax context (a quote-delimited
+   * `api_key = "…"`, including the AWS *secret* access key) may not match
+   * once the delimiters are JSON-escaped; pass the raw value through
+   * `validate()` if you need that. Guards run with no `context` here
+   * (there is no file-path surface on a `ValidatorInput`), so
+   * file-path-dependent guard behaviour differs from `validate(content,
+   * filePath)`. The override-token bypass is intentionally NOT honoured:
+   * a `ValidatorInput` has no token-bearing surface, and deriving one
+   * from input fields would let an attacker smuggle a bypass token inside
+   * structured data (in-band tokens are never authorising here).
    */
   async validateInput(input: ValidatorInput): Promise<EngineResult> {
     const startTime = Date.now();
     // Stringified form fed to intercept callbacks (their signature
     // takes `content: string`). Use a minimal canonical form: text
-    // input passes through verbatim; structured inputs JSON-encode.
-    const contentForCallback = input.kind === 'text' ? input.content : JSON.stringify(input);
+    // input passes through verbatim; structured inputs JSON-encode via
+    // the never-throws helper (a circular / BigInt arg on a page-
+    // controlled tool_call must not crash validateInput before any
+    // validation runs).
+    const contentForCallback = input.kind === 'text' ? input.content : safeJsonStringify(input);
 
     // Circuit breaker shortcut (same protective layer as validate()).
     if (this.isCircuitBreakerOpen()) {
@@ -607,6 +629,20 @@ export class GuardrailEngine {
         });
         if (this.shortCircuit) break;
       }
+    }
+
+    // Guard unification — run configured guards on the structured input
+    // too. Guards take `(content: string, context?)`, so the
+    // discriminated union is reduced to a canonical text surface via
+    // `deriveGuardContent`. Mirrors validate()'s validators-then-guards
+    // order and short-circuit gate: if a validator already blocked under
+    // shortCircuit the block stands and guards are skipped; otherwise
+    // guards run and their results join the aggregate. An engine with no
+    // guards is unaffected (runGuards returns early on an empty list).
+    const blockedUnderShortCircuit = this.shortCircuit && allResults.some(r => r.blocked);
+    if (!blockedUnderShortCircuit) {
+      const guardResults = await this.runGuards(deriveGuardContent(input));
+      allResults.push(...guardResults);
     }
 
     const result = this.aggregateResults(allResults, startTime);

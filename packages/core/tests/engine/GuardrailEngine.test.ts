@@ -6,10 +6,11 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { GuardrailEngine, validateWithEngine } from '../../src/engine/GuardrailEngine.js';
+import type { Guard, Validator, ValidatorInput } from '../../src/engine/GuardrailEngine.js';
 import { PromptInjectionValidator } from '../../src/validators/prompt-injection.js';
 import { JailbreakValidator } from '../../src/validators/jailbreak.js';
 import { SecretGuard } from '../../src/guards/secret.js';
-import { Severity, RiskLevel } from '../../src/base/GuardrailResult.js';
+import { Severity, RiskLevel, createResult } from '../../src/base/GuardrailResult.js';
 // Story 0.1 corrections PR 3: guards-only engine construction now throws
 // under spec-strict empty-list check. Tests that exercise guard behaviour
 // pair the guard with a no-op validator so the construction is permitted
@@ -349,6 +350,176 @@ describe('GuardrailEngine', () => {
       });
       const result = await engine.validate('Hello', 'test.txt');
       expect(result.allowed).toBe(false);
+    });
+  });
+
+  describe('Guards on validateInput (structured-surface guard unification)', () => {
+    it('blocks a tool_call whose args carry a secret (previously slipped past guards)', async () => {
+      // Known-limitations §10: a SecretGuard wired into the engine only
+      // fired on `validate(content: string)`. Structured surfaces routed
+      // through `validateInput` (browser-agent tool_call / Inngest tool
+      // args / Eko file.write payload) got ZERO guard coverage, so a
+      // credential embedded in tool-call args slipped through. Guards MUST
+      // now run on `validateInput` too.
+      //
+      // The synthetic AWS key is assembled at runtime so the contiguous
+      // literal never lands in source — the repo's own secret-scan
+      // pre-write hook (rightly) blocks that pattern. The runtime value
+      // still triggers SecretGuard, which is the behaviour under test.
+      const syntheticAwsKey = 'AKIA' + '2F7K9QZ1B4N6XJ8T';
+      const engine = new GuardrailEngine({
+        validators: [noOpValidator()],
+        guards: [new SecretGuard()]
+      });
+      const result = await engine.validateInput({
+        kind: 'tool_call',
+        toolName: 'deployService',
+        args: { region: 'us-east-1', accessKey: syntheticAwsKey }
+      });
+      expect(result.blocked).toBe(true);
+      expect(result.allowed).toBe(false);
+      expect(result.results.some(r => r.validatorName === 'SecretGuard')).toBe(true);
+    });
+
+    // A deterministic guard that blocks when the derived guard content
+    // contains a sentinel — proves guards EXECUTE on validateInput and
+    // that each surface's text reaches them, independently of any real
+    // guard's pattern / example heuristics.
+    const SENTINEL = 'BONKLM_GUARD_SENTINEL_7Q2';
+    const sentinelGuard = (): Guard => ({
+      name: 'SentinelGuard',
+      validate: (content: string) =>
+        content.includes(SENTINEL)
+          ? createResult(false, Severity.CRITICAL, [
+              { category: 'sentinel', severity: Severity.CRITICAL, description: 'sentinel matched' }
+            ])
+          : createResult(true)
+    });
+    const blockingValidator = (): Validator => ({
+      name: 'BlockingValidator',
+      validate: () =>
+        createResult(false, Severity.BLOCKED, [
+          { category: 'forced', severity: Severity.BLOCKED, description: 'forced block' }
+        ])
+    });
+
+    it.each<[string, ValidatorInput]>([
+      ['text', { kind: 'text', content: `pre ${SENTINEL} post` }],
+      ['audio_partial', { kind: 'audio_partial', content: SENTINEL, isFinal: true }],
+      ['composed_context', { kind: 'composed_context', entries: ['safe', SENTINEL] }],
+      ['retrieved_docs', { kind: 'retrieved_docs', docs: [{ content: `doc ${SENTINEL}` }] }],
+      ['retrieved_docs metadata', { kind: 'retrieved_docs', docs: [{ content: 'clean', metadata: { x: SENTINEL } }] }],
+      ['memory_write', { kind: 'memory_write', payload: { content: SENTINEL } }],
+      ['memory_write metadata', { kind: 'memory_write', payload: { content: 'clean', metadata: { x: SENTINEL } } }],
+      ['tool_call', { kind: 'tool_call', toolName: 'noop', args: { note: SENTINEL } }]
+    ])('surfaces %s content to guards on validateInput', async (_kind, input) => {
+      const engine = new GuardrailEngine({
+        validators: [noOpValidator()],
+        guards: [sentinelGuard()]
+      });
+      const result = await engine.validateInput(input);
+      expect(result.blocked).toBe(true);
+      expect(result.results.some(r => r.validatorName === 'SentinelGuard')).toBe(true);
+    });
+
+    it('skips guards when a validator already blocked (shortCircuit on) — parity with validate()', async () => {
+      let guardCalls = 0;
+      const spyGuard: Guard = {
+        name: 'SpyGuard',
+        validate: () => {
+          guardCalls += 1;
+          return createResult(true);
+        }
+      };
+      const engine = new GuardrailEngine({
+        validators: [blockingValidator()],
+        guards: [spyGuard],
+        shortCircuit: true
+      });
+      const result = await engine.validateInput({ kind: 'text', content: 'hello' });
+      expect(result.blocked).toBe(true);
+      expect(guardCalls).toBe(0);
+    });
+
+    it('still runs guards after a blocking validator when shortCircuit is off', async () => {
+      let guardCalls = 0;
+      const spyGuard: Guard = {
+        name: 'SpyGuard',
+        validate: () => {
+          guardCalls += 1;
+          return createResult(true);
+        }
+      };
+      const engine = new GuardrailEngine({
+        validators: [blockingValidator()],
+        guards: [spyGuard],
+        shortCircuit: false
+      });
+      await engine.validateInput({ kind: 'text', content: 'hello' });
+      expect(guardCalls).toBe(1);
+    });
+
+    it('leaves an all-allow result unchanged when no guards are configured', async () => {
+      const engine = new GuardrailEngine({ validators: [noOpValidator()] });
+      const result = await engine.validateInput({ kind: 'text', content: 'hello' });
+      expect(result.allowed).toBe(true);
+      expect(result.guardCount).toBe(0);
+    });
+
+    it('handles a throwing guard gracefully (surfaces a finding, does not reject)', async () => {
+      const brokenGuard: Guard = {
+        name: 'BrokenGuard',
+        validate: () => {
+          throw new Error('Guard error');
+        }
+      };
+      const engine = new GuardrailEngine({
+        validators: [noOpValidator()],
+        guards: [brokenGuard]
+      });
+      const result = await engine.validateInput({ kind: 'text', content: 'hello' });
+      expect(result.allowed).toBe(false);
+      expect(result.results.some(r => r.validatorName === 'BrokenGuard')).toBe(true);
+    });
+
+    it('does not throw when tool_call args contain a circular reference', async () => {
+      const circular: Record<string, unknown> = {};
+      circular.self = circular;
+      const engine = new GuardrailEngine({
+        validators: [noOpValidator()],
+        guards: [sentinelGuard()]
+      });
+      const result = await engine.validateInput({ kind: 'tool_call', toolName: 'noop', args: circular });
+      expect(result.allowed).toBe(true);
+    });
+
+    it('still blocks a secret in tool_call args when a sibling arg is circular (no guard blinding)', async () => {
+      // An attacker shaping args must not be able to hide a flagged value
+      // in a serializable key by appending one circular sibling that would
+      // otherwise fail the whole encode.
+      const args: Record<string, unknown> = { note: SENTINEL };
+      args.loop = args;
+      const engine = new GuardrailEngine({
+        validators: [noOpValidator()],
+        guards: [sentinelGuard()]
+      });
+      const result = await engine.validateInput({ kind: 'tool_call', toolName: 'noop', args });
+      expect(result.blocked).toBe(true);
+    });
+
+    it('fires intercept callbacks with the guard block reflected', async () => {
+      const engine = new GuardrailEngine({
+        validators: [noOpValidator()],
+        guards: [sentinelGuard()]
+      });
+      let intercepted: { blocked: boolean } | undefined;
+      engine.onIntercept(result => {
+        intercepted = { blocked: result.blocked };
+      });
+      await engine.validateInput({ kind: 'text', content: SENTINEL });
+      // Callbacks fire on a microtask; flush before asserting.
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(intercepted?.blocked).toBe(true);
     });
   });
 });
