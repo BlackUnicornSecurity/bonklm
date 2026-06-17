@@ -94,20 +94,20 @@ export default defineAgent({
   validation. For low-latency voice agents this is a regression vs. raw `Agent.ttsNode`. Sprint 19
   explores an incremental-validate tee-stream pattern.
 
-## Audit closures shipped in this release
+## Hardening shipped in this release
 
-- **Double-wrap rejection** (security BLOCK-1): re-wrapping the same session throws — prevents
-  silent orphan-closure bypass.
-- **Throwing `onBlock` does NOT skip `interrupt()`** (security BLOCK-2): telemetry hook is wrapped
-  in try/catch; enforcement fires unconditionally.
+- **Double-wrap rejection**: re-wrapping the same session throws — prevents silent orphan-closure
+  bypass.
+- **Throwing `onBlock` does NOT skip `interrupt()`**: telemetry hook is wrapped in try/catch;
+  enforcement fires unconditionally.
 - **Correct LiveKit v1.4 SDK shape**: connector uses `session.on('user_input_transcribed', ...)`
   event listener + `Agent.onUserTurnCompleted` / `Agent.ttsNode` overrides; NO property-assignment
   hooks (which silently no-op against the real SDK).
 - **`interrupt({force:true})` signature**: correct v1.4 surface (no reason string param).
-- **Chunk-boundary needle detection** (security CONCERN-2): needles split across two interim chunks
-  still trigger `interrupt()` — the AC automaton state persists across calls.
-- **Homoglyph partial-pass / final-block** (security CONCERN-5): Cyrillic-confusable inputs pass the
-  partial path (documented ASCII-fold) AND get blocked on the final path.
+- **Chunk-boundary needle detection**: needles split across two interim chunks still trigger
+  `interrupt()` — the AC automaton state persists across calls.
+- **Homoglyph partial-pass / final-block**: Cyrillic-confusable inputs pass the partial path
+  (documented ASCII-fold) AND get blocked on the final path.
 
 ## License
 
