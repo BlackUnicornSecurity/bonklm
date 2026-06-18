@@ -69,7 +69,10 @@ export function detectHeuristicPatterns(text: string, cache?: RegexCache): Heuri
   const regexCache = cache ?? getRegexCache();
 
   // 1. Multiple authority claims
-  const authorityWords = ['admin', 'developer', 'creator', 'anthropic', 'openai', 'engineer', 'owner'];
+  // Restricted to impersonation-specific terms. Generic job words ('developer', 'engineer',
+  // 'owner', 'creator') were removed: they co-occur in ordinary benign content (e.g. a project
+  // brief naming "developers" and a "QA engineer") and falsely tripped the >=2 threshold.
+  const authorityWords = ['administrator', 'sysadmin', 'superuser', 'anthropic', 'openai'];
   const authorityCount = authorityWords.filter(w => text.toLowerCase().includes(w)).length;
   if (authorityCount >= 2) {
     findings.push({
