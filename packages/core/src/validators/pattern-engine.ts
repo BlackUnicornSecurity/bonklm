@@ -206,6 +206,19 @@ export const SYSTEM_OVERRIDE_PATTERNS: PatternDefinition[] = [
     description: 'Attempt to ignore previous instructions'
   },
   {
+    // Bare "ignore/disregard/forget all <instructions|guidelines|prompts>" with NO previous/prior/
+    // above qualifier — the form `ignore_instructions` (which requires such a qualifier) misses.
+    // Precision: the "all" quantifier + a self-instruction noun ADJACENT to it. Excluded after review
+    // to avoid benign collisions: the verb `override` ("override all the defaults"), and the nouns
+    // `directives`/`commands` ("disregard all directives in the test fixture"). A non-adjacent noun
+    // ("ignore all the DEPRECATED instructions") and a non-removal verb ("follow all instructions")
+    // do not match; `rules`/`restrictions`/`constraints` stay with `constraint_removal`.
+    name: 'ignore_all_instructions',
+    pattern: /(?:ignore|disregard|forget)\s+all\s+(?:your\s+|the\s+)?(?:instructions?|guidelines?|prompts?)/i,
+    severity: Severity.CRITICAL,
+    description: 'Attempt to ignore all instructions'
+  },
+  {
     name: 'new_identity_assignment',
     pattern:
       /(?:you\s+are\s+now|from\s+now\s+on\s+you\s+are|pretend\s+(?:to\s+be|you\s+are)|act\s+as\s+if\s+you\s+are|imagine\s+you\s+are|roleplay\s+as)\s+(?!a\s+(?:helpful|AI|assistant))/i,
@@ -234,6 +247,30 @@ export const SYSTEM_OVERRIDE_PATTERNS: PatternDefinition[] = [
     description: 'Constraint removal attempt'
   }
 ];
+
+/**
+ * Strong, attack-specific injection directives shared by the structured-injection patterns
+ * (`forged_authority_turn`, `fake_turn_tag_directive`). Hoisted to a single source so the two
+ * patterns cannot drift apart. Deliberately TIGHT (review-hardened): prose-grade phrases
+ * ("new instructions:", bare "you are/must now") and qualifier-free "ignore … instructions" are
+ * EXCLUDED — inside the wide role/tag windows they manufactured false positives on benign system
+ * prompts, changelogs, and product docs. Each remaining member is unambiguous WITHIN the forged
+ * role/tag wrapper it gates (a few, e.g. "system override", are prose-ambiguous on their own and
+ * rely on the wrapper for precision).
+ * Like all patterns here these see the NFKD-normalized text on the `validate()` path; the raw
+ * `detectPatterns()` path is confusable-foldable — a pre-existing, documented engine property
+ * inherited by the whole catalogue, not introduced here.
+ */
+const INJECTED_DIRECTIVE_SRC =
+  '(?:' +
+  'ignore\\s+(?:all\\s+|the\\s+|your\\s+)?(?:previous|prior|above|earlier)\\s+(?:instructions?|rules?|guidelines?|prompts?)' +
+  '|disregard\\s+(?:all|previous|prior)\\s+(?:instructions?|rules?|guidelines?|prompts?)' +
+  '|you\\s+are\\s+now\\s+(?:DAN\\b|an?\\s+(?:unrestricted|unfiltered|uncensored|evil|jailbroken|amoral))' +
+  '|do\\s+anything\\s+now\\b' +
+  '|reveal\\s+(?:your|the)\\s+(?:system\\s+prompt|initial\\s+instructions?)' +
+  '|system\\s+override\\b' +
+  '|override\\s+(?:all\\s+)?(?:safety|guard\\s?rails?|restrictions?)' +
+  ')';
 
 /**
  * Category B: Role Hijacking Patterns
@@ -269,6 +306,41 @@ export const ROLE_HIJACKING_PATTERNS: PatternDefinition[] = [
     pattern: /["'](?:system|instruction|prompt)["']\s*:\s*["']/i,
     severity: Severity.INFO,
     description: 'JSON instruction injection attempt'
+  },
+  {
+    // A fabricated `{"role":"system"|"developer", … "content":"…"}` chat-message turn whose content
+    // carries a strong injected directive (INJECTED_DIRECTIVE_SRC) — the OpenAI message shape used to
+    // impersonate an operator instruction. Gated on BOTH the forged role-VALUE (system/developer only
+    // — `assistant` is the model's own voice; including it blocked benign assistant text like "to
+    // override the default, set the flag") AND the directive in the SAME object (`[^}]` window, ≤120
+    // chars), so a legitimate transcript turn (`{"role":"system","content":"You are a helpful
+    // assistant"}`) does NOT match. Known limit (defence-in-depth, not the sole layer): a
+    // content-before-role key order, or an intervening nested `{…}` object, evades — but the directive
+    // itself is still caught by the content patterns / `ignore_all_instructions`.
+    name: 'forged_authority_turn',
+    pattern: new RegExp(
+      `["']role["']\\s*:\\s*["'](?:system|developer)["'][^}]{0,120}?["']content["']\\s*:\\s*["'][^"]{0,400}?${INJECTED_DIRECTIVE_SRC}`,
+      'i'
+    ),
+    severity: Severity.WARNING,
+    description: 'Forged system/developer role turn carrying an injected directive'
+  },
+  {
+    // A conversation-role tag (including the generic `user`/`context`/`message` tags dropped from
+    // `xml_tag_injection` for over-firing on benign data) whose OWN CONTENT carries a directive. The
+    // window is `[^<]{0,80}` — it STOPS at the next `<`, so the directive must sit inside this tag's
+    // body and cannot bleed past `</tag>` into an unrelated following element (the failure mode of a
+    // wider window: `<message>Migration guide</message>` followed later by "new instructions:" is NOT
+    // a fake turn). Benign data-bearing tags (`<user><name>Alice</name></user>`) carry no directive
+    // → no match. `im_start` is intentionally NOT here: real ChatML is `<|im_start|>` (pipe-delimited),
+    // which this tag shape never matched.
+    name: 'fake_turn_tag_directive',
+    pattern: new RegExp(
+      `<\\s*(?:system|user|human|assistant|context|message)\\s*>[^<]{0,80}?${INJECTED_DIRECTIVE_SRC}`,
+      'i'
+    ),
+    severity: Severity.WARNING,
+    description: 'Conversation-role tag wrapping an injected directive (fake-turn injection)'
   }
 ];
 
