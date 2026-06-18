@@ -14,10 +14,13 @@ BonkLM provides multiple layers of security to protect against common LLM vulner
 | PII Exposure       | PIIGuard                 | ✅     |
 | Code Injection     | BashSafetyGuard          | ✅     |
 | XSS Attacks        | XSSSafetyGuard           | ✅     |
-| Reformulation      | ReformulationDetector    | ✅     |
+| Reformulation      | ReformulationDetector    | ➕     |
 | Boundary Breakout  | BoundaryDetector         | ✅     |
 
 > No single validator is sufficient on its own — these layers are designed to be combined.
+>
+> **Status:** ✅ = first-class, documented protection · ➕ = opt-in extra (exported and available,
+> but not part of the documented default set — import and add it to your validator set explicitly).
 
 ---
 
@@ -208,10 +211,10 @@ const guard = new SecretGuard({
 
 const result = guard.validate("const apiKey = 'sk-proj-abc123xyz...'");
 
-if (!result.findings) {
+if (result.findings.length > 0) {
   result.findings.forEach(finding => {
     console.log(`Secret detected: ${finding.description}`);
-    console.log(`Type: ${finding.secret_type}`);
+    console.log(`Type: ${finding.pattern_name}`);
     console.log(`Line: ${finding.line_number}`);
   });
 }
@@ -221,18 +224,18 @@ if (!result.findings) {
 
 The guard detects 30+ types of credentials:
 
-| Category                                              | Types                                         |
-| ----------------------------------------------------- | --------------------------------------------- |
-| **API Keys**                                          | OpenAI, Anthropic, Google, AWS, Azure, etc.   |
-| **Tokens**                                            | JWT, OAuth, Bearer tokens                     |
-| **Database**                                          | MongoDB, PostgreSQL, Redis connection strings |
-| **Cloud**                                             | AWS keys, Azure keys, GCP credentials         |
-| **Version Control**                                   | GitHub tokens, GitLab tokens                  |
-| **Payment**                                           | Stripe, PayPal, Braintree keys                |
-| **Communication**                                     | Slack, Discord, Telegram tokens               |
-| **CI/CD**                                             | Jenkins, CircleCI, Travis CI tokens           |
-| **Email**                                             | SMTP credentials, API keys                    |
-| **Crypto** - Bitcoin addresses, Ethereum private keys |
+| Category            | Types                                         |
+| ------------------- | --------------------------------------------- |
+| **API Keys**        | OpenAI, Anthropic, Google, AWS, Azure, etc.   |
+| **Tokens**          | JWT, OAuth, Bearer tokens                     |
+| **Database**        | MongoDB, PostgreSQL, Redis connection strings |
+| **Cloud**           | AWS keys, Azure keys, GCP credentials         |
+| **Version Control** | GitHub tokens, GitLab tokens                  |
+| **Payment**         | Stripe, PayPal, Braintree keys                |
+| **Communication**   | Slack, Discord, Telegram tokens               |
+| **CI/CD**           | Jenkins, CircleCI, Travis CI tokens           |
+| **Email**           | SMTP credentials, API keys                    |
+| **Crypto**          | Bitcoin addresses, Ethereum private keys      |
 
 ---
 
@@ -254,11 +257,11 @@ const guard = new PIIGuard({
 
 const result = guard.validate('My email is john@example.com and my SSN is 123-45-6789');
 
-if (result.findings) {
+if (result.findings.length > 0) {
   result.findings.forEach(finding => {
     console.log(`PII detected: ${finding.description}`);
-    console.log(`Type: ${finding.pii_type}`);
-    console.log(`Position: ${finding.position}`);
+    console.log(`Type: ${finding.pattern_name}`);
+    console.log(`Line: ${finding.line_number}`);
   });
 }
 ```
