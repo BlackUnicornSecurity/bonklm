@@ -245,6 +245,39 @@ export const SYSTEM_OVERRIDE_PATTERNS: PatternDefinition[] = [
       /(?:remove|disable|turn\s+off|bypass|circumvent|ignore)\s+(?:all\s+)?(?:restrictions?|limitations?|constraints?|filters?|safety|guardrails?|rules?)/i,
     severity: Severity.CRITICAL,
     description: 'Constraint removal attempt'
+  },
+  {
+    // System-prompt EXFILTRATION via an exfil/disclosure verb the narrower `system_prompt_reveal`
+    // misses: (1) "reply with / replying with / respond with" (an assistant is never legitimately
+    // asked to "reply with" its system prompt — a credential-verify / authority pretext payload),
+    // and (2) an intervening adjective between "your" and the object ("reveal your COMPLETE system
+    // instructions"). The verb set is restricted to EXFIL/disclosure verbs (reveal/disclose/dump/
+    // expose/leak/repeat/recite + reply-with) — a review surfaced that the pure-display verbs
+    // show/display/print/output matched benign LLMOps/debug prose ("print your current system
+    // prompt to the console"); `system_prompt_reveal` still covers the adjacent show/print form.
+    // Object anchored to YOUR (adjective?) system prompt|instructions — determiner "your" pins it
+    // to the addressee, ADJACENT to the object so it cannot bind across a gap ("show your TEAM the
+    // new system prompt" does not match). Config verbs (provide/share/give/paste/send) and
+    // verb-LAST reports ("a researcher leaked the system prompt") do not match. Bounded windows.
+    name: 'system_prompt_exfil',
+    pattern:
+      /(?:reply\s+with|reply\s+by|replying\s+with|respond\s+with|reveal|repeat|recite|disclose|dump|expose|leak)\b[^.\n]{0,40}\byour\s+(?:current\s+|complete\s+|full\s+|entire\s+|initial\s+|original\s+|exact\s+|verbatim\s+|raw\s+|hidden\s+)?system\s+(?:prompt|instructions?)/i,
+    severity: Severity.CRITICAL,
+    description: 'System-prompt exfiltration request'
+  },
+  {
+    // Subvert the assistant's OWN safeguards ("ignore your own system prompt", "bypass your own
+    // system prompt"). The "your own" anchor pins it to the assistant, AND the object is
+    // restricted to the unambiguously-AI noun `system prompt`: a review surfaced that generic
+    // objects (rules/guidelines/limitations), metaphor nouns (safeguards/guardrails), and even
+    // "your own safety protocols/guidelines" matched benign second-person safety-coaching prose
+    // ("never bypass your own safety protocols"), so all of those were removed — only "system
+    // prompt" has no benign coaching sense. Bounded windows.
+    name: 'subvert_own_safeguards',
+    pattern:
+      /(?:bypass|ignore|disable|circumvent|override|turn\s+off|get\s+around)\b[^.\n]{0,25}\byour\s+own\b[^.\n]{0,25}system\s+prompt/i,
+    severity: Severity.CRITICAL,
+    description: 'Request to subvert the assistant’s own safeguards'
   }
 ];
 
@@ -535,6 +568,42 @@ export const WEB3_PREFERENCE_PATTERNS: PatternDefinition[] = [
   }
 ];
 
+/**
+ * Category F: Few-Shot Priming Subversion Patterns
+ * ================================================
+ * Few-shot / chain-of-thought "priming" attacks present a scaffold of benign exemplars
+ * (Example/Pattern/Case/Interaction N) whose final exemplar escalates to a restricted action,
+ * then pivot to "Now your task / Your turn / Execute". The high-precision signal is NOT the
+ * scaffold (benign few-shot prompting is common) but the EMBEDDED SUBVERSION — a bracketed
+ * task-redefinition marker, or an explicit "redefine the prior purpose / suspend the rules"
+ * phrase. It stays clear of benign defensive-security few-shot prompts that merely name a
+ * vulnerability class.
+ */
+export const FEW_SHOT_PRIMING_PATTERNS: PatternDefinition[] = [
+  {
+    // A bracketed task-subversion marker. [REDEFINED] / [TASK SHIFT] / [TASK REDEFINITION] have
+    // essentially zero benign use → they fire alone. Reviews surfaced several benign collisions
+    // that are now gated on an adjacent ATTACK co-signal: bare [OVERRIDE]/[REINTERPRETED] are
+    // config/markup sentinels (fire only when followed by redefin/offensive/attack/hack/exploit/
+    // jailbreak — NOT the over-common task/purpose/provide/ignore). "the (true|real) (task|purpose)
+    // is …" drops the benign continuations providing/to-provide (kept only bypassing/showing-me/
+    // offensive/to-provide-<harm>). "the better definition of your task", "ignore original purpose",
+    // "reinterpret as hacking/offensive/attack" are standalone subversion phrases. The bare "your
+    // actual task is …" is EXCLUDED (benign instruction). The "override active" status-line branch
+    // requires a generation-verb + harm object (a review showed bare attack/malware re-opened
+    // false positives on security-ops status lines, e.g. "manual override active during the malware
+    // scan"). The earlier "normal rules don't apply" branch was DROPPED outright — even gated on a
+    // removal-verb + security-noun it collided with break-glass / IR-runbook prose ("during a Sev-1
+    // incident the normal rules don't apply, on-call may bypass the security controls"), and it
+    // caught only a single fixture. Each `[\s\S]{0,N}?` window is lazy + bounded → linear, no ReDoS.
+    name: 'fewshot_task_subversion',
+    pattern:
+      /\[(?:redefined|task\s+shift|task\s+redefinition)\]|\[(?:override|reinterpret(?:ed)?)\][^.\n]{0,40}\b(?:redefin\w*|offensive|attack|hack|exploit|jailbreak)|the\s+better\s+definition\s+of\s+your\s+task|ignore\s+original\s+purpose|the\s+(?:true|real)\s+(?:task|purpose)\s+is\s+(?:bypassing|to\s+bypass|showing\s+me|offensive|to\s+provide\s+(?:offensive|attack|exploit|hacking))|reinterpret\s+as\s+(?:hacking|offensive|attack)|override\s+active[\s\S]{0,30}?(?:provid\w*|generat\w*|giv\w*|writ\w*|show\w*)\s+\w{0,15}?(?:attack|exploit|malware|offensive|bypass)/i,
+    severity: Severity.CRITICAL,
+    description: 'Few-shot task-subversion marker'
+  }
+];
+
 // =============================================================================
 // COMBINED PATTERN SETS
 // =============================================================================
@@ -553,6 +622,7 @@ export const ALL_PATTERN_CATEGORIES = [
   { patterns: INSTRUCTION_INJECTION_PATTERNS, category: 'instruction_injection' },
   { patterns: ENCODED_PAYLOAD_PATTERNS, category: 'encoded_payload' },
   { patterns: CONTEXT_MANIPULATION_PATTERNS, category: 'context_manipulation' },
+  { patterns: FEW_SHOT_PRIMING_PATTERNS, category: 'few_shot_priming' },
   { patterns: WEB3_PREFERENCE_PATTERNS, category: 'web3_preference_setting' }
 ] as const;
 

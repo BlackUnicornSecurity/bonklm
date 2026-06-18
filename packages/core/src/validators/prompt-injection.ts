@@ -4,7 +4,7 @@
  * Detects attempts to manipulate AI agent behavior through injected instructions.
  *
  * Features:
- * - Multi-layer pattern-based detection (35 patterns across 6 categories)
+ * - Multi-layer pattern-based detection (multi-category pattern catalogue, see pattern-engine.ts)
  * - Unicode normalization and obfuscation detection
  * - Base64 payload detection
  * - Multi-layer encoding detection
