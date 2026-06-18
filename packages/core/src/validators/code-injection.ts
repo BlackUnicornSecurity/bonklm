@@ -397,8 +397,18 @@ const SHELL_PATTERNS: CodeInjectionPattern[] = [
     // Audit closure architect CONCERN-4: backtick fires on benign Markdown
     // inline-code spans. Narrow to require a dangerous-command keyword
     // inside the backtick span.
+    // Precision follow-up: `id` is EXCLUDED from this list. As a bare word it
+    // matches identifier prose inside a Markdown/code backtick span (`event id`,
+    // a `{id}` path param, a `--tenant=$ID` flag, XML `id="…"`) far more than a
+    // genuine backtick exec, producing wrong-reason matches on incidental
+    // tokens; the unambiguous `$(id)` substitution form still blocks. `dd` is
+    // RETAINED here despite a single benign date-mask shape (`YYYY-MM-DD`),
+    // because a backtick `dd if=…/of=…` is a genuine destructive overwrite that
+    // no other always-on validator pattern covers — keeping detection of it
+    // outweighs that lone false positive. (`hostname` likewise retained — it
+    // carries unique recall at no FP cost.)
     pattern:
-      /`[^`]*\b(?:rm|nc|curl|wget|chmod|chown|kill|dd|mkfs|reboot|shutdown|bash|sh|zsh|whoami|id|hostname|cat\s+\/etc|eval|exec|sudo|su)\b[^`]*`/i,
+      /`[^`]*\b(?:rm|nc|curl|wget|chmod|chown|kill|dd|mkfs|reboot|shutdown|bash|sh|zsh|whoami|hostname|cat\s+\/etc|eval|exec|sudo|su)\b[^`]*`/i,
     category: CodeInjectionCategory.SHELL_METACHAR,
     severity: Severity.CRITICAL,
     description: 'Shell `...` backtick substitution containing dangerous command'
