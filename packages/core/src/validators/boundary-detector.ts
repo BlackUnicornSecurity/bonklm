@@ -13,6 +13,7 @@
 
 import { createResult, Severity as Sev, type Severity } from '../base/GuardrailResult.js';
 import { mergeConfig, type ValidatorConfig } from '../base/ValidatorConfig.js';
+import { normalizeText } from './text-normalizer.js';
 
 // =============================================================================
 // TYPES
@@ -28,7 +29,10 @@ export interface BoundaryFinding {
 
 export interface BoundaryDetectorConfig extends ValidatorConfig {
   /**
-   * Enable detection of confusable variants (via normalized text)
+   * Detect confusable / homoglyph variants of delimiter tokens (e.g. a
+   * fullwidth `＜／ｓｙｓｔｅｍ＞`) by scanning the normalized form of the input.
+   * Default `true`. When enabled, `validate(content)` derives the normalized
+   * form internally, so the scan runs even when no second argument is passed.
    */
   detectConfusableVariants?: boolean;
 }
@@ -244,13 +248,29 @@ export class BoundaryDetector {
 
   /**
    * Validate content for boundary manipulation attempts.
+   *
+   * @param content - Raw input to scan for delimiter / boundary breakout tokens.
+   * @param normalizedContent - Optional pre-normalized form for the confusable
+   *   scan. When omitted and `detectConfusableVariants` is enabled, the normalized
+   *   form is derived internally (so the scan also works under the engine's
+   *   single-arg `validate(content)` contract).
    */
   validate(content: string, normalizedContent?: string): import('../base/GuardrailResult.js').GuardrailResult {
     if (!content || content.trim().length === 0) {
       return createResult(true, Sev.INFO, []);
     }
 
-    const findings = detectBoundaryManipulation(content, normalizedContent);
+    // GuardrailEngine invokes validators single-arg (`validate(content)`),
+    // so the confusable-variant scan — which only runs when a second
+    // `normalizedContent` argument is supplied — never executed in the standard
+    // engine integration, leaving the advertised `detectConfusableVariants` knob
+    // (default `true`) inert and a homoglyph delimiter breakout undetected. Derive
+    // the normalized form here when the knob is on and the caller did not pass one
+    // (mirrors JailbreakValidator, which normalizes internally). The knob is now
+    // authoritative: confusable detection runs iff it is enabled.
+    const normalized = this.config.detectConfusableVariants ? (normalizedContent ?? normalizeText(content)) : undefined;
+
+    const findings = detectBoundaryManipulation(content, normalized);
 
     if (findings.length === 0) {
       return createResult(true, Sev.INFO, []);

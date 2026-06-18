@@ -147,6 +147,11 @@ if (!result.allowed) {
    `*** END INSTRUCTIONS ***`
 4. **Meta-instruction boundaries** - `BEGIN USER CONTENT`, `END SYSTEM CONTENT`,
    `ABOVE WAS THE SYSTEM PROMPT`
+5. **Confusable / homoglyph variants** - the same tokens disguised with look-alike Unicode (e.g. a
+   fullwidth `＜／ｓｙｓｔｅｍ＞`). Detected by default; set `detectConfusableVariants: false` to
+   disable. This folds known look-alikes via the text normalizer — it is a defense-in-depth layer
+   over the raw scan, not a complete homoglyph defense (look-alikes outside the normalizer's map can
+   still evade it).
 
 ### When to enable it
 
