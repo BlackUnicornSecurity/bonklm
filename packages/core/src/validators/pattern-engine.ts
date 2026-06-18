@@ -248,7 +248,10 @@ export const ROLE_HIJACKING_PATTERNS: PatternDefinition[] = [
   },
   {
     name: 'xml_tag_injection',
-    pattern: /<\s*(?:system|assistant|human|user|instruction|prompt|message|context)\s*>/i,
+    // Conversation/role tags used to inject fake turns. 'user'/'message'/'context' were
+    // dropped: they are ordinary element names in benign XML/data payloads and over-fired
+    // on clean structured content. The remaining tags are LLM-prompt-format specific.
+    pattern: /<\s*(?:system|assistant|human|instruction|prompt)\s*>/i,
     severity: Severity.WARNING,
     description: 'XML tag injection attempt'
   },
@@ -260,7 +263,10 @@ export const ROLE_HIJACKING_PATTERNS: PatternDefinition[] = [
   },
   {
     name: 'json_instruction_injection',
-    pattern: /["']?(?:system|role|instruction|prompt)["']?\s*:\s*["']/i,
+    // Require a quoted key (real JSON/structured payload) and drop 'role': a bare `"role":`
+    // field is standard in benign API responses and chat transcripts (OpenAI message shape),
+    // so matching it flagged ordinary data as an attack.
+    pattern: /["'](?:system|instruction|prompt)["']\s*:\s*["']/i,
     severity: Severity.INFO,
     description: 'JSON instruction injection attempt'
   }

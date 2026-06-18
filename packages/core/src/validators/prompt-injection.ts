@@ -469,6 +469,16 @@ export class PromptInjectionValidator {
 
     const normalizedContent = normalizeText(content);
     const obfuscationDetected = normalizedContent.length < content.length * 0.85;
+    // Genuine unicode obfuscation requires actual non-ASCII characters (homoglyphs,
+    // zero-width, control). Whitespace-heavy plain-ASCII content (e.g. pretty-printed JSON)
+    // also shrinks >15% during normalization but is NOT obfuscated — don't flag it.
+    let hasNonAscii = false;
+    for (let i = 0; i < content.length; i++) {
+      if (content.charCodeAt(i) > 127) {
+        hasNonAscii = true;
+        break;
+      }
+    }
 
     const findings = detectPatterns(normalizedContent);
 
@@ -481,14 +491,16 @@ export class PromptInjectionValidator {
         }
       }
 
-      findings.push({
-        category: 'unicode_obfuscation',
-        pattern_name: 'heavy_obfuscation',
-        severity: Severity.WARNING,
-        match: 'Heavy Unicode obfuscation detected',
-        description: 'Heavy Unicode obfuscation detected - text was significantly altered during normalization',
-        line_number: 1
-      });
+      if (hasNonAscii) {
+        findings.push({
+          category: 'unicode_obfuscation',
+          pattern_name: 'heavy_obfuscation',
+          severity: Severity.WARNING,
+          match: 'Heavy Unicode obfuscation detected',
+          description: 'Heavy Unicode obfuscation detected - text was significantly altered during normalization',
+          line_number: 1
+        });
+      }
     }
 
     const unicodeFindings = detectHiddenUnicode(content);

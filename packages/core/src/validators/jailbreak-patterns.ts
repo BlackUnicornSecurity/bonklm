@@ -82,6 +82,19 @@ const ROLEPLAY_PATTERNS: JailbreakPattern[] = [
     description: 'No moral constraints roleplay'
   },
   {
+    // High-precision recovery: a character/persona explicitly defined as having no ethical/moral
+    // boundaries (e.g. "playing a character with no ethical boundaries"). Distinct subject/verb
+    // shape from no_moral_constraints; low false-positive surface.
+    name: 'character_no_boundaries',
+    // Requires a roleplay directive lead-in (you are/play/act as/...) so a neutral literary
+    // description ("the antagonist is a character with no moral boundaries") does not match.
+    pattern:
+      /(?:you\s+are|you'?re|play|act\s+as|roleplay|imagine|become|pretend)\b[^.\n]{0,30}\b(?:character|persona|role)\s+(?:with|who\s+has|that\s+has)\s+no\s+(?:moral|ethical)\s+(?:boundaries?|limits?|constraints?)/i,
+    severity: Severity.CRITICAL,
+    weight: 9,
+    description: 'Character defined without ethical boundaries'
+  },
+  {
     name: 'fictional_override',
     pattern:
       /(?:in\s+this\s+(?:story|fiction|scenario)|for\s+this\s+roleplay),?\s*(?:you\s+)?(?:can|may|should|will)\s+(?:ignore|bypass|disregard)\s+(?:your\s+)?(?:rules?|guidelines?|restrictions?)/i,
@@ -150,6 +163,22 @@ const AUTHORITY_PATTERNS: JailbreakPattern[] = [
     severity: Severity.WARNING,
     weight: 5,
     description: 'Developer/admin impersonation'
+  },
+  {
+    // High-precision recovery: claiming to be a named-lab employee AND asking to weaken safety
+    // ("as an OpenAI engineer ... ignore restrictions"). Requires both the impersonation and an
+    // override directive nearby, so benign professional statements ("as a Google engineer, I
+    // recommend ...") do not match.
+    name: 'lab_employee_override',
+    // Requires a directive VERB acting ON a safety OBJECT (not the bare nouns "safety"/
+    // "restrictions", which co-occur benignly with a lab-employee self-intro, e.g. "As a Google
+    // engineer, I work on safety tooling"). `disable\b` avoids matching benign "disabled". Window
+    // is `[^.\n]` so both anchors stay in the same clause.
+    pattern:
+      /\bas\s+(?:a|an|the)\s+(?:openai|anthropic|google|meta|microsoft)\s+(?:engineer|employee|developer|researcher|scientist|staff)\b[^.\n]{0,40}\b(?:ignore|bypass|override|disable|turn\s+off|lift|remove)\b[^.\n]{0,20}\b(?:safety|restrictions?|guard\s?rails?|filters?|rules?|guidelines?|constraints?)\b/i,
+    severity: Severity.WARNING,
+    weight: 6,
+    description: 'Named-lab employee impersonation with override request'
   },
   {
     name: 'override_authorization',
@@ -382,6 +411,16 @@ const KNOWN_TEMPLATE_PATTERNS: JailbreakPattern[] = [
     description: 'AIM/UCAR jailbreak variant'
   },
   {
+    // High-precision recovery: the canonical AIM template spelled out — "Always Intelligent and
+    // Machiavellian". This exact phrase has no benign use, so it is matched directly (the
+    // aim_ucar_variant above requires a trailing comply/refuse clause the bare template lacks).
+    name: 'aim_machiavellian',
+    pattern: /always\s+intelligent\s+and\s+machiavellian/i,
+    severity: Severity.CRITICAL,
+    weight: 8,
+    description: 'AIM (Always Intelligent and Machiavellian) jailbreak template'
+  },
+  {
     name: 'opposite_day',
     pattern: /(?:it's|today\s+is|let's\s+play)\s+opposite\s+day.*\b(?:yes\s+means\s+no|refuse\s+means\s+comply)/i,
     severity: Severity.WARNING,
@@ -419,7 +458,10 @@ const OBFUSCATION_PATTERNS: JailbreakPattern[] = [
   },
   {
     name: 'spaced_characters',
-    pattern: /\b(?:i\s*g\s*n\s*o\s*r\s*e|j\s*a\s*i\s*l\s*b\s*r\s*e\s*a\s*k|b\s*y\s*p\s*a\s*s\s*s)\b/i,
+    // Require at least one whitespace BETWEEN each letter (\s+, not \s*): otherwise the
+    // alternation collapses to the plain words "ignore"/"jailbreak"/"bypass" and fires on
+    // ordinary benign prose. Real spaced obfuscation ("i g n o r e") still matches.
+    pattern: /\bi\s+g\s+n\s+o\s+r\s+e\b|\bj\s+a\s+i\s+l\s+b\s+r\s+e\s+a\s+k\b|\bb\s+y\s+p\s+a\s+s\s+s\b/i,
     severity: Severity.WARNING,
     weight: 4,
     description: 'Spaced character obfuscation'
@@ -464,26 +506,22 @@ export const ALL_PATTERNS: JailbreakPattern[] = [
  * Keywords to fuzzy match.
  */
 export const JAILBREAK_KEYWORDS = [
+  // Curated to DISTINCTIVE jailbreak terms only. Short / common collision-prone keywords
+  // ('dan','stan','aim','ucar','dude','anarchy','override','restrictions','roleplay',
+  // 'pretend','unlimited') were removed: the LCS-based fuzzy ratio matched them against
+  // ordinary English ('stan'~"standard"/"instance", "instructions"~"restrictions",
+  // "replays"~"roleplay"), the dominant source of benign false positives. Those terms are
+  // still detected exactly by the pattern sets above. See
+  // tests/unit/validators/structured-benign-fp.test.ts.
   'jailbreak',
+  'jailbroken',
   'ignore',
   'bypass',
-  'override',
-  'restrictions',
-  'dan',
-  'dude',
-  'stan',
-  'aim',
-  'ucar',
-  'apophis',
-  'anarchy',
-  'roleplay',
-  'pretend',
-  'hypothetically',
-  'theoretically',
   'unrestricted',
   'unfiltered',
   'uncensored',
-  'unlimited'
+  'hypothetically',
+  'theoretically'
 ];
 
 /**

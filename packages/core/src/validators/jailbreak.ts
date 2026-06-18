@@ -148,6 +148,19 @@ export function fuzzyMatchKeywords(text: string, threshold = 0.75, cache?: Regex
     if (word.length < 4) continue;
 
     for (const keyword of JAILBREAK_KEYWORDS) {
+      // A word that simply CONTAINS the keyword (an inflection like "ignored"/"bypassed", or a
+      // compound) is not an obfuscation typo: it carries the keyword literally and is matched in
+      // context by the pattern sets, so fuzzy-flagging it only adds benign false positives.
+      // Fuzzy matching targets character-substituted evasions ("byp4ss") where the keyword is
+      // NOT a clean substring.
+      if (word.includes(keyword)) continue;
+
+      // Length-ratio guard: a near-match is only meaningful between similarly-sized tokens.
+      // Without it the LCS ratio flags a short keyword as a subsequence of a longer benign
+      // word (e.g. "stan" inside "standard"), the dominant false-positive source.
+      const lenRatio = Math.min(word.length, keyword.length) / Math.max(word.length, keyword.length);
+      if (lenRatio < 0.7) continue;
+
       const similarity = similarityRatio(word, keyword);
       if (similarity >= threshold && similarity < 1.0) {
         findings.push({
