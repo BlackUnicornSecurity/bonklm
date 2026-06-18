@@ -454,10 +454,7 @@ const engine = new GuardrailEngine({
     }),
     new JailbreakValidator(),
     new ReformulationDetector(),
-    new BoundaryDetector({
-      detectPromptLeakage: true,
-      detectInstructionLeakage: true,
-    }),
+    new BoundaryDetector(),
   ],
   guards: [new SecretGuard(), new PIIGuard(), new BashSafetyGuard()],
   shortCircuit: true,
