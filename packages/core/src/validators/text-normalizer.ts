@@ -309,6 +309,23 @@ export function detectUnusualWhitespace(text: string): {
 }
 
 /**
+ * True if the string contains any non-ASCII (>U+007F) character. Used to gate
+ * obfuscation-style detections (homoglyph / zero-width / combining-mark) that are
+ * meaningless on plain ASCII: whitespace-heavy ASCII (e.g. pretty-printed JSON) also
+ * shrinks during normalization but is not obfuscated. Shared by the prompt-injection
+ * and jailbreak validators so the two gates cannot drift. Iterates UTF-16 code units,
+ * which is correct for a boolean "any non-ASCII" test — each surrogate half is >127.
+ */
+export function containsNonAscii(text: string): boolean {
+  for (let i = 0; i < text.length; i++) {
+    if (text.charCodeAt(i) > 127) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Normalize text by applying NFKC, stripping hidden chars, and mapping confusables.
  */
 export function normalizeText(text: string): string {

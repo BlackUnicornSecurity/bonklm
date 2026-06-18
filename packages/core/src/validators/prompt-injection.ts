@@ -14,7 +14,7 @@
 import { createResult, Finding, type GuardrailResult, RiskLevel, Severity } from '../base/GuardrailResult.js';
 import type { PromptInjectionConfig, ValidatorConfig } from '../base/ValidatorConfig.js';
 import { createLogger, type Logger } from '../base/GenericLogger.js';
-import { detectHiddenUnicode, normalizeText, type UnicodeFinding } from './text-normalizer.js';
+import { containsNonAscii, detectHiddenUnicode, normalizeText, type UnicodeFinding } from './text-normalizer.js';
 import { detectPatterns, type PatternFinding } from './pattern-engine.js';
 // Story 2.1: edge-portable codecs replace `Buffer.from(..., 'base64'|'hex')`
 // so the prompt-injection scanner runs identically on Node, Workerd,
@@ -472,13 +472,7 @@ export class PromptInjectionValidator {
     // Genuine unicode obfuscation requires actual non-ASCII characters (homoglyphs,
     // zero-width, control). Whitespace-heavy plain-ASCII content (e.g. pretty-printed JSON)
     // also shrinks >15% during normalization but is NOT obfuscated — don't flag it.
-    let hasNonAscii = false;
-    for (let i = 0; i < content.length; i++) {
-      if (content.charCodeAt(i) > 127) {
-        hasNonAscii = true;
-        break;
-      }
-    }
+    const hasNonAscii = containsNonAscii(content);
 
     const findings = detectPatterns(normalizedContent);
 
