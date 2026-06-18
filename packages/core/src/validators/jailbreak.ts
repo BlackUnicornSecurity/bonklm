@@ -15,7 +15,7 @@
 import { createLogger, type Logger } from '../base/GenericLogger.js';
 import { createResult, Finding, type GuardrailResult, Severity } from '../base/GuardrailResult.js';
 import { type JailbreakConfig, mergeConfig, type ValidatorConfig } from '../base/ValidatorConfig.js';
-import { normalizeText } from './text-normalizer.js';
+import { containsNonAscii, normalizeText } from './text-normalizer.js';
 import { type SessionPatternFinding, updateSessionState } from '../session/SessionTracker.js';
 import { getRegexCache, type RegexCache } from './pattern-engine.js';
 import { ALL_PATTERNS, JAILBREAK_KEYWORDS, JAILBREAK_PHRASES } from './jailbreak-patterns.js';
@@ -85,6 +85,12 @@ export interface JailbreakAnalysisResult {
   fuzzy_findings: FuzzyFinding[];
   heuristic_findings: HeuristicFinding[];
   multi_turn_findings: MultiTurnFinding[];
+  /**
+   * True when normalization shrank the input past the threshold. This is the raw
+   * shrink signal only — it can be `true` with NO obfuscation finding for benign
+   * whitespace-heavy plain-ASCII content (e.g. pretty-printed JSON), since the
+   * `heavy_obfuscation` finding is additionally gated on a non-ASCII character.
+   */
   obfuscation_detected: boolean;
   highest_severity: Severity;
   should_block: boolean;
@@ -492,13 +498,19 @@ export class JailbreakValidator {
       const originalFindings = detectJailbreakPatterns(content);
       this.mergeUniqueFindings(findings, originalFindings);
 
-      findings.push({
-        category: 'obfuscation',
-        pattern_name: 'heavy_obfuscation',
-        severity: Severity.WARNING,
-        weight: 5,
-        description: 'Heavy text obfuscation detected'
-      });
+      // Genuine obfuscation requires actual non-ASCII characters (homoglyphs,
+      // zero-width, control). Whitespace-heavy plain-ASCII content (e.g.
+      // pretty-printed JSON) also shrinks >15% during normalization but is NOT
+      // obfuscated — don't flag it. Mirrors PromptInjectionValidator's gate.
+      if (containsNonAscii(content)) {
+        findings.push({
+          category: 'obfuscation',
+          pattern_name: 'heavy_obfuscation',
+          severity: Severity.WARNING,
+          weight: 5,
+          description: 'Heavy text obfuscation detected'
+        });
+      }
     }
 
     return { findings, obfuscationDetected, normalized };

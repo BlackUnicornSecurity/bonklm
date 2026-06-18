@@ -53,6 +53,13 @@ Sprint 52 Day 2 — Gate 2 unblocking + Gate 5.8 reproducibility:
 
 ### Fixed
 
+- **Jailbreak detection no longer false-positives on whitespace-heavy plain-ASCII content.** The
+  "heavy text obfuscation" signal fired whenever normalization shrank the input past a threshold,
+  which also happens for benign pretty-printed JSON and deeply indented configuration even though
+  nothing is obfuscated. It is now gated on the presence of an actual non-ASCII character — the same
+  gate the prompt-injection validator already applies — so genuine homoglyph / zero-width /
+  combining-mark obfuscation still blocks while benign structured text passes.
+
 - **eslint-plugin-edge `prepublishOnly` chain failure resolved.** Added local `tools/eslint-plugin-bonklm-edge/vitest.config.ts` mirroring the connector-package convention so tests resolve from the plugin directory instead of inheriting the workspace-root include patterns. Contributor tooling now runs its local test suite and dry-run publish path from a fresh checkout.
 
 ### Security
