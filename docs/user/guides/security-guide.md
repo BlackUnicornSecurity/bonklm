@@ -266,6 +266,17 @@ if (result.findings.length > 0) {
 }
 ```
 
+### Detection precision
+
+PII patterns are tuned to avoid false matches on look-alike data:
+
+- **SSN** requires its standard separators (dashes or spaces, in the form `NNN-NN-NNNN`). A bare
+  nine-digit run — a request counter, a token total, a byte size — is **not** reported as an SSN.
+- **BIC/SWIFT** validates the ISO 9362 country code embedded in the code, so an ordinary 8- or
+  11-character uppercase word (such as `INFORMATION`) is **not** mistaken for a bank identifier.
+- Several patterns carry algorithmic validators (Luhn for credit cards, MOD-97 for IBAN, etc.) and a
+  `contextRequired` flag so lower-confidence formats only surface near sensitive context.
+
 ### Sanitization Mode
 
 ```typescript

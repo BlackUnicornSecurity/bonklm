@@ -519,3 +519,49 @@ export function validateSwedishPersonnummer(pn: string): boolean {
 
   return checksum % 10 === 0;
 }
+
+/**
+ * ISO 3166-1 alpha-2 country codes. Positions 5-6 of a valid BIC/SWIFT code are
+ * one of these — see {@link validateBicSwift}. Includes the officially-assigned
+ * set plus `XK` (Kosovo), which is user-assigned in ISO 3166-1 but is used by
+ * SWIFT for Kosovan BICs, so omitting it would reject genuine identifiers.
+ */
+const ISO_3166_ALPHA2 = new Set<string>(
+  (
+    'AD AE AF AG AI AL AM AO AQ AR AS AT AU AW AX AZ BA BB BD BE BF BG BH BI BJ BL BM BN BO BQ BR BS ' +
+    'BT BV BW BY BZ CA CC CD CF CG CH CI CK CL CM CN CO CR CU CV CW CX CY CZ DE DJ DK DM DO DZ EC EE ' +
+    'EG EH ER ES ET FI FJ FK FM FO FR GA GB GD GE GF GG GH GI GL GM GN GP GQ GR GS GT GU GW GY HK HM ' +
+    'HN HR HT HU ID IE IL IM IN IO IQ IR IS IT JE JM JO JP KE KG KH KI KM KN KP KR KW KY KZ LA LB LC ' +
+    'LI LK LR LS LT LU LV LY MA MC MD ME MF MG MH MK ML MM MN MO MP MQ MR MS MT MU MV MW MX MY MZ NA ' +
+    'NC NE NF NG NI NL NO NP NR NU NZ OM PA PE PF PG PH PK PL PM PN PR PS PT PW PY QA RE RO RS RU RW ' +
+    'SA SB SC SD SE SG SH SI SJ SK SL SM SN SO SR SS ST SV SX SY SZ TC TD TF TG TH TJ TK TL TM TN TO ' +
+    'TR TT TV TW TZ UA UG UM US UY UZ VA VC VE VG VI VN VU WF WS YE YT ZA ZM ZW ' +
+    'XK'
+  ).split(' ')
+);
+
+/** Full ISO 9362 BIC shape: 4-letter institution + 2-letter country + 2-char location + optional 3-char branch. */
+const BIC_SHAPE = /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?$/;
+
+/**
+ * BIC / SWIFT validation (ISO 9362).
+ *
+ * The pattern that surfaces candidates (`[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(...)?`)
+ * matches any 8- or 11-character uppercase token, including ordinary English
+ * words such as "INFORMATION". A genuine BIC embeds a 2-letter ISO 3166-1
+ * country code in positions 5-6; validating it against the official code set
+ * rejects the word collisions while accepting every real bank identifier
+ * (whose country code is valid by construction).
+ */
+export function validateBicSwift(bic: string): boolean {
+  if (!bic || typeof bic !== 'string') {
+    return false;
+  }
+  const value = bic.toUpperCase();
+  // Enforce the full ISO 9362 shape (not just length) so the validator is correct
+  // when called standalone, not only behind the surfacing pattern.
+  if (!BIC_SHAPE.test(value)) {
+    return false;
+  }
+  return ISO_3166_ALPHA2.has(value.slice(4, 6));
+}
