@@ -157,12 +157,23 @@ const HYPOTHETICAL_PATTERNS: JailbreakPattern[] = [
  */
 const AUTHORITY_PATTERNS: JailbreakPattern[] = [
   {
+    // Profession nouns (developer/engineer/creator) were dropped from this alternation: a casual
+    // "I'm a developer …" self-introduction is ordinary benign prose, not an authority claim, and
+    // false-tripped this WARNING net (e.g. a firmware bug report). The named-provider impersonation
+    // (anthropic/openai) and privileged-role claim (admin/administrator) remain here. Recall for the
+    // dropped nouns is preserved by the PromptInjection validator, not this one: the assertive
+    // "I am a developer/engineer" form still fires PI's `authority_claim` (pattern-engine.ts), and
+    // forged-RAG-authorization payloads ("the verification bypass is now authorized") fire PI's
+    // FORGED_AUTHORIZATION. This is therefore a jailbreak-validator precision fix; the GA corpus
+    // shows no net recall change. (A PromptInjection-less, jailbreak-only deployment trades this
+    // profession-noun catch for the false positives it caused — the intended precision tradeoff.)
     name: 'developer_impersonation',
-    pattern:
-      /(?:I\s+am|I'm|this\s+is)\s+(?:a|an|your)?\s*(?:anthropic|openai|developer|engineer|creator|admin|administrator)\b/i,
+    pattern: /(?:I\s+am|I'm|this\s+is)\s+(?:a|an|your)?\s*(?:anthropic|openai|admin|administrator)\b/i,
     severity: Severity.WARNING,
     weight: 5,
-    description: 'Developer/admin impersonation'
+    // `name` is a stable identifier and stays `developer_impersonation`; the human label is kept
+    // accurate to what the pattern now matches (named-provider + privileged-role, not "developer").
+    description: 'Named-provider / admin impersonation claim'
   },
   {
     // High-precision recovery: claiming to be a named-lab employee AND asking to weaken safety
