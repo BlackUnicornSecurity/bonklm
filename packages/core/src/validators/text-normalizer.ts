@@ -273,6 +273,26 @@ export const BRAILLE_PATTERN = /[\u2800-\u28FF]/g;
 export const MONGOLIAN_FVS_PATTERN = /[\u180B-\u180D]/g;
 
 /**
+ * Unicode Tags block \u2014 Plane 14, U+E0000-U+E007F.
+ * This block mirrors ASCII (U+E0020-U+E007E \u2194 0x20-0x7E) but renders to NO glyph, so it is
+ * the canonical primitive for *invisible instruction injection*: an attacker smuggles ASCII
+ * directives ("ignore prior instructions\u2026") as zero-width tag characters that a human reviewer
+ * and most renderers never see, while byte-level LM tokenizers still read them (Goodside, 2024).
+ * Uses the `u` flag because these are astral (surrogate-pair) codepoints the per-code-unit loop
+ * in `detectHiddenUnicode` cannot see.
+ */
+export const TAGS_BLOCK_PATTERN = /[\u{E0000}-\u{E007F}]/gu;
+
+/**
+ * Well-formed RGI emoji tag sequence \u2014 the ONLY sanctioned modern use of the Tags block:
+ * subdivision-flag emoji (\uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62\uDB40\uDC73\uDB40\uDC63\uDB40\uDC74\uDB40\uDC7F Scotland, \uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62\uDB40\uDC77\uDB40\uDC6C\uDB40\uDC73\uDB40\uDC7F Wales, \uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67\uDB40\uDC7F England). Such a
+ * sequence is a U+1F3F4 base + one-or-more tag chars from the subdivision alphabet (tag digits
+ * U+E0030-U+E0039, tag lowercase U+E0061-U+E007A) + the U+E007F CANCEL TAG terminator. Stripped
+ * before the Tags-block scan so legitimate flags do not register as smuggled instructions.
+ */
+export const EMOJI_TAG_SEQUENCE_PATTERN = /\u{1F3F4}[\u{E0030}-\u{E0039}\u{E0061}-\u{E007A}]+\u{E007F}/gu;
+
+/**
  * Detect unusual whitespace characters for obfuscation flagging.
  * Returns count of unusual whitespace chars found.
  */
@@ -440,6 +460,32 @@ export function detectHiddenUnicode(text: string): UnicodeFinding[] {
     if (finding.count >= 10 && finding.category === 'zero-width') {
       finding.severity = Severity.CRITICAL;
     }
+  }
+
+  // Plane-14 Tags-block scan. Kept separate from (and AFTER) the per-code-unit loop above:
+  // (1) these are astral codepoints the UTF-16-unit loop cannot read, and (2) the count-based
+  // re-grading above would otherwise clobber the severity set here. Strip well-formed emoji
+  // subdivision-flag sequences first so the one legitimate use of the block is not flagged;
+  // any residual tag character is a covert invisible-instruction-injection primitive with no
+  // benign plain-text use.
+  const residualTags = text.replace(EMOJI_TAG_SEQUENCE_PATTERN, '').match(TAGS_BLOCK_PATTERN);
+  if (residualTags && residualTags.length > 0) {
+    const chars = Array.from(
+      new Set(residualTags.map(c => `U+${c.codePointAt(0)!.toString(16).padStart(4, '0').toUpperCase()}`))
+    ).slice(0, 8);
+    findings.set('tag_characters', {
+      category: 'unicode_manipulation',
+      count: residualTags.length,
+      // A run (>=2) is an unambiguous smuggled payload → CRITICAL; a lone tag char is anomalous
+      // (truncated flag / data corruption) → WARNING. Both block via the PromptInjection path.
+      // Intentionally stricter than the zero-width count thresholds above: the Tags block has no
+      // benign plain-text use, so even a 2-char run is treated as CRITICAL.
+      severity: residualTags.length >= 2 ? Severity.CRITICAL : Severity.WARNING,
+      description:
+        'Invisible Tags-block characters (Unicode Plane 14, U+E0000-U+E007F) detected - ' +
+        'covert instruction-injection primitive',
+      chars
+    });
   }
 
   return Array.from(findings.values());
