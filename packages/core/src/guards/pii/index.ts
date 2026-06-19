@@ -318,7 +318,11 @@ export class PIIGuard {
    * Patterns marked `contextRequired: true` (US_Phone, IBAN-like, etc.)
    * are STILL applied here — we cannot afford to leave PII unredacted
    * inside a `redact`-mode flow even if `detect()` wouldn't surface it
-   * outside a sensitive context.
+   * outside a sensitive context. For the same fail-safe reason, per-pattern
+   * `validator`s (Luhn, BIC country-code, etc.) are intentionally NOT run here:
+   * redaction is deliberately over-inclusive, so a token `detect()` would
+   * reject (e.g. an uppercase word matching the loose BIC shape) is still masked
+   * rather than risk leaving real PII in the content.
    *
    * **Normalisation parity** (cumulative-audit BLOCK fix): `detect()`
    * applies `normalizeText` so homoglyph-mangled PII is caught. This

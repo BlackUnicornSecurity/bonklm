@@ -175,6 +175,48 @@ describe('PII Validators', () => {
     });
   });
 
+  describe('PV-012: BIC/SWIFT Validator', () => {
+    it('should validate real 8-character BICs (valid ISO-3166 country code)', () => {
+      expect(validators.validateBicSwift('DEUTDEFF')).toBe(true); // DE — Germany
+      expect(validators.validateBicSwift('NWBKGB2L')).toBe(true); // GB — United Kingdom
+      expect(validators.validateBicSwift('BNPAFRPP')).toBe(true); // FR — France
+    });
+
+    it('should validate 11-character BICs with a branch code', () => {
+      expect(validators.validateBicSwift('DEUTDEFF500')).toBe(true); // DE + branch
+    });
+
+    it('should normalise lowercase input before validating', () => {
+      expect(validators.validateBicSwift('deutdeff')).toBe(true);
+    });
+
+    it('should accept the SWIFT-used Kosovo country code (XK)', () => {
+      expect(validators.validateBicSwift('AAAAXK22')).toBe(true);
+    });
+
+    it('should reject digits in the 4-letter institution code', () => {
+      expect(validators.validateBicSwift('1234DEFF')).toBe(false);
+    });
+
+    it('should reject uppercase English words that match the loose shape', () => {
+      // The defining failure: an ordinary 11-letter word whose positions 5-6
+      // ("RM") are not a country code is NOT a BIC.
+      expect(validators.validateBicSwift('INFORMATION')).toBe(false); // RM
+      expect(validators.validateBicSwift('CONFORMANCE')).toBe(false); // OR
+    });
+
+    it('should reject tokens of the wrong length', () => {
+      expect(validators.validateBicSwift('ABCDEF')).toBe(false); // 6 chars
+      expect(validators.validateBicSwift('ABCDEFGHIJKLM')).toBe(false); // 13 chars
+    });
+
+    it('should reject empty and non-string input', () => {
+      expect(validators.validateBicSwift('')).toBe(false);
+      expect(validators.validateBicSwift(null as unknown as string)).toBe(false);
+      expect(validators.validateBicSwift(undefined as unknown as string)).toBe(false);
+    });
+  });
+
   describe('PV-011: Invalid Data Handling', () => {
     it('should reject non-numeric for Luhn', () => {
       expect(validators.validateLuhn('abcd1234')).toBe(false);
@@ -232,6 +274,7 @@ describe('PII Validators', () => {
       expect(typeof validators.validateSwedishPersonnummer).toBe('function');
       expect(typeof validators.validateAbaRouting).toBe('function');
       expect(typeof validators.validateDutchBsn).toBe('function');
+      expect(typeof validators.validateBicSwift).toBe('function');
     });
   });
 

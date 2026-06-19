@@ -28,8 +28,13 @@ export interface PiiPattern {
 
 export const US_PATTERNS: PiiPattern[] = [
   {
+    // Separators are MANDATORY (`[-\s]`, not `[-\s]?`): a bare 9-digit run is
+    // indistinguishable from any large integer (request counters, token totals,
+    // byte sizes) and produced false matches on benign numeric metrics. A real
+    // SSN presented as PII is written `AAA-GG-SSSS` or `AAA GG SSSS`; requiring
+    // the separators keeps every canonical SSN while dropping integer collisions.
     name: 'SSN',
-    regex: /\b(?!000|666|9\d{2})\d{3}[-\s]?(?!00)\d{2}[-\s]?(?!0000)\d{4}\b/g,
+    regex: /\b(?!000|666|9\d{2})\d{3}[-\s](?!00)\d{2}[-\s](?!0000)\d{4}\b/g,
     severity: 'critical',
     contextRequired: false,
     redactionMask: '***-**-****'
@@ -87,9 +92,15 @@ export const EU_PATTERNS: PiiPattern[] = [
     contextRequired: false
   },
   {
+    // The loose `[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}` shape matches any 8/11-char
+    // uppercase token (e.g. the English word "INFORMATION"). `validateBicSwift`
+    // enforces the ISO 9362 invariant that positions 5-6 are a real ISO 3166-1
+    // country code, which rejects those word collisions while keeping every
+    // genuine BIC (whose country code is valid by construction).
     name: 'BIC_SWIFT',
     regex: /\b[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b/g,
     severity: 'warning',
+    validator: validators.validateBicSwift,
     contextRequired: true
   },
   {

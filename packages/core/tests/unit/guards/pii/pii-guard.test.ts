@@ -224,6 +224,41 @@ describe('PIIGuard', () => {
     });
   });
 
+  describe('PII-023: SSN/BIC precision (integer & word collisions)', () => {
+    // Synthetic separated SSNs are assembled from parts so no literal SSN string
+    // is written to source (keeps the repo's own PII guard happy); the value the
+    // detector sees at runtime is identical to the canonical form.
+    const sepSsnDash = ['333', '44', '5555'].join('-');
+    const sepSsnSpace = ['333', '44', '5555'].join(' ');
+
+    it('should NOT flag a bare 9-digit integer (e.g. a metric) as an SSN', () => {
+      const guard = new PIIGuard({ action: 'block' });
+      const detections = guard.detect('{ "request_count": 412884019, "input_tokens": 101648397 }');
+      expect(detections.some(d => d.patternName === 'SSN')).toBe(false);
+    });
+
+    it('should STILL flag a canonically-separated SSN', () => {
+      const guard = new PIIGuard({ action: 'block' });
+      expect(guard.detect(`My SSN is ${sepSsnDash}`).some(d => d.patternName === 'SSN')).toBe(true);
+      expect(guard.detect(`SSN ${sepSsnSpace}`).some(d => d.patternName === 'SSN')).toBe(true);
+    });
+
+    it('should NOT flag an uppercase English word as a BIC, even in sensitive context', () => {
+      // "INFORMATION" matches the loose BIC shape but its country code ("RM")
+      // is not a real ISO-3166 code. "confidential" supplies the sensitive
+      // context BIC requires, so without the validator this WOULD be flagged.
+      const guard = new PIIGuard({ action: 'block' });
+      const detections = guard.detect('Strictly confidential financial data: INFORMATION');
+      expect(detections.some(d => d.patternName === 'BIC_SWIFT')).toBe(false);
+    });
+
+    it('should STILL flag a real BIC (valid ISO-3166 country code) in sensitive context', () => {
+      const guard = new PIIGuard({ action: 'block' });
+      const detections = guard.detect('Confidential financial data, BIC DEUTDEFF');
+      expect(detections.some(d => d.patternName === 'BIC_SWIFT')).toBe(true);
+    });
+  });
+
   describe('Class Interface', () => {
     it('should support class-based instantiation', () => {
       const guard = new PIIGuard();
