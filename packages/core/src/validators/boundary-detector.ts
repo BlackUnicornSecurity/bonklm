@@ -5,9 +5,11 @@
  * and inject attacker content at system level.
  *
  * Categories:
- * - Closing system tags: </system>, </s>, [/INST], [END SYSTEM]
+ * - Closing system tags: </system>, </instructions>, </sys>, </inst>, </s>, [/INST],
+ *   [END SYSTEM], [SYSTEM MESSAGE END]
  * - Control tokens: <|endoftext|>, </s>, <|im_start|>, <<SYS>>
- * - System prompt close markers: ---END SYSTEM PROMPT---, ===SYSTEM END===
+ * - System prompt close markers: ---END SYSTEM PROMPT---, ===SYSTEM END===,
+ *   === END OF SYSTEM PROMPT ===, ---END OF SYSTEM PROMPT---, === END OF INSTRUCTIONS ===
  * - Meta-instruction boundaries: BEGIN USER CONTENT, END SYSTEM CONTENT
  */
 
@@ -54,7 +56,12 @@ interface BoundaryPattern {
 const CLOSING_SYSTEM_TAG_PATTERNS: BoundaryPattern[] = [
   {
     name: 'closing_system_xml',
-    pattern: /<\/\s*(?:system|instructions|context|prompt)\s*>/i,
+    // Section names broadened beyond system/instructions/context/prompt to cover the LLM-delimiter
+    // short forms attackers use for the same system-level breakout: </sys>, </inst>, </instruction>.
+    // `instructions?` covers singular/plural; `inst`/`sys` the abbreviations. (`</rules>` is
+    // intentionally NOT included — it has legitimate use as a config closing tag, e.g. logback /
+    // checkstyle / PMD rulesets; the corpus payloads that use it are caught by the markers below.)
+    pattern: /<\/\s*(?:system|instructions?|context|prompt|sys|inst)\s*>/i,
     severity: Sev.CRITICAL,
     description: 'XML closing system/instructions tag'
   },
@@ -69,6 +76,14 @@ const CLOSING_SYSTEM_TAG_PATTERNS: BoundaryPattern[] = [
     pattern: /\[(?:END|STOP)\s+(?:SYSTEM|INSTRUCTIONS|CONTEXT)\]/i,
     severity: Sev.CRITICAL,
     description: 'Bracketed end-of-system marker'
+  },
+  {
+    name: 'bracket_system_end_marker',
+    // Reordered variant of end_system_marker: [SYSTEM MESSAGE END], [SYSTEM END], [INSTRUCTIONS END].
+    // The fixed [END SYSTEM] order above misses the equally common subject-first phrasing.
+    pattern: /\[(?:SYSTEM|INSTRUCTIONS?|CONTEXT)(?:\s+MESSAGE)?\s+(?:END|STOP)\]/i,
+    severity: Sev.CRITICAL,
+    description: 'Bracketed system-end marker (reordered [SYSTEM ... END])'
   },
   {
     name: 'closing_s_tag',
@@ -129,6 +144,20 @@ const SYSTEM_PROMPT_CLOSE_PATTERNS: BoundaryPattern[] = [
     pattern: /\{(?:end_of_system_prompt|end_system|system_end|stop_instructions)\}/i,
     severity: Sev.WARNING,
     description: 'Brace-delimited system end marker'
+  },
+  {
+    name: 'end_of_system_delimited',
+    // Delimited "END OF SYSTEM PROMPT / INSTRUCTIONS" markers. The equals/dashed siblings above
+    // require `=== SYSTEM END ===` word order and miss the common `=== END OF SYSTEM PROMPT ===`,
+    // `---END OF SYSTEM PROMPT---`, `=== END OF INSTRUCTIONS ===` breakouts. The `\1` backreference
+    // requires the SAME opening and closing delimiter run (`===…===` or `---…---`), so an `===`
+    // heading and an unrelated `---` rule on opposite sides of the phrase cannot collude into a
+    // match. CRITICAL (blocks at standard sensitivity, unlike the WARNING-level generic markers
+    // above): the explicit delimited "END OF SYSTEM/INSTRUCTIONS" phrasing is a direct
+    // prompt-termination token with no benign use observed across the project's benign test corpus.
+    pattern: /(===|---)\s*END\s+OF\s+(?:SYSTEM(?:\s+PROMPT)?|INSTRUCTIONS?)\s*\1/i,
+    severity: Sev.CRITICAL,
+    description: 'Delimited end-of-system-prompt marker (END OF SYSTEM PROMPT / INSTRUCTIONS)'
   }
 ];
 

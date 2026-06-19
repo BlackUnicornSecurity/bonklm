@@ -153,10 +153,11 @@ if (!result.allowed) {
 
 ### Detected Boundary Techniques
 
-1. **Closing system tags** - `</system>`, `</instructions>`, `[/INST]`, `</s>`
+1. **Closing system tags** - `</system>`, `</instructions>`, `</sys>`, `</inst>`, `[/INST]`,
+   `[END SYSTEM]`, `[SYSTEM MESSAGE END]`, `</s>`
 2. **Control-token injection** - `<|im_start|>`, `<|endoftext|>`, `<<SYS>>`
 3. **System-prompt close markers** - `---END SYSTEM PROMPT---`, `===SYSTEM END===`,
-   `*** END INSTRUCTIONS ***`
+   `=== END OF SYSTEM PROMPT ===`, `=== END OF INSTRUCTIONS ===`, `*** END INSTRUCTIONS ***`
 4. **Meta-instruction boundaries** - `BEGIN USER CONTENT`, `END SYSTEM CONTENT`,
    `ABOVE WAS THE SYSTEM PROMPT`
 5. **Confusable / homoglyph variants** - the same tokens disguised with look-alike Unicode (e.g. a
@@ -178,10 +179,12 @@ than replacing them.
 > chat-template tokens that appear legitimately in prompt-engineering docs, model cards, and
 > fine-tuning datasets. Apply `BoundaryDetector` to the **untrusted user/document slot** of your
 > prompt, not to content that is itself _about_ LLM internals. Under the default
-> `sensitivity: 'standard'` only the higher-severity boundary patterns block; the informal
-> end-markers and meta-instruction boundaries require `sensitivity: 'strict'`. If you ingest chat
-> templates or raw HTML, start with `action: 'log'` to measure your own false-positive rate before
-> switching to `action: 'block'`.
+> `sensitivity: 'standard'` the critical-severity patterns block — closing tags, control tokens,
+> bracketed end markers, and the explicit `END OF SYSTEM PROMPT` / `END OF INSTRUCTIONS` delimited
+> markers; the lower-severity informal markers (e.g. `===SYSTEM END===`) and meta-instruction
+> boundaries (e.g. `BEGIN USER CONTENT`) only block under `sensitivity: 'strict'`. If you ingest
+> chat templates or raw HTML, start with `action: 'log'` to measure your own false-positive rate
+> before switching to `action: 'block'`.
 
 A recommended bundle for delimited or structured input:
 
