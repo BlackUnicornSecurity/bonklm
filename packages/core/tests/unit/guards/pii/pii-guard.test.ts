@@ -259,6 +259,45 @@ describe('PIIGuard', () => {
     });
   });
 
+  describe('PII-024: redactContent cascade-proofing (no [[REDACTED]] double brackets)', () => {
+    // The default `[REDACTED]` token contains the 8-letter run `REDACTED`, which
+    // matches the loose BIC/SWIFT shape. Before the single-pass fix, any PII
+    // redacted by a pattern ordered *before* BIC_SWIFT (SSN, IBAN, …) had its
+    // freshly-inserted token re-matched by BIC, producing cascading `[[REDACTED]]`.
+    // Synthetic separated SSN assembled from parts so no literal SSN is in source.
+    const sepSsn = ['333', '44', '5555'].join('-');
+
+    it('should single-bracket a redacted SSN (no [[REDACTED]] cascade)', () => {
+      const out = new PIIGuard().redactContent(`SSN ${sepSsn} end`);
+      expect(out).toBe('SSN [REDACTED] end');
+      expect(out).not.toContain('[[');
+      expect(out).not.toContain(sepSsn); // raw PII fully masked — never under-redact
+    });
+
+    it('should single-bracket a redacted IBAN (pattern ordered before BIC_SWIFT)', () => {
+      const out = new PIIGuard().redactContent('IBAN GB82WEST12345698765432 end');
+      expect(out).toBe('IBAN [REDACTED] end');
+      expect(out).not.toContain('[[');
+    });
+
+    it('should not double-wrap when the caller supplies a custom replacement token', () => {
+      const out = new PIIGuard().redactContent(`SSN ${sepSsn}`, '<<PII>>');
+      expect(out).toBe('SSN <<PII>>');
+    });
+
+    it('should still mask a PII-shaped uppercase word exactly once (over-inclusive by design)', () => {
+      // redactContent deliberately does NOT run validators, so an uppercase word
+      // matching the loose BIC shape is still masked — but exactly once, no cascade.
+      const out = new PIIGuard().redactContent('value INFORMATION here');
+      expect(out).toBe('value [REDACTED] here');
+    });
+
+    it('should leave content with no PII untouched', () => {
+      const out = new PIIGuard().redactContent('just a normal sentence');
+      expect(out).toBe('just a normal sentence');
+    });
+  });
+
   describe('Class Interface', () => {
     it('should support class-based instantiation', () => {
       const guard = new PIIGuard();
