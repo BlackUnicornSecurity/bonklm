@@ -597,6 +597,28 @@ const ISO_3166_ALPHA2 = new Set<string>(
 const BIC_SHAPE = /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?$/;
 
 /**
+ * Common all-caps English words (8 or 11 letters) whose positions 5-6
+ * coincidentally form a valid ISO-3166 bigram (English letter pairs heavily
+ * overlap country codes: VI, LI, CI, NE, BA, NI, PE, ER, IN, OM …), so the ISO
+ * gate alone would let them through. A real BIC is never an English word, so
+ * denylisting these is recall-safe. Secondary layer behind the banking-context
+ * gate (`BIC_CONTEXT_PATTERNS`).
+ */
+const BIC_COMMON_WORD_DENYLIST: ReadonlySet<string> = new Set(
+  // Only 8- and 11-letter words (the BIC shape lengths) whose positions 5-6 are
+  // a real ISO-3166 bigram (otherwise the ISO gate already rejects them).
+  // 8-letter
+  (
+    'BEHAVIOR OFFICIAL WELLNESS DATABASE CRITERIA ORIGINAL TRAINING DOCUMENT ' +
+    'ATTACHED POLICIES OPERATOR CUSTOMER DELIVERY RESEARCH NOPASSWD CONTINUE ' +
+    'DISABLED ' +
+    // 11-letter
+    'INSTRUCTION RECOMMENDED DEFINITIONS INDEPENDENT ENVIRONMENT ENGINEERING ' +
+    'INTEGRATION'
+  ).split(' ')
+);
+
+/**
  * BIC / SWIFT validation (ISO 9362).
  *
  * The pattern that surfaces candidates (`[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(...)?`)
@@ -604,7 +626,10 @@ const BIC_SHAPE = /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?$/;
  * words such as "INFORMATION". A genuine BIC embeds a 2-letter ISO 3166-1
  * country code in positions 5-6; validating it against the official code set
  * rejects the word collisions while accepting every real bank identifier
- * (whose country code is valid by construction).
+ * (whose country code is valid by construction). A small denylist also rejects
+ * common words whose bigram coincidentally IS a country code (e.g.
+ * INSTRUCTION → "RU"); the authoritative precision gate remains the
+ * banking-specific context requirement (`BIC_CONTEXT_PATTERNS` in patterns.ts).
  */
 export function validateBicSwift(bic: string): boolean {
   if (!bic || typeof bic !== 'string') {
@@ -616,5 +641,8 @@ export function validateBicSwift(bic: string): boolean {
   if (!BIC_SHAPE.test(value)) {
     return false;
   }
-  return ISO_3166_ALPHA2.has(value.slice(4, 6));
+  if (!ISO_3166_ALPHA2.has(value.slice(4, 6))) {
+    return false;
+  }
+  return !BIC_COMMON_WORD_DENYLIST.has(value);
 }

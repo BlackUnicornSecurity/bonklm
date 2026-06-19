@@ -215,6 +215,23 @@ describe('PII Validators', () => {
       expect(validators.validateBicSwift(null as unknown as string)).toBe(false);
       expect(validators.validateBicSwift(undefined as unknown as string)).toBe(false);
     });
+
+    it('should reject common words whose bigram IS a valid country code (denylist)', () => {
+      // These pass the ISO-country gate (RU, NE, OM, IN…) but are English words,
+      // so the secondary denylist must reject them.
+      for (const word of ['INSTRUCTION', 'ENGINEERING', 'CUSTOMER', 'ORIGINAL', 'BEHAVIOR', 'OPERATOR']) {
+        expect(validators.validateBicSwift(word), `${word} must not validate`).toBe(false);
+      }
+    });
+
+    it('should accept easily-omitted ISO-3166 country codes (transcription guard)', () => {
+      // Alpha-2 codes frequently dropped from hand-maintained lists; a synthetic
+      // BIC with each in positions 5-6 must validate, or the ISO set has a gap
+      // that would silently drop real BICs from those countries.
+      for (const cc of ['GG', 'JE', 'IM', 'ME', 'RS', 'SS', 'BL', 'MF', 'SX', 'CW', 'BQ', 'XK', 'AX']) {
+        expect(validators.validateBicSwift(`BANK${cc}2A`), `country ${cc} must be supported`).toBe(true);
+      }
+    });
   });
 
   describe('PV-011: Invalid Data Handling', () => {

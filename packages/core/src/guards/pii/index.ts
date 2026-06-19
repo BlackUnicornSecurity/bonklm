@@ -69,10 +69,19 @@ export function isTestFile(filePath: string | undefined): boolean {
 
 /**
  * Check if the content/line is in a sensitive context.
+ *
+ * @param patterns - Context patterns to scan for. Defaults to the broad
+ *   {@link SENSITIVE_CONTEXT_PATTERNS}; a pattern can pass a narrower,
+ *   domain-specific set (e.g. banking context for BIC_SWIFT) via
+ *   {@link PiiPattern.contextPatterns}.
  */
-export function isSensitiveContext(content: string, line: string): boolean {
+export function isSensitiveContext(
+  content: string,
+  line: string,
+  patterns: RegExp[] = SENSITIVE_CONTEXT_PATTERNS
+): boolean {
   // Check the line itself
-  for (const pattern of SENSITIVE_CONTEXT_PATTERNS) {
+  for (const pattern of patterns) {
     if (pattern.test(line)) {
       return true;
     }
@@ -87,7 +96,7 @@ export function isSensitiveContext(content: string, line: string): boolean {
     const end = Math.min(lines.length, lineIndex + 6);
     const context = lines.slice(start, end).join('\n');
 
-    for (const pattern of SENSITIVE_CONTEXT_PATTERNS) {
+    for (const pattern of patterns) {
       if (pattern.test(context)) {
         return true;
       }
@@ -180,7 +189,7 @@ export function detectPii(content: string): PiiDetection[] {
 
       // Check context requirement
       if (piiPattern.contextRequired) {
-        if (!isSensitiveContext(content, matchLine)) {
+        if (!isSensitiveContext(content, matchLine, piiPattern.contextPatterns)) {
           continue; // Skip matches not in sensitive context
         }
       }

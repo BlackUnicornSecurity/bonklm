@@ -19,8 +19,33 @@ export interface PiiPattern {
   severity: PiiSeverity;
   validator?: (value: string) => boolean;
   contextRequired: boolean;
+  /**
+   * When `contextRequired` is true, restrict the surrounding-context scan to
+   * these patterns INSTEAD of the broad {@link SENSITIVE_CONTEXT_PATTERNS}.
+   * Used to give a format-ambiguous pattern (e.g. BIC_SWIFT, which collides
+   * with all-caps English words) a domain-specific context gate.
+   */
+  contextPatterns?: RegExp[];
   redactionMask?: string;
 }
+
+// ============================================================================
+// DOMAIN-SPECIFIC CONTEXT PATTERNS
+// ============================================================================
+
+/**
+ * Banking-specific context for the BIC_SWIFT pattern. A real BIC always appears
+ * alongside payment terminology; requiring it (instead of the broad
+ * {@link SENSITIVE_CONTEXT_PATTERNS}) stops the 8/11-char uppercase shape from
+ * matching ordinary all-caps English words in non-financial sensitive prose.
+ */
+export const BIC_CONTEXT_PATTERNS: RegExp[] = [
+  /\b(?:swift|bic)(?:\s*(?:\/\s*bic|code|number|address))?\b/i,
+  /\b(?:iban|sepa|sort\s*code|bank\s*code|bank\s*identifier|routing\s*(?:number|no|aba))\b/i,
+  /\b(?:beneficiary|correspondent|intermediary)\s+bank\b/i,
+  /\b(?:wire|bank)\s+transfer\b/i,
+  /\b(?:remittance|payee\s+bank|account\s+with\s+institution)\b/i
+];
 
 // ============================================================================
 // US PATTERNS
@@ -28,13 +53,22 @@ export interface PiiPattern {
 
 export const US_PATTERNS: PiiPattern[] = [
   {
-    // Separators are MANDATORY (`[-\s]`, not `[-\s]?`): a bare 9-digit run is
-    // indistinguishable from any large integer (request counters, token totals,
-    // byte sizes) and produced false matches on benign numeric metrics. A real
-    // SSN presented as PII is written `AAA-GG-SSSS` or `AAA GG SSSS`; requiring
-    // the separators keeps every canonical SSN while dropping integer collisions.
+    // Two alternatives so a bare 9-digit integer (request counters, token
+    // totals, byte sizes) is NOT treated as an SSN, WITHOUT losing the common
+    // labelled-but-unformatted form (`SSN: 123456789`):
+    //   1. Separator-delimited form `AAA-GG-SSSS` / `AAA GG SSSS` — separators
+    //      are MANDATORY (`[-\s]`, not `[-\s]?`).
+    //   2. Unformatted 9-digit run, but ONLY when preceded by an explicit SSN
+    //      keyword (ssn / social security / tax id) within a short non-digit
+    //      window via lookbehind — so `SSN: 123456789`, `SSN is 123456789`,
+    //      `tax id no. 123456789` are caught while bare numeric data is not.
+    //      The `[^\d\n]{0,16}` gap allows a short connector but cannot span a
+    //      line or another number.
+    // Both keep the valid-SSN area/group/serial constraints (no 000/666/9xx
+    // area, no 00 group, no 0000 serial).
     name: 'SSN',
-    regex: /\b(?!000|666|9\d{2})\d{3}[-\s](?!00)\d{2}[-\s](?!0000)\d{4}\b/g,
+    regex:
+      /\b(?!000|666|9\d{2})\d{3}[-\s](?!00)\d{2}[-\s](?!0000)\d{4}\b|(?<=(?:\bssn\b|\bsocial[\s-]*security(?:[\s-]*(?:number|no|num|#))?\b|\btax[\s-]*id(?:entification)?(?:[\s-]*(?:number|no|num|#))?\b)[^\d\n]{0,16})(?!000|666|9\d{2})\d{3}(?!00)\d{2}(?!0000)\d{4}\b/gi,
     severity: 'critical',
     contextRequired: false,
     redactionMask: '***-**-****'
@@ -93,15 +127,19 @@ export const EU_PATTERNS: PiiPattern[] = [
   },
   {
     // The loose `[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}` shape matches any 8/11-char
-    // uppercase token (e.g. the English word "INFORMATION"). `validateBicSwift`
-    // enforces the ISO 9362 invariant that positions 5-6 are a real ISO 3166-1
-    // country code, which rejects those word collisions while keeping every
-    // genuine BIC (whose country code is valid by construction).
+    // uppercase token (e.g. the English word "INFORMATION"). Two precision
+    // gates: `validateBicSwift` enforces the ISO 9362 invariant (positions 5-6
+    // are a real ISO 3166-1 country code, plus a common-word denylist for words
+    // whose bigram coincidentally is a country code, e.g. INSTRUCTION→RU); and
+    // `contextPatterns` requires BANKING-specific context (SWIFT/IBAN/bank
+    // code…) rather than the broad sensitive-context list, since a real BIC
+    // never appears without payment context.
     name: 'BIC_SWIFT',
     regex: /\b[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}(?:[A-Z0-9]{3})?\b/g,
     severity: 'warning',
     validator: validators.validateBicSwift,
-    contextRequired: true
+    contextRequired: true,
+    contextPatterns: BIC_CONTEXT_PATTERNS
   },
   {
     name: 'UK_NINO',
