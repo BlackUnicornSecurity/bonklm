@@ -497,6 +497,8 @@ export class PromptInjectionValidator {
       }
     }
 
+    // Scan RAW content (not normalizedContent): normalizeText intentionally does not strip the
+    // Plane-14 Tags block, so the smuggled characters must be read here before any normalization.
     const unicodeFindings = detectHiddenUnicode(content);
     const base64Findings = this.config.detectBase64Payloads ? detectBase64Payloads(content) : [];
     const htmlFindings = this.config.detectHtmlComments ? detectHtmlCommentInjection(content) : [];
