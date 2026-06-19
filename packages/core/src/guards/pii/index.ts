@@ -22,7 +22,7 @@ import {
   SENSITIVE_CONTEXT_PATTERNS,
   TEST_FILE_INDICATORS
 } from './patterns.js';
-import { redactPIIValue } from './validators.js';
+import { redactInSinglePass, redactPIIValue } from './validators.js';
 
 // ============================================================================
 // TYPES
@@ -309,11 +309,14 @@ export class PIIGuard {
    * INCAPABLE of redacting PII from the original content — the doc
    * contains the raw value, not the mask.
    *
-   * `redactContent` re-runs the same pattern set against the input
-   * and replaces each match with `replacement`. Uses a replacer
-   * function (not a replacement string) so caller-supplied
-   * `$1` / `$&` / `$<name>` are treated literally rather than
-   * interpolated as regex backreferences.
+   * `redactContent` re-runs the same pattern set against the input and
+   * replaces each match with `replacement`, in a single cascade-proof pass
+   * (see {@link redactInSinglePass}): text inserted by one pattern is never
+   * re-scanned by a later one, so the literal `REDACTED` inside a `[REDACTED]`
+   * token can no longer be re-matched by the loose BIC/SWIFT shape into
+   * `[[REDACTED]]`. `replacement` is applied as a literal string, so
+   * caller-supplied `$1` / `$&` / `$<name>` are never interpolated as regex
+   * backreferences.
    *
    * Patterns marked `contextRequired: true` (US_Phone, IBAN-like, etc.)
    * are STILL applied here — we cannot afford to leave PII unredacted
@@ -340,13 +343,8 @@ export class PIIGuard {
    */
   redactContent(content: string, replacement: string = '[REDACTED]'): string {
     if (!content) return content;
-    let out = normalizeText(content);
-    const replacer = (): string => replacement;
-    for (const piiPattern of ALL_PATTERNS) {
-      piiPattern.regex.lastIndex = 0;
-      out = out.replace(piiPattern.regex, replacer);
-    }
-    return out;
+    const normalized = normalizeText(content);
+    return redactInSinglePass(normalized, ALL_PATTERNS, () => replacement);
   }
 
   /**

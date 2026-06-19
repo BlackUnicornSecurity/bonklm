@@ -16,6 +16,17 @@ export interface RedactionResult {
   patternName: string;
 }
 
+/**
+ * Minimal shape a pattern needs to participate in {@link redactInSinglePass}.
+ * Both the runtime-cloned redaction patterns (here) and the full `PiiPattern`
+ * objects (in `patterns.ts`) satisfy it structurally.
+ */
+export interface RedactablePattern {
+  regex: RegExp;
+  name: string;
+  redactionMask?: string;
+}
+
 // ============================================================================
 // PII REDACTION FUNCTIONS
 // ============================================================================
@@ -95,6 +106,58 @@ function redactGeneric(value: string): string {
 }
 
 /**
+ * Apply a set of PII patterns to `text` in a single, cascade-proof pass.
+ *
+ * Each pattern is still applied in priority order, but matches are first
+ * replaced with a collision-proof placeholder (`\uE000<n>\uE000`); the real
+ * replacement strings are spliced back in only after every pattern has run.
+ * This guarantees that text inserted by an earlier pattern can never be
+ * re-matched by a later one — e.g. the literal word `REDACTED` inside a
+ * `[REDACTED]` token is no longer re-matched by the loose BIC/SWIFT shape,
+ * which previously produced cascading double brackets (`[[REDACTED]]`).
+ *
+ * The fix never under-redacts: genuine PII in the source is still scanned by
+ * every pattern exactly as before — only the *inserted* tokens are shielded
+ * from re-scanning. The placeholder cannot itself match any pattern: U+E000
+ * (a Private-Use-Area code point) is a non-word character present in no
+ * pattern's character class, and the short decimal index it wraps is far below
+ * every pattern's minimum match length (the shortest pure-digit pattern needs
+ * nine contiguous digits). It is also effectively absent from real-world text.
+ *
+ * @param text            - Text to redact (already normalised by the caller).
+ * @param patterns        - Patterns to apply, in priority order.
+ * @param makeReplacement - Produces the replacement for a given match/pattern.
+ * @returns Text with every match replaced exactly once.
+ */
+export function redactInSinglePass(
+  text: string,
+  patterns: readonly RedactablePattern[],
+  makeReplacement: (match: string, pattern: RedactablePattern) => string
+): string {
+  const replacements: string[] = [];
+
+  let staged = text;
+  for (const pattern of patterns) {
+    pattern.regex.lastIndex = 0;
+    staged = staged.replace(pattern.regex, match => {
+      const index = replacements.length;
+      replacements.push(makeReplacement(match, pattern));
+      return `\uE000${index}\uE000`;
+    });
+  }
+
+  if (replacements.length === 0) {
+    return staged;
+  }
+
+  // Splice the real replacements back in. An out-of-range index can only come
+  // from a literal U+E000 already present in the source (normalisation does not
+  // strip Private-Use code points), so leave such text untouched rather than
+  // risk a wrong substitution.
+  return staged.replace(/\uE000(\d+)\uE000/g, (full, index: string) => replacements[Number(index)] ?? full);
+}
+
+/**
  * Redact all PII values in a string using pattern matching.
  * Replaces detected PII with format-preserving redactions.
  *
@@ -104,19 +167,14 @@ function redactGeneric(value: string): string {
 export async function redactPIIInString(content: string): Promise<string> {
   if (!content) return content;
 
-  let redacted = content;
-
   // Import patterns dynamically to avoid circular dependency
   const patterns = await getRedactionPatterns();
 
-  for (const { regex, name, redactionMask } of patterns) {
-    regex.lastIndex = 0;
-    redacted = redacted.replace(regex, match => {
-      return redactionMask || redactPIIValue(match, name);
-    });
-  }
-
-  return redacted;
+  return redactInSinglePass(
+    content,
+    patterns,
+    (match, pattern) => pattern.redactionMask || redactPIIValue(match, pattern.name)
+  );
 }
 
 /**
@@ -168,16 +226,11 @@ export function redactPIIInStringSync(content: string): string {
     return content;
   }
 
-  let redacted = content;
-
-  for (const { regex, name, redactionMask } of cachedRedactionPatterns) {
-    regex.lastIndex = 0;
-    redacted = redacted.replace(regex, match => {
-      return redactionMask || redactPIIValue(match, name);
-    });
-  }
-
-  return redacted;
+  return redactInSinglePass(
+    content,
+    cachedRedactionPatterns,
+    (match, pattern) => pattern.redactionMask || redactPIIValue(match, pattern.name)
+  );
 }
 
 /**
