@@ -35,6 +35,8 @@ post-rc.3 hardening). This document enumerates what is **PUBLIC** (frozen for v2
 
 - `PromptInjectionValidator` (class) — `name = 'prompt-injection'`
 - `JailbreakValidator` (class) — `name = 'jailbreak'`
+- `EncodedRescanValidator` (class) — decode-then-rescan; with `validateEncodedRescan` (function) and
+  `EncodedRescanConfig` (interface)
 - `MultilingualDetector` (class) — `name = 'multilingual'`
 - `AudioStreamValidator` (class) — `name = 'audio_stream'`
 - `CodeInjectionValidator` (class) — `name = 'code_injection'`

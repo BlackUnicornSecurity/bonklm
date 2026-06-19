@@ -135,12 +135,13 @@ const engine = new GuardrailEngine({
 
 Validators detect malicious patterns in content.
 
-| Validator                  | Description                       | Pattern Categories  |
-| -------------------------- | --------------------------------- | ------------------- |
-| `PromptInjectionValidator` | Detects prompt injection attempts | 35+ categories      |
-| `JailbreakValidator`       | Detects jailbreak patterns        | DAN, roleplay, etc. |
-| `ReformulationDetector`    | Detects code format injection     | Encoding tricks     |
-| `BoundaryDetector`         | Detects boundary violations       | Context analysis    |
+| Validator                  | Description                           | Pattern Categories     |
+| -------------------------- | ------------------------------------- | ---------------------- |
+| `PromptInjectionValidator` | Detects prompt injection attempts     | 35+ categories         |
+| `JailbreakValidator`       | Detects jailbreak patterns            | DAN, roleplay, etc.    |
+| `ReformulationDetector`    | Detects code format injection         | Encoding tricks        |
+| `BoundaryDetector`         | Detects boundary violations           | Context analysis       |
+| `EncodedRescanValidator`   | Decodes obfuscated payloads, re-scans | Encoding/cipher decode |
 
 ### Guards
 

@@ -167,6 +167,13 @@ export interface ReformulationConfig extends ValidatorConfig {
   sessionId?: string;
 }
 
+export interface EncodedRescanConfig extends ValidatorConfig {
+  /**
+   * Maximum multi-layer decode depth for chained encodings (performance guard).
+   */
+  maxDecodeDepth?: number;
+}
+
 /**
  * Default configuration values
  */

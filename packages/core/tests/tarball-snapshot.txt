@@ -200,6 +200,10 @@ dist/common/edge-codec.d.ts
 dist/common/edge-codec.d.ts.map
 dist/common/edge-codec.js
 dist/common/edge-codec.js.map
+dist/common/encoding-decoders.d.ts
+dist/common/encoding-decoders.d.ts.map
+dist/common/encoding-decoders.js
+dist/common/encoding-decoders.js.map
 dist/common/index.d.ts
 dist/common/index.d.ts.map
 dist/common/index.js
@@ -448,6 +452,10 @@ dist/validators/composed-context.d.ts
 dist/validators/composed-context.d.ts.map
 dist/validators/composed-context.js
 dist/validators/composed-context.js.map
+dist/validators/encoded-rescan.d.ts
+dist/validators/encoded-rescan.d.ts.map
+dist/validators/encoded-rescan.js
+dist/validators/encoded-rescan.js.map
 dist/validators/index.d.ts
 dist/validators/index.d.ts.map
 dist/validators/index.js
