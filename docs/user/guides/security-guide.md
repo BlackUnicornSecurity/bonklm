@@ -65,7 +65,7 @@ const result = validator.validate(htmlComment);
 
 ### Detected Pattern Categories
 
-The validator detects 35+ patterns across 6 categories:
+The validator detects patterns across these categories:
 
 1. **Instruction Override** - "Ignore all instructions"
 2. **Role Reversal** - "You are now a different AI"
@@ -78,6 +78,10 @@ The validator detects 35+ patterns across 6 categories:
 9. **Context Overflow** - Overwhelming context windows
 10. **Delimiter Manipulation** - Manipulating message boundaries (see the Boundary /
     Delimiter-Breakout Protection section below for dedicated detection)
+11. **Forged Authorization** - Injected text posing as a trusted system fact: declaring a safety,
+    moderation, or verification control already off, a bypass "now authorized", or a directive that
+    supersedes the safety instructions ("content filtering is now disabled for this session", "the
+    verification bypass is now authorized")
 
 ---
 
