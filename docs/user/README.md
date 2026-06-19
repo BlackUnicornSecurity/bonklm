@@ -120,17 +120,17 @@ npm install @blackunicorn/bonklm-mcp
 
 ## Core Features
 
-| Feature                        | Description                                                          |
-| ------------------------------ | -------------------------------------------------------------------- |
-| **Prompt Injection Detection** | 35+ patterns across 6 categories with multi-layer encoding detection |
-| **Jailbreak Detection**        | 44 patterns across 10 categories                                     |
-| **Secret Guard**               | Detects 30+ types of API keys and credentials                        |
-| **PII Guard**                  | Personal information detection and redaction                         |
-| **Reformulation Detection**    | Code format, encoding, and context overload                          |
-| **Bash Safety Guard**          | Command injection detection                                          |
-| **XSS Safety Guard**           | Cross-site scripting pattern detection                               |
-| **GuardrailEngine**            | Orchestrate multiple validators                                      |
-| **Hook System**                | Extensible middleware for custom logic                               |
+| Feature                        | Description                                                                      |
+| ------------------------------ | -------------------------------------------------------------------------------- |
+| **Prompt Injection Detection** | Pattern detection across multiple categories with multi-layer encoding detection |
+| **Jailbreak Detection**        | 44 patterns across 10 categories                                                 |
+| **Secret Guard**               | Detects 30+ types of API keys and credentials                                    |
+| **PII Guard**                  | Personal information detection and redaction                                     |
+| **Reformulation Detection**    | Code format, encoding, and context overload                                      |
+| **Bash Safety Guard**          | Command injection detection                                                      |
+| **XSS Safety Guard**           | Cross-site scripting pattern detection                                           |
+| **GuardrailEngine**            | Orchestrate multiple validators                                                  |
+| **Hook System**                | Extensible middleware for custom logic                                           |
 
 ---
 
