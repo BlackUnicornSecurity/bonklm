@@ -493,6 +493,8 @@ export class JailbreakValidator {
 
     const findings = detectJailbreakPatterns(normalized);
 
+    const originalHasNonAscii = containsNonAscii(content);
+
     // Also run on original if significantly different
     if (obfuscationDetected) {
       const originalFindings = detectJailbreakPatterns(content);
@@ -502,7 +504,7 @@ export class JailbreakValidator {
       // zero-width, control). Whitespace-heavy plain-ASCII content (e.g.
       // pretty-printed JSON) also shrinks >15% during normalization but is NOT
       // obfuscated — don't flag it. Mirrors PromptInjectionValidator's gate.
-      if (containsNonAscii(content)) {
+      if (originalHasNonAscii) {
         findings.push({
           category: 'obfuscation',
           pattern_name: 'heavy_obfuscation',
@@ -510,6 +512,39 @@ export class JailbreakValidator {
           weight: 5,
           description: 'Heavy text obfuscation detected'
         });
+      }
+    }
+
+    // homoglyph_substitution's regex uses broad char classes (Latin | confusable) at every
+    // position of "jailbreak"; after normalization the matched span is always ASCII, AND the
+    // un-normalized second-pass `detectJailbreakPatterns(content)` above also matches on plain
+    // ASCII (broad alternation). The rule fires on benign security-research prose that mentions
+    // the plain word "jailbreak" (5 Tier-1 FP including explicit `clean-*` reference fixtures
+    // self-labeled "NO attack content"). A homoglyph SUBSTITUTION attack must by definition
+    // include ≥1 non-ASCII codepoint INSIDE THE MATCHED SPAN of the original input — a
+    // content-level `containsNonAscii` check is too coarse (benign prose often contains
+    // em-dashes / smart quotes). Re-run the pattern globally against the original and drop the
+    // finding unless a match span carries a non-ASCII codepoint. Run AFTER both detection
+    // passes so a second-pass re-add of the same finding is also filtered.
+    if (findings.some(f => f.pattern_name === 'homoglyph_substitution')) {
+      const homoglyphDef = ALL_PATTERNS.find(p => p.name === 'homoglyph_substitution');
+      if (homoglyphDef) {
+        const globalPattern = new RegExp(homoglyphDef.pattern.source, 'gi');
+        let realSubstitution = false;
+        for (const m of content.matchAll(globalPattern)) {
+          for (let i = 0; i < m[0].length; i++) {
+            if (m[0].charCodeAt(i) > 127) {
+              realSubstitution = true;
+              break;
+            }
+          }
+          if (realSubstitution) break;
+        }
+        if (!realSubstitution) {
+          for (let i = findings.length - 1; i >= 0; i--) {
+            if (findings[i].pattern_name === 'homoglyph_substitution') findings.splice(i, 1);
+          }
+        }
       }
     }
 
