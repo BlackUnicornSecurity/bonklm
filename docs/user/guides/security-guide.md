@@ -270,12 +270,27 @@ if (result.findings.length > 0) {
 
 PII patterns are tuned to avoid false matches on look-alike data:
 
-- **SSN** requires its standard separators (dashes or spaces, in the form `NNN-NN-NNNN`). A bare
-  nine-digit run — a request counter, a token total, a byte size — is **not** reported as an SSN.
-- **BIC/SWIFT** validates the ISO 9362 country code embedded in the code, so an ordinary 8- or
-  11-character uppercase word (such as `INFORMATION`) is **not** mistaken for a bank identifier.
+- **SSN** is reported when it is separator-delimited (dashes or spaces, in the form `NNN-NN-NNNN`)
+  **or** when an unformatted nine-digit run is preceded by an explicit SSN cue (`SSN`,
+  `social security`, `tax id`) — so `SSN: <number>` is still caught. A bare nine-digit run with
+  neither separators nor a nearby SSN cue — a request counter, a token total, a byte size — is
+  **not** reported as an SSN.
+- **BIC/SWIFT** is reported only when the token carries a valid ISO 9362 country code in positions
+  5–6 **and** appears in banking context (`SWIFT`, `IBAN`, `bank code`, `beneficiary bank`, …), so
+  an ordinary 8- or 11-character uppercase word (such as `INFORMATION`) is **not** mistaken for a
+  bank identifier.
 - Several patterns carry algorithmic validators (Luhn for credit cards, MOD-97 for IBAN, etc.) and a
   `contextRequired` flag so lower-confidence formats only surface near sensitive context.
+
+**Known limitations.** A content scanner cannot disambiguate every value from its surrounding text.
+An unformatted SSN with no nearby SSN cue, or a BIC quoted without banking context (including
+non-English banking terms), may not be detected. For fully-structured inputs (form fields, database
+columns, known JSON keys) pair the guard with field-level checks rather than relying on content
+scanning alone.
+
+> **Redaction is fail-safe.** Sanitize/redact mode (`redactContent`, object redaction) masks **any**
+> nine-digit run regardless of separators or cues, so log and telemetry sanitizers never
+> under-redact even though `detect()` is precise.
 
 ### Sanitization Mode
 
