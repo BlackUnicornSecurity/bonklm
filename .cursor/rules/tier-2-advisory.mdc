@@ -1,0 +1,24 @@
+---
+description: "tier-2-advisory"
+globs: ["**/*"]
+alwaysApply: false
+---
+
+## Immutability
+
+Always create new objects; never mutate existing or shared state. Prefer frozen/immutable
+models where the language supports it (`@dataclass(frozen=True)`, Pydantic `frozen=True`,
+`readonly`/`as const`).
+
+## Validate at boundaries
+
+Validate input at system boundaries with schema-based validation (Zod / Pydantic / JSON
+Schema). Fail fast with clear messages. Use parameterized queries (no raw SQL interpolation).
+Prevent XSS. Apply rate limiting. Error messages must not leak data.
+
+## Foreground research-only subagents
+
+Subagents are for research/review only — the orchestrating agent applies all changes.
+Dispatch in the foreground (never spawn-and-idle); run independent reviewers in parallel;
+report progress about every ~4 minutes. Prefer deterministic tool calls (Read/Grep/Glob) over
+agents for simple lookups.

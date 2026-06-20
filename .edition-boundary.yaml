@@ -1,0 +1,30 @@
+# DRAFT — copy to ~/LLM-Guardrails/.edition-boundary.yaml and refine in-repo.
+# BonkLM open-core: Apache-2.0 community core (validators/guards/engine/hooks + all connectors)
+# ships; the BSL-1.1 enterprise tier (curated rule content, signed threat-feed, industry policy
+# packs, control-mapping evidence export, advanced detectors, governance primitives) must not.
+# This complements ADR-0007 "OSS↔EE license-boundary CI guard" (authoritative in-repo).
+# NOTE: confirm the exact enterprise package globs against the monorepo before enforcing — the
+# paths below are the EXPECTED shape, marked to fill, not yet verified file-for-file.
+edition_model: open-core
+
+public_allowlist:
+  - "packages/core/**"
+  - "packages/connectors/**"        # [confirm path] all framework/provider/platform connectors
+  - "docs/**"
+
+ee_paths:                           # [fill exact globs from the monorepo] BSL-1.1 enterprise tier
+  - "packages/enterprise/**"        # [confirm] curated rules / threat-feed / policy packs
+  - "packages/*-ee/**"
+  - "**/threat-feed/**"
+
+forbidden_imports:
+  - "@blackunicorn/.*-ee"
+  - "from .*enterprise"
+
+forbidden_tokens:
+  - "192.168."
+  - "registry.internal"
+
+never_public:
+  - "team/**"                        # security-incident tracking lives here (disclosure policy)
+  - "**/fixtures/customer/**"

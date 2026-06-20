@@ -1,0 +1,12 @@
+---
+description: "tier-3-context"
+globs: ["**/*"]
+alwaysApply: false
+---
+
+## Acquire context before coding
+
+Before writing code: read existing docs / architecture / ADRs, read the exact files you'll
+touch plus their callers and prior art, check the knowledge base first (lessons-learned, prior
+QA, git log), align to a real current EPIC/story (create one if none), and restate the goal in
+one sentence.

@@ -1,0 +1,40 @@
+---
+description: "tier-0-blocking"
+globs: ["**/*"]
+alwaysApply: true
+---
+
+## Never commit secrets
+
+Never hardcode or commit secrets, API keys, tokens, PII, or `.env` files. Supply secrets via
+env vars or the secret manager (Vault); commit only `.env.example`. Reference secrets by
+name/path, never by value.
+
+## Secret scan, zero tolerance
+
+Run a secret/security scan before every commit. Resolve **every** finding including
+medium/low before committing — no postponing, no suppressing without written justification.
+
+## Conventional Commits
+
+Commit messages follow Conventional Commits: `<type>(<scope>): <description>`, imperative,
+subject <=72 chars. Types: feat, fix, refactor, docs, test, chore, perf, ci, build, style.
+Scope optional but encouraged. Trailers (Agent/Task/D-NNN) are opt-in repo overlays.
+
+## Many small files
+
+Prefer many small, feature-scoped files over few large ones. Files: soft 200-400 lines,
+**hard cap 800** (extract before the cap). Functions < 50 lines. No nesting > 4 levels.
+Create each file in its final folder; no root stragglers.
+
+## Test everything changed
+
+Write tests for everything built/fixed/changed before closing a task. Cover edge cases,
+**behavioral regressions (a test that still passes with the fix removed is not a regression
+test)**, flow paths, and auth/permission gaps. Coverage target is set per `rules_profile`
+(see the profile rule).
+
+## Strict lint + typecheck
+
+Run strict lint + format + type-check before commit. No `any`/untyped escapes without
+justification. No dead code (remove, don't comment out). Enforced by a pre-commit hook.
