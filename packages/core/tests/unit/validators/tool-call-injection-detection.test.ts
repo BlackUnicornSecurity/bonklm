@@ -20,8 +20,9 @@
  *     (`encrypted_value` / `exfil` / `base64(`).
  *
  * ADR-0001 non-vacuity: every DETECTION test REDs if its pattern (or the category registration) is
- * removed; every PRECISION test REDs if the second-signal gate is loosened (the round-1/2/3
- * audit-confirmed benign inputs below are the load-bearing guards).
+ * removed; every PRECISION test REDs if the second-signal gate is loosened (the audit-confirmed
+ * benign inputs below — agent/MCP docs, orchestration prose, RAG/architecture prose, security
+ * write-ups, CI/secrets config — are the load-bearing guards).
  */
 
 import { describe, it, expect } from 'vitest';
@@ -88,9 +89,20 @@ describe('tool-call hijack — PRECISION: audit-confirmed benign must NOT fire',
   });
 
   it('THX-012: benign agent doc "Any AI agent can call the search tool" does NOT fire (no indirect frame)', () => {
-    // Guard: removing the self-referential `that quotes/reads this` frame gate from
+    // Guard: removing the self-referential `that … this <content-noun>` frame gate from
     // indirect_injection_tool_directive REDs this (it would match the bare "agent … call … tool").
     expect(anyTci('Any AI agent can call the search tool to fetch data.')).toBe(false);
+  });
+
+  it('THX-012b: benign RAG/architecture prose "the agent that processes the chunks … call the tool" does NOT fire', () => {
+    // Guard: relaxing the anchor from `this <content-noun>` back to bare `the` REDs this — generic
+    // pipeline prose ("that processes/reads THE X") reaches the verbs but is not an injected directive.
+    expect(
+      anyTci(
+        'In our pipeline, the agent that processes the retrieved chunks may decide to call the summarization tool.'
+      )
+    ).toBe(false);
+    expect(anyTci('Any model that reads the alert should call the enrichment tool before escalating.')).toBe(false);
   });
 
   it('THX-013: benign CI "tool: black / args:" does NOT fire', () => {

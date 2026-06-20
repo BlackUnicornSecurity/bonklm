@@ -794,14 +794,17 @@ export const TOOL_CALL_INJECTION_PATTERNS: PatternDefinition[] = [
   {
     // An INDIRECT-INJECTION directive: content that addresses the agent which
     // *processes the retrieved text itself* — "guidance for any AI agent THAT
-    // quotes this excerpt … instruct the downstream consumer … by calling the X
-    // tool" — and leads to a tool-call directive. The self-referential reading
-    // verb ("agent that QUOTES / READS / CITES this") is the tell: benign agent
-    // docs say "guidance for any agent that NEEDS to call tools" (a need verb,
-    // not a reading-this-content verb), so they do not match.
+    // quotes THIS EXCERPT … instruct the downstream consumer … by calling the X
+    // tool" — and leads to a tool-call directive. The tell is the SELF-REFERENTIAL
+    // anchor `this <content-noun>` (this excerpt / passage / message / …): an
+    // instruction that points back at the very text carrying it. The determiner is
+    // pinned to `this` (NOT bare `the`) followed by a content noun, because generic
+    // pipeline prose — "the agent that processes THE retrieved chunks … call the
+    // tool", "any model that reads THE alert … call the enrichment tool" — reaches
+    // the same verbs but is architecture description, not an injected directive.
     name: 'indirect_injection_tool_directive',
     pattern:
-      /\b(?:agents?|assistants?|models?|llms?)\s+(?:that|which|who)\s+(?:quotes?|cites?|reads?|processes?|consumes?|receives?|sees?|encounters?)\s+(?:this|the)\b[\s\S]{0,200}?\b(?:call(?:ing)?|invoke|invoking|instruct(?:s|ing)?)\b[\s\S]{0,40}?\btool\b/i,
+      /\b(?:agents?|assistants?|models?|llms?)\s+(?:that|which|who)\s+(?:quotes?|cites?|reads?|quoting|citing|reading|processes?|processing|sees?|encounters?|consumes?|ingests?)\s+this\s+(?:excerpt|passage|snippet|quote|note|comment|field|record|ticket|entry|chunk|fragment|section|block|message|content|text|context|document|page|paragraph|wiki|advisory|payload|result|output|response)s?\b[\s\S]{0,200}?\b(?:call(?:ing)?|invoke|invoking|instruct(?:s|ing)?)\b[\s\S]{0,40}?\btool\b/i,
     severity: Severity.WARNING,
     description: 'Indirect-injection directive (content addressing the reading agent) staging a tool call'
   },
