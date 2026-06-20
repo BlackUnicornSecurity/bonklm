@@ -17,10 +17,6 @@
           },
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start-tts.sh"
-          },
-          {
-            "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR\"/src/utility/tools/reference-validator/cli.js --json"
           }
         ]
