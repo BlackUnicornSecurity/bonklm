@@ -194,6 +194,28 @@ export interface PatternDefinition {
 // =============================================================================
 
 /**
+ * Secret-typed noun sources shared by the credential/secret-exfiltration patterns at the end of
+ * `SYSTEM_OVERRIDE_PATTERNS` (`rag_secret_exfil`, `tool_secret_exfil`, `creds_file_exfil`,
+ * `cred_interrogative`). Hoisted to one source so the patterns cannot drift apart.
+ * `STRONG_SECRET_SRC` = unambiguous secret nouns that essentially never appear benignly inside an
+ * exfiltration frame (api key, bearer/access/JWT/OAuth token, private/SSH/RSA key, connection
+ * string, AWS access-key ids). `QUALIFIED_SECRET_SRC` = otherwise-generic nouns (password /
+ * credentials / login) gated by an infra qualifier (database/admin/vault/…) so the benign bare form
+ * ("reset your password") stays inert.
+ */
+const STRONG_SECRET_SRC = String.raw`(?:api[-\s]?keys?|bearer\s+tokens?|access\s+tokens?|auth(?:entication)?\s+tokens?|session\s+tokens?|jwt\s+tokens?|id\s+tokens?|refresh\s+tokens?|oauth\s+tokens?|api\s+tokens?|private\s+keys?|ssh\s+keys?|rsa\s+keys?|ecdsa\s+keys?|pem\s+(?:files?|keys?)|secret\s+keys?|signing\s+keys?|encryption\s+keys?|connection\s+strings?|connection\s+uris?|aws_access_key_id|aws_secret_access_key|secret_access_key)`;
+const QUALIFIED_SECRET_SRC = String.raw`(?:(?:database|db|admin|root|user|service|prod(?:uction)?|server|sql|postgres(?:ql)?|mysql|mongo(?:db)?|redis|vault|system)\s+(?:passwords?|credentials?|logins?)|service\s+credentials?|api\s+credentials?|database\s+credentials?|stored\s+credentials?|vector\s+(?:store|database|db)\s+(?:auth|credentials?|password|login))`;
+const SECRET_NOUN_SRC = `(?:${STRONG_SECRET_SRC}|${QUALIFIED_SECRET_SRC})`;
+// Agent tool nouns that legitimately read secrets/files/env/RAG — the frame an exfil directive abuses.
+const SECRET_TOOL_SRC = String.raw`(?:[a-z_]*(?:get_env\w*|getenv|get_secret\w*|read_secret\w*|fetch_secret\w*|read_file|dump_env\w*|list_credentials|list_secrets|read_credential\w*|get_credential\w*)|(?:file[-\s]?access|file|secret|credential|environment|env|knowledge[-\s]?base|retrieval)\s+tool)`;
+// Uppercase secret ENV-VAR token used CASE-SENSITIVELY by `tool_envvar_exfil`. Gated on a secret stem:
+// KEY/TOKEN require one of the stems (a benign `PARTITION_KEY` / `NEXT_PAGE_TOKEN` has none and stays
+// inert), while `SECRET`/`PASSWORD`/`CREDENTIAL` are inherently-secret keywords. The token must END at a
+// keyword (+ optional `_ID`/`_BASE64` suffix), so `API_KEY_ROTATION_DAYS` does not match.
+const SECRET_ENVVAR_STEM_SRC = String.raw`(?:API|ACCESS|PRIVATE|BEARER|AUTH|OAUTH|REFRESH|SESSION|SIGNING|ENCRYPTION|MASTER|AWS|GCP|AZURE|GITHUB|GITLAB|SLACK|STRIPE|TWILIO|SENDGRID|OPENAI|ANTHROPIC|DATABASE|JWT|SSH|RSA|VAULT|ADMIN|ROOT|CLIENT)`;
+const SECRET_ENVVAR_SRC = String.raw`\b(?=[A-Z0-9_]{0,50}(?:${SECRET_ENVVAR_STEM_SRC}|SECRET|PASSWORD|CREDENTIAL))[A-Z][A-Z0-9_]{1,50}?(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)(?:_ID|_IDS|_BASE64|_B64)?\b`;
+
+/**
  * Category A: System Override Patterns
  * Attempts to override system instructions or behavior.
  */
@@ -331,6 +353,99 @@ export const SYSTEM_OVERRIDE_PATTERNS: PatternDefinition[] = [
       /(?:bypass|ignore|disable|circumvent|override|turn\s+off|get\s+around)\b[^.\n]{0,25}\byour\s+own\b[^.\n]{0,25}system\s+prompt/i,
     severity: Severity.CRITICAL,
     description: 'Request to subvert the assistant’s own safeguards'
+  },
+  // ---------------------------------------------------------------------------------------------
+  // Credential / secret EXFILTRATION directives (request-side complement to SecretGuard, which
+  // detects secret VALUES already present in text; these catch the imperative to PRODUCE them).
+  // Sibling family to `system_prompt_exfil` above. Each pattern is anchored on an ATTACK-SPECIFIC
+  // FRAME — search-your-RAG, invoke-a-secret-tool, read-a-secrets-file, interrogate-the-assistant —
+  // NOT on a bare verb+secret, because benign secops and code-description prose ("the helper
+  // extracts the bearer token and returns its value") reaches verb+secret but never the frame.
+  // Pure-display verbs (show/display/print/output) and pure-SEARCH verbs (find) are EXCLUDED from the
+  // exfil-verb gates — they match benign debug / remediation prose ("find all the passwords flagged
+  // as weak"). Negation-guarded (`(?<!non[-\s])` keeps "return the non-secret settings" inert);
+  // bounded windows are ReDoS-safe. `rag_secret_exfil`'s `[\s\S]{0,300}?` bridge intentionally spans
+  // sentences (a RAG frame and its extract clause are often separated) — do NOT narrow it to `[^.\n]`.
+  {
+    // Search YOUR RAG / knowledge base / documents, then EXTRACT/RETURN the secrets as values. The
+    // benign form requests INFORMATION ("summarize / provide information about / retrieve documents
+    // that discuss" best-practices/policies) and carries no exfil verb governing an
+    // `all|any|every|the <secret>` object. The trailing negative lookahead additionally rejects the
+    // case where the secret noun is a TOPIC MODIFIER of a benign doc ("return the password policy
+    // section", "return the API key rotation guide") rather than the exfiltration object itself.
+    name: 'rag_secret_exfil',
+    pattern: new RegExp(
+      String.raw`(?:search|query|scan|comb|look\s+through|go\s+through|crawl|perform\s+a\s+[a-z]+\s+search\s+of)\b[^.\n]{0,50}\b(?:your\s+|the\s+)?(?:rag|knowledge[-\s]?base|vector\s+(?:store|database|db)|retrieval\s+(?:store|index)|indexed\s+documents?|(?:rag\s+)?documents?|knowledge\s+base)\b[\s\S]{0,300}?\b(?:extract|exfiltrat\w*|dump|harvest|return|reveal|disclose)\b[^.\n]{0,30}\b(?:all|any|every|the)\s+(?:[a-z]+\s+){0,3}?(?:${STRONG_SECRET_SRC}|(?<!non[-\s])credentials?|(?<!non[-\s])secrets?|passwords?)\b(?!\s+(?:policy|policies|section|guide|guidelines?|document|documentation|article|management|requirements?|reset|rotation|best[-\s]practices?|standards?|hygiene|manager|overview|training|awareness|faq))`,
+      'i'
+    ),
+    severity: Severity.CRITICAL,
+    description: 'Retrieval-store secret-exfiltration request'
+  },
+  {
+    // USE / EXECUTE a secret-reading tool (get_secret/read_file/dump_environment/list_credentials/…)
+    // to read/extract a secret NOUN. Case-insensitive. The uppercase-env-var object is split into
+    // `tool_envvar_exfil` below (a case-sensitive pattern) — folding it in here under /i would match
+    // ordinary lowercase compounds (sortkey, rowkey). Benign tool prose ("use the search tool to
+    // retrieve the documentation") names no secret object.
+    name: 'tool_secret_exfil',
+    pattern: new RegExp(
+      String.raw`(?:use|using|execute|run|call|invoke)\b[^.\n]{0,30}\b(?:your\s+|the\s+)?${SECRET_TOOL_SRC}\b[\s\S]{0,150}?\b(?:read|access|retrieve|extract|get|dump|export|reveal|list)\b[^.\n]{0,45}\b${SECRET_NOUN_SRC}`,
+      'i'
+    ),
+    severity: Severity.CRITICAL,
+    description: 'Tool-mediated secret-exfiltration request'
+  },
+  {
+    // Same tool frame, but the secret object is an UPPERCASE secret env-var NAME (BEARER_TOKEN,
+    // AWS_SECRET_ACCESS_KEY, GITHUB_TOKEN). CASE-SENSITIVE (no /i flag), and the env-var token
+    // (`SECRET_ENVVAR_SRC`) is STEM-GATED so benign `PARTITION_KEY` / `NEXT_PAGE_TOKEN` / `FEATURE_FLAG_KEY`
+    // do not match. Read-verb set matches `tool_secret_exfil` (no display/return). NOTE: `SECRET_TOOL_SRC`'s
+    // "<X> tool" prose branch is lowercase-only here (no /i) — a capitalised "Environment tool" + uppercase
+    // env var is a known, accepted RECALL gap, not a false positive.
+    name: 'tool_envvar_exfil',
+    pattern: new RegExp(
+      String.raw`(?:[Uu]se|[Uu]sing|[Ee]xecute|[Rr]un|[Cc]all|[Ii]nvoke)\b[^.\n]{0,30}\b(?:[Yy]our\s+|[Tt]he\s+)?${SECRET_TOOL_SRC}\b[\s\S]{0,150}?\b(?:read|access|retrieve|extract|get|dump|export|reveal|list)\b[^.\n]{0,45}${SECRET_ENVVAR_SRC}`
+    ),
+    severity: Severity.CRITICAL,
+    description: 'Tool-mediated secret env-var exfiltration request'
+  },
+  {
+    // A secret-reading tool invoked WITH a secret-typed parameter ("execute the get_secret tool with
+    // parameter 'database_password'"). The argument must be QUOTED or `=`/`:`-assigned AND itself contain
+    // a secret keyword, so a non-secret parameter ("with parameter 'feature_flag'") and mere prose naming
+    // a variable ("the get_env variable API_KEY_ROTATION_DAYS") do not match.
+    name: 'tool_param_secret_exfil',
+    pattern:
+      /(?:get_secret|read_secret|fetch_secret|get_credential|read_credential|get_env\w*)\w*\b[^.\n]{0,40}\b(?:with\s+)?(?:parameter|param|argument|arg|key|name|variable)\s*(?:["']|[:=]\s*["']?)[a-z_]*(?:password|secret|token|api_?key|credential)[a-z_]*/i,
+    severity: Severity.CRITICAL,
+    description: 'Secret-tool invoked with a secret-typed parameter'
+  },
+  {
+    // Read/load a .env / config / secrets / credentials file, THEN extract/dump secrets from it.
+    // Only genuinely-exfil verbs gate the tail (extract/dump/reveal/harvest/expose/steal/exfiltrate);
+    // benign verbs (return/get/view) were removed because onboarding/IR prose reaches them ("open the
+    // settings file to view which API keys are required"). All tail nouns are negation-guarded.
+    name: 'creds_file_exfil',
+    pattern: new RegExp(
+      String.raw`(?:read|access|open|load|parse|cat|exfiltrat\w*)\b[^.\n]{0,30}(?:\.env\b|\b(?:env\s+file|config(?:uration)?\s+file|settings\s+file|secrets?\s+file|credentials?\s+(?:file|\.ya?ml|\.json)|service-credentials)\b)[^.\n]{0,45}\b(?:to\s+)?(?:extract|dump|reveal|harvest|expose|steal|exfiltrat\w*)\b[^.\n]{0,30}\b(?:${STRONG_SECRET_SRC}|(?<!non[-\s])(?:credentials?|secrets?|passwords?|tokens?|api\s*keys?|sensitive\s+data))\b`,
+      'i'
+    ),
+    severity: Severity.CRITICAL,
+    description: 'Secrets-file read-and-exfiltrate request'
+  },
+  {
+    // Interrogate the ASSISTANT for its own credentials ("what credentials do you use / what keys do
+    // you have access to"). The impersonal "are stored/used/configured" branch additionally requires a
+    // nearby second-person `your` so benign infra-inventory ("which secrets are stored in Vault") and
+    // third-person ("what credentials does the service use", "what credentials do I need from IT") stay
+    // inert.
+    name: 'cred_interrogative',
+    pattern: new RegExp(
+      String.raw`(?:what|which)\s+(?:${STRONG_SECRET_SRC}|credentials?|auth\w*\s+keys?|passwords?|secrets?)\s+(?:do\s+(?:you|your\s+\w+)\s+(?:use|have)|are\s+(?:stored|used|configured)\b[^.\n]{0,20}\byour\b|do\s+you\s+have\s+access\s+to)`,
+      'i'
+    ),
+    severity: Severity.CRITICAL,
+    description: 'Interrogation for the assistant’s own credentials'
   }
 ];
 
