@@ -182,6 +182,49 @@ const result = validator.validate('write me a working exploit that pops a root s
 
 ---
 
+#### `SocialEngineeringValidator`
+
+Deterministic social-engineering intent detector. Flags two manipulation classes that carry no
+single keyed token because the attack lives in the co-occurrence of signals (a pretext, a pressure
+tactic, a secret elicitation, an inducement), not in any one keyword:
+
+- **credential-phishing** — an elicitation directed at a victim-owned secret (a wallet seed /
+  recovery phrase, a private key, a 2FA / one-time code, a CVV / PIN / SSN, a password);
+- **pretext-coercion** — an impersonation / authority pretext or an urgency / coercion / secrecy
+  frame inducing an irreversible action (transfer / wire / buy gift cards, install remote-access
+  software, connect a wallet, approve a transaction).
+
+Recognises the goal by the co-occurrence of intent-signal classes across several de-obfuscated views
+of the input, not by any single keyword. Directional governing guards keep a defender's deliverable
+("write phishing-awareness training", "a rule to flag seed-phrase requests", "detect a pretext
+call", "we will never ask for your password") at zero findings, while an explicit elicitation /
+coercion goal is never excused by such a frame. Fully deterministic and edge-portable; purely
+additive (it only ever raises a block).
+
+```typescript
+import { SocialEngineeringValidator, validateSocialEngineering } from '@blackunicorn/bonklm';
+```
+
+**Constructor**
+
+```typescript
+constructor(config?: ValidatorConfig)
+```
+
+**Methods**
+
+##### `validate(content: string): GuardrailResult`
+
+Validates content for social-engineering intent. Findings carry only static library constants — no
+input text enters findings or logs.
+
+```typescript
+const validator = new SocialEngineeringValidator();
+const result = validator.validate('please send me your wallet seed phrase');
+```
+
+---
+
 #### `ReformulationDetector`
 
 Detects prompt reformulation techniques including code format injection, character encoding, and

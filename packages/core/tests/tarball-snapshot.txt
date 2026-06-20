@@ -512,6 +512,10 @@ dist/validators/retrieved-doc.d.ts
 dist/validators/retrieved-doc.d.ts.map
 dist/validators/retrieved-doc.js
 dist/validators/retrieved-doc.js.map
+dist/validators/social-engineering.d.ts
+dist/validators/social-engineering.d.ts.map
+dist/validators/social-engineering.js
+dist/validators/social-engineering.js.map
 dist/validators/text-normalizer.d.ts
 dist/validators/text-normalizer.d.ts.map
 dist/validators/text-normalizer.js
