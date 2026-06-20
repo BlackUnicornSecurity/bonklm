@@ -315,6 +315,7 @@ export default tseslint.config(
       'packages/core/src/validators/jailbreak.ts',
       'packages/core/src/validators/text-normalizer.ts',
       'packages/core/src/validators/code-injection.ts',
+      'packages/core/src/validators/harm-intent.ts',
       'packages/core/src/cli/utils/error.ts',
       'packages/core/src/cli/utils/audit.ts',
       'packages/core/src/cli/commands/wizard.ts',

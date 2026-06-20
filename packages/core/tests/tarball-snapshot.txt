@@ -456,6 +456,10 @@ dist/validators/encoded-rescan.d.ts
 dist/validators/encoded-rescan.d.ts.map
 dist/validators/encoded-rescan.js
 dist/validators/encoded-rescan.js.map
+dist/validators/harm-intent.d.ts
+dist/validators/harm-intent.d.ts.map
+dist/validators/harm-intent.js
+dist/validators/harm-intent.js.map
 dist/validators/index.d.ts
 dist/validators/index.d.ts.map
 dist/validators/index.js

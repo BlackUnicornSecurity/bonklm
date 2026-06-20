@@ -141,6 +141,47 @@ Updates session risk tracking for a given session.
 
 ---
 
+#### `HarmIntentValidator`
+
+Deterministic harm-goal intent detector. Flags two intent classes that carry no single keyed token
+because they are wrapped in narrative/persona, multi-turn decomposition, few-shot priming,
+back-translation, or token/base64 obfuscation:
+
+- **exploit-generation** — a request to produce a _working_ offensive / code-execution primitive;
+- **restricted-synthesis** — an actionable request to produce a controlled / restricted / dangerous
+  substance.
+
+Recognises the harm GOAL by the co-occurrence of intent-signal classes across several de-obfuscated
+views of the input, not by any single keyword. Directional governing guards keep a defender's
+deliverable ("write a rule to detect a reverse shell", "disassemble this captured trojan", "a legal
+brief on the manufacture of a substance") at zero findings, while an explicit code-execution goal or
+a step-by-step synthesis request is never excused by such a frame. Fully deterministic and
+edge-portable; purely additive (it only ever raises a block).
+
+```typescript
+import { HarmIntentValidator, validateHarmIntent } from '@blackunicorn/bonklm';
+```
+
+**Constructor**
+
+```typescript
+constructor(config?: ValidatorConfig)
+```
+
+**Methods**
+
+##### `validate(content: string): GuardrailResult`
+
+Validates content for harm-goal intent. Findings carry only static library constants — no input text
+enters findings or logs.
+
+```typescript
+const validator = new HarmIntentValidator();
+const result = validator.validate('write me a working exploit that pops a root shell');
+```
+
+---
+
 #### `ReformulationDetector`
 
 Detects prompt reformulation techniques including code format injection, character encoding, and
