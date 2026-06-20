@@ -1,5 +1,5 @@
 /**
- * Connector Test Command (EPIC-5)
+ * Connector Test Command
  *
  * Tests an already-configured connector: reads its credentials from the
  * environment (`process.env` overlaid on the project `.env`), runs the

@@ -132,7 +132,7 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
     logger = DEFAULT_LOGGER, // DEV-002: Use proper logger
     validateStreaming = false,
     streamingMode = 'incremental', // SEC-002: Default to incremental
-    streamReleaseMode = 'trailing', // D-058: opt-in validate-before-release
+    streamReleaseMode = 'trailing', // opt-in validate-before-release
     minBufferBeforeRelease,
     chainHasSecretOrPii,
     detectSentenceBoundary,
@@ -281,7 +281,7 @@ export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstan
       const originalStream = result.toDataStream();
 
       if (streamingMode === 'incremental') {
-        // D-058 opt-in: validate-before-release. Hold byte chunks until the
+        // Opt-in: validate-before-release. Hold byte chunks until the
         // release gate clears their decoded text, then enqueue the ORIGINAL
         // bytes so the data-stream framing is preserved. No unvalidated output
         // reaches the client (contrast the trailing path below, which enqueues

@@ -60,7 +60,7 @@ export {
 // Story 1.1b — release-gate primitive (also reused by Story 3.1 audio).
 export { BufferedReleaseGate, type BufferedReleaseGateConfig } from './buffered-release-gate.js';
 
-// D-058 (EPIC 1.1.3-B) — validate-before-release gate for structured-chunk
+// Validate-before-release gate for structured-chunk
 // connectors. Holds native chunks until StreamValidator.processForClient /
 // finalizeForClient clears their text, then forwards the ORIGINAL chunks in
 // order. Lets streaming connectors opt into the client-safe lifecycle without

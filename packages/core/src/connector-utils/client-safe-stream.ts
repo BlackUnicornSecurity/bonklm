@@ -2,7 +2,7 @@
  * Connector Utilities — Client-Safe Stream Gate
  * =============================================
  *
- * D-058 (EPIC 1.1.3-B) — bridges the `StreamValidator` validate-before-release
+ * Bridges the `StreamValidator` validate-before-release
  * lifecycle (`processForClient` / `finalizeForClient`) to connectors that
  * forward **structured** chunks (provider response objects, SSE-framed bytes,
  * SDK event objects) rather than raw text.
