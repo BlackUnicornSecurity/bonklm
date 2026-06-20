@@ -69,10 +69,17 @@ export function detectHeuristicPatterns(text: string, cache?: RegexCache): Heuri
   const regexCache = cache ?? getRegexCache();
 
   // 1. Multiple authority claims
-  // Restricted to impersonation-specific terms. Generic job words ('developer', 'engineer',
-  // 'owner', 'creator') were removed: they co-occur in ordinary benign content (e.g. a project
-  // brief naming "developers" and a "QA engineer") and falsely tripped the >=2 threshold.
-  const authorityWords = ['administrator', 'sysadmin', 'superuser', 'anthropic', 'openai'];
+  // Restricted to privileged-ROLE impersonation terms ('administrator'/'sysadmin'/'superuser').
+  // Two earlier classes were dropped because they co-occur in ordinary benign content and falsely
+  // tripped the >=2 threshold with no attack context: generic job words ('developer', 'engineer',
+  // 'owner', 'creator'); and AI-vendor nouns ('anthropic'/'openai'), which appear together in benign
+  // comparative and technical writing (model comparisons, tooling docs) far more often than in a
+  // genuine authority claim. Named-vendor impersonation is caught precisely elsewhere (the
+  // `developer_impersonation` jailbreak pattern and the PromptInjection `authority_claim` pattern);
+  // this count heuristic intentionally no longer treats a bare vendor-name co-occurrence as an
+  // authority signal, which removes a benign false-positive class at the cost of the coincidental
+  // (non-vector) catches that relied only on the vendor-noun count.
+  const authorityWords = ['administrator', 'sysadmin', 'superuser'];
   const authorityCount = authorityWords.filter(w => text.toLowerCase().includes(w)).length;
   if (authorityCount >= 2) {
     findings.push({
