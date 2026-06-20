@@ -518,8 +518,8 @@ export const JAILBREAK_KEYWORDS = [
   // 'pretend','unlimited') were removed: the LCS-based fuzzy ratio matched them against
   // ordinary English ('stan'~"standard"/"instance", "instructions"~"restrictions",
   // "replays"~"roleplay"), the dominant source of benign false positives. Those terms are
-  // still detected exactly by the pattern sets above. See
-  // tests/unit/validators/structured-benign-fp.test.ts.
+  // still detected exactly by the pattern sets above. Regression coverage for these benign
+  // collisions lives in the validator unit tests.
   'jailbreak',
   'jailbroken',
   'ignore',
