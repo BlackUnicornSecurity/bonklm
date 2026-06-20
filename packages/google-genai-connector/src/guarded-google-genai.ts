@@ -317,7 +317,7 @@ export function wrapGenerateContentStream(
             onBlocked: (accumulated, reason) => onStreamBlocked?.(accumulated, reason)
           })
         : null;
-    // D-058 opt-in gated lifecycle: hold chunks until the release gate clears
+    // Opt-in gated lifecycle: hold chunks until the release gate clears
     // their extracted text, then forward the original response objects — so none
     // reaches the client before its extracted text validates (same content the
     // trailing path scans; only the timing changes).
@@ -551,7 +551,7 @@ export function wrapChat(
               onBlocked: (accumulated, reason) => onStreamBlocked?.(accumulated, reason)
             })
           : null;
-      // D-058 opt-in gated lifecycle — see wrapGenerateContentStream.
+      // Opt-in gated lifecycle — see wrapGenerateContentStream.
       const gate = gated
         ? new ClientSafeStreamGate<GoogleGenerateContentResponse>(
             StreamValidator.create(streamEngine, {

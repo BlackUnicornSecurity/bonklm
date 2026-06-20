@@ -134,7 +134,7 @@ export function messagesToTextDucked(messages: unknown[] | undefined): string {
 type StreamPart = { type: string; textDelta?: string; [k: string]: unknown };
 
 /**
- * D-058: extract the validatable text carried by a single v5/v6 stream part.
+ * Extract the validatable text carried by a single v5/v6 stream part.
  * Centralises the accumulation rules so the trailing and gated `wrapStream`
  * paths validate IDENTICAL text — only the release timing differs. Covers
  * text/reasoning/tool-input deltas (`textDelta`), `source` URL/title citations,
@@ -294,7 +294,7 @@ export function bonkMiddleware(
         }
       }
 
-      // D-058 opt-in gated path: hold parts until the release gate clears their
+      // Opt-in gated path: hold parts until the release gate clears their
       // extracted text, then forward the ORIGINAL parts — so no part reaches the
       // client before its extracted text validates (block-before-forward, not
       // tail-only; same content the trailing path scans).

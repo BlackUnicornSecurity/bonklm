@@ -1,5 +1,5 @@
 /**
- * Connector Remove Command (EPIC-6)
+ * Connector Remove Command
  *
  * Removes a connector's credentials from the project `.env`. Registry-gated:
  * the id must resolve to a known connector, and only that connector's declared

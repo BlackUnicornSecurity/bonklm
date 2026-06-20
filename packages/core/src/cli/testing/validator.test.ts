@@ -484,7 +484,7 @@ describe('validator', () => {
 
     // A connector that declares an env-var -> config-key remap (like the real
     // openai/anthropic connectors), used to exercise the re-keying path that
-    // validateConnectorConfig must apply before schema validation (D-031).
+    // validateConnectorConfig must apply before schema validation.
     function makeMappedConnector(): ConnectorDefinition {
       return {
         id: 'apikey-connector',
@@ -550,7 +550,7 @@ describe('validator', () => {
       expect(result.errors).toEqual([]);
     });
 
-    it('re-keys an env-var-keyed credential bag before schema validation (D-031)', () => {
+    it('re-keys an env-var-keyed credential bag before schema validation', () => {
       // The CLI loaders build config keyed by env-var name (OPENAI_API_KEY), but
       // configSchema reads apiKey. validateConnectorConfig must re-key via
       // configKeyByEnvVar — the same seam testConnector uses — or it wrongly
@@ -562,7 +562,7 @@ describe('validator', () => {
       expect(result.errors).toEqual([]);
     });
 
-    it('validates the real OpenAI connector from an OPENAI_API_KEY-keyed bag (D-031)', () => {
+    it('validates the real OpenAI connector from an OPENAI_API_KEY-keyed bag', () => {
       const result = validateConnectorConfig(openaiConnector, { OPENAI_API_KEY: 'sk-test' });
 
       expect(result.isValid).toBe(true);
@@ -570,7 +570,7 @@ describe('validator', () => {
       expect(result.errors).toEqual([]);
     });
 
-    it('validates the real Anthropic connector from an ANTHROPIC_API_KEY-keyed bag (D-031)', () => {
+    it('validates the real Anthropic connector from an ANTHROPIC_API_KEY-keyed bag', () => {
       const result = validateConnectorConfig(anthropicConnector, { ANTHROPIC_API_KEY: 'sk-ant-test' });
 
       expect(result.isValid).toBe(true);

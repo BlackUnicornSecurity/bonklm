@@ -61,7 +61,7 @@ vi.mock('os', () => ({
 // Promise directly — is what makes the promisify regression non-vacuous: the
 // previously masked, un-promisified `await execFile(...)` passes NO callback,
 // so it never observes the outcome and resolves immediately, exactly as it
-// (mis)behaves on real Windows (D-024). Per-test outcome control: list the
+// (mis)behaves on real Windows. Per-test outcome control: list the
 // commands that must fail in `execFileFailFor` (empty ⇒ every call succeeds).
 // `(cmd, args, options)` is recorded on `execFileMock`, so the icacls argv AND the
 // timeout/windowsHide options are assertable; the promisify-appended callback is not.
@@ -458,14 +458,14 @@ describe('EnvManager', () => {
       expect(execFileMock).not.toHaveBeenCalled();
     });
 
-    // Fail-closed regression lock (D-025). The `attrib +R` fallback was REMOVED — a
+    // Fail-closed regression lock. The `attrib +R` fallback was REMOVED — a
     // FAT read-only flag gives no ACL confidentiality for a secrets file and left
     // the .env read-only, breaking the next write. icacls is now the only tool, so
     // an icacls failure fails CLOSED: throw WINDOWS_PERMISSIONS_FAILED, never spawn
     // attrib. Non-vacuous: the faithful mock signals failure only via the
     // promisify-appended callback, so an un-promisified `await execFile` would
     // resolve through the failure and write() would RESOLVE (no throw) — RED.
-    it('fails closed with WINDOWS_PERMISSIONS_FAILED when icacls fails — no attrib fallback (D-025)', async () => {
+    it('fails closed with WINDOWS_PERMISSIONS_FAILED when icacls fails — no attrib fallback', async () => {
       execFileFailFor = new Set(['icacls']);
       envManager = new EnvManager('.test.env');
 
@@ -546,7 +546,7 @@ describe('EnvManager', () => {
   });
 
   // -------------------------------------------------------------------------
-  // D-024 regression — `execFile` MUST be promisified before being awaited.
+  // Regression — `execFile` MUST be promisified before being awaited.
   //
   // Callback-style execFile returns a ChildProcess, not a Promise, so a bare
   // `await execFile(...)` never waits for the process and never sees a non-zero
@@ -559,7 +559,7 @@ describe('EnvManager', () => {
   // locks; this one additionally proves the original rejection PROPAGATED into
   // the catch (it survives as the WizardError cause).
   // -------------------------------------------------------------------------
-  describe('setWindowsPermissions — execFile promisify contract (D-024)', () => {
+  describe('setWindowsPermissions — execFile promisify contract', () => {
     beforeEach(() => {
       platformMock.mockReturnValue('win32');
       existsSyncMock.mockReturnValue(false);

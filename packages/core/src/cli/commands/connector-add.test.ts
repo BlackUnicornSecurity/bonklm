@@ -8,8 +8,8 @@
  * it through `sanitizeMeta` so a hostile/buggy provider or a crafted CLI
  * argument cannot echo raw ANSI / control / bidi / line-separator sequences to
  * the terminal. Two scopes are covered: the connection-test failure and
- * catch-all error sinks (D-035), and the residual id-echo,
- * existing-credential-display, and ERROR-code wizard-message sinks (D-036).
+ * catch-all error sinks, and the residual id-echo,
+ * existing-credential-display, and ERROR-code wizard-message sinks.
  * Credential redaction stays a `--json`-only concern (the CLI-wide human-path
  * convention); `connector add` has no `--json` path.
  */
@@ -143,7 +143,7 @@ describe('connector add command', () => {
   });
 });
 
-describe('connector add action — human-path output sanitization (D-035)', () => {
+describe('connector add action — human-path output sanitization', () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
@@ -212,7 +212,7 @@ describe('connector add action — human-path output sanitization (D-035)', () =
   });
 });
 
-describe('connector add action — residual TTY-sink sanitization (D-036)', () => {
+describe('connector add action — residual TTY-sink sanitization', () => {
   let exitSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
