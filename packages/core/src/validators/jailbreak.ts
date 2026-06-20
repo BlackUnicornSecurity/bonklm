@@ -281,6 +281,7 @@ export function detectJailbreakPatterns(content: string): JailbreakFinding[] {
  * Get category for a pattern name.
  */
 function getPatternNameCategory(name: string): string {
+  if (name.startsWith('fic_frame')) return 'fictional_weaponization';
   if (name.includes('dan')) return 'dan';
   if (name.includes('roleplay') || name.includes('character')) return 'roleplay';
   if (name.includes('hypothetical') || name.includes('educational')) return 'hypothetical';

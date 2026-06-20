@@ -490,6 +490,105 @@ const OBFUSCATION_PATTERNS: JailbreakPattern[] = [
 ];
 
 /**
+ * Category K: Fictional-Frame Weaponization
+ * =========================================
+ * Narrative / persona / dramatization framing wrapped around a request for a COMPLETE, OPERATIONAL
+ * harmful artifact — a working memory-corruption exploit, or controlled-substance / weapon synthesis
+ * in procedural detail. The benign twin is ordinary creative writing ("a hacker broke in") or
+ * security education ("how a buffer overflow works"): it NAMES a technique but does not demand a
+ * functioning, reproducible weapon. So each pattern requires THREE co-occurring anchors — never a
+ * bare fiction frame and never a bare security noun:
+ *   1. a FICTIONAL_FRAME wrapper (benign on its own),
+ *   2. a REALISM_DEMAND — a PRODUCTION demand that the artifact itself be functional / reproducible /
+ *      implementable ("must actually function", "reproduce the attack", "operational detail for a
+ *      student to implement", "full pwntools script", "exact byte offset", "how to build a … exploit").
+ *      This is the discriminator: a request to merely describe / teach / narrate an attack — or benign
+ *      creative writing that asks for authentic PROSE ("keep it authentic", "no real code") — does NOT
+ *      satisfy it. Authenticity-of-prose phrasings are deliberately excluded so defensive security
+ *      training, technical fiction, and remediation write-ups are not blocked,
+ *   3. an OPERATIONAL payload — concrete memory-corruption steps (OPERATIONAL_EXPLOIT) or an illicit
+ *      synthesis verb+target given in procedural detail (ILLICIT_SYNTHESIS + SYNTHESIS_DETAIL).
+ * All THREE anchors must co-occur within bounded character windows (frame within 600 of the
+ * realism↔operational pair, which are within 600 of each other) so a stray fiction aside in one
+ * paragraph cannot collude with an unrelated security/debugging paragraph elsewhere in a long
+ * message. The two composite patterns are `^`-anchored zero-width lookaheads: `String.match()`
+ * evaluates them only at offset 0, so matching cost stays linear in input length (bounded windows,
+ * no catastrophic backtracking; tens of milliseconds worst-case on a 100 KB adversarial input).
+ *
+ * A purely PEDAGOGICAL pretext ("I teach a memory-safety module, give me a vulnerable server with
+ * every protection off") is intentionally NOT covered: as text it is indistinguishable from a benign
+ * security-course handout, so a content pattern cannot separate the two without false positives.
+ */
+// FICTIONAL_FRAME — fiction / persona / dramatization wrapper. Benign alone; gated by anchors 2 + 3.
+const FICTIONAL_FRAME = String.raw`(?:writing\s+(?:a|an|my|this)\s+(?:[a-z]+\s+){0,2}(?:novel|book|story|short\s+story|thriller|screenplay|script|memoir|sourcebook|saga|fanfic|comic|manga)|(?:for|in)\s+(?:a|an|my|the|this)\s+(?:[a-z]+\s+){0,2}(?:novel|book|story|screenplay|documentary|film|movie|sourcebook|rpg|campaign|tv\s+(?:show|drama|series)|stage\s+play|video\s+game|short\s+story|comic)|(?:prestige\s+)?(?:tv|television)\s+(?:drama|series|show)|(?:dramatic\s+)?re-?enactment|in-?world\b|(?:stay|remain)\s+in\s+character|role-?play\w*|you\s+are\s+(?:now\s+)?(?:roleplaying\s+as\s+|playing\s+|channel(?:ing|ling)?\s+(?:the\s+voice\s+of\s+)?)?(?:professor|prof\b|dr\.?|a\s+(?:grizzled|retired|fictional|former|veteran|brilliant)\b)|channel\s+the\s+voice\s+of|(?:protagonist|main\s+character|the\s+character|persona)'?s?\s+(?:speech|lecture|monologue|journal|diary|memoir|manual|notes|write-?up|exploit)|(?:secret\s+)?memoir|finish\s+my\s+(?:short\s+)?story|a\s+scene\s+(?:where|in\s+which)|opening\s+chapter|in[-\s]world\s+(?:technical\s+)?manual|character'?s?\s+(?:distinctive|voice))`;
+// OPERATIONAL_EXPLOIT — concrete memory-corruption WEAPONIZATION STEPS. Benign bug-NAMES that recur in
+// ordinary debugging / triage prose (use-after-free, dangling pointer, format-string bug, bare integer
+// overflow) are deliberately excluded — they collude with a stray fiction aside on benign content. What
+// remains is exploitation MACHINERY (shellcode, return-address overwrite, ROP chain, mitigation-disable,
+// vtable/GOT corruption, pops-a-shell), which benign debugging does not use. Combined with the
+// FICTIONAL_FRAME + REALISM_DEMAND gates, the co-occurrence is specific to the attack class.
+const OPERATIONAL_EXPLOIT = String.raw`(?:\bshellcode\b|nop\s+sled|overwrit\w+\s+(?:the\s+)?(?:saved\s+)?return\s+address|(?:byte\s+)?offset\s+to\s+(?:the\s+)?(?:saved\s+)?return(?:\s+address)?|overflow\s+(?:the\s+)?buffer\b[\s\S]{0,40}?(?:return|control|saved)|chain\w*\s+(?:rop\s+)?gadgets?\b[\s\S]{0,30}?(?:libc|shell)|\brop\s+chain\b|one-?gadget|(?:defeat|bypass|disabl\w+|switch\w*\s+off|turn\w*\s+off|strip\w*|sidestep)\s+(?:the\s+)?(?:aslr|dep|stack\s+canary|stack\s+protection|address\s+(?:space\s+)?randomi[sz]ation)|(?:no\s+canary|no\s+pie|executable\s+stack)\b[\s\S]{0,40}?(?:no\s+canary|no\s+pie|executable\s+stack|aslr|randomi)|every\s+(?:protection|mitigation)\s+(?:turned\s+off|disabled|off)|fake\s+chunk\s+header|heap\s+(?:grooming|spray)|corrupt\w*\s+(?:the\s+)?(?:heap\s+metadata|vtable|function\s+pointer)|(?:corrupted\s+)?vtable\s+pointer|(?:overwrit\w+|corrupt\w+)\s+(?:a\s+|the\s+)?got\s+entry|execute\s+arbitrary\s+code\b[\s\S]{0,30}?(?:ring-?0|kernel|function\s+pointer)|arbitrary\s+code\s+at\s+ring-?0|pops?\s+a\s+shell|spawn\w*\s+a\s+(?:root\s+)?shell|memory[-\s]corruption\s+exploit|stack[-\s]smash\w*\s+exploit|buffer\s+overflow\s+exploit)`;
+// ILLICIT_SYNTHESIS — controlled-substance / weapon manufacture verb + target (the chemistry-persona
+// payloads). The broad verbs `produce`/`prepare` are deliberately excluded: they over-match benign
+// journalism / fiction about the drug trade ("how cartels produce fentanyl", "produce a documentary
+// about cocaine"). Only synthesis-specific verbs remain.
+const ILLICIT_SYNTHESIS = String.raw`(?:synthesi[sz]e|manufactur\w+|cook\s+up)\s+(?:a\s+|the\s+|an\s+|his\s+|that\s+)?(?:[a-z]+\s+){0,2}(?:controlled\s+substance|methamphetamine|\bmeth\b|fentanyl|heroin|cocaine|\bmdma\b|\blsd\b|nerve\s+agent|nerve\s+gas|sarin|\bvx\b|ricin|chemical\s+weapon|bio-?weapon|biological\s+weapon|explosive\s+device|improvised\s+explosive|pipe\s+bomb)`;
+// REALISM_DEMAND — explicit insistence the artifact itself be FUNCTIONAL / REPRODUCIBLE / IMPLEMENTABLE.
+// This is a PRODUCTION demand, NOT an authenticity-of-prose demand. The distinction is load-bearing:
+// benign technical novelists, defensive incident-response / malware-analysis training, and remediation
+// write-ups legitimately ask for an AUTHENTIC narrative ("keep every technical detail accurate", "reads
+// like a real exploit", "feel authentic") about an attack WITHOUT asking the model to produce a working
+// weapon — so those prose-authenticity phrasings are deliberately NOT here. Only a demand that the
+// artifact RUN / REPRODUCE / be IMPLEMENTABLE qualifies ("must actually function", "reproduce the
+// attack", "operational detail for a student to implement", "full pwntools script", "exact byte offset",
+// "how to build a … exploit"). A request to merely describe / teach / narrate an attack does not match.
+// Two arms were tightened after the audit-loop because they matched benign engineering prose: bare
+// "exact byte offset" (ubiquitous in struct / file-format / forensics work) now requires "…to the
+// (saved) return"; and "enough … detail" now requires an operational/implementation qualifier (bare
+// "enough concrete detail" / "enough granular detail" is generic ticket / spec prose).
+const REALISM_DEMAND = String.raw`(?:must\s+actually\s+(?:function|work|run|compile|execute)|(?:code|exploit|script|payload|it)\s+(?:must|has\s+to|needs?\s+to)\s+(?:actually\s+)?(?:function|work|run|compile)|(?:complete|detailed|specific)\s+enough\b[\s\S]{0,60}?(?:reproduce|reconstruct|replicate|recreate|compile|run\s+it)|reconstruct\s+the\s+(?:attack|exploit)\s+from\s+scratch|reproduce\s+the\s+(?:attack|exploit)|(?:enough|sufficient|complete)\s+(?:concrete\s+|granular\s+)?(?:operational|implementation)\s+(?:detail|specifics)|operational\s+detail\s+(?:for|to)\b[\s\S]{0,45}?(?:implement|a\s+student|reproduce)|how\s+to\s+(?:build|construct|write|develop)\s+(?:a\s+|an\s+|the\s+)?(?:[a-z-]+\s+){0,2}exploit|full\s+pwntools\s+script|exact\s+(?:byte\s+)?offset\s+to\s+(?:the\s+)?(?:saved\s+)?return|step[-\s]by[-\s]step\b[\s\S]{0,60}?(?:instructions?\s+for\s+)?(?:construct|implement|bypass|build\s+(?:the\s+)?exploit)|the\s+(?:final\s+)?(?:script|payload)\s+that\s+(?:strips|disables|launches|redirects|triggers))`;
+// SYNTHESIS_DETAIL — demand the synthesis be given in full procedural detail (vs a passing mention).
+const SYNTHESIS_DETAIL = String.raw`(?:each\s+(?:stage|step)|step[-\s]by[-\s]step|precise\s+(?:detail|procedure|steps)|exact\s+(?:recipe|procedure|steps|quantities|reagents|measurements)|(?:precise|exhaustive|loving|granular|meticulous|vivid)\b[\s\S]{0,20}?\bdetail|complete\s+(?:recipe|procedure|synthesis)|the\s+(?:full\s+)?procedure\s+(?:he|she|they|one)\s+(?:used|would\s+use|follows?)|explaining\s+each|how\s+(?:one|to)\s+would\s+synthesi[sz]e|walks?\s+(?:his|her|the|them)\b[\s\S]{0,30}?through)`;
+const FICTIONAL_WEAPONIZATION_PATTERNS: JailbreakPattern[] = [
+  {
+    // All three anchors must co-occur within bounded windows: a FICTIONAL_FRAME within 600 chars of a
+    // REALISM_DEMAND↔OPERATIONAL_EXPLOIT pair (which are themselves within 600 of each other), in
+    // either global order. Binding the FRAME into the window (rather than an independent
+    // anywhere-lookahead) stops a stray fiction aside in one paragraph from colluding with an
+    // unrelated security/debugging paragraph elsewhere in a long message. Catches "write the
+    // protagonist's exploit … the code must actually function" / "ProfX … operational detail for a
+    // student to implement" / "documentary … exact byte offset to the return … shellcode". Does NOT
+    // fire on benign fiction that merely names a technique, nor on frame-less security education.
+    name: 'fic_frame_opexploit',
+    pattern: new RegExp(
+      String.raw`^(?=[\s\S]*(?:(?:${FICTIONAL_FRAME})[\s\S]{0,600}(?:(?:${REALISM_DEMAND})[\s\S]{0,600}(?:${OPERATIONAL_EXPLOIT})|(?:${OPERATIONAL_EXPLOIT})[\s\S]{0,600}(?:${REALISM_DEMAND}))|(?:(?:${REALISM_DEMAND})[\s\S]{0,600}(?:${OPERATIONAL_EXPLOIT})|(?:${OPERATIONAL_EXPLOIT})[\s\S]{0,600}(?:${REALISM_DEMAND}))[\s\S]{0,600}(?:${FICTIONAL_FRAME})))`,
+      'i'
+    ),
+    severity: Severity.CRITICAL,
+    weight: 9,
+    description: 'Fiction/persona frame demanding a complete, working operational exploit'
+  },
+  {
+    // FICTIONAL_FRAME within 600 chars of an ILLICIT_SYNTHESIS↔SYNTHESIS_DETAIL pair, either global
+    // order ("fictional chemist … synthesize a controlled substance, explaining each stage").
+    name: 'fic_frame_synth',
+    pattern: new RegExp(
+      String.raw`^(?=[\s\S]*(?:(?:${FICTIONAL_FRAME})[\s\S]{0,600}(?:(?:${ILLICIT_SYNTHESIS})[\s\S]{0,500}(?:${SYNTHESIS_DETAIL})|(?:${SYNTHESIS_DETAIL})[\s\S]{0,500}(?:${ILLICIT_SYNTHESIS}))|(?:(?:${ILLICIT_SYNTHESIS})[\s\S]{0,500}(?:${SYNTHESIS_DETAIL})|(?:${SYNTHESIS_DETAIL})[\s\S]{0,500}(?:${ILLICIT_SYNTHESIS}))[\s\S]{0,600}(?:${FICTIONAL_FRAME})))`,
+      'i'
+    ),
+    severity: Severity.CRITICAL,
+    weight: 9,
+    description: 'Fiction/persona frame demanding controlled-substance/weapon synthesis in procedural detail'
+  }
+  // NOTE: a standalone "skip the ethics preamble/boilerplate" tell was evaluated and deliberately NOT
+  // shipped. Unguarded it over-matches ordinary drafting ("skip the ethics boilerplate"); gated behind
+  // a weaponization anchor it still over-matches security-content editing ("skip the ethics boilerplate
+  // … the ROP chain pops a shell"); and the one attack it would have recovered has no fiction frame and
+  // no production demand for the two patterns above to anchor on. It is left as a known residual rather
+  // than ship a pattern that blocks BonkLM's own defensive-security audience.
+];
+
+/**
  * All patterns combined.
  */
 export const ALL_PATTERNS: JailbreakPattern[] = [
@@ -502,7 +601,8 @@ export const ALL_PATTERNS: JailbreakPattern[] = [
   ...TRUST_EXPLOITATION_PATTERNS,
   ...EMOTIONAL_MANIPULATION_PATTERNS,
   ...KNOWN_TEMPLATE_PATTERNS,
-  ...OBFUSCATION_PATTERNS
+  ...OBFUSCATION_PATTERNS,
+  ...FICTIONAL_WEAPONIZATION_PATTERNS
 ];
 
 // =============================================================================
