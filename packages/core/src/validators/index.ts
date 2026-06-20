@@ -10,6 +10,7 @@ export * from './prompt-injection.js';
 export * from './jailbreak.js';
 export * from './reformulation-detector.js';
 export * from './encoded-rescan.js';
+export * from './harm-intent.js';
 export * from './boundary-detector.js';
 export * from './multilingual-patterns.js';
 export * from './tool-call-args.js';
