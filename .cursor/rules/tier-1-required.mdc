@@ -258,7 +258,7 @@ Hard red lines (extend `data-flywheel-contract`): **no model trained on unlicens
 — auxiliary/OSS corpora pass the same competitor-name / format-artifact / license-attestation audit as
 proprietary data, and **GPT-distilled corpora are removed from any published artifact** and regenerated
 on-box; no classified / customer / DSP-high data enters a model without Runelm pseudonymization AND human
-sign-off (DSP-high `oc-finance` never enters a model; classified agents `oc-bo-*`/`oc-sp-*` excluded); **no
+sign-off (DSP-high finance-namespace data never enters a model; classified back-office / special-project namespaces excluded); **no
 train-on-own-output without a held-out, human-verified eval set** (collapse/poisoning guard); offensive
 models are controlled assets carrying an AUP + a lawful-use boundary, MUST ship a **harm-refusal eval**
 (multi-turn red-team — single-turn is insufficient), and carry the **EU AI Act Art.53(1)(d)** training-data
