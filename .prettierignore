@@ -80,3 +80,12 @@ tmp/
 # Backup files
 *.bak
 *.backup
+
+# Generated agent rule surfaces (Infra/gen_rules.py) — not Prettier-formatted
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.clinerules
+.rules/
+.edition-boundary.yaml
+.cursor/

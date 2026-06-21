@@ -1,6 +1,6 @@
 <!-- GENERATED — canonical is AGENTS.md (Infra/scripts/gen_rules.py). Do not edit. -->
 
-> See `AGENTS.md` (canonical). Generated for Claude Code from the same rule source.
+> See `AGENTS.md` (canonical). Generated for Cline from the same rule source.
 
 ## Tier 0 — Blocking (CI + pre-commit hard-fail)
 
