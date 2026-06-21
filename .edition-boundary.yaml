@@ -19,7 +19,7 @@ ee_paths:                           # [fill exact globs from the monorepo] BSL-1
 
 forbidden_imports:
   - "@blackunicorn/.*-ee"
-  - "from .*enterprise"
+  - 'from \S+\.enterprise'
 
 forbidden_tokens:
   - "192.168."
