@@ -59,7 +59,7 @@ The primary working tree stays on its base branch and clean — it is always a s
 **diff-100% (line+branch) on touched code + 80% repo floor**, evidence attached. File cap soft
 200-400 / hard 800. One-branch-per-PR. Deploy: npm `--tag next` (staging) -> `--tag latest` on
 `v*` (prod). Tier-0 additionally requires a **license + SBOM + OSS/SaaS-boundary** scan. See
-[CONFLICTS.md](../../docs/rules/CONFLICTS.md).
+CONFLICTS.md (Infra/docs/rules/CONFLICTS.md).
 
 ### Security disclosure policy (hardcoded per CLAUDE.md)
 
@@ -284,7 +284,9 @@ auto-generated model card carrying an explicit **license** + intended-use block 
 all-linear for dense; on dense bases prefer `use_rslora` at rank 96-128. The training framework is
 LLaMA-Factory (a release supporting the target base — v0.9.5 cannot train Qwen3.6); Unsloth is used only as
 its `use_unsloth` backend, A/B-gated, never standalone. On NVIDIA GB10/Blackwell-ARM (`sm_121a`, CUDA-13):
-**bf16 LoRA only** (no QLoRA/bitsandbytes); pin the NGC container + transformers v5 + `causal_conv1d`/`fla`;
+**bf16 LoRA is the default** (quality-preserving); 4-bit QLoRA/bitsandbytes is *functional* on `sm_121a`
+but immature (ARM + CUDA-13 wheels often missing → NGC/source build, documented OOM caveats) — keep it
+**non-default, justify use**. Pin the NGC container + transformers v5 + `causal_conv1d`/`fla`;
 set `attn_implementation` explicitly (`sdpa` or FA2-for-sm120) and **never `pip install flash-attn`**;
 `num_workers=0`. Generation config sets `"think": false` for Qwen3.6 bases (a generation parameter, NOT the
 `qwen3_nothink` template); `seed` + framework/PyTorch/transformers/peft versions are asserted in config.
