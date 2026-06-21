@@ -206,7 +206,7 @@ provenance version, and a freshness SLA. A PR that produces or consumes a flywhe
 incomplete until its contract is created/updated.
 
 Hard red lines: **no EE / customer / classified / DSP-high data enters an OSS corpus or an
-OSS-released model without Runelm pseudonymization AND human sign-off** (DSP-high the DSP-high finance namespace data is
+OSS-released model without Runelm pseudonymization AND human sign-off** (the DSP-high finance namespace data is
 L1-only and never leaves its trust boundary at all); no cross-edition corpus contamination
 (community Apache ↔ enterprise BSL/BUSL); no model trained on unlicensed or cross-edition data; no
 train-on-own-output without a held-out, human-verified eval set (collapse/poisoning guard). Offensive
@@ -382,7 +382,9 @@ touch plus their callers and prior art, check the knowledge base first (lessons-
 QA, git log), align to a real current EPIC/story (create one if none), and restate the goal in
 one sentence.
 
+> Fleet context: see `Infra/generated/INDEX.md` (internal control repo).
+
 ### This repo
 
-- product: BonkLM · profile: library-oss · ring: agent · canonical: prometheus-pi
-- deploy: library (staging: npm --tag next (prerelease) · prod: npm --tag latest + GitHub Release (on v* tag))
+- product: BonkLM · profile: library-oss · ring: agent
+- deploy class: library
