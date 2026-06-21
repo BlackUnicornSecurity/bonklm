@@ -88,7 +88,8 @@ export {
   type PatternFinding,
   type PatternDefinition,
   ALL_PATTERN_CATEGORIES,
-  WEB3_PREFERENCE_PATTERNS
+  WEB3_PREFERENCE_PATTERNS,
+  TOOL_OUTPUT_IMPERSONATION_PATTERNS
 } from '../validators/pattern-engine.js';
 export { normalizeText, detectHiddenUnicode } from '../validators/text-normalizer.js';
 export { JailbreakValidator } from '../validators/jailbreak.js';
