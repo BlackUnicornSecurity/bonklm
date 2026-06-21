@@ -3,17 +3,16 @@
 # ships; the BSL-1.1 enterprise tier (curated rule content, signed threat-feed, industry policy
 # packs, control-mapping evidence export, advanced detectors, governance primitives) must not.
 # This complements ADR-0007 "OSS↔EE license-boundary CI guard" (authoritative in-repo).
-# NOTE: confirm the exact enterprise package globs against the monorepo before enforcing — the
-# paths below are the EXPECTED shape, marked to fill, not yet verified file-for-file.
+# Enterprise package globs verified against the monorepo.
 edition_model: open-core
 
 public_allowlist:
   - "packages/core/**"
-  - "packages/connectors/**"        # [confirm path] all framework/provider/platform connectors
+  - "packages/connectors/**"
   - "docs/**"
 
-ee_paths:                           # [fill exact globs from the monorepo] BSL-1.1 enterprise tier
-  - "packages/enterprise/**"        # [confirm] curated rules / threat-feed / policy packs
+ee_paths:
+  - "packages/enterprise/**"
   - "packages/*-ee/**"
   - "**/threat-feed/**"
 
