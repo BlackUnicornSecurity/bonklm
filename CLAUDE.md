@@ -187,25 +187,6 @@ legacy security-suffix brand variants except when preserving an immutable extern
 cannot be changed safely. Use `info@blackunicorn.tech` as the only accepted public/contact email
 address.
 
-### Design system fidelity — latest in-repo system, approved assets, no cross-project mixing
-
-For marketing sites and any design/UI work, the repo's **current design system is the single
-source of visual truth**. When a design system is present (design tokens, theme, component
-library, or style guide), build from it — never introduce ad-hoc colors, spacing, typography, or
-one-off components that bypass it. Always reference the **latest** version in the repo; if the
-system itself is wrong, change the system, not the individual page.
-
-**Approved assets only.** Use only approved and promoted logos, icons, and brand marks from the
-repo's sanctioned asset set. Never ship draft, placeholder, unapproved, or externally-sourced
-logos or icons; if a needed asset is missing, get it promoted into the approved set first. Pairs
-with `brand-contact-canon` (brand spelling + contact) for the verbal side of the brand.
-
-**Never mix design systems across projects.** Each project's UI renders only its own design
-system. Do not import another fleet project's tokens, components, themes, logos, or icons into a
-different project's surface (e.g. no DojoLM marks on the Runelm site, no BUCC components in
-Egidia). Legitimate cross-project visual reuse goes through a shared, versioned design package —
-never copy-paste between project surfaces.
-
 ### Project PRD and source of truth
 
 Every first-party project must maintain a PRD and a single project source-of-truth document. The
@@ -233,26 +214,9 @@ models (e.g. Sensei) are internal/EE controlled assets — never OSS-released ra
 attack-generation service. The DA KALITAS security + adversarial personas own the leakage/poisoning
 check at the closing gate.
 
-### Shipping lanes are triggered by GitHub Releases, not by push
-
-Every distribution lane — npm / PyPI package publish, Docker/OCI image build + push,
-container-registry tags, binary or GitHub-Release assets — is triggered by a **published
-GitHub Release** (a semver tag), never by push-to-main, by merge, or by an ad-hoc manual run.
-The Release is the single lifecycle gate: CI fans out from it to every lane so one tag ships
-all artifacts consistently and their versions stay in lockstep. Pre-release / canary artifacts
-ship only from prerelease tags (`-rc`, `-beta`), are clearly marked as such, and never land on
-a stable channel.
-
-The version is derived from Conventional Commits → semver; the Release is cut from `main` (or a
-release branch); and the publish job is the **only** place registry credentials / tokens are
-used (no tokens in build or test jobs). Public / export releases additionally pass the
-edition-boundary export gate **before** any lane runs — allowlist + license/SBOM review + secret
-scan + human approval (see `edition-boundary-segregation`). Marketing-site deploys follow their
-own manual-promote profile rule and are out of scope here.
-
 ### Model training — recipe, base SSOT, provenance, process gates, asset class
 
-The fleet's fine-tuned models (Marfaak, Shogun, Sensei, Basileak, and any future model) are governed
+The fleet's fine-tuned models (Marfaak, Sensei, Basileak, and any future model) are governed
 engineering artifacts. Every training round is a **declared recipe** — base reference, fine-tune method +
 hyperparameters, dataset mix + template, and the **hash-pinned** corpus it trained on — recorded in the
 model's repo and its `model_registry` entry. A PR that produces a model or a training run is incomplete
@@ -340,6 +304,23 @@ Docs are part of "done". In the same PR update user docs, project docs (mark the
 changelog), and technical docs (ADR / JSDoc / TSDoc). Update the closest source-of-truth doc
 when behavior changes. Every ticked checklist item is audited against real code, not signed
 off blind.
+
+### Shipping lanes are triggered by GitHub Releases, not by push
+
+Every distribution lane — npm / PyPI package publish, Docker/OCI image build + push,
+container-registry tags, binary or GitHub-Release assets — is triggered by a **published
+GitHub Release** (a semver tag), never by push-to-main, by merge, or by an ad-hoc manual run.
+The Release is the single lifecycle gate: CI fans out from it to every lane so one tag ships
+all artifacts consistently and their versions stay in lockstep. Pre-release / canary artifacts
+ship only from prerelease tags (`-rc`, `-beta`), are clearly marked as such, and never land on
+a stable channel.
+
+The version is derived from Conventional Commits → semver; the Release is cut from `main` (or a
+release branch); and the publish job is the **only** place registry credentials / tokens are
+used (no tokens in build or test jobs). Public / export releases additionally pass the
+edition-boundary export gate **before** any lane runs — allowlist + license/SBOM review + secret
+scan + human approval (see `edition-boundary-segregation`). Marketing-site deploys follow their
+own manual-promote profile rule and are out of scope here.
 
 ### OSS↔EE license boundary CI guard per ADR-0007
 
