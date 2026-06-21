@@ -34,6 +34,8 @@ Write tests for everything built/fixed/changed before closing a task. Cover edge
 test)**, flow paths, and auth/permission gaps. Coverage target is set per `rules_profile`
 (see the profile rule).
 
+Profiles planning-docs and marketing-site are exempt from the coverage gate (their profile defines a docs/build/visual gate instead).
+
 ### Strict lint + typecheck
 
 Run strict lint + format + type-check before commit. No `any`/untyped escapes without
