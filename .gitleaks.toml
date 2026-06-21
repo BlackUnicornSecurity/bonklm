@@ -1,22 +1,64 @@
 # BonkLM gitleaks configuration.
 #
-# Used by the published-tarball secret-scan (scripts/scan-tarballs.sh)
-# and available for ad-hoc `gitleaks detect --config .gitleaks.toml` runs. It
-# extends gitleaks' bundled default ruleset (so every upstream rule still fires)
-# and allowlists only documented, deliberately-fake placeholders.
+# Used by:
+#   * `.pre-commit-config.yaml` gitleaks hook (staged-only)
+#   * `.github/workflows/tier0.yml` CI secret-scan job
+#   * `scripts/scan-tarballs.sh` post-publish tarball scan
+#
+# Extends gitleaks' bundled default ruleset (so every upstream rule still
+# fires) and allowlists known-intentional placeholders / fixtures.
+#
+# Important: LLM-Guardrails IS a security-testing library. Its source code,
+# tests, and detection fixtures deliberately contain secret-shaped strings
+# so the detectors can be unit-tested. The allowlists below carve those out
+# WITHOUT broadening to net-new code paths — each entry pinpoints a real
+# fixture path or a documented placeholder pattern that has been
+# individually reviewed.
+
 title = "BonkLM gitleaks config"
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "Documented fake placeholders that are NOT real secrets"
-# The core README's SecretGuard usage example passes a deliberately-fake,
-# sequential demo key to the secret detector to *demonstrate* detection
-# (packages/core/README.md). It is published in the npm tarball on purpose as
-# documentation. This allowlist is intentionally narrow — it matches only this
-# exact placeholder, so any other apiKey-shaped string in any shipped file is
-# still reported (the scan stays non-vacuous).
+description = "Documented fake placeholders + intentional security-testing fixtures"
+
+# Path globs for files where secret-shaped strings are INTENDED (test
+# fixtures, detection examples, user-facing docs with placeholder API keys).
+# Re-audit this list when any of these dirs is renamed or repurposed.
+paths = [
+  # Detection-engine source/fixtures — the entire purpose is to recognize
+  # secret-shaped strings; the source MUST contain example patterns.
+  '''packages/core/src/cli/detection/.*''',
+  '''packages/wizard/src/detection/.*''',
+  '''packages/core/src/cli/utils/.*''',
+  '''packages/wizard/src/utils/.*''',
+
+  # Unit + integration test fixtures.
+  '''packages/core/tests/.*''',
+  '''tests/baselines/.*''',
+  '''packages/core/src/cli/commands/.*\.test\.ts''',
+
+  # UAT + adversarial test corpora.
+  '''team/uat/.*''',
+  '''packages/core/uat/.*''',
+
+  # Example packages that demonstrate the library API.
+  '''packages/examples/.*''',
+
+  # User-facing documentation: getting-started / integration guides use
+  # OBVIOUS placeholder API keys (`sk-proj-abc123…`) to illustrate config.
+  '''docs/.*\.md''',
+  '''README\.md''',
+]
+
+# Specific placeholder regexes that may appear outside the path allowlist
+# (e.g., in a future quickstart snippet authored elsewhere). Narrow on
+# purpose — broadening this is a fleet-canon change.
 regexes = [
+  # Existing core README placeholder.
   '''sk-1234567890abcdef''',
+  # Docs / quickstart placeholder family. `sk-proj-` is the OpenAI project
+  # API-key prefix; the `abc123(xyz)?` suffix is obviously not a real key.
+  '''sk-proj-abc123(xyz)?''',
 ]
