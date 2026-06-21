@@ -121,7 +121,7 @@ describe('PIIGuard', () => {
     it('PII-015: should detect IP addresses with sensitive context', () => {
       // IP_Address requires contextRequired: true
       const guard = new PIIGuard({ action: 'block', minSeverity: 'info' });
-      const result = guard.validate('IP: 192.168.1.1 for confidential data');
+      const result = guard.validate('IP: 203.0.113.1 for confidential data');
       // Findings should exist but might not block depending on minSeverity
       expect(result.findings?.length).toBeGreaterThan(0);
     });
