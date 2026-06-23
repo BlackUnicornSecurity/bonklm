@@ -50,6 +50,21 @@ through the supplied validator chain. Tool name is humanised (`disable_safety_fi
 `disable safety filter`) so natural-language patterns match snake_case / camelCase / kebab-case /
 dot.separated names.
 
+### Inbound tool results (`tool_result` provenance)
+
+The result a tool / action returns to the agent is itself an attacker-influenceable surface — a
+remote MCP server, a document a tool fetched, or a compromised upstream agent can plant a
+task-hijack / exfil directive in the returned text. The shared `appendToolResultInjectionArm` helper
+composes the provenance-gated `IndirectInjectionValidator({ surface: 'tool_result' })` onto a
+connector's validator chain, **default-on**, on top of the caller's own validators. The arm is
+scoped to the result path: it never fires `tool_result`-surface patterns on ordinary model output or
+on tool-call args.
+
+Connectors that ship the default-on inbound scan: `mcp` (`callTool` result; deep non-text leaf
+extraction + binary-blob policy — see known-limitations.md §30), `mastra` (`validateToolResult`),
+`copilotkit` (`validateActionResult`), and `openai-agents` (`defineToolOutputGuardrail`). Tool-call
+**args** additionally gain the same arm via `createToolCallArgsValidator` (openai-agents, elizaos).
+
 > **Inbound tool _results_ (distinct from `tool_call`).** `tool_call` above covers the OUTGOING args
 > the LLM picked. The INBOUND result a tool returns is a separate provenance boundary
 > (`tool_result`). The MCP connector's `createGuardedMCP` scans inbound results on that boundary

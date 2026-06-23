@@ -632,24 +632,28 @@ and the same honesty applies — these classes are best-effort or out of scope:
   exfil placeholders, forged field labels, ReAct instruction tokens). An attacker who renames the
   placeholder, switches to an HTML `<img>` tag, or uses unicode-homoglyph / zero-width variants of a
   token can evade; these are deterministic recall gaps, not regressions.
-- **MCP tool-result ingress: text leaves scanned, binary opaque, surface-asserted, MCP-only.**
-  `createGuardedMCP` (`@blackunicorn/bonklm-mcp`) scans inbound tool results on the `tool_result`
-  surface. It extracts **every scannable text leaf** — top-level `text` items, `resource.text` /
-  `resource.uri`, and recursively-collected string leaves of embedded structured content — and scans
-  the newline-joined view, a separator-free concatenation (so a contiguous attack token split
-  **across** content items, e.g. `AGENT_` + `FOOTER`, is reconstructed), and each leaf
-  independently. Bounds: (a) **binary/base64 blobs** — `image` / `audio` `data`, `resource.blob` —
-  are not decoded+scanned unless `decodeBinaryContent: true`; by default an uninspectable-channel
-  `warn` is emitted (with sanitized blob-kind telemetry) rather than silently passing. Residual
-  recall gaps: a contiguous token split by a separator **inside a single leaf** (e.g.
-  `AGENT_\nFOOTER`), and content beyond the depth / leaf-count / byte scan bounds (its tail is left
-  unscanned but **flagged via telemetry**, never silent). The separator-free view can also raise
-  false positives where two benign leaves form a trigger token at the synthetic seam (the arms were
-  calibrated on prose, not on concatenated / URI-shaped leaves). (b) The `tool_result` surface is
-  _asserted by the connector_ (every value on the result path is a genuine tool result), not
+- **Tool-result ingress: text scanned fleet-wide; rich non-text extraction is MCP-specific;
+  surface-asserted.** `createGuardedMCP` (`@blackunicorn/bonklm-mcp`) scans inbound tool results on
+  the `tool_result` surface. It extracts **every scannable text leaf** — top-level `text` items,
+  `resource.text` / `resource.uri`, and recursively-collected string leaves of embedded structured
+  content — and scans the newline-joined view, a separator-free concatenation (so a contiguous
+  attack token split **across** content items, e.g. `AGENT_` + `FOOTER`, is reconstructed), and each
+  leaf independently. Bounds: (a) **binary/base64 blobs** — `image` / `audio` `data`,
+  `resource.blob` — are not decoded+scanned unless `decodeBinaryContent: true`; by default an
+  uninspectable-channel `warn` is emitted (with sanitized blob-kind telemetry) rather than silently
+  passing. Residual recall gaps: a contiguous token split by a separator **inside a single leaf**
+  (e.g. `AGENT_\nFOOTER`), and content beyond the depth / leaf-count / byte scan bounds (its tail is
+  left unscanned but **flagged via telemetry**, never silent). The separator-free view can also
+  raise false positives where two benign leaves form a trigger token at the synthetic seam (the arms
+  were calibrated on prose, not on concatenated / URI-shaped leaves). (b) The `tool_result` surface
+  is _asserted by the connector_ (every value on the result path is a genuine tool result), not
   verified from a stamped `Provenance` wire-envelope — envelope stamping is a later increment. (c)
-  This inbound-result scanning is currently wired in the MCP connector only — other tool-calling
-  connectors do not yet scan inbound results on the `tool_result` surface.
+  The **text-level** inbound-result scan is wired **fleet-wide** via the shared
+  `appendToolResultInjectionArm` helper — `mcp` (`callTool` result), `mastra`
+  (`validateToolResult`), `copilotkit` (`validateActionResult`), and `openai-agents`
+  (`defineToolOutputGuardrail`) — each composing the arm on its inbound-result path, default-on. The
+  deep non-text leaf extraction + binary-blob policy described above is **MCP-specific**; the other
+  connectors scan the result text their SDK surfaces.
 
 **By design:** none of these arms run on raw user text — they are gated to connector provenance, so
 the calibrated user-text false-positive floor is unchanged. See
