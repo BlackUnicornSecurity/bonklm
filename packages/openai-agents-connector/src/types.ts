@@ -37,7 +37,14 @@ export interface GuardedAgentsOptions {
   onInputBlocked?: (reason: string) => void;
   /** Callback fired when an agent's output is blocked. */
   onOutputBlocked?: (reason: string) => void;
-  /** Callback fired when a tool call's args / output is blocked. */
+  /**
+   * Callback fired when a tool call's args / output is blocked.
+   *
+   * @remarks CWE-117: `result.findings[].match` and `result.findings[].description`
+   * may carry attacker-influenced content (a raw substring of the blocked tool
+   * payload, capped at 100 chars). Pass these through `sanitizeLogString` before
+   * logging the `result` to avoid log injection.
+   */
   onToolBlocked?: (toolName: string, reason: string, result: GuardrailResult) => void;
   /** Callback fired when a handoff input is blocked. */
   onHandoffBlocked?: (sourceAgentName: string | undefined, targetAgentName: string | undefined, reason: string) => void;
