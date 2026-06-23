@@ -632,6 +632,16 @@ and the same honesty applies — these classes are best-effort or out of scope:
   exfil placeholders, forged field labels, ReAct instruction tokens). An attacker who renames the
   placeholder, switches to an HTML `<img>` tag, or uses unicode-homoglyph / zero-width variants of a
   token can evade; these are deterministic recall gaps, not regressions.
+- **MCP tool-result ingress: text-only, surface-asserted, MCP-only.** `createGuardedMCP`
+  (`@blackunicorn/bonklm-mcp`) scans the **text** content of inbound tool results on the
+  `tool_result` surface. Three bounds apply: (a) non-text result blocks — image / audio /
+  embedded-resource / binary `data` — are not extracted and therefore not scanned (an injection
+  smuggled in a non-text block, or split across content items so a contiguous-token arm cannot match
+  across the join, can evade); (b) the `tool_result` surface is _asserted by the connector_ (every
+  value on the result path is a genuine tool result), not verified from a stamped `Provenance`
+  wire-envelope — envelope stamping is a later increment; (c) this inbound-result scanning is
+  currently wired in the MCP connector only — other tool-calling connectors do not yet scan inbound
+  results on the `tool_result` surface.
 
 **By design:** none of these arms run on raw user text — they are gated to connector provenance, so
 the calibrated user-text false-positive floor is unchanged. See

@@ -8,10 +8,13 @@
  *
  * The envelope is plain JSON, additive (no breaking change to
  * `MemoryWritePayload.metadata` or `ToolCallResult`), and survives JSON-RPC /
- * MCP transport hops. It is POPULATED by the connector packages
- * (`mcp-connector` stamps it on each `ToolCallResult` — PR-B; `memory-utils`
- * threads it through `metadata.provenance` — PR-C). PR-A only defines the
- * contract and the core-side consumer.
+ * MCP transport hops. It is intended to be POPULATED by the connector packages
+ * (`mcp-connector` stamping it on each `ToolCallResult`; `memory-utils` threading
+ * it through `metadata.provenance`). That envelope stamping is a later increment
+ * and is NOT yet wired: the `mcp-connector` tool-result ingress scan asserts its
+ * `tool_result` surface by construction (the call site guarantees the content is a
+ * tool result) rather than from a stamped envelope. This contract and the
+ * core-side consumer are defined; the connector-side stamp is the follow-up.
  *
  * `ProvenanceBoundary` is the coarse SURFACE tag a pattern arm gates on
  * (`PatternDefinition.requiresProvenance`); `ToolResultRef.source` is the
@@ -58,8 +61,9 @@ export interface ToolResultRef {
  * Provenance envelope carried on `MemoryWritePayload.metadata.provenance`
  * (memory-utils) and on `ToolCallResult` (mcp-connector).
  *
- * @experimental Forward contract: PR-A defines this envelope (with {@link ToolResultRef}
- * / {@link ProvenanceSource}); PR-B/PR-C are the first to populate it. The shape may
+ * @experimental Forward contract: this envelope is defined (with {@link ToolResultRef}
+ * / {@link ProvenanceSource}); the connector packages are intended to be the first to
+ * populate it (envelope stamping is a later increment, not yet wired). The shape may
  * change before the v1.0 public-surface freeze. (`ProvenanceBoundary` — the surface
  * tag consumed by the shipped arms — is stable.)
  */
