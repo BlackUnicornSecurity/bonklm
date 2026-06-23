@@ -52,12 +52,17 @@ dot.separated names.
 
 > **Inbound tool _results_ (distinct from `tool_call`).** `tool_call` above covers the OUTGOING args
 > the LLM picked. The INBOUND result a tool returns is a separate provenance boundary
-> (`tool_result`). The MCP connector's `createGuardedMCP` scans the **text** content of inbound
-> results on that boundary with an `IndirectInjectionValidator({ surface: 'tool_result' })`
-> (default-on when `validateToolResults` is enabled). This is connector-asserted (not a stamped
-> `Provenance` envelope), text-only, and currently wired in the MCP connector only — see the MCP
-> entry in [`known-limitations.md`](./known-limitations.md) §30. `tool_result` is a provenance
-> boundary, not one of the 7 locked `HookSurface` strings.
+> (`tool_result`). The MCP connector's `createGuardedMCP` scans inbound results on that boundary
+> with an `IndirectInjectionValidator({ surface: 'tool_result' })` (default-on when
+> `validateToolResults` is enabled). It extracts **every scannable text leaf** — top-level `text`
+> items, `resource.text` / `resource.uri`, and recursively-collected string leaves of embedded
+> structured content — and scans the joined view, a separator-free concatenation (cross-item split
+> defence), and each leaf independently. Binary/base64 blobs (`image` / `audio` `data`,
+> `resource.blob`) are opaque by default (`decodeBinaryContent: true` to bounded-decode and scan
+> them; otherwise an uninspectable-channel `warn` is emitted). This is connector-asserted (not a
+> stamped `Provenance` envelope) and currently wired in the MCP connector only — see the MCP entry
+> in [`known-limitations.md`](./known-limitations.md) §30. `tool_result` is a provenance boundary,
+> not one of the 7 locked `HookSurface` strings.
 
 ### `retrieved_doc`
 

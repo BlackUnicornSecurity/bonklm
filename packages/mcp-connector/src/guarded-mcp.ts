@@ -22,6 +22,7 @@ import {
   type GuardrailResult,
   IndirectInjectionValidator,
   type Logger,
+  sanitizeLogString,
   sanitizeMeta,
   serializeError,
   Severity,
@@ -35,6 +36,7 @@ import {
 import type { GuardedMCPOptions, ToolCallOptions, ToolCallResult, ToolInfo } from './types.js';
 import {
   DEFAULT_MAX_ARGUMENT_SIZE,
+  DEFAULT_MAX_DECODED_BLOB_SIZE,
   DEFAULT_VALIDATION_TIMEOUT,
   MAX_TOOL_NAME_LENGTH,
   VALID_TOOL_NAME_PATTERN
@@ -79,17 +81,26 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  * @throws {ConnectorValidationError} If tool name is invalid or not in allowlist
  */
 function validateToolName(name: string, allowedTools?: string[]): string {
+  // CWE-117: `name` is attacker-influenceable (an agent populates it from a
+  // remote `listTools()` response). The validation logic runs on the raw value,
+  // but every error MESSAGE embeds the SANITIZED form — the allowlist + format
+  // branches fire precisely when `name` may carry CR/LF / control chars, and a
+  // caller logging `error.message` would otherwise forge log lines (whole-file
+  // sink sweep on touch, per ADR-0001).
   // Check allowlist first
   if (allowedTools && allowedTools.length > 0) {
     if (!allowedTools.includes(name)) {
-      throw new ConnectorValidationError(`Tool '${name}' is not in the allowed tools list`, 'allowlist_violation');
+      throw new ConnectorValidationError(
+        `Tool '${sanitizeMeta(name)}' is not in the allowed tools list`,
+        'allowlist_violation'
+      );
     }
   }
 
   // Validate name format
   if (!VALID_TOOL_NAME_PATTERN.test(name)) {
     throw new ConnectorValidationError(
-      `Tool name '${name}' contains invalid characters. Only alphanumeric, underscore, and hyphen are allowed.`,
+      `Tool name '${sanitizeMeta(name)}' contains invalid characters. Only alphanumeric, underscore, and hyphen are allowed.`,
       'invalid_format'
     );
   }
@@ -97,7 +108,7 @@ function validateToolName(name: string, allowedTools?: string[]): string {
   // Validate length
   if (name.length > MAX_TOOL_NAME_LENGTH) {
     throw new ConnectorValidationError(
-      `Tool name '${name}' exceeds maximum length of ${MAX_TOOL_NAME_LENGTH}`,
+      `Tool name '${sanitizeMeta(name)}' exceeds maximum length of ${MAX_TOOL_NAME_LENGTH}`,
       'size_limit_exceeded'
     );
   }
@@ -159,24 +170,26 @@ function validateArgumentSize(args: Record<string, unknown>, maxSize: number): s
  * @returns An object with callTool and listTools methods that validate input/output
  *
  * @remarks
- * When `validateToolResults` is enabled (the default), the extracted **text**
- * content of inbound tool results is additionally scanned by an
- * `IndirectInjectionValidator` scoped to the `tool_result` surface — on top of
- * any `validators` you supply, with no opt-in required. This catches indirect
- * prompt-injection carried in the text of a remote tool's output (task-hijack /
+ * When `validateToolResults` is enabled (the default), inbound tool results are
+ * scanned by an `IndirectInjectionValidator` scoped to the `tool_result` surface
+ * — on top of any `validators` you supply, with no opt-in required (task-hijack /
  * objective-replacement directives, forged ReAct instruction tokens, forged
  * agent-instrumentation footers, exfil directives). The scan runs only on the
  * incoming result content, never on outgoing tool-call arguments; your own
- * `validators` run on both surfaces (call arguments and result text).
+ * `validators` run on both surfaces.
  *
- * Two boundaries worth knowing:
- * - The `tool_result` surface is **asserted by this connector** (everything
- *   reaching the result path is a genuine tool result); the `Provenance`
- *   wire-envelope is not stamped or verified here — envelope stamping is a
- *   separate increment.
- * - **Only text content is scanned.** Non-text result blocks (image / audio /
- *   embedded-resource / binary `data`) are not extracted and therefore not
- *   scanned — see the MCP entry in `docs/user/known-limitations.md`.
+ * The scanned content is **every scannable text leaf** of the result — top-level
+ * `text` items, `resource.text` / `resource.uri`, and recursively-collected
+ * string leaves of embedded structured content — across the newline-joined view,
+ * a separator-free concatenation (so a contiguous attack token split across
+ * content items is reconstructed), and each leaf independently. Boundaries:
+ * - **Binary/base64 blobs** (`image` / `audio` `data`, `resource.blob`) are not
+ *   decoded+scanned unless `decodeBinaryContent: true`; otherwise an
+ *   uninspectable-channel `warn` is emitted rather than silently passing.
+ * - The `tool_result` surface is **asserted by this connector**; the `Provenance`
+ *   wire-envelope is not stamped or verified here — a separate increment.
+ * - Result content beyond the depth / leaf-count / byte scan bounds has its tail
+ *   left unscanned, flagged via telemetry. See `docs/user/known-limitations.md`.
  *
  * Set `validateToolResults: false` to disable the scan along with all other
  * result-path validation.
@@ -212,6 +225,8 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
     maxArgumentSize = DEFAULT_MAX_ARGUMENT_SIZE, // SEC-005: Default 100KB
     productionMode = process.env.NODE_ENV === 'production', // SEC-007
     validationTimeout = DEFAULT_VALIDATION_TIMEOUT, // SEC-008: Default 5s
+    decodeBinaryContent = false, // Tool-result ingress: opt-in base64 decode-and-scan
+    maxDecodedBlobSize = DEFAULT_MAX_DECODED_BLOB_SIZE, // Decode-and-scan DoS bound
     onToolCallBlocked,
     onToolResultBlocked
   } = options;
@@ -219,31 +234,24 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
   // Validate critical security options
   validatePositiveNumber(maxArgumentSize, 'maxArgumentSize');
   validatePositiveNumber(validationTimeout, 'validationTimeout');
+  validatePositiveNumber(maxDecodedBlobSize, 'maxDecodedBlobSize');
 
+  // Tool-CALL / input path: the caller-supplied chain, unchanged.
   const engine = new GuardrailEngine({
     validators,
     guards,
     logger
   });
 
-  // Indirect prompt-injection scan on the INBOUND tool-result path. The Home-C
-  // `tool_result` detection arms live in IndirectInjectionValidator and were
-  // previously composed only into the core `createToolCallArgsValidator` factory
-  // (OUTGOING call args), so a guarded MCP client never scanned the raw results a
-  // remote tool returned. We append the validator to a DEDICATED result-path
-  // engine so the `tool_result` arm scans incoming result text WITHOUT also being
-  // run over outgoing call args through the shared `engine` — the call path
-  // validates a `Tool: …, Args: …` string (a different surface that would
-  // mis-fire the tool_result arms). The surface is asserted by construction
-  // (`surface: 'tool_result'`), not read from a Provenance envelope — envelope
-  // stamping is a separate increment.
-  //
-  // The result engine is an independent GuardrailEngine instance, so it owns an
-  // independent circuit-breaker / override-token domain from the call-path
-  // `engine`. That is acceptable here because this connector wires neither, and
-  // the separate instance is what keeps the tool_result arm off the call-args
-  // surface. Default-on whenever `validateToolResults` is enabled;
-  // `validateToolResults: false` disables all result-path scanning.
+  // Tool-RESULT / ingress path: the caller's chain PLUS a provenance-gated
+  // indirect-injection validator bound to the `tool_result` surface. The
+  // connector — not the caller — knows that a tool result carries `tool_result`
+  // provenance, so it establishes the surface itself. Without this, a caller's
+  // bare `IndirectInjectionValidator()` (no `surface`) receives only a string on
+  // the `engine.validate(content)` path and short-circuits to allow — i.e. the
+  // ingress scan would be inert under the documented default config. Appending a
+  // pre-surfaced instance makes tool-result indirect-injection coverage the
+  // secure default whenever `validateToolResults` is on.
   const resultEngine = new GuardrailEngine({
     validators: [...validators, new IndirectInjectionValidator({ surface: 'tool_result' })],
     guards,
@@ -254,18 +262,15 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
    * SEC-008: Validation timeout wrapper (Sprint 30: routes through canonical validateWithTimeoutSecure primitive).
    *
    * @internal
-   * @param targetEngine - the engine to run; the tool-call path uses `engine`
-   *   (user validators) and the tool-result path uses `resultEngine`
-   *   (user validators + the `tool_result`-surface indirect-injection arm).
    */
   const validateWithTimeout = async (
-    targetEngine: GuardrailEngine,
+    engineToUse: GuardrailEngine,
     content: string,
     context?: string
   ): Promise<GuardrailResult[]> => {
     // DEV-001: Correct API signature - use string context, not object
     const engineResult = await validateWithTimeoutSecure({
-      operation: () => targetEngine.validate(content, context),
+      operation: () => engineToUse.validate(content, context),
       timeoutMs: validationTimeout,
       timeoutSentinel: () =>
         createResult(false, Severity.CRITICAL, [
@@ -333,8 +338,6 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
    * @internal
    */
   const validateToolResult = async (toolName: string, resultContent: string): Promise<ToolCallResult | null> => {
-    // `'output'` is the legacy result-direction context tag passed to guards; the
-    // indirect arm's surface comes from its constructor (`tool_result`), not this string.
     const results = await validateWithTimeout(resultEngine, resultContent, 'output');
 
     const blocked = results.find(r => !r.allowed);
@@ -410,23 +413,66 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
 
         // Validate tool result if enabled
         if (validateToolResults) {
-          // Extract text content from result for validation
-          const resultText =
-            extractResultText(result) ||
-            extractContentFromResponse(result, {
-              fields: ['content[0].text', 'content[*].text'],
-              defaultValue: ''
+          // Tool-result ingress hardening: extract EVERY scannable text leaf —
+          // not just top-level `type:'text'` items. A remote MCP server can hide
+          // an indirect-injection payload in `resource.text`, a `resource.uri`,
+          // an embedded structured-content string leaf, or a base64 blob; the
+          // pre-hardening extractor saw only the text channel and skipped the
+          // rest entirely (documented blind spot, known-limitations §30).
+          const extracted = extractResultContent(result, {
+            decodeBinaryContent,
+            maxDecodedBlobSize
+          });
+
+          // Bounded extraction: if the result exceeded the leaf-count / byte
+          // budget OR nested past the depth bound, its tail is NOT scanned.
+          // Surface that as telemetry rather than silently under-scanning a
+          // (possibly hostile) oversized / deeply-nested result.
+          if (extracted.truncated) {
+            logger.warn('[Guardrails] MCP tool result exceeded scan bounds (size/depth); tail left unscanned', {
+              tool: sanitizeMeta(name),
+              maxSegments: MAX_SEGMENTS,
+              maxBytes: MAX_TOTAL_SCAN_BYTES,
+              maxDepth: MAX_EXTRACTION_DEPTH
             });
+          }
 
-          if (resultText.length > 0) {
+          // Build the set of strings to scan: the historical newline-joined view
+          // PLUS a separator-free concatenation (reconstructs a contiguous attack
+          // token an attacker split across two content items to dodge arms with
+          // no inter-token whitespace allowance) PLUS each leaf independently
+          // (defeats benign-padding / truncation-window evasion). Deduped, and
+          // ordered so the two FULL-content views (joined, concat) are scanned
+          // first — if the aggregate scan budget below cuts the per-leaf tail,
+          // the entire content has still been inspected at least once.
+          const views = buildScanViews(extracted.segments);
+
+          if (views.length > 0) {
             try {
-              const filteredResult = await validateToolResult(name, resultText);
+              // Aggregate wall-clock budget across ALL views, on top of each
+              // view's own validationTimeout. Without it, a hostile result with
+              // many leaves could force views.length sequential timeouts
+              // (leaf-count cap × validationTimeout) on a single call. Total
+              // result-scan time is bounded to ~2× validationTimeout.
+              const scanStartedAt = Date.now();
+              for (let i = 0; i < views.length; i++) {
+                if (i > 0 && Date.now() - scanStartedAt > validationTimeout) {
+                  logger.warn('[Guardrails] MCP tool-result scan budget exhausted; remaining views left unscanned', {
+                    tool: sanitizeMeta(name),
+                    scanned: i,
+                    total: views.length
+                  });
+                  break;
+                }
 
-              if (filteredResult) {
-                return {
-                  ...filteredResult,
-                  raw: result
-                };
+                const filteredResult = await validateToolResult(name, views[i]);
+
+                if (filteredResult) {
+                  return {
+                    ...filteredResult,
+                    raw: result
+                  };
+                }
               }
             } catch (error) {
               // Handle unexpected validation errors
@@ -461,6 +507,32 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
                 filtered: true
               };
             }
+          } else if (extracted.uninspectableCount > 0) {
+            // Tool-result ingress hardening: the result carried ONLY non-text
+            // binary/base64 content (no scannable text leaf, decode opt-out).
+            // Do NOT silently pass it as if it had been inspected — surface a
+            // telemetry signal so an operator can see that an uninspectable
+            // channel rode through unscanned. Tool name + blob kinds originate
+            // from the remote server, so both are CWE-117-sanitized.
+            logger.warn(
+              '[Guardrails] MCP tool result contained only uninspectable non-text content; channel passed unscanned',
+              {
+                tool: sanitizeMeta(name),
+                blobCount: extracted.uninspectableCount,
+                blobKinds: extracted.uninspectableKinds.map(k => sanitizeLogString(k))
+              }
+            );
+          }
+
+          // Observability: text WAS scanned, but binary blob(s) rode alongside
+          // it uninspected (decode opt-out). Lower signal than the warn above;
+          // emitted at debug so it does not flood logs on image-returning tools.
+          if (views.length > 0 && extracted.uninspectableCount > 0) {
+            logger.debug('[Guardrails] MCP tool result mixed scanned text with uninspectable non-text content', {
+              tool: sanitizeMeta(name),
+              blobCount: extracted.uninspectableCount,
+              blobKinds: extracted.uninspectableKinds.map(k => sanitizeLogString(k))
+            });
           }
         }
 
@@ -499,33 +571,285 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
 }
 
 /**
- * Extracts text content from a tool result for validation.
+ * Options controlling how an MCP tool result is reduced to scannable content.
+ *
+ * @internal
+ */
+interface ResultExtractOptions {
+  /** Bounded-decode base64 binary blobs to UTF-8 and scan them. */
+  decodeBinaryContent: boolean;
+  /** Max decoded size, in bytes, for a single base64 blob. */
+  maxDecodedBlobSize: number;
+}
+
+/**
+ * Mutable accumulator threaded through the recursive extraction walk.
+ *
+ * @internal
+ */
+interface LeafAccumulator {
+  /** Scannable text leaves collected so far. */
+  segments: string[];
+  /** Kind labels of binary/base64 blobs left uninspectable. */
+  blobs: string[];
+  /** Running total byte length of `segments` (cumulative DoS bound). */
+  bytes: number;
+  /** Set once a collection bound is hit; further leaves are dropped + flagged. */
+  truncated: boolean;
+}
+
+/**
+ * Scannable content extracted from an MCP tool result.
+ *
+ * @internal
+ */
+interface ExtractedResultContent {
+  /**
+   * Every independently-scannable text leaf: top-level `text` items,
+   * `resource.text` / `resource.uri`, recursively-collected string leaves of
+   * embedded structured content, and (when opted in) decoded base64 blobs.
+   */
+  segments: string[];
+  /** Count of binary/base64 blobs that were NOT decoded + scanned. */
+  uninspectableCount: number;
+  /** Distinct kind labels of the uninspectable blobs (telemetry only). */
+  uninspectableKinds: string[];
+  /** True if a collection bound (count/bytes) was hit and the tail was dropped. */
+  truncated: boolean;
+}
+
+/**
+ * Maximum object-graph depth walked when collecting string leaves from embedded
+ * structured content. Bounds work on a hostile, deeply-nested result. Content
+ * nested deeper than this is a documented recall gap (known-limitations §30).
+ *
+ * @internal
+ */
+const MAX_EXTRACTION_DEPTH = 6;
+
+/**
+ * Object keys that are protocol structure, not attacker payload — skipped during
+ * recursive leaf collection so discriminators / MIME types are not scanned as
+ * content (they are pure noise and never carry an injection). Deliberately NARROW
+ * (`annotations` is NOT skipped — an adversarial server is not bound by the MCP
+ * schema and could smuggle a directive string under it).
+ *
+ * @internal
+ */
+const STRUCTURAL_KEYS = new Set(['type', 'mimeType']);
+
+/**
+ * Content-block `type` values whose `data` field is base64 binary per the MCP
+ * spec. A `data` string is routed to blob handling ONLY when the enclosing block
+ * is one of these — a `data` field on any other block (e.g. a forged `text`
+ * block) is scanned as text, so an attacker cannot exclude a payload from the
+ * scan by parking it in a field named `data`.
+ *
+ * @internal
+ */
+const BINARY_CONTENT_TYPES = new Set(['image', 'audio']);
+
+/**
+ * Upper bounds on extraction breadth. The number of collected leaves and their
+ * cumulative byte length are capped so a hostile result (many tiny items / a
+ * huge field) cannot drive unbounded memory or scan time. Hitting either bound
+ * sets {@link LeafAccumulator.truncated}, which surfaces as telemetry. Because
+ * the leaf count is capped here, every collected leaf is also scanned
+ * independently in {@link buildScanViews} — there is no separate per-item cap.
+ *
+ * @internal
+ */
+const MAX_SEGMENTS = 64;
+const MAX_TOTAL_SCAN_BYTES = 256 * 1024;
+
+/**
+ * Appends a scannable leaf, enforcing the count + cumulative-byte bounds.
+ *
+ * @internal
+ */
+function pushSegment(acc: LeafAccumulator, value: string): void {
+  if (acc.truncated || value.length === 0) {
+    return;
+  }
+  if (acc.segments.length >= MAX_SEGMENTS || acc.bytes + value.length > MAX_TOTAL_SCAN_BYTES) {
+    acc.truncated = true;
+    return;
+  }
+  acc.segments.push(value);
+  acc.bytes += value.length;
+}
+
+/**
+ * Bounded base64 → UTF-8 decode for an opt-in decode-and-scan of binary blobs.
  *
  * @internal
  * @remarks
- * Handles different MCP result content types and extracts
- * text content for validation. First tries MCP-specific format,
- * then falls back to connector-utils for generic formats.
+ * Rejects (returns `null`) any blob whose encoded length could exceed the byte
+ * bound before allocating, and any decoded buffer over the bound or empty. This
+ * caps the amplification / DoS surface of decoding attacker-controlled base64.
  */
-function extractResultText(result: unknown): string {
-  if (!result || typeof result !== 'object') {
-    return '';
+function tryDecodeBase64(b64: string, maxBytes: number): string | null {
+  if (b64.length === 0) {
+    return null;
+  }
+  // base64 encodes ~3 bytes per 4 chars; reject oversized input pre-allocation.
+  if (b64.length > Math.ceil((maxBytes * 4) / 3) + 4) {
+    return null;
+  }
+  try {
+    const buf = Buffer.from(b64, 'base64');
+    if (buf.length === 0 || buf.length > maxBytes) {
+      return null;
+    }
+    return buf.toString('utf8');
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Routes a base64 binary blob to either a decoded scannable segment (opt-in) or
+ * the uninspectable bucket.
+ *
+ * @internal
+ */
+function handleBlob(b64: string, kind: string, acc: LeafAccumulator, opts: ResultExtractOptions): void {
+  if (opts.decodeBinaryContent) {
+    // `tryDecodeBase64` returns null for an empty/over-bound decode, so a
+    // non-null result is always a non-empty string.
+    const decoded = tryDecodeBase64(b64, opts.maxDecodedBlobSize);
+    if (decoded !== null) {
+      pushSegment(acc, decoded);
+      return;
+    }
+    // Decode failed or exceeded the bound — fall through to uninspectable.
+  }
+  acc.blobs.push(kind);
+}
+
+/**
+ * Recursively collects string leaves from an MCP content item (or nested
+ * structured value), routing base64 `data` / `blob` fields to {@link handleBlob}.
+ *
+ * @internal
+ */
+function collectStringLeaves(
+  value: unknown,
+  acc: LeafAccumulator,
+  opts: ResultExtractOptions,
+  depth: number,
+  kindHint: string
+): void {
+  if (acc.truncated) {
+    return;
+  }
+  if (depth > MAX_EXTRACTION_DEPTH) {
+    // Depth-cut is a form of "tail left unscanned"; flag it like the size caps
+    // so a deep-nesting evasion produces an operator signal, not silence.
+    acc.truncated = true;
+    return;
+  }
+  if (typeof value === 'string') {
+    pushSegment(acc, value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      collectStringLeaves(entry, acc, opts, depth + 1, kindHint);
+    }
+    return;
+  }
+  if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    const hint = typeof obj.type === 'string' ? obj.type : kindHint;
+    for (const [key, child] of Object.entries(obj)) {
+      if (STRUCTURAL_KEYS.has(key)) {
+        continue;
+      }
+      // Route base64 binary to blob handling ONLY for genuinely-binary fields:
+      // a `resource.blob`, or a `data` field on an image/audio block. A `data`
+      // field anywhere else is scanned as text (see BINARY_CONTENT_TYPES) so a
+      // payload cannot be hidden from the scan by naming its field `data`.
+      if (typeof child === 'string') {
+        if (key === 'blob') {
+          handleBlob(child, 'resource.blob', acc, opts);
+          continue;
+        }
+        if (key === 'data' && BINARY_CONTENT_TYPES.has(hint)) {
+          handleBlob(child, hint, acc, opts);
+          continue;
+        }
+      }
+      collectStringLeaves(child, acc, opts, depth + 1, hint);
+    }
+  }
+}
+
+/**
+ * Reduces an MCP tool result to every scannable text leaf plus a tally of the
+ * binary blobs that could not be inspected.
+ *
+ * @internal
+ * @remarks
+ * For an MCP `content[]` result this walks each item, collecting string leaves
+ * (text items, `resource.text` / `resource.uri`, embedded structured-content
+ * strings) and routing base64 `data` / `blob` fields per the decode policy. For
+ * a non-MCP-shaped result it falls back to the generic multi-format extractor.
+ */
+function extractResultContent(result: unknown, opts: ResultExtractOptions): ExtractedResultContent {
+  const acc: LeafAccumulator = { segments: [], blobs: [], bytes: 0, truncated: false };
+
+  if (result && typeof result === 'object' && Array.isArray((result as { content?: unknown[] }).content)) {
+    for (const item of (result as { content: unknown[] }).content) {
+      collectStringLeaves(item, acc, opts, 0, 'binary');
+    }
+  } else {
+    // Fallback to connector-utils for generic (non-MCP) response formats.
+    pushSegment(acc, extractContentFromResponse(result, { defaultValue: '' }));
   }
 
-  const resultObj = result as { content?: Array<{ type?: string; text?: string; data?: string }> };
+  return {
+    segments: acc.segments,
+    uninspectableCount: acc.blobs.length,
+    uninspectableKinds: [...new Set(acc.blobs)],
+    truncated: acc.truncated
+  };
+}
 
-  // MCP-specific format: content array with text items
-  if (Array.isArray(resultObj.content)) {
-    const textItems = resultObj.content
-      .filter(item => item.type === 'text' && typeof item.text === 'string')
-      .map(item => item.text!);
-    if (textItems.length > 0) {
-      return textItems.join('\n');
+/**
+ * Builds the deduplicated set of strings to scan from the extracted leaves.
+ *
+ * @internal
+ * @remarks
+ * - The newline-joined view preserves the historical single-scan behaviour.
+ * - The separator-free concatenation reconstructs a contiguous attack token an
+ *   attacker split across two content items to slip past arms with no
+ *   inter-token whitespace allowance (e.g. `AGENT_` + `FOOTER` → `AGENT_FOOTER`).
+ * - Each leaf is also scanned independently to defeat benign-padding /
+ *   truncation-window evasion. The leaf count is already capped upstream
+ *   (MAX_SEGMENTS), so every collected leaf is scanned; the joined and
+ *   concatenated views still carry the full collected content.
+ */
+function buildScanViews(segments: string[]): string[] {
+  const views: string[] = [];
+  const seen = new Set<string>();
+  const add = (candidate: string): void => {
+    if (candidate.length > 0 && !seen.has(candidate)) {
+      seen.add(candidate);
+      views.push(candidate);
+    }
+  };
+
+  add(segments.join('\n'));
+
+  if (segments.length > 1) {
+    add(segments.join(''));
+    for (const segment of segments) {
+      add(segment);
     }
   }
 
-  // S012-001: Fallback to connector-utils for generic response formats
-  return extractContentFromResponse(result, { defaultValue: '' });
+  return views;
 }
 
 /**
