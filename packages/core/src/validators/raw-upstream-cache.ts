@@ -17,6 +17,10 @@
  * requests, or async contexts. Outside a scope every accessor is an inert
  * no-op (writes drop, reads return `undefined`) — never a throw, so a connector
  * that has not opted into provenance emission degrades cleanly.
+ *
+ * @experimental Forward contract: PR-A defines these primitives; PR-B/PR-C are
+ * the first consumers. The export shape may change before the v1.0 public-surface
+ * freeze — do not depend on it for stable API yet.
  */
 import { AsyncLocalStorage } from 'node:async_hooks';
 

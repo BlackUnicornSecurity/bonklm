@@ -29,12 +29,16 @@ export type ProvenanceBoundary = 'retrieved_doc' | 'composed_context' | 'tool_re
  * The wire-level origin of an upstream content chunk. `user-input` is the
  * genuine user turn (NOT tool-derived); the other three are
  * attacker-influenceable indirect channels.
+ *
+ * @experimental Forward contract (PR-B/PR-C populate it); may change before freeze.
  */
 export type ProvenanceSource = 'mcp-tool-result' | 'http-fetch' | 'agent-paraphrase' | 'user-input';
 
 /**
  * One link in the upstream derivation chain. Ordered most-recent-first inside
  * {@link Provenance.derivedFrom}.
+ *
+ * @experimental Forward contract (PR-B/PR-C populate it); may change before freeze.
  */
 export interface ToolResultRef {
   source: ProvenanceSource;
@@ -53,6 +57,11 @@ export interface ToolResultRef {
 /**
  * Provenance envelope carried on `MemoryWritePayload.metadata.provenance`
  * (memory-utils) and on `ToolCallResult` (mcp-connector).
+ *
+ * @experimental Forward contract: PR-A defines this envelope (with {@link ToolResultRef}
+ * / {@link ProvenanceSource}); PR-B/PR-C are the first to populate it. The shape may
+ * change before the v1.0 public-surface freeze. (`ProvenanceBoundary` — the surface
+ * tag consumed by the shipped arms — is stable.)
  */
 export interface Provenance {
   /** Ordered upstream chain, most-recent first. */
@@ -71,6 +80,8 @@ const TOOL_DERIVED_SOURCES: ReadonlySet<ProvenanceSource> = new Set<ProvenanceSo
  * ref. A chain that is empty, absent, malformed, or composed entirely of
  * `user-input` refs returns `false` — the laundering / indirect-injection
  * guards must NOT engage on genuine user text.
+ *
+ * @experimental Forward contract (the gating consumer lands in PR-C); may change before freeze.
  */
 export function hasToolResultProvenance(provenance?: Provenance): boolean {
   if (!provenance || !Array.isArray(provenance.derivedFrom)) {
