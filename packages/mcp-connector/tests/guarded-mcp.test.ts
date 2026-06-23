@@ -838,7 +838,11 @@ describe('MCP Guarded Wrapper', () => {
       expect(validatedContent).toContain('Second line');
     });
 
-    it('should skip non-text content items in validation', async () => {
+    it('scans text + non-text string leaves but not undecoded binary blobs', async () => {
+      // Tool-result ingress hardening (known-limitations §30): the extractor no
+      // longer drops every non-`text` block. `resource` STRING leaves (here a
+      // `uri`) are now scannable content; only the binary base64 `data` blob is
+      // left uninspectable while `decodeBinaryContent` is off (the default).
       mockCallTool.mockResolvedValue({
         content: [
           { type: 'image', data: 'base64data' },
@@ -873,11 +877,15 @@ describe('MCP Guarded Wrapper', () => {
         arguments: { operation: 'add', a: 1, b: 2 }
       });
 
-      const validatedContent = validateFn.mock.calls[0][0];
-      expect(validatedContent).toBe('Only text is validated');
-      expect(validatedContent).not.toContain('base64data');
-      expect(validatedContent).not.toContain('file://');
-      expect(validatedContent).not.toContain('file://');
+      // The newline-joined view (first scan) now carries BOTH the text item and
+      // the resource string leaf — the previously-dropped non-text channel.
+      const joinedView = validateFn.mock.calls[0][0];
+      expect(joinedView).toContain('Only text is validated');
+      expect(joinedView).toContain('file:///path');
+
+      // The binary base64 `data` blob is NEVER fed to a validator (decode opt-out).
+      const allScanned = validateFn.mock.calls.map(call => call[0]).join(' ');
+      expect(allScanned).not.toContain('base64data');
     });
   });
 });

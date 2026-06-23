@@ -112,6 +112,33 @@ export interface GuardedMCPOptions {
   validationTimeout?: number;
 
   /**
+   * Opt-in: bounded-decode base64 binary content blocks (`image` / `audio`
+   * `data`, `resource.blob`) to UTF-8 and scan the decoded text through the
+   * guardrail chain.
+   *
+   * @remarks
+   * Default `false`. Decoding attacker-controlled base64 returned by a remote
+   * MCP server is an amplification / DoS surface (a short base64 string expands,
+   * and arbitrary binary decoded as UTF-8 is scan noise that can mis-fire arms),
+   * so the decode-and-scan path is deliberately opt-in. When `false`, binary
+   * blobs are NOT silently passed through: a telemetry `warn` is emitted flagging
+   * the channel as uninspectable when a result carries only non-text content.
+   *
+   * @defaultValue false
+   */
+  decodeBinaryContent?: boolean;
+
+  /**
+   * Maximum decoded size, in bytes, for a single base64 blob when
+   * {@link decodeBinaryContent} is enabled. A blob whose decoded size exceeds
+   * this bound is left uninspectable (and flagged via telemetry) rather than
+   * scanned, bounding the decode-and-scan DoS surface.
+   *
+   * @defaultValue 65536 (64 KiB)
+   */
+  maxDecodedBlobSize?: number;
+
+  /**
    * Callback invoked when a tool call is blocked.
    *
    * @param result - The validation result that caused blocking.
@@ -191,6 +218,14 @@ export const DEFAULT_MAX_ARGUMENT_SIZE = 1024 * 100;
  * @internal
  */
 export const DEFAULT_VALIDATION_TIMEOUT = 5000;
+
+/**
+ * Default maximum decoded size for a single base64 blob (64 KiB) when
+ * {@link GuardedMCPOptions.decodeBinaryContent} is enabled.
+ *
+ * @internal
+ */
+export const DEFAULT_MAX_DECODED_BLOB_SIZE = 1024 * 64;
 
 /**
  * Valid characters for tool names.

@@ -202,11 +202,14 @@ describe('MCP tool-result indirect-injection ingress (PR-B)', () => {
       expect(result.filtered).toBeUndefined();
     });
 
-    it('does NOT scan non-text content blocks (documented blind spot)', async () => {
-      // KNOWN LIMITATION: only the text channel is extracted/scanned. An attack
-      // smuggled into a non-text block (image/resource/binary data) is not
-      // inspected and passes through. This test documents that gap so a future
-      // extraction enhancement that closes it will (intentionally) change here.
+    it('flags an uninspectable binary blob via telemetry instead of silently passing', async () => {
+      // UPDATED (PR-C): the text-leaf blind spot is now closed (resource.text /
+      // resource.uri / structured string leaves ARE scanned — see the PR-C
+      // suites below). A genuinely BINARY blob (image/audio `data`,
+      // `resource.blob`) is still not decoded+scanned by default — that is opt-in
+      // via `decodeBinaryContent` — but it is no longer SILENT: an
+      // uninspectable-channel `warn` is emitted so an operator sees the gap.
+      const logger = { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() };
       const callTool = vi.fn().mockResolvedValue({
         content: [{ type: 'image', data: `base64::${SUPERSESSION}` }]
       });
@@ -215,12 +218,14 @@ describe('MCP tool-result indirect-injection ingress (PR-B)', () => {
       >[0];
       const guarded = createGuardedMCP(client, {
         validators: [noOpValidator()],
-        validateToolResults: true
+        validateToolResults: true,
+        logger
       });
 
       const result = await guarded.callTool({ name: 'lookup', arguments: {} });
 
       expect(result.filtered).toBeUndefined();
+      expect(logger.warn).toHaveBeenCalledWith(expect.stringMatching(/uninspectable/i), expect.anything());
     });
   });
 });

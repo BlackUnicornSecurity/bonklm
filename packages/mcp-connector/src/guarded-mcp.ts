@@ -22,24 +22,29 @@ import {
   type GuardrailResult,
   IndirectInjectionValidator,
   type Logger,
+  sanitizeLogString,
   sanitizeMeta,
   serializeError,
   Severity,
   validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
-import {
-  ConnectorValidationError,
-  extractContentFromResponse,
-  logValidationFailure
-} from '@blackunicorn/bonklm/core/connector-utils';
+import { ConnectorValidationError, logValidationFailure } from '@blackunicorn/bonklm/core/connector-utils';
 import type { GuardedMCPOptions, ToolCallOptions, ToolCallResult, ToolInfo } from './types.js';
 import {
   DEFAULT_MAX_ARGUMENT_SIZE,
+  DEFAULT_MAX_DECODED_BLOB_SIZE,
   DEFAULT_VALIDATION_TIMEOUT,
   MAX_TOOL_NAME_LENGTH,
   VALID_TOOL_NAME_PATTERN
 } from './types.js';
 import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-utils';
+import {
+  buildScanViews,
+  extractResultContent,
+  MAX_EXTRACTION_DEPTH,
+  MAX_SEGMENTS,
+  MAX_TOTAL_SCAN_BYTES
+} from './result-extraction.js';
 
 /**
  * Interface for the guarded MCP client wrapper.
@@ -79,17 +84,26 @@ const DEFAULT_LOGGER: Logger = createLogger('console');
  * @throws {ConnectorValidationError} If tool name is invalid or not in allowlist
  */
 function validateToolName(name: string, allowedTools?: string[]): string {
+  // CWE-117: `name` is attacker-influenceable (an agent populates it from a
+  // remote `listTools()` response). The validation logic runs on the raw value,
+  // but every error MESSAGE embeds the SANITIZED form — the allowlist + format
+  // branches fire precisely when `name` may carry CR/LF / control chars, and a
+  // caller logging `error.message` would otherwise forge log lines (whole-file
+  // sink sweep on touch, per ADR-0001).
   // Check allowlist first
   if (allowedTools && allowedTools.length > 0) {
     if (!allowedTools.includes(name)) {
-      throw new ConnectorValidationError(`Tool '${name}' is not in the allowed tools list`, 'allowlist_violation');
+      throw new ConnectorValidationError(
+        `Tool '${sanitizeMeta(name)}' is not in the allowed tools list`,
+        'allowlist_violation'
+      );
     }
   }
 
   // Validate name format
   if (!VALID_TOOL_NAME_PATTERN.test(name)) {
     throw new ConnectorValidationError(
-      `Tool name '${name}' contains invalid characters. Only alphanumeric, underscore, and hyphen are allowed.`,
+      `Tool name '${sanitizeMeta(name)}' contains invalid characters. Only alphanumeric, underscore, and hyphen are allowed.`,
       'invalid_format'
     );
   }
@@ -97,7 +111,7 @@ function validateToolName(name: string, allowedTools?: string[]): string {
   // Validate length
   if (name.length > MAX_TOOL_NAME_LENGTH) {
     throw new ConnectorValidationError(
-      `Tool name '${name}' exceeds maximum length of ${MAX_TOOL_NAME_LENGTH}`,
+      `Tool name '${sanitizeMeta(name)}' exceeds maximum length of ${MAX_TOOL_NAME_LENGTH}`,
       'size_limit_exceeded'
     );
   }
@@ -159,24 +173,27 @@ function validateArgumentSize(args: Record<string, unknown>, maxSize: number): s
  * @returns An object with callTool and listTools methods that validate input/output
  *
  * @remarks
- * When `validateToolResults` is enabled (the default), the extracted **text**
- * content of inbound tool results is additionally scanned by an
- * `IndirectInjectionValidator` scoped to the `tool_result` surface — on top of
- * any `validators` you supply, with no opt-in required. This catches indirect
- * prompt-injection carried in the text of a remote tool's output (task-hijack /
+ * When `validateToolResults` is enabled (the default), inbound tool results are
+ * scanned by an `IndirectInjectionValidator` scoped to the `tool_result` surface
+ * — on top of any `validators` you supply, with no opt-in required (task-hijack /
  * objective-replacement directives, forged ReAct instruction tokens, forged
  * agent-instrumentation footers, exfil directives). The scan runs only on the
  * incoming result content, never on outgoing tool-call arguments; your own
- * `validators` run on both surfaces (call arguments and result text).
+ * `validators` run on both surfaces.
  *
- * Two boundaries worth knowing:
- * - The `tool_result` surface is **asserted by this connector** (everything
- *   reaching the result path is a genuine tool result); the `Provenance`
- *   wire-envelope is not stamped or verified here — envelope stamping is a
- *   separate increment.
- * - **Only text content is scanned.** Non-text result blocks (image / audio /
- *   embedded-resource / binary `data`) are not extracted and therefore not
- *   scanned — see the MCP entry in `docs/user/known-limitations.md`.
+ * The scanned content is **every scannable text leaf** of the result — top-level
+ * `text` items, `resource.text` / `resource.uri`, and recursively-collected
+ * string leaves of embedded structured content — across the newline-joined view,
+ * a separator-free concatenation (so a contiguous attack token split across
+ * content items is reconstructed), and each leaf independently. Boundaries:
+ * - **Binary/base64 blobs** (`image` / `audio` `data`, `resource.blob`) are not
+ *   decoded+scanned unless `decodeBinaryContent: true`; otherwise a `warn` is
+ *   emitted for a binary-only result, and a `debug` signal when uninspectable
+ *   blobs accompany text that was scanned — never a silent pass.
+ * - The `tool_result` surface is **asserted by this connector**; the `Provenance`
+ *   wire-envelope is not stamped or verified here — a separate increment.
+ * - Result content beyond the depth / leaf-count / byte scan bounds has its tail
+ *   left unscanned, flagged via telemetry. See `docs/user/known-limitations.md`.
  *
  * Set `validateToolResults: false` to disable the scan along with all other
  * result-path validation.
@@ -212,6 +229,8 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
     maxArgumentSize = DEFAULT_MAX_ARGUMENT_SIZE, // SEC-005: Default 100KB
     productionMode = process.env.NODE_ENV === 'production', // SEC-007
     validationTimeout = DEFAULT_VALIDATION_TIMEOUT, // SEC-008: Default 5s
+    decodeBinaryContent = false, // Tool-result ingress: opt-in base64 decode-and-scan
+    maxDecodedBlobSize = DEFAULT_MAX_DECODED_BLOB_SIZE, // Decode-and-scan DoS bound
     onToolCallBlocked,
     onToolResultBlocked
   } = options;
@@ -219,31 +238,24 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
   // Validate critical security options
   validatePositiveNumber(maxArgumentSize, 'maxArgumentSize');
   validatePositiveNumber(validationTimeout, 'validationTimeout');
+  validatePositiveNumber(maxDecodedBlobSize, 'maxDecodedBlobSize');
 
+  // Tool-CALL / input path: the caller-supplied chain, unchanged.
   const engine = new GuardrailEngine({
     validators,
     guards,
     logger
   });
 
-  // Indirect prompt-injection scan on the INBOUND tool-result path. The Home-C
-  // `tool_result` detection arms live in IndirectInjectionValidator and were
-  // previously composed only into the core `createToolCallArgsValidator` factory
-  // (OUTGOING call args), so a guarded MCP client never scanned the raw results a
-  // remote tool returned. We append the validator to a DEDICATED result-path
-  // engine so the `tool_result` arm scans incoming result text WITHOUT also being
-  // run over outgoing call args through the shared `engine` — the call path
-  // validates a `Tool: …, Args: …` string (a different surface that would
-  // mis-fire the tool_result arms). The surface is asserted by construction
-  // (`surface: 'tool_result'`), not read from a Provenance envelope — envelope
-  // stamping is a separate increment.
-  //
-  // The result engine is an independent GuardrailEngine instance, so it owns an
-  // independent circuit-breaker / override-token domain from the call-path
-  // `engine`. That is acceptable here because this connector wires neither, and
-  // the separate instance is what keeps the tool_result arm off the call-args
-  // surface. Default-on whenever `validateToolResults` is enabled;
-  // `validateToolResults: false` disables all result-path scanning.
+  // Tool-RESULT / ingress path: the caller's chain PLUS a provenance-gated
+  // indirect-injection validator bound to the `tool_result` surface. The
+  // connector — not the caller — knows that a tool result carries `tool_result`
+  // provenance, so it establishes the surface itself. Without this, a caller's
+  // bare `IndirectInjectionValidator()` (no `surface`) receives only a string on
+  // the `engine.validate(content)` path and short-circuits to allow — i.e. the
+  // ingress scan would be inert under the documented default config. Appending a
+  // pre-surfaced instance makes tool-result indirect-injection coverage the
+  // secure default whenever `validateToolResults` is on.
   const resultEngine = new GuardrailEngine({
     validators: [...validators, new IndirectInjectionValidator({ surface: 'tool_result' })],
     guards,
@@ -254,18 +266,15 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
    * SEC-008: Validation timeout wrapper (Sprint 30: routes through canonical validateWithTimeoutSecure primitive).
    *
    * @internal
-   * @param targetEngine - the engine to run; the tool-call path uses `engine`
-   *   (user validators) and the tool-result path uses `resultEngine`
-   *   (user validators + the `tool_result`-surface indirect-injection arm).
    */
   const validateWithTimeout = async (
-    targetEngine: GuardrailEngine,
+    engineToUse: GuardrailEngine,
     content: string,
     context?: string
   ): Promise<GuardrailResult[]> => {
     // DEV-001: Correct API signature - use string context, not object
     const engineResult = await validateWithTimeoutSecure({
-      operation: () => targetEngine.validate(content, context),
+      operation: () => engineToUse.validate(content, context),
       timeoutMs: validationTimeout,
       timeoutSentinel: () =>
         createResult(false, Severity.CRITICAL, [
@@ -333,8 +342,6 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
    * @internal
    */
   const validateToolResult = async (toolName: string, resultContent: string): Promise<ToolCallResult | null> => {
-    // `'output'` is the legacy result-direction context tag passed to guards; the
-    // indirect arm's surface comes from its constructor (`tool_result`), not this string.
     const results = await validateWithTimeout(resultEngine, resultContent, 'output');
 
     const blocked = results.find(r => !r.allowed);
@@ -410,23 +417,66 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
 
         // Validate tool result if enabled
         if (validateToolResults) {
-          // Extract text content from result for validation
-          const resultText =
-            extractResultText(result) ||
-            extractContentFromResponse(result, {
-              fields: ['content[0].text', 'content[*].text'],
-              defaultValue: ''
+          // Tool-result ingress hardening: extract EVERY scannable text leaf —
+          // not just top-level `type:'text'` items. A remote MCP server can hide
+          // an indirect-injection payload in `resource.text`, a `resource.uri`,
+          // an embedded structured-content string leaf, or a base64 blob; the
+          // pre-hardening extractor saw only the text channel and skipped the
+          // rest entirely (documented blind spot, known-limitations §30).
+          const extracted = extractResultContent(result, {
+            decodeBinaryContent,
+            maxDecodedBlobSize
+          });
+
+          // Bounded extraction: if the result exceeded the leaf-count / byte
+          // budget OR nested past the depth bound, its tail is NOT scanned.
+          // Surface that as telemetry rather than silently under-scanning a
+          // (possibly hostile) oversized / deeply-nested result.
+          if (extracted.truncated) {
+            logger.warn('[Guardrails] MCP tool result exceeded scan bounds (size/depth); tail left unscanned', {
+              tool: sanitizeMeta(name),
+              maxSegments: MAX_SEGMENTS,
+              maxBytes: MAX_TOTAL_SCAN_BYTES,
+              maxDepth: MAX_EXTRACTION_DEPTH
             });
+          }
 
-          if (resultText.length > 0) {
+          // Build the set of strings to scan: the historical newline-joined view
+          // PLUS a separator-free concatenation (reconstructs a contiguous attack
+          // token an attacker split across two content items to dodge arms with
+          // no inter-token whitespace allowance) PLUS each leaf independently
+          // (defeats benign-padding / truncation-window evasion). Deduped, and
+          // ordered so the two FULL-content views (joined, concat) are scanned
+          // first — if the aggregate scan budget below cuts the per-leaf tail,
+          // the entire content has still been inspected at least once.
+          const views = buildScanViews(extracted.segments);
+
+          if (views.length > 0) {
             try {
-              const filteredResult = await validateToolResult(name, resultText);
+              // Aggregate wall-clock budget across ALL views, on top of each
+              // view's own validationTimeout. Without it, a hostile result with
+              // many leaves could force views.length sequential timeouts
+              // (leaf-count cap × validationTimeout) on a single call. Total
+              // result-scan time is bounded to ~2× validationTimeout.
+              const scanStartedAt = Date.now();
+              for (let i = 0; i < views.length; i++) {
+                if (i > 0 && Date.now() - scanStartedAt > validationTimeout) {
+                  logger.warn('[Guardrails] MCP tool-result scan budget exhausted; remaining views left unscanned', {
+                    tool: sanitizeMeta(name),
+                    scanned: i,
+                    total: views.length
+                  });
+                  break;
+                }
 
-              if (filteredResult) {
-                return {
-                  ...filteredResult,
-                  raw: result
-                };
+                const filteredResult = await validateToolResult(name, views[i]);
+
+                if (filteredResult) {
+                  return {
+                    ...filteredResult,
+                    raw: result
+                  };
+                }
               }
             } catch (error) {
               // Handle unexpected validation errors
@@ -461,6 +511,32 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
                 filtered: true
               };
             }
+          } else if (extracted.uninspectableCount > 0) {
+            // Tool-result ingress hardening: the result carried ONLY non-text
+            // binary/base64 content (no scannable text leaf, decode opt-out).
+            // Do NOT silently pass it as if it had been inspected — surface a
+            // telemetry signal so an operator can see that an uninspectable
+            // channel rode through unscanned. Tool name + blob kinds originate
+            // from the remote server, so both are CWE-117-sanitized.
+            logger.warn(
+              '[Guardrails] MCP tool result contained only uninspectable non-text content; channel passed unscanned',
+              {
+                tool: sanitizeMeta(name),
+                blobCount: extracted.uninspectableCount,
+                blobKinds: extracted.uninspectableKinds.map(k => sanitizeLogString(k))
+              }
+            );
+          }
+
+          // Observability: text WAS scanned, but binary blob(s) rode alongside
+          // it uninspected (decode opt-out). Lower signal than the warn above;
+          // emitted at debug so it does not flood logs on image-returning tools.
+          if (views.length > 0 && extracted.uninspectableCount > 0) {
+            logger.debug('[Guardrails] MCP tool result mixed scanned text with uninspectable non-text content', {
+              tool: sanitizeMeta(name),
+              blobCount: extracted.uninspectableCount,
+              blobKinds: extracted.uninspectableKinds.map(k => sanitizeLogString(k))
+            });
           }
         }
 
@@ -496,36 +572,6 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
   };
 
   return createGuardedWrapper();
-}
-
-/**
- * Extracts text content from a tool result for validation.
- *
- * @internal
- * @remarks
- * Handles different MCP result content types and extracts
- * text content for validation. First tries MCP-specific format,
- * then falls back to connector-utils for generic formats.
- */
-function extractResultText(result: unknown): string {
-  if (!result || typeof result !== 'object') {
-    return '';
-  }
-
-  const resultObj = result as { content?: Array<{ type?: string; text?: string; data?: string }> };
-
-  // MCP-specific format: content array with text items
-  if (Array.isArray(resultObj.content)) {
-    const textItems = resultObj.content
-      .filter(item => item.type === 'text' && typeof item.text === 'string')
-      .map(item => item.text!);
-    if (textItems.length > 0) {
-      return textItems.join('\n');
-    }
-  }
-
-  // S012-001: Fallback to connector-utils for generic response formats
-  return extractContentFromResponse(result, { defaultValue: '' });
 }
 
 /**
