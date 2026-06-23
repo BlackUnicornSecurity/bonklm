@@ -20,6 +20,7 @@
  */
 
 import {
+  appendToolResultInjectionArm,
   createLogger,
   createResult,
   type EngineResult,
@@ -59,13 +60,6 @@ import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-util
  * @internal
  */
 const DEFAULT_LOGGER: Logger = createLogger('console');
-
-/**
- * Validates that a numeric option is a positive number.
- *
- * @internal
- * @throws {TypeError} If value is not a positive finite number
- */
 
 /**
  * Circuit breaker states for retry logic.
@@ -184,6 +178,18 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
     logger
   });
 
+  // D-065 §7-step-2.c: the inbound tool-result path validates against the user
+  // validators PLUS the provenance-gated `tool_result` indirect-injection arm, so
+  // a task-hijack / exfil directive embedded in a tool result is blocked even when
+  // the caller supplied no validator that catches it. Kept on a SEPARATE engine
+  // from the general-output engine above so the tool_result-surface patterns never
+  // fire on ordinary LLM output (which carries no connector provenance).
+  const toolResultEngine = new GuardrailEngine({
+    validators: appendToolResultInjectionArm(validators),
+    guards,
+    logger
+  });
+
   /**
    * S012-004: Checks if circuit breaker is open.
    * Returns true if requests should be blocked.
@@ -248,9 +254,13 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
    *
    * @internal
    */
-  const validateWithTimeout = async (content: string, context?: string): Promise<EngineResult> => {
+  const validateWithTimeout = async (
+    content: string,
+    context?: string,
+    targetEngine: GuardrailEngine = engine
+  ): Promise<EngineResult> => {
     const engineResult = await validateWithTimeoutSecure<EngineResult>({
-      operation: () => engine.validate(content, context),
+      operation: () => targetEngine.validate(content, context),
       timeoutMs: validationTimeout,
       timeoutSentinel: () => ({
         allowed: false,
@@ -268,6 +278,10 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
           }
         ],
         results: [],
+        // Diagnostic-only fallback count: reflects the user-supplied validator
+        // list. The tool-result engine additionally composes the indirect-injection
+        // arm, so this can under-report by one on a tool-result-path timeout. Does
+        // not affect the block decision (sentinel is always allowed:false).
         validatorCount: validators.length,
         guardCount: guards.length,
         executionTime: validationTimeout,
@@ -341,14 +355,19 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
    *
    * @internal
    */
-  const validateAfter = async (content: string, executionContext?: MastraAgentContext): Promise<AgentHookResult> => {
+  const validateAfter = async (
+    content: string,
+    executionContext?: MastraAgentContext,
+    targetEngine: GuardrailEngine = engine,
+    contextLabel = 'output'
+  ): Promise<AgentHookResult> => {
     // S012-004: Use EngineResult from validateWithTimeout
-    const result = await validateWithTimeout(content, 'output');
+    const result = await validateWithTimeout(content, contextLabel, targetEngine);
 
     if (!result.allowed) {
       onBlocked?.(result as any, executionContext);
       // S012-004: Use connector-utils validation failure logging
-      logValidationFailure(logger, result.reason || 'Output blocked', { context: 'output' });
+      logValidationFailure(logger, result.reason || 'Output blocked', { context: contextLabel });
       return {
         allowed: false,
         blockedReason: productionMode ? 'Content blocked by security policy' : `Content blocked: ${result.reason}`
@@ -493,7 +512,12 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
       }
 
       const text = typeof toolResult === 'string' ? toolResult : messagesToText([toolResult]);
-      return validateAfter(text, executionContext);
+      // D-065 §7-step-2.c: route through the tool-result engine so the
+      // provenance-gated `tool_result` indirect-injection arm scans the inbound
+      // result, not only the user-supplied validators (which the general-output
+      // engine carries). Label matches the `tool_result` provenance surface so
+      // logs correlate to the surface taxonomy.
+      return validateAfter(text, executionContext, toolResultEngine, 'tool_result');
     },
 
     /**
