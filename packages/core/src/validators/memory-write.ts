@@ -35,6 +35,9 @@
 import type { Validator, ValidatorInput } from '../engine/GuardrailEngine.types.js';
 import { createResult, type GuardrailResult, Severity } from '../base/GuardrailResult.js';
 import type { Logger } from '../base/GenericLogger.js';
+import type { Provenance } from './provenance.js';
+import { IndirectInjectionValidator } from './indirect-injection.js';
+import { sanitizeLogString } from '../common/index.js';
 import { applyRedaction, runValidatorChain, VALIDATOR_ERROR_CATEGORIES } from './validator-utils.js';
 
 const DEFAULT_REDACT_REPLACEMENT = '[REDACTED]';
@@ -42,12 +45,28 @@ const DEFAULT_REDACT_REPLACEMENT = '[REDACTED]';
 /** Memory write failure mode. */
 export type MemoryWriteFailureMode = 'block-write' | 'redact';
 
+/**
+ * Memory-write payload metadata. An open record (arbitrary connector keys stay
+ * allowed) with one typed slot: the optional {@link Provenance} envelope.
+ *
+ * D-065 §7-step-2.b PR-A defines the typing only; PR-C (`memory-utils`) is what
+ * actually populates `metadata.provenance` from the upstream tool-result chain.
+ * Once populated, a connector composing an `IndirectInjectionValidator({ surface:
+ * 'memory_write' })` can gate the stricter arms on whether the write derives from
+ * an attacker-influenceable tool result (`hasToolResultProvenance`).
+ */
+export interface MemoryWriteMetadata {
+  /** Upstream-derivation envelope (PR-C threads it through here). */
+  provenance?: Provenance;
+  [key: string]: unknown;
+}
+
 /** Payload shape mirroring `ValidatorInput { kind: 'memory_write' }`. */
 export interface MemoryWritePayload {
   content: string;
   userId?: string;
   sessionId?: string;
-  metadata?: Record<string, unknown>;
+  metadata?: MemoryWriteMetadata;
 }
 
 export interface MemoryWriteValidatorConfig {
@@ -136,17 +155,19 @@ export function createMemoryWriteValidator(config: MemoryWriteValidatorConfig): 
   if (config.validators.length === 0) {
     throw new Error('createMemoryWriteValidator requires at least one underlying validator.');
   }
+  // D-065 §7-step-2.b: append the provenance-gated indirect-injection arms for
+  // the memory_write surface (shell-var credential exfil, legacy-compat
+  // override framing). Appended after the caller's chain. PR-C refines this to
+  // gate on `metadata.provenance` (hasToolResultProvenance); PR-A gates on the
+  // memory_write surface alone.
+  const validators = [...config.validators, new IndirectInjectionValidator({ surface: 'memory_write' })];
   const mode: MemoryWriteFailureMode = config.onFailure ?? 'block-write';
   const replacement = config.redactReplacement ?? DEFAULT_REDACT_REPLACEMENT;
   const logger = config.logger;
 
   const validateWrite = async (payload: MemoryWritePayload): Promise<MemoryWriteResult> => {
     const metadata = buildMetadata(payload);
-    const leafResult = await runValidatorChain(
-      config.validators,
-      payload.content,
-      VALIDATOR_ERROR_CATEGORIES.memoryWrite
-    );
+    const leafResult = await runValidatorChain(validators, payload.content, VALIDATOR_ERROR_CATEGORIES.memoryWrite);
 
     // No findings → straight pass-through.
     if (!leafResult.blocked) {
@@ -158,10 +179,12 @@ export function createMemoryWriteValidator(config: MemoryWriteValidatorConfig): 
     }
 
     if (mode === 'redact') {
-      const redactedContent = applyRedaction(payload.content, leafResult.findings, config.validators, replacement);
+      const redactedContent = applyRedaction(payload.content, leafResult.findings, validators, replacement);
       logger?.info('[MemoryWriteValidator] redacted memory write', {
-        sessionId: payload.sessionId,
-        userId: payload.userId,
+        // CWE-117: sessionId/userId are caller-influenced; escape before logging
+        // (audit re-touch rule — match the retrieved-doc sanitization discipline).
+        sessionId: sanitizeLogString(payload.sessionId ?? ''),
+        userId: sanitizeLogString(payload.userId ?? ''),
         findings: leafResult.findings.length
       });
       return {
@@ -183,9 +206,11 @@ export function createMemoryWriteValidator(config: MemoryWriteValidatorConfig): 
 
     // block-write — refuse the write; original payload preserved.
     logger?.warn('[MemoryWriteValidator] memory write blocked', {
-      sessionId: payload.sessionId,
-      userId: payload.userId,
-      reason: leafResult.reason
+      // CWE-117: sessionId/userId + the leaf reason are attacker-influenceable;
+      // escape before logging (audit re-touch rule, ADR-0001).
+      sessionId: sanitizeLogString(payload.sessionId ?? ''),
+      userId: sanitizeLogString(payload.userId ?? ''),
+      reason: sanitizeLogString(leafResult.reason ?? '')
     });
     return {
       result: { ...leafResult, metadata },

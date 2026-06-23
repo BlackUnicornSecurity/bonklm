@@ -45,6 +45,21 @@ post-rc.3 hardening). This document enumerates what is **PUBLIC** (frozen for v2
 - `createMemoryWriteValidator` (factory) — `name = 'MemoryWriteValidator'`
 - `createRetrievedDocValidator` (factory) — `name = 'RetrievedDocValidator'`
 - `ToolCallArgsValidator` (class)
+- `IndirectInjectionValidator` (class) — `name = 'IndirectInjectionValidator'`; with
+  `createIndirectInjectionValidator` (factory) and `IndirectInjectionConfig` (interface).
+  Provenance-gated connector-boundary indirect prompt-injection detection; appended automatically
+  into the four connector factories above. Never runs on raw user text.
+
+#### Provenance (connector-boundary contract)
+
+- `Provenance`, `ToolResultRef`, `ProvenanceBoundary`, `ProvenanceSource` (types)
+- `hasToolResultProvenance` (function)
+- `MemoryWriteMetadata` (interface) — types the `metadata.provenance` slot on `MemoryWritePayload`
+- `INDIRECT_INJECTION_PATTERNS`, `detectIndirectInjection` and the `runWithRawUpstreamCache` /
+  `putRawUpstream` / `getRawUpstream` / `rawUpstreamCacheActive` primitives are barrel-reachable but
+  **tactical / forward-contract** (consumed by later connector increments) — treat as experimental,
+  not part of the frozen v1.0 surface, until the connector increments land. (Classification pending
+  maintainer confirmation — see the PR-A audit triage.)
 
 #### Cache + replay
 

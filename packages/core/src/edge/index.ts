@@ -48,6 +48,10 @@
  *   validator symbol is not exported here, but `GuardrailEngine` still
  *   imports the `override-token` module internally, so `node:crypto` is
  *   present in the bundle — see the runtime-support caveat above.)
+ * - `raw-upstream-cache` primitives (`runWithRawUpstreamCache` etc.) — use
+ *   `node:async_hooks` (`AsyncLocalStorage`), which is not part of the strict
+ *   edge subset. The `IndirectInjectionValidator` itself is edge-safe and IS
+ *   exported below; only the ALS forward-cache is Node-only.
  *
  * @package @blackunicorn/bonklm/edge
  */
@@ -112,6 +116,7 @@ export type {
 
 export { createMemoryWriteValidator } from '../validators/memory-write.js';
 export type {
+  MemoryWriteMetadata,
   MemoryWritePayload,
   MemoryWriteResult,
   MemoryWriteValidator,
@@ -125,6 +130,14 @@ export type {
   ComposedContextValidatorConfig,
   ComposedContextBatchResult
 } from '../validators/composed-context.js';
+
+// Provenance-gated indirect-injection (D-065 §7-step-2.b). Edge-safe: pure regex
+// + types, no Node built-ins. The raw-upstream-cache primitive is intentionally
+// NOT re-exported here — it uses `node:async_hooks` (see "What's NOT exported").
+export { IndirectInjectionValidator, createIndirectInjectionValidator } from '../validators/indirect-injection.js';
+export type { IndirectInjectionConfig } from '../validators/indirect-injection.js';
+export { hasToolResultProvenance } from '../validators/provenance.js';
+export type { Provenance, ToolResultRef, ProvenanceBoundary, ProvenanceSource } from '../validators/provenance.js';
 
 // Shared validator helpers.
 export {

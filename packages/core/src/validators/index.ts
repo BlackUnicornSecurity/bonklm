@@ -21,3 +21,6 @@ export * from './composed-context.js';
 export * from './audio-stream.js';
 export * from './code-injection.js';
 export * from './path-traversal.js';
+export * from './provenance.js';
+export * from './raw-upstream-cache.js';
+export * from './indirect-injection.js';

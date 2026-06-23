@@ -607,6 +607,36 @@ without core changes — only the bundled-default coverage is at 12.
 
 See internal planning notes for the full decision trail.
 
+## 30. Indirect prompt-injection (connector boundaries) — named limitations
+
+The provenance-gated `IndirectInjectionValidator` adds deterministic detection for injection
+payloads that arrive through connector surfaces (retrieved documents, composed memory context,
+tool-call arguments, memory writes). Like the rest of the engine it is pattern + structural defence,
+and the same honesty applies — these classes are best-effort or out of scope:
+
+- **Human-addressed instructions in poisoned RAG chunks.** When a retrieved document's directive
+  addresses the _human operator_ rather than the model ("the on-call engineer should upload a copy
+  to …"), no retrieved-only ruleset can disambiguate it from benign operator guidance; the model may
+  still surface it. Closure path is a Tier-2 semantic layer (2.0 roadmap).
+- **Benign-shaped policy / audit-log writes in ticket bodies.** A request like "please record the
+  decision in the audit ledger" is structurally identical to a legitimate reporter request, so it is
+  deliberately **not** matched (matching it would be low-precision). Layer a downstream tool-call
+  gate on audit-write callers if this is in your threat model.
+- **`aws s3 cp` egress is a warn-only signal, not an auto-block.** A retrieved runbook instructing
+  an S3 copy is surfaced as telemetry but does **not** block, because an internal/benign backup step
+  matches the same shape. A destination-domain allowlist (2.0 roadmap) is the real fix; until then
+  treat this as a signal to review, not a guarantee.
+- **English-only.** The arms are English-language patterns; non-English indirect-injection prose is
+  out of scope (same posture as §4).
+- **Structural-token / placeholder evasion.** The arms key on concrete attack tokens (markdown-image
+  exfil placeholders, forged field labels, ReAct instruction tokens). An attacker who renames the
+  placeholder, switches to an HTML `<img>` tag, or uses unicode-homoglyph / zero-width variants of a
+  token can evade; these are deterministic recall gaps, not regressions.
+
+**By design:** none of these arms run on raw user text — they are gated to connector provenance, so
+the calibrated user-text false-positive floor is unchanged. See
+[`threat-surfaces.md`](./threat-surfaces.md) for the per-surface coverage map.
+
 ## See also
 
 - [`threat-surfaces.md`](./threat-surfaces.md) — what BonkLM DOES cover per surface.
