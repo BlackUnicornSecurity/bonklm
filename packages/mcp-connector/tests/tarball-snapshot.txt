@@ -8,6 +8,10 @@ dist/index.d.ts
 dist/index.d.ts.map
 dist/index.js
 dist/index.js.map
+dist/result-extraction.d.ts
+dist/result-extraction.d.ts.map
+dist/result-extraction.js
+dist/result-extraction.js.map
 dist/types.d.ts
 dist/types.d.ts.map
 dist/types.js

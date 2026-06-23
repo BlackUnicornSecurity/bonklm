@@ -28,11 +28,7 @@ import {
   Severity,
   validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
-import {
-  ConnectorValidationError,
-  extractContentFromResponse,
-  logValidationFailure
-} from '@blackunicorn/bonklm/core/connector-utils';
+import { ConnectorValidationError, logValidationFailure } from '@blackunicorn/bonklm/core/connector-utils';
 import type { GuardedMCPOptions, ToolCallOptions, ToolCallResult, ToolInfo } from './types.js';
 import {
   DEFAULT_MAX_ARGUMENT_SIZE,
@@ -42,6 +38,13 @@ import {
   VALID_TOOL_NAME_PATTERN
 } from './types.js';
 import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-utils';
+import {
+  buildScanViews,
+  extractResultContent,
+  MAX_EXTRACTION_DEPTH,
+  MAX_SEGMENTS,
+  MAX_TOTAL_SCAN_BYTES
+} from './result-extraction.js';
 
 /**
  * Interface for the guarded MCP client wrapper.
@@ -184,8 +187,9 @@ function validateArgumentSize(args: Record<string, unknown>, maxSize: number): s
  * a separator-free concatenation (so a contiguous attack token split across
  * content items is reconstructed), and each leaf independently. Boundaries:
  * - **Binary/base64 blobs** (`image` / `audio` `data`, `resource.blob`) are not
- *   decoded+scanned unless `decodeBinaryContent: true`; otherwise an
- *   uninspectable-channel `warn` is emitted rather than silently passing.
+ *   decoded+scanned unless `decodeBinaryContent: true`; otherwise a `warn` is
+ *   emitted for a binary-only result, and a `debug` signal when uninspectable
+ *   blobs accompany text that was scanned — never a silent pass.
  * - The `tool_result` surface is **asserted by this connector**; the `Provenance`
  *   wire-envelope is not stamped or verified here — a separate increment.
  * - Result content beyond the depth / leaf-count / byte scan bounds has its tail
@@ -568,288 +572,6 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
   };
 
   return createGuardedWrapper();
-}
-
-/**
- * Options controlling how an MCP tool result is reduced to scannable content.
- *
- * @internal
- */
-interface ResultExtractOptions {
-  /** Bounded-decode base64 binary blobs to UTF-8 and scan them. */
-  decodeBinaryContent: boolean;
-  /** Max decoded size, in bytes, for a single base64 blob. */
-  maxDecodedBlobSize: number;
-}
-
-/**
- * Mutable accumulator threaded through the recursive extraction walk.
- *
- * @internal
- */
-interface LeafAccumulator {
-  /** Scannable text leaves collected so far. */
-  segments: string[];
-  /** Kind labels of binary/base64 blobs left uninspectable. */
-  blobs: string[];
-  /** Running total byte length of `segments` (cumulative DoS bound). */
-  bytes: number;
-  /** Set once a collection bound is hit; further leaves are dropped + flagged. */
-  truncated: boolean;
-}
-
-/**
- * Scannable content extracted from an MCP tool result.
- *
- * @internal
- */
-interface ExtractedResultContent {
-  /**
-   * Every independently-scannable text leaf: top-level `text` items,
-   * `resource.text` / `resource.uri`, recursively-collected string leaves of
-   * embedded structured content, and (when opted in) decoded base64 blobs.
-   */
-  segments: string[];
-  /** Count of binary/base64 blobs that were NOT decoded + scanned. */
-  uninspectableCount: number;
-  /** Distinct kind labels of the uninspectable blobs (telemetry only). */
-  uninspectableKinds: string[];
-  /** True if a collection bound (count/bytes) was hit and the tail was dropped. */
-  truncated: boolean;
-}
-
-/**
- * Maximum object-graph depth walked when collecting string leaves from embedded
- * structured content. Bounds work on a hostile, deeply-nested result. Content
- * nested deeper than this is a documented recall gap (known-limitations §30).
- *
- * @internal
- */
-const MAX_EXTRACTION_DEPTH = 6;
-
-/**
- * Object keys that are protocol structure, not attacker payload — skipped during
- * recursive leaf collection so discriminators / MIME types are not scanned as
- * content (they are pure noise and never carry an injection). Deliberately NARROW
- * (`annotations` is NOT skipped — an adversarial server is not bound by the MCP
- * schema and could smuggle a directive string under it).
- *
- * @internal
- */
-const STRUCTURAL_KEYS = new Set(['type', 'mimeType']);
-
-/**
- * Content-block `type` values whose `data` field is base64 binary per the MCP
- * spec. A `data` string is routed to blob handling ONLY when the enclosing block
- * is one of these — a `data` field on any other block (e.g. a forged `text`
- * block) is scanned as text, so an attacker cannot exclude a payload from the
- * scan by parking it in a field named `data`.
- *
- * @internal
- */
-const BINARY_CONTENT_TYPES = new Set(['image', 'audio']);
-
-/**
- * Upper bounds on extraction breadth. The number of collected leaves and their
- * cumulative byte length are capped so a hostile result (many tiny items / a
- * huge field) cannot drive unbounded memory or scan time. Hitting either bound
- * sets {@link LeafAccumulator.truncated}, which surfaces as telemetry. Because
- * the leaf count is capped here, every collected leaf is also scanned
- * independently in {@link buildScanViews} — there is no separate per-item cap.
- *
- * @internal
- */
-const MAX_SEGMENTS = 64;
-const MAX_TOTAL_SCAN_BYTES = 256 * 1024;
-
-/**
- * Appends a scannable leaf, enforcing the count + cumulative-byte bounds.
- *
- * @internal
- */
-function pushSegment(acc: LeafAccumulator, value: string): void {
-  if (acc.truncated || value.length === 0) {
-    return;
-  }
-  if (acc.segments.length >= MAX_SEGMENTS || acc.bytes + value.length > MAX_TOTAL_SCAN_BYTES) {
-    acc.truncated = true;
-    return;
-  }
-  acc.segments.push(value);
-  acc.bytes += value.length;
-}
-
-/**
- * Bounded base64 → UTF-8 decode for an opt-in decode-and-scan of binary blobs.
- *
- * @internal
- * @remarks
- * Rejects (returns `null`) any blob whose encoded length could exceed the byte
- * bound before allocating, and any decoded buffer over the bound or empty. This
- * caps the amplification / DoS surface of decoding attacker-controlled base64.
- */
-function tryDecodeBase64(b64: string, maxBytes: number): string | null {
-  if (b64.length === 0) {
-    return null;
-  }
-  // base64 encodes ~3 bytes per 4 chars; reject oversized input pre-allocation.
-  if (b64.length > Math.ceil((maxBytes * 4) / 3) + 4) {
-    return null;
-  }
-  try {
-    const buf = Buffer.from(b64, 'base64');
-    if (buf.length === 0 || buf.length > maxBytes) {
-      return null;
-    }
-    return buf.toString('utf8');
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Routes a base64 binary blob to either a decoded scannable segment (opt-in) or
- * the uninspectable bucket.
- *
- * @internal
- */
-function handleBlob(b64: string, kind: string, acc: LeafAccumulator, opts: ResultExtractOptions): void {
-  if (opts.decodeBinaryContent) {
-    // `tryDecodeBase64` returns null for an empty/over-bound decode, so a
-    // non-null result is always a non-empty string.
-    const decoded = tryDecodeBase64(b64, opts.maxDecodedBlobSize);
-    if (decoded !== null) {
-      pushSegment(acc, decoded);
-      return;
-    }
-    // Decode failed or exceeded the bound — fall through to uninspectable.
-  }
-  acc.blobs.push(kind);
-}
-
-/**
- * Recursively collects string leaves from an MCP content item (or nested
- * structured value), routing base64 `data` / `blob` fields to {@link handleBlob}.
- *
- * @internal
- */
-function collectStringLeaves(
-  value: unknown,
-  acc: LeafAccumulator,
-  opts: ResultExtractOptions,
-  depth: number,
-  kindHint: string
-): void {
-  if (acc.truncated) {
-    return;
-  }
-  if (depth > MAX_EXTRACTION_DEPTH) {
-    // Depth-cut is a form of "tail left unscanned"; flag it like the size caps
-    // so a deep-nesting evasion produces an operator signal, not silence.
-    acc.truncated = true;
-    return;
-  }
-  if (typeof value === 'string') {
-    pushSegment(acc, value);
-    return;
-  }
-  if (Array.isArray(value)) {
-    for (const entry of value) {
-      collectStringLeaves(entry, acc, opts, depth + 1, kindHint);
-    }
-    return;
-  }
-  if (value && typeof value === 'object') {
-    const obj = value as Record<string, unknown>;
-    const hint = typeof obj.type === 'string' ? obj.type : kindHint;
-    for (const [key, child] of Object.entries(obj)) {
-      if (STRUCTURAL_KEYS.has(key)) {
-        continue;
-      }
-      // Route base64 binary to blob handling ONLY for genuinely-binary fields:
-      // a `resource.blob`, or a `data` field on an image/audio block. A `data`
-      // field anywhere else is scanned as text (see BINARY_CONTENT_TYPES) so a
-      // payload cannot be hidden from the scan by naming its field `data`.
-      if (typeof child === 'string') {
-        if (key === 'blob') {
-          handleBlob(child, 'resource.blob', acc, opts);
-          continue;
-        }
-        if (key === 'data' && BINARY_CONTENT_TYPES.has(hint)) {
-          handleBlob(child, hint, acc, opts);
-          continue;
-        }
-      }
-      collectStringLeaves(child, acc, opts, depth + 1, hint);
-    }
-  }
-}
-
-/**
- * Reduces an MCP tool result to every scannable text leaf plus a tally of the
- * binary blobs that could not be inspected.
- *
- * @internal
- * @remarks
- * For an MCP `content[]` result this walks each item, collecting string leaves
- * (text items, `resource.text` / `resource.uri`, embedded structured-content
- * strings) and routing base64 `data` / `blob` fields per the decode policy. For
- * a non-MCP-shaped result it falls back to the generic multi-format extractor.
- */
-function extractResultContent(result: unknown, opts: ResultExtractOptions): ExtractedResultContent {
-  const acc: LeafAccumulator = { segments: [], blobs: [], bytes: 0, truncated: false };
-
-  if (result && typeof result === 'object' && Array.isArray((result as { content?: unknown[] }).content)) {
-    for (const item of (result as { content: unknown[] }).content) {
-      collectStringLeaves(item, acc, opts, 0, 'binary');
-    }
-  } else {
-    // Fallback to connector-utils for generic (non-MCP) response formats.
-    pushSegment(acc, extractContentFromResponse(result, { defaultValue: '' }));
-  }
-
-  return {
-    segments: acc.segments,
-    uninspectableCount: acc.blobs.length,
-    uninspectableKinds: [...new Set(acc.blobs)],
-    truncated: acc.truncated
-  };
-}
-
-/**
- * Builds the deduplicated set of strings to scan from the extracted leaves.
- *
- * @internal
- * @remarks
- * - The newline-joined view preserves the historical single-scan behaviour.
- * - The separator-free concatenation reconstructs a contiguous attack token an
- *   attacker split across two content items to slip past arms with no
- *   inter-token whitespace allowance (e.g. `AGENT_` + `FOOTER` → `AGENT_FOOTER`).
- * - Each leaf is also scanned independently to defeat benign-padding /
- *   truncation-window evasion. The leaf count is already capped upstream
- *   (MAX_SEGMENTS), so every collected leaf is scanned; the joined and
- *   concatenated views still carry the full collected content.
- */
-function buildScanViews(segments: string[]): string[] {
-  const views: string[] = [];
-  const seen = new Set<string>();
-  const add = (candidate: string): void => {
-    if (candidate.length > 0 && !seen.has(candidate)) {
-      seen.add(candidate);
-      views.push(candidate);
-    }
-  };
-
-  add(segments.join('\n'));
-
-  if (segments.length > 1) {
-    add(segments.join(''));
-    for (const segment of segments) {
-      add(segment);
-    }
-  }
-
-  return views;
 }
 
 /**
