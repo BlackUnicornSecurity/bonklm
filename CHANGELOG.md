@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Provenance-gated indirect prompt-injection detection at connector boundaries.** A new
+  `IndirectInjectionValidator` (+ `createIndirectInjectionValidator`) and an
+  `INDIRECT_INJECTION_PATTERNS` arm set detect indirect prompt-injection payloads that arrive through
+  connector boundaries — retrieved documents, composed memory context, tool-call arguments, and
+  memory writes — that the calibrated user-text bar deliberately omits (RAG/wiki poisoning,
+  assistant-addressed directives, structured-indexer field-label injection, markdown-image exfil
+  beacons, cross-document tool-call directives, memory-write credential exfil). Each arm is
+  provenance-gated by a `requiresProvenance` surface tag and fires only on its connector surface,
+  **never on raw user text**, so the user-text false-positive floor is unchanged by construction.
+  Also adds the `Provenance` / `ToolResultRef` contract types, `hasToolResultProvenance()`, additive
+  `MemoryWriteMetadata.provenance` typing, and an AsyncLocalStorage-scoped raw-upstream cache
+  primitive (a forward contract consumed by later connector increments).
+
+  **Behavior change for existing callers:** `createRetrievedDocValidator`,
+  `createComposedContextValidator`, `createToolCallArgsValidator`, and `createMemoryWriteValidator`
+  now append an `IndirectInjectionValidator` for their surface, so content that previously passed can
+  now be blocked when it carries a connector-boundary injection signal (e.g. a retrieved doc that
+  instructs the model, or a tool result embedding a forged `OPERATOR_NOTE:` directive). The
+  user-text path (`PromptInjectionValidator` / `detectPatterns`) is unaffected. A small number of
+  attack classes remain best-effort named limitations (see
+  [Known limitations](docs/user/known-limitations.md)), including a warn-only (non-blocking)
+  `aws s3 cp` egress signal that does not auto-block infra runbooks.
+
 - **Supply-chain hardening: npm build provenance, SBOM, and shipped-closure audit/license gates.**
   Stable releases now publish with npm build provenance — a Sigstore attestation binding each tarball
   to its CI build, commit, and source repository (verify with `npm audit signatures`) — and every

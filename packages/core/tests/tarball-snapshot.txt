@@ -464,6 +464,10 @@ dist/validators/index.d.ts
 dist/validators/index.d.ts.map
 dist/validators/index.js
 dist/validators/index.js.map
+dist/validators/indirect-injection.d.ts
+dist/validators/indirect-injection.d.ts.map
+dist/validators/indirect-injection.js
+dist/validators/indirect-injection.js.map
 dist/validators/internal/rtl-bidi-guard.d.ts
 dist/validators/internal/rtl-bidi-guard.d.ts.map
 dist/validators/internal/rtl-bidi-guard.js
@@ -504,6 +508,14 @@ dist/validators/prompt-injection.d.ts
 dist/validators/prompt-injection.d.ts.map
 dist/validators/prompt-injection.js
 dist/validators/prompt-injection.js.map
+dist/validators/provenance.d.ts
+dist/validators/provenance.d.ts.map
+dist/validators/provenance.js
+dist/validators/provenance.js.map
+dist/validators/raw-upstream-cache.d.ts
+dist/validators/raw-upstream-cache.d.ts.map
+dist/validators/raw-upstream-cache.js
+dist/validators/raw-upstream-cache.js.map
 dist/validators/reformulation-detector.d.ts
 dist/validators/reformulation-detector.d.ts.map
 dist/validators/reformulation-detector.js

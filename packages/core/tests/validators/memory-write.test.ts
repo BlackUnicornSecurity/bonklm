@@ -23,6 +23,7 @@ import { PIIGuard } from '../../src/guards/pii/index.js';
 import { XSSGuard } from '../../src/guards/xss-safety.js';
 import type { ValidatorInput, Validator } from '../../src/engine/GuardrailEngine.types.js';
 import { Severity } from '../../src/base/GuardrailResult.js';
+import type { Provenance } from '../../src/validators/provenance.js';
 
 const promptInjection = new PromptInjectionValidator();
 const secret = new SecretGuard();
@@ -345,6 +346,19 @@ describe('createMemoryWriteValidator — audit-loop regressions', () => {
     expect(r.result.metadata?.sourceMetadata).toEqual({ source: 'webhook', timestamp: 1234 });
     // The old key name MUST NOT survive.
     expect(r.result.metadata?.payloadMetadata).toBeUndefined();
+  });
+
+  it('AR-3b: typed MemoryWriteMetadata.provenance is accepted and surfaced (PR-A typing contract)', async () => {
+    // Compile-time contract: a `Provenance` envelope is assignable to
+    // `MemoryWritePayload.metadata.provenance`. PR-C populates it from the
+    // upstream tool-result chain; PR-A only defines + passes the typing through.
+    const validator = createMemoryWriteValidator({ validators: [promptInjection] });
+    const provenance: Provenance = {
+      derivedFrom: [{ source: 'mcp-tool-result', tool: 'search_web' }]
+    };
+    const r = await validator.validateWrite({ content: 'safe', metadata: { provenance } });
+    const surfaced = r.result.metadata?.sourceMetadata as { provenance?: Provenance } | undefined;
+    expect(surfaced?.provenance).toEqual(provenance);
   });
 
   it('AR-4: PII redact mode with custom replacement', async () => {

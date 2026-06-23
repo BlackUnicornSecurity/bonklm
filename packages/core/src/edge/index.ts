@@ -112,6 +112,7 @@ export type {
 
 export { createMemoryWriteValidator } from '../validators/memory-write.js';
 export type {
+  MemoryWriteMetadata,
   MemoryWritePayload,
   MemoryWriteResult,
   MemoryWriteValidator,

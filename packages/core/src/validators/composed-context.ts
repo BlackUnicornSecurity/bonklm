@@ -35,6 +35,7 @@ import type { Validator, ValidatorInput } from '../engine/GuardrailEngine.types.
 import { createResult, type GuardrailResult, Severity } from '../base/GuardrailResult.js';
 import type { Logger } from '../base/GenericLogger.js';
 import { maxSeverity, riskFromScore, runValidatorChain, VALIDATOR_ERROR_CATEGORIES } from './validator-utils.js';
+import { IndirectInjectionValidator } from './indirect-injection.js';
 
 /** Default soft cap (32KB) — exceeding it warns via telemetry. */
 export const DEFAULT_COMPOSED_CONTEXT_SOFT_CAP_BYTES = 32 * 1024;
@@ -183,6 +184,12 @@ export function createComposedContextValidator(config: ComposedContextValidatorC
   if (config.validators.length === 0) {
     throw new Error('createComposedContextValidator requires at least one underlying validator.');
   }
+  // D-065 §7-step-2.b: append the provenance-gated indirect-injection arms for
+  // the composed_context surface (triage-bot steering, escalation suppression,
+  // cross-doc copilot tool-call, cover-up directives). Appended after the
+  // caller's chain; scanned on both the forward and reverse concat blobs like
+  // every composed-context validator. Surface fixed to 'composed_context'.
+  const validators = [...config.validators, new IndirectInjectionValidator({ surface: 'composed_context' })];
   const softCap = config.softCapBytes ?? DEFAULT_COMPOSED_CONTEXT_SOFT_CAP_BYTES;
   const hardCap = config.hardCapBytes ?? DEFAULT_COMPOSED_CONTEXT_HARD_CAP_BYTES;
   if (softCap < 0 || hardCap < 0) {
@@ -254,17 +261,13 @@ export function createComposedContextValidator(config: ComposedContextValidatorC
     // entries are caught regardless of fragment arrival order.
     const reverseBlob = [...selection.kept].reverse().join(ENTRY_SEPARATOR);
 
-    const forwardResult = await runValidatorChain(
-      config.validators,
-      forwardBlob,
-      VALIDATOR_ERROR_CATEGORIES.composedContext
-    );
+    const forwardResult = await runValidatorChain(validators, forwardBlob, VALIDATOR_ERROR_CATEGORIES.composedContext);
     // Short-circuit if the forward scan already blocked — the reverse
     // pass is only needed to catch attacks the forward pass would have
     // missed.
     const reverseResult = forwardResult.blocked
       ? createResult(true, Severity.INFO, [])
-      : await runValidatorChain(config.validators, reverseBlob, VALIDATOR_ERROR_CATEGORIES.composedContext);
+      : await runValidatorChain(validators, reverseBlob, VALIDATOR_ERROR_CATEGORIES.composedContext);
 
     const blocked = forwardResult.blocked || reverseResult.blocked;
     const reason = forwardResult.blocked

@@ -45,6 +45,7 @@ import {
   VALIDATOR_ERROR_CATEGORIES
 } from './validator-utils.js';
 export type { RedactingValidator } from './validator-utils.js';
+import { IndirectInjectionValidator } from './indirect-injection.js';
 
 const DEFAULT_REDACT_REPLACEMENT = '[REDACTED]';
 
@@ -143,6 +144,12 @@ export function createRetrievedDocValidator(config: RetrievedDocValidatorConfig)
   if (config.validators.length === 0) {
     throw new Error('createRetrievedDocValidator requires at least one underlying validator.');
   }
+  // D-065 §7-step-2.b: append the provenance-gated indirect-injection arms for
+  // the retrieved_doc surface. Appended so caller validators run (and may
+  // short-circuit) first; the indirect arms add RAG-poisoning coverage the
+  // user-text bar deliberately omits. Surface is fixed to 'retrieved_doc' — it
+  // never fires on raw user text.
+  const validators = [...config.validators, new IndirectInjectionValidator({ surface: 'retrieved_doc' })];
   const mode: PerDocFailureMode = config.onPerDocFailure ?? 'drop';
   const replacement = config.redactReplacement ?? DEFAULT_REDACT_REPLACEMENT;
   const logger = config.logger;
@@ -180,11 +187,7 @@ export function createRetrievedDocValidator(config: RetrievedDocValidatorConfig)
         continue;
       }
 
-      const leafResult = await runValidatorChain(
-        config.validators,
-        doc.content,
-        VALIDATOR_ERROR_CATEGORIES.retrievedDoc
-      );
+      const leafResult = await runValidatorChain(validators, doc.content, VALIDATOR_ERROR_CATEGORIES.retrievedDoc);
       subResults.push({ key, result: leafResult });
       allFindings.push(...leafResult.findings);
       aggregateSeverity = maxSeverity(aggregateSeverity, leafResult.severity);
@@ -216,7 +219,7 @@ export function createRetrievedDocValidator(config: RetrievedDocValidatorConfig)
       }
       if (mode === 'redact') {
         filteredCount++;
-        const redactedContent = applyRedaction(doc.content, leafResult.findings, config.validators, replacement);
+        const redactedContent = applyRedaction(doc.content, leafResult.findings, validators, replacement);
         survivingDocs.push({ ...doc, content: redactedContent });
         logger?.info('[RetrievedDocValidator] redacted doc', {
           // CWE-117: doc id is caller/attacker-influenced; escape before logging.

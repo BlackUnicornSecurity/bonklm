@@ -21,6 +21,7 @@
  */
 import type { Validator } from '../engine/GuardrailEngine.types.js';
 import { createResult, type Finding, type GuardrailResult, RiskLevel, Severity } from '../base/GuardrailResult.js';
+import { sanitizeLogString } from '../common/index.js';
 
 /**
  * Cumulative-audit export — the per-composite error-category strings
@@ -98,7 +99,10 @@ export async function runValidatorChain(
         {
           category: errorCategory,
           severity: Severity.CRITICAL,
-          description: `Underlying validator threw: ${String(err)}`,
+          // CWE-117 (ADR-0001): a thrown error can carry attacker-influenced
+          // bytes (validator-processed connector content); this synthetic finding
+          // description flows into the returned result, so sanitize before embed.
+          description: `Underlying validator threw: ${sanitizeLogString(String(err))}`,
           weight: 25
         }
       ]);
