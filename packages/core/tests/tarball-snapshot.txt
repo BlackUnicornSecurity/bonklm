@@ -464,6 +464,10 @@ dist/validators/index.d.ts
 dist/validators/index.d.ts.map
 dist/validators/index.js
 dist/validators/index.js.map
+dist/validators/indirect-injection-arm.d.ts
+dist/validators/indirect-injection-arm.d.ts.map
+dist/validators/indirect-injection-arm.js
+dist/validators/indirect-injection-arm.js.map
 dist/validators/indirect-injection.d.ts
 dist/validators/indirect-injection.d.ts.map
 dist/validators/indirect-injection.js
