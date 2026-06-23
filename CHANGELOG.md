@@ -32,6 +32,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [Known limitations](docs/user/known-limitations.md)), including a warn-only (non-blocking)
   `aws s3 cp` egress signal that does not auto-block infra runbooks.
 
+- **MCP connector now scans inbound tool results for indirect prompt-injection.** When
+  `validateToolResults` is enabled (the default), `createGuardedMCP` composes an
+  `IndirectInjectionValidator` scoped to the `tool_result` surface onto the inbound result-validation
+  path, on top of any validators you supply. Previously the `tool_result` detection arms were
+  reachable only through the core `createToolCallArgsValidator` factory (outgoing call arguments), so
+  a guarded MCP client did not scan the raw results returned by a remote tool. Indirect
+  prompt-injection carried in the **text** content of tool output — task-hijack / objective-replacement
+  directives, forged ReAct instruction tokens, forged agent-instrumentation footers, and exfil
+  directives — is now detected and the result is filtered. The scan runs only on incoming result
+  content (never on outgoing tool-call arguments) and respects the existing `validateToolResults:
+  false` escape hatch. Scope: the `tool_result` surface is asserted by the connector (the `Provenance`
+  wire-envelope is not yet stamped), and only text content is scanned — non-text result blocks (image
+  / audio / embedded-resource / binary) are not (see
+  [Known limitations](docs/user/known-limitations.md)). A tool result that previously passed can now
+  be filtered when it carries a `tool_result` injection signal; no public API or option changes.
+
 - **Supply-chain hardening: npm build provenance, SBOM, and shipped-closure audit/license gates.**
   Stable releases now publish with npm build provenance — a Sigstore attestation binding each tarball
   to its CI build, commit, and source repository (verify with `npm audit signatures`) — and every

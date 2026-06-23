@@ -20,6 +20,7 @@ import {
   createResult,
   GuardrailEngine,
   type GuardrailResult,
+  IndirectInjectionValidator,
   type Logger,
   sanitizeMeta,
   serializeError,
@@ -157,6 +158,29 @@ function validateArgumentSize(args: Record<string, unknown>, maxSize: number): s
  * @param options - Configuration options for the guarded wrapper
  * @returns An object with callTool and listTools methods that validate input/output
  *
+ * @remarks
+ * When `validateToolResults` is enabled (the default), the extracted **text**
+ * content of inbound tool results is additionally scanned by an
+ * `IndirectInjectionValidator` scoped to the `tool_result` surface — on top of
+ * any `validators` you supply, with no opt-in required. This catches indirect
+ * prompt-injection carried in the text of a remote tool's output (task-hijack /
+ * objective-replacement directives, forged ReAct instruction tokens, forged
+ * agent-instrumentation footers, exfil directives). The scan runs only on the
+ * incoming result content, never on outgoing tool-call arguments; your own
+ * `validators` run on both surfaces (call arguments and result text).
+ *
+ * Two boundaries worth knowing:
+ * - The `tool_result` surface is **asserted by this connector** (everything
+ *   reaching the result path is a genuine tool result); the `Provenance`
+ *   wire-envelope is not stamped or verified here — envelope stamping is a
+ *   separate increment.
+ * - **Only text content is scanned.** Non-text result blocks (image / audio /
+ *   embedded-resource / binary `data`) are not extracted and therefore not
+ *   scanned — see the MCP entry in `docs/user/known-limitations.md`.
+ *
+ * Set `validateToolResults: false` to disable the scan along with all other
+ * result-path validation.
+ *
  * @example
  * ```ts
  * import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -202,15 +226,46 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
     logger
   });
 
+  // Indirect prompt-injection scan on the INBOUND tool-result path. The Home-C
+  // `tool_result` detection arms live in IndirectInjectionValidator and were
+  // previously composed only into the core `createToolCallArgsValidator` factory
+  // (OUTGOING call args), so a guarded MCP client never scanned the raw results a
+  // remote tool returned. We append the validator to a DEDICATED result-path
+  // engine so the `tool_result` arm scans incoming result text WITHOUT also being
+  // run over outgoing call args through the shared `engine` — the call path
+  // validates a `Tool: …, Args: …` string (a different surface that would
+  // mis-fire the tool_result arms). The surface is asserted by construction
+  // (`surface: 'tool_result'`), not read from a Provenance envelope — envelope
+  // stamping is a separate increment.
+  //
+  // The result engine is an independent GuardrailEngine instance, so it owns an
+  // independent circuit-breaker / override-token domain from the call-path
+  // `engine`. That is acceptable here because this connector wires neither, and
+  // the separate instance is what keeps the tool_result arm off the call-args
+  // surface. Default-on whenever `validateToolResults` is enabled;
+  // `validateToolResults: false` disables all result-path scanning.
+  const resultEngine = new GuardrailEngine({
+    validators: [...validators, new IndirectInjectionValidator({ surface: 'tool_result' })],
+    guards,
+    logger
+  });
+
   /**
    * SEC-008: Validation timeout wrapper (Sprint 30: routes through canonical validateWithTimeoutSecure primitive).
    *
    * @internal
+   * @param targetEngine - the engine to run; the tool-call path uses `engine`
+   *   (user validators) and the tool-result path uses `resultEngine`
+   *   (user validators + the `tool_result`-surface indirect-injection arm).
    */
-  const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult[]> => {
+  const validateWithTimeout = async (
+    targetEngine: GuardrailEngine,
+    content: string,
+    context?: string
+  ): Promise<GuardrailResult[]> => {
     // DEV-001: Correct API signature - use string context, not object
     const engineResult = await validateWithTimeoutSecure({
-      operation: () => engine.validate(content, context),
+      operation: () => targetEngine.validate(content, context),
       timeoutMs: validationTimeout,
       timeoutSentinel: () =>
         createResult(false, Severity.CRITICAL, [
@@ -245,7 +300,7 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
     const sanitizedName = sanitizeToolName(toolName);
     const validationContent = `Tool: ${sanitizedName}, Args: ${args}`;
 
-    const results = await validateWithTimeout(validationContent, 'input');
+    const results = await validateWithTimeout(engine, validationContent, 'input');
 
     const blocked = results.find(r => !r.allowed);
     if (blocked) {
@@ -278,7 +333,9 @@ export function createGuardedMCP(client: Client, options: GuardedMCPOptions = {}
    * @internal
    */
   const validateToolResult = async (toolName: string, resultContent: string): Promise<ToolCallResult | null> => {
-    const results = await validateWithTimeout(resultContent, 'output');
+    // `'output'` is the legacy result-direction context tag passed to guards; the
+    // indirect arm's surface comes from its constructor (`tool_result`), not this string.
+    const results = await validateWithTimeout(resultEngine, resultContent, 'output');
 
     const blocked = results.find(r => !r.allowed);
     if (blocked) {
