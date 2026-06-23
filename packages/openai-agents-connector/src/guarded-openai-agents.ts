@@ -33,8 +33,10 @@
  */
 
 import {
+  appendToolResultInjectionArm,
   createLogger,
   createToolCallArgsValidator,
+  type Finding,
   GuardrailEngine,
   type Logger,
   sanitizeMeta,
@@ -277,6 +279,14 @@ export function defineToolOutputGuardrail(
   const logger = options.logger ?? createLogger('console');
   const timeout = options.validationTimeout ?? DEFAULT_VALIDATION_TIMEOUT;
   const validate = makeValidate(engine, timeout, logger, name);
+  // D-065 §7-step-2.c: scan the tool output against the provenance-gated
+  // `tool_result` indirect-injection arm (default-on), composed ON TOP of the
+  // caller's engine so the caller's validator chain is unchanged. The arm runs
+  // only AFTER the caller's engine allows — it ADDS tool-result task-hijack /
+  // exfil coverage and must not pre-empt a caller validator's verdict. The shared
+  // helper keeps the `tool_result` surface tag in one place.
+  const armEngine = new GuardrailEngine({ validators: appendToolResultInjectionArm([]), logger });
+  const validateArm = makeValidate(armEngine, timeout, logger, `${name}_indirect`);
   const productionMode = options.productionMode ?? process.env.NODE_ENV === 'production';
 
   return {
@@ -284,8 +294,10 @@ export function defineToolOutputGuardrail(
     async execute(args): Promise<ToolOutputGuardrailResult> {
       const text = payloadToText(args.toolOutput);
       if (text.length === 0) return { tripwireTriggered: false };
-      const r = await validate(text, 'openai_agents_tool_output');
+      const engineResult = await validate(text, 'openai_agents_tool_output');
+      const r = engineResult.allowed ? await validateArm(text, 'openai_agents_tool_output') : engineResult;
       if (!r.allowed) {
+        const findings = (r as { findings?: Finding[] }).findings ?? [];
         logValidationFailure(logger, r.reason ?? 'Tool output blocked', {
           guardrail: name,
           tool: args.toolName,
@@ -298,7 +310,7 @@ export function defineToolOutputGuardrail(
           severity: 'critical' as never,
           risk_level: 'HIGH' as never,
           risk_score: 30,
-          findings: [],
+          findings,
           timestamp: Date.now()
         });
         // Sprint 43 CWE-117 sweep: sanitize `r.reason` in the
