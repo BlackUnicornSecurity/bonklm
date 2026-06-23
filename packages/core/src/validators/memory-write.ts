@@ -36,7 +36,7 @@ import type { Validator, ValidatorInput } from '../engine/GuardrailEngine.types.
 import { createResult, type GuardrailResult, Severity } from '../base/GuardrailResult.js';
 import type { Logger } from '../base/GenericLogger.js';
 import type { Provenance } from './provenance.js';
-import { IndirectInjectionValidator } from './indirect-injection.js';
+import { appendIndirectInjectionArm } from './indirect-injection-arm.js';
 import { sanitizeLogString } from '../common/index.js';
 import { applyRedaction, runValidatorChain, VALIDATOR_ERROR_CATEGORIES } from './validator-utils.js';
 
@@ -155,12 +155,12 @@ export function createMemoryWriteValidator(config: MemoryWriteValidatorConfig): 
   if (config.validators.length === 0) {
     throw new Error('createMemoryWriteValidator requires at least one underlying validator.');
   }
-  // D-065 §7-step-2.b: append the provenance-gated indirect-injection arms for
-  // the memory_write surface (shell-var credential exfil, legacy-compat
-  // override framing). Appended after the caller's chain. PR-C refines this to
-  // gate on `metadata.provenance` (hasToolResultProvenance); PR-A gates on the
-  // memory_write surface alone.
-  const validators = [...config.validators, new IndirectInjectionValidator({ surface: 'memory_write' })];
+  // D-065 §7-step-2.c: append the provenance-gated indirect-injection arm for
+  // the memory_write surface (shell-var credential exfil, legacy-compat override
+  // framing) via the shared composer. Appended after the caller's chain. PR-C
+  // refines this to gate on `metadata.provenance` (hasToolResultProvenance);
+  // here it gates on the memory_write surface alone.
+  const validators = appendIndirectInjectionArm(config.validators, 'memory_write');
   const mode: MemoryWriteFailureMode = config.onFailure ?? 'block-write';
   const replacement = config.redactReplacement ?? DEFAULT_REDACT_REPLACEMENT;
   const logger = config.logger;

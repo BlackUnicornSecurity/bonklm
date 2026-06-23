@@ -136,6 +136,10 @@ export type {
 // NOT re-exported here — it uses `node:async_hooks` (see "What's NOT exported").
 export { IndirectInjectionValidator, createIndirectInjectionValidator } from '../validators/indirect-injection.js';
 export type { IndirectInjectionConfig } from '../validators/indirect-injection.js';
+// Shared composer for the connector-boundary indirect-injection arm — the ONE
+// place the surface tag + append-ordering live (used by the four composite
+// factories and the connector inbound tool-result paths).
+export { appendIndirectInjectionArm, appendToolResultInjectionArm } from '../validators/indirect-injection-arm.js';
 export { hasToolResultProvenance } from '../validators/provenance.js';
 export type { Provenance, ToolResultRef, ProvenanceBoundary, ProvenanceSource } from '../validators/provenance.js';
 

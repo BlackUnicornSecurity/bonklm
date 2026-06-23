@@ -49,6 +49,11 @@ post-rc.3 hardening). This document enumerates what is **PUBLIC** (frozen for v2
   `createIndirectInjectionValidator` (factory) and `IndirectInjectionConfig` (interface).
   Provenance-gated connector-boundary indirect prompt-injection detection; appended automatically
   into the four connector factories above. Never runs on raw user text.
+- `appendIndirectInjectionArm` / `appendToolResultInjectionArm` (functions) — the shared composer
+  that appends the surface-tagged `IndirectInjectionValidator` onto a caller's validator chain
+  (returns a new chain; never mutates the input). The append-ordering + surface tag live here once;
+  the four composite factories call it instead of re-pasting the literal, and connector inbound
+  tool-result paths call `appendToolResultInjectionArm` for the same one-place guarantee.
 
 #### Provenance (connector-boundary contract)
 
