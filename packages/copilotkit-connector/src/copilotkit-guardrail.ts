@@ -20,6 +20,7 @@
  */
 
 import {
+  appendToolResultInjectionArm,
   createLogger,
   createResult,
   GuardrailEngine,
@@ -52,13 +53,6 @@ import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-util
  * @internal
  */
 const DEFAULT_LOGGER: Logger = createLogger('console');
-
-/**
- * Validates that a numeric option is a positive number.
- *
- * @internal
- * @throws {TypeError} If value is not a positive finite number
- */
 
 /**
  * Creates a CopilotKit guardrail integration that intercepts and validates messages.
@@ -124,6 +118,18 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
 
   const engine = new GuardrailEngine({
     validators,
+    guards,
+    logger
+  });
+
+  // D-065 §7-step-2.c: the inbound action-result path validates against the user
+  // validators PLUS the provenance-gated `tool_result` indirect-injection arm, so a
+  // task-hijack / exfil directive embedded in an action result is blocked even when
+  // the caller supplied no validator that catches it. Kept on a SEPARATE engine from
+  // the general-output engine above so the tool_result-surface patterns never fire on
+  // ordinary assistant output (which carries no connector provenance).
+  const toolResultEngine = new GuardrailEngine({
+    validators: appendToolResultInjectionArm(validators),
     guards,
     logger
   });
@@ -245,7 +251,11 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
    *
    * @internal
    */
-  const validateWithTimeout = async (content: string, context?: string): Promise<GuardrailResult[]> => {
+  const validateWithTimeout = async (
+    content: string,
+    context?: string,
+    targetEngine: GuardrailEngine = engine
+  ): Promise<GuardrailResult[]> => {
     // DEV-001: Correct API signature - use string context, not object
     // DEV-003: AWAIT the validation
     // Sprint 31 cumulative audit fix (architect CRITICAL-1): canonical
@@ -265,7 +275,7 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
       ]);
     type CopilotkitWrappedResult = GuardrailResult & { results: GuardrailResult[] };
     const engineResult = await validateWithTimeoutSecure<CopilotkitWrappedResult>({
-      operation: () => engine.validate(content, context) as Promise<CopilotkitWrappedResult>,
+      operation: () => targetEngine.validate(content, context) as Promise<CopilotkitWrappedResult>,
       timeoutMs: validationTimeout,
       timeoutSentinel: () => {
         const top = sentinelGuardrail();
@@ -337,9 +347,14 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
    *
    * @internal
    */
-  const validateAfter = async (content: string, executionContext?: CopilotKitContext): Promise<HookResult> => {
+  const validateAfter = async (
+    content: string,
+    executionContext?: CopilotKitContext,
+    targetEngine: GuardrailEngine = engine,
+    contextLabel = 'output'
+  ): Promise<HookResult> => {
     // DEV-003: AWAIT the validation
-    const results = await validateWithTimeout(content, 'output');
+    const results = await validateWithTimeout(content, contextLabel, targetEngine);
 
     const blocked = results.find(r => !r.allowed);
     if (blocked) {
@@ -503,7 +518,11 @@ export function createGuardedCopilotKit(options: GuardedCopilotKitOptions = {}):
         return { allowed: true };
       }
 
-      return validateAfter(actionResult, executionContext);
+      // D-065 §7-step-2.c: route the inbound action result through the tool-result
+      // engine so the provenance-gated `tool_result` indirect-injection arm scans it,
+      // not only the user validators. Scoped to this path so tool_result patterns
+      // never fire on ordinary assistant output.
+      return validateAfter(actionResult, executionContext, toolResultEngine, 'tool_result');
     },
 
     /**
