@@ -37,7 +37,7 @@
 import type { Validator, ValidatorInput } from '../engine/GuardrailEngine.types.js';
 import { createResult, type Finding, type GuardrailResult, Severity } from '../base/GuardrailResult.js';
 import { maxSeverity, riskFromScore, runValidatorChain, VALIDATOR_ERROR_CATEGORIES } from './validator-utils.js';
-import { IndirectInjectionValidator } from './indirect-injection.js';
+import { appendIndirectInjectionArm } from './indirect-injection-arm.js';
 
 const DEFAULT_PER_FIELD_DEPTH = 5;
 const MAX_PATH_PREVIEW = 80;
@@ -239,11 +239,11 @@ export function createToolCallArgsValidator(config: ToolCallArgsValidatorConfig)
   if (config.validators.length === 0) {
     throw new Error('createToolCallArgsValidator requires at least one underlying validator.');
   }
-  // D-065 §7-step-2.b: append the provenance-gated indirect-injection arms for
-  // the tool_result surface onto the caller's chain (appended → caller
-  // validators run/short-circuit first). Adds tool-result task-hijack / exfil
-  // coverage no user-text bar carries; surface fixed to 'tool_result'.
-  const validators = [...config.validators, new IndirectInjectionValidator({ surface: 'tool_result' })];
+  // D-065 §7-step-2.c: append the provenance-gated indirect-injection arm for
+  // the tool_result surface onto the caller's chain. Ordering + surface tag live
+  // in the shared composer (appended → caller validators run/short-circuit
+  // first); adds tool-result task-hijack / exfil coverage no user-text bar carries.
+  const validators = appendIndirectInjectionArm(config.validators, 'tool_result');
   const maxDepth = config.perFieldDepth ?? DEFAULT_PER_FIELD_DEPTH;
   const serializer: ToolCallSerializer | undefined = config.serializer;
 

@@ -45,7 +45,7 @@ import {
   VALIDATOR_ERROR_CATEGORIES
 } from './validator-utils.js';
 export type { RedactingValidator } from './validator-utils.js';
-import { IndirectInjectionValidator } from './indirect-injection.js';
+import { appendIndirectInjectionArm } from './indirect-injection-arm.js';
 
 const DEFAULT_REDACT_REPLACEMENT = '[REDACTED]';
 
@@ -144,12 +144,12 @@ export function createRetrievedDocValidator(config: RetrievedDocValidatorConfig)
   if (config.validators.length === 0) {
     throw new Error('createRetrievedDocValidator requires at least one underlying validator.');
   }
-  // D-065 §7-step-2.b: append the provenance-gated indirect-injection arms for
-  // the retrieved_doc surface. Appended so caller validators run (and may
-  // short-circuit) first; the indirect arms add RAG-poisoning coverage the
-  // user-text bar deliberately omits. Surface is fixed to 'retrieved_doc' — it
-  // never fires on raw user text.
-  const validators = [...config.validators, new IndirectInjectionValidator({ surface: 'retrieved_doc' })];
+  // D-065 §7-step-2.c: append the provenance-gated indirect-injection arm for
+  // the retrieved_doc surface via the shared composer (ordering + surface tag
+  // centralised). Appended so caller validators run (and may short-circuit)
+  // first; the arm adds RAG-poisoning coverage the user-text bar deliberately
+  // omits and never fires on raw user text.
+  const validators = appendIndirectInjectionArm(config.validators, 'retrieved_doc');
   const mode: PerDocFailureMode = config.onPerDocFailure ?? 'drop';
   const replacement = config.redactReplacement ?? DEFAULT_REDACT_REPLACEMENT;
   const logger = config.logger;
