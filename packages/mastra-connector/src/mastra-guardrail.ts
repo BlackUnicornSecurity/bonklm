@@ -27,6 +27,7 @@ import {
   GuardrailEngine,
   type Logger,
   RiskLevel,
+  sanitizeLogString,
   Severity,
   validateWithTimeoutSecure
 } from '@blackunicorn/bonklm';
@@ -51,7 +52,7 @@ import {
   DEFAULT_VALIDATION_TIMEOUT,
   VALIDATION_INTERVAL
 } from './types.js';
-import { messagesToText, toolCallsToText } from './messages-to-text.js';
+import { messagesToTextWithTelemetry, type ReducedContentTally, toolCallsToText } from './messages-to-text.js';
 import { validatePositiveNumber } from '@blackunicorn/bonklm/core/connector-utils';
 
 /**
@@ -378,6 +379,43 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
   };
 
   /**
+   * Emits operator telemetry when the message reducer left a non-text channel
+   * unscanned (an image placeholder or an unrecognized content-part `type`).
+   *
+   * @remarks
+   * The indirect-injection arm only sees the text the reducer surfaces, so a
+   * dropped/placeholder channel rides through unscanned. Rather than pass it
+   * silently, surface a `warn` in the spirit of the MCP connector's
+   * uninspectable-blob telemetry (PR #146). Unlike that connector's two-tier
+   * split (`warn` for a binary-only result, `debug` when blobs accompany text
+   * that WAS scanned), this emits a single `warn` on every reducer call that
+   * drops a channel: the reducer substitutes a content-free placeholder, so —
+   * unlike a decoded-but-skipped blob — there is no tier in which the non-text
+   * channel received any inspection, and volume is bounded to one de-duplicated
+   * line per call. Kind labels can be an attacker-chosen content-part `type`, so
+   * each is routed through `sanitizeLogString` (CWE-117 / ADR-0001); `surface`
+   * is a fixed internal literal (typed below) and needs no sanitization.
+   *
+   * @internal
+   */
+  const emitReducedContentTelemetry = (
+    tally: ReducedContentTally,
+    surface: 'input' | 'output' | 'tool_result'
+  ): void => {
+    if (tally.reducedCount === 0) {
+      return;
+    }
+    logger.warn(
+      '[Mastra Guardrails] Message content part(s) reduced to placeholder or dropped; channel passed unscanned',
+      {
+        surface,
+        reducedCount: tally.reducedCount,
+        reducedKinds: tally.reducedKinds.map(k => sanitizeLogString(k))
+      }
+    );
+  };
+
+  /**
    * Creates a streaming validator function.
    *
    * @remarks
@@ -446,7 +484,8 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
         return { allowed: true };
       }
 
-      const text = messagesToText(messages);
+      const { text, tally } = messagesToTextWithTelemetry(messages);
+      emitReducedContentTelemetry(tally, 'input');
       return validateBefore(text, 'input', executionContext);
     },
 
@@ -462,7 +501,11 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
         return { allowed: true };
       }
 
-      const text = typeof response === 'string' ? response : messagesToText([response]);
+      if (typeof response === 'string') {
+        return validateAfter(response, executionContext);
+      }
+      const { text, tally } = messagesToTextWithTelemetry([response]);
+      emitReducedContentTelemetry(tally, 'output');
       return validateAfter(text, executionContext);
     },
 
@@ -511,12 +554,19 @@ export function createGuardedMastra(options: GuardedMastraOptions = {}): {
         return { allowed: true };
       }
 
-      const text = typeof toolResult === 'string' ? toolResult : messagesToText([toolResult]);
       // D-065 §7-step-2.c: route through the tool-result engine so the
       // provenance-gated `tool_result` indirect-injection arm scans the inbound
       // result, not only the user-supplied validators (which the general-output
       // engine carries). Label matches the `tool_result` provenance surface so
       // logs correlate to the surface taxonomy.
+      if (typeof toolResult === 'string') {
+        return validateAfter(toolResult, executionContext, toolResultEngine, 'tool_result');
+      }
+      // A structured tool result can carry an image/unknown-type part the
+      // reducer drops to a placeholder — that channel never reaches the arm, so
+      // emit reduced-content telemetry before scanning the surfaced text.
+      const { text, tally } = messagesToTextWithTelemetry([toolResult]);
+      emitReducedContentTelemetry(tally, 'tool_result');
       return validateAfter(text, executionContext, toolResultEngine, 'tool_result');
     },
 
