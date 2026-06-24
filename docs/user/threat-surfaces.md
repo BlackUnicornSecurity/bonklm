@@ -78,6 +78,15 @@ extraction + binary-blob policy — see known-limitations.md §30), `mastra` (`v
 > stamped `Provenance` envelope) and currently wired in the MCP connector only — see the MCP entry
 > in [`known-limitations.md`](./known-limitations.md) §30. `tool_result` is a provenance boundary,
 > not one of the 7 locked `HookSurface` strings.
+>
+> **Reduced-channel telemetry (`mastra` / `copilotkit`).** These connectors scan the text their SDK
+> surfaces, so a non-text content part their message reducer collapses to a placeholder (mastra
+> `image_url` → `[Image]`; copilotkit `image` → `[Image]` and `data` → `[Data]`) or drops (an
+> unrecognized part `type`) is **not** scanned by the arm. To avoid a silent pass the reducer
+> tallies every such part and the connector emits a `warn` with a sanitized reduced-kind count +
+> list — the same "never a silent pass" posture as the MCP uninspectable-blob signal, emitted as a
+> single `warn` per reducer call (no `debug`-downgrade, since the placeholder leaves the channel
+> wholly uninspected). Telemetry only — not a block.
 
 ### `retrieved_doc`
 

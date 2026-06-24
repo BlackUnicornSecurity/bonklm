@@ -38,46 +38,118 @@ import type { MastraContentPart, MastraMessage, MastraToolCall } from './types.j
  * ```
  */
 export function messagesToText(messages: MastraMessage[]): string {
-  return messages
-    .map(m => {
-      const content = m.content;
-
-      // Handle messages without content
-      if (content === undefined || content === null) {
-        return '';
-      }
-
-      // Handle string content (most common case)
-      if (typeof content === 'string') {
-        return content;
-      }
-
-      // Handle array content (SEC-006: structured data, images, tool calls, etc.)
-      if (Array.isArray(content)) {
-        return content
-          .map(part => contentPartToText(part))
-          .filter(c => c.length > 0)
-          .join('\n');
-      }
-
-      // Handle other types (convert to string)
-      return String(content);
-    })
-    .filter(c => c.length > 0)
-    .join('\n');
+  return messagesToTextWithTelemetry(messages).text;
 }
 
 /**
- * Extracts text from a single content part.
+ * A tally of content parts whose real payload was NOT surfaced as scannable
+ * text — either reduced to a fixed placeholder (e.g. `image_url` → '[Image]')
+ * or dropped to '' (an unrecognized part `type`). The indirect-injection arm
+ * therefore never inspects that channel; surfacing the tally turns the silent
+ * pass into an operator signal (mirrors the MCP connector's uninspectable-blob
+ * telemetry, PR #146).
  *
  * @internal
- * @param part - The content part to extract text from
- * @returns Extracted text content
  */
-function contentPartToText(part: MastraContentPart): string {
+export interface ReducedContentTally {
+  /** Total number of content parts reduced to a placeholder or dropped. */
+  reducedCount: number;
+  /**
+   * Distinct kind labels of the reduced/dropped parts. For an unrecognized
+   * `type` the label is the attacker-controlled `type` string itself, so it
+   * MUST be CWE-117-sanitized at the log site — it is never emitted raw.
+   */
+  reducedKinds: string[];
+}
+
+/**
+ * Text reduced from messages plus the tally of channels left unscanned.
+ *
+ * @internal
+ */
+export interface ReducedMessages {
+  text: string;
+  tally: ReducedContentTally;
+}
+
+/**
+ * Text surfaced for scanning from a content part, plus the kind labels of any
+ * sub-part whose payload was reduced to a placeholder or dropped.
+ *
+ * @internal
+ */
+interface PartReduction {
+  text: string;
+  reducedKinds: string[];
+}
+
+/**
+ * {@link messagesToText} plus a tally of the non-text channels it could not
+ * surface for scanning. Text output is byte-identical to {@link messagesToText}.
+ *
+ * @internal
+ * @param messages - Array of MastraMessage objects
+ * @returns Concatenated scannable text plus the reduced-channel tally
+ */
+export function messagesToTextWithTelemetry(messages: MastraMessage[]): ReducedMessages {
+  const reductions = messages.map(reduceMessage);
+  const text = reductions
+    .map(r => r.text)
+    .filter(c => c.length > 0)
+    .join('\n');
+  const reducedKinds = reductions.flatMap(r => r.reducedKinds);
+  return {
+    text,
+    tally: { reducedCount: reducedKinds.length, reducedKinds: [...new Set(reducedKinds)] }
+  };
+}
+
+/**
+ * Reduces a single message to its scannable text + reduced-channel kinds.
+ *
+ * @internal
+ */
+function reduceMessage(m: MastraMessage): PartReduction {
+  const content = m.content;
+
+  // Handle messages without content
+  if (content === undefined || content === null) {
+    return { text: '', reducedKinds: [] };
+  }
+
+  // Handle string content (most common case)
+  if (typeof content === 'string') {
+    return { text: content, reducedKinds: [] };
+  }
+
+  // Handle array content (SEC-006: structured data, images, tool calls, etc.)
+  if (Array.isArray(content)) {
+    const parts = content.map(reduceContentPart);
+    return {
+      text: parts
+        .map(p => p.text)
+        .filter(c => c.length > 0)
+        .join('\n'),
+      reducedKinds: parts.flatMap(p => p.reducedKinds)
+    };
+  }
+
+  // Handle other types (convert to string)
+  return { text: String(content), reducedKinds: [] };
+}
+
+/**
+ * Reduces a single content part to its scannable text plus the kind labels of
+ * any channel whose payload was reduced to a placeholder or dropped.
+ *
+ * @internal
+ * @param part - The content part to reduce
+ * @returns Scannable text plus reduced-channel kind labels
+ */
+function reduceContentPart(part: MastraContentPart): PartReduction {
   switch (part.type) {
     case 'text':
-      return part.text || '';
+      return { text: part.text || '', reducedKinds: [] };
 
     case 'tool_use': {
       // SEC-005: Extract tool call info for validation
@@ -93,29 +165,53 @@ function contentPartToText(part: MastraContentPart): string {
           toolParts.push('Input: [unparseable]');
         }
       }
-      return toolParts.join('\n');
+      return { text: toolParts.join('\n'), reducedKinds: [] };
     }
 
-    case 'tool_result':
+    case 'tool_result': {
       // Extract tool result content
       if (typeof part.toolResult?.content === 'string') {
-        return `Tool Result: ${part.toolResult.content}`;
+        return { text: `Tool Result: ${part.toolResult.content}`, reducedKinds: [] };
       }
       if (Array.isArray(part.toolResult?.content)) {
-        return `Tool Result: ${part.toolResult.content
-          .map(p => contentPartToText(p))
+        const nested = part.toolResult.content.map(reduceContentPart);
+        const inner = nested
+          .map(n => n.text)
           .filter(c => c.length > 0)
-          .join('\n')}`;
+          .join('\n');
+        // Keep the historical `Tool Result: ` prefix (even when inner is empty)
+        // so text output stays byte-identical to the pre-telemetry reducer;
+        // nested image/unknown parts still propagate their reduced-kind labels.
+        return { text: `Tool Result: ${inner}`, reducedKinds: nested.flatMap(n => n.reducedKinds) };
       }
-      return part.toolResult?.isError ? 'Tool Error' : '';
+      return part.toolResult?.isError ? { text: 'Tool Error', reducedKinds: [] } : { text: '', reducedKinds: [] };
+    }
 
     case 'image_url':
-      // Don't validate image URLs directly - they're checked elsewhere
-      return '[Image]';
+      // Image URLs are not validated as text (checked elsewhere). The '[Image]'
+      // placeholder carries none of the channel's payload, so flag it as a
+      // reduced channel for telemetry.
+      return { text: '[Image]', reducedKinds: ['image_url'] };
 
     default:
-      return '';
+      // An unrecognized content-part `type` is dropped to '' — the declared
+      // union is not enforced on attacker-supplied JSON, so a payload can be
+      // parked under a novel type. Flag the (attacker-controlled) type so the
+      // drop is not silent; it is CWE-117-sanitized at the log site, never raw.
+      return { text: '', reducedKinds: [reducedKindLabel(part)] };
   }
+}
+
+/**
+ * Best-effort kind label for an unrecognized content part. The agent SDKs hand
+ * us untyped JSON, so `part.type` may be any value despite the declared union;
+ * coerce to a non-empty string for telemetry (sanitized at the log site).
+ *
+ * @internal
+ */
+function reducedKindLabel(part: MastraContentPart): string {
+  const raw = (part as { type?: unknown }).type;
+  return typeof raw === 'string' && raw.length > 0 ? raw : 'unknown';
 }
 
 /**

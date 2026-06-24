@@ -653,7 +653,19 @@ and the same honesty applies — these classes are best-effort or out of scope:
   (`validateToolResult`), `copilotkit` (`validateActionResult`), and `openai-agents`
   (`defineToolOutputGuardrail`) — each composing the arm on its inbound-result path, default-on. The
   deep non-text leaf extraction + binary-blob policy described above is **MCP-specific**; the other
-  connectors scan the result text their SDK surfaces.
+  connectors scan the result text their SDK surfaces. **No silent pass on a reduced channel:** when
+  a `mastra` / `copilotkit` message reducer collapses a non-text content part to a placeholder
+  (mastra `image_url` → `[Image]`; copilotkit `image` → `[Image]` and `data` → `[Data]`, discarding
+  the payload) or drops an **unrecognized part `type`** to the empty string, that channel is never
+  seen by the arm — so the reducer tallies it and the connector emits an operator `warn` carrying a
+  sanitized reduced-kind count + kind list, rather than passing it silently. This follows the MCP
+  connector's "never a silent pass" posture, but emits a single `warn` for **every** reducer call
+  that drops a channel (the reducer substitutes a content-free placeholder, so — unlike a
+  decoded-but-skipped MCP blob accompanying scanned text — there is no tier in which the non-text
+  channel was inspected). The kind label of an unrecognized `type` is attacker-influenceable, so it
+  is CWE-117-sanitized at the sink (ADR-0001). This is **telemetry, not a block**: reducing rich
+  parts to a placeholder is the documented text-only scope, and reconstructing the dropped payload
+  remains a 2.0 roadmap item.
 
 **By design:** none of these arms run on raw user text — they are gated to connector provenance, so
 the calibrated user-text false-positive floor is unchanged. See
