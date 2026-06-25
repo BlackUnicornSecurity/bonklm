@@ -45,8 +45,8 @@ Two corollaries:
    real attack only because the attack incidentally contained the removed term (not because the term
    was the attack's mechanism), dropping the term sheds a _coincidental_ catch, not a vector. That
    recall belongs to the attack's real detection layer (a dedicated content pattern, or — for
-   binding/provenance-shaped attacks — the connector-provenance layer), to be added as its own
-   increment.
+   binding/provenance-shaped attacks — the connector-provenance layer,
+   [ADR-0010](./0010-provenance-gated-indirect-injection.md)), to be added as its own increment.
 
 ## Discipline required for every such change
 

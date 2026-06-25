@@ -57,14 +57,23 @@ post-rc.3 hardening). This document enumerates what is **PUBLIC** (frozen for v2
 
 #### Provenance (connector-boundary contract)
 
-- `Provenance`, `ToolResultRef`, `ProvenanceBoundary`, `ProvenanceSource` (types)
-- `hasToolResultProvenance` (function)
+- `ProvenanceBoundary` (type) — the surface tag (`retrieved_doc` / `composed_context` /
+  `tool_result` / `memory_write`) the shipped arms gate on; **stable**.
+- `Provenance`, `ToolResultRef`, `ProvenanceSource` (types) — the wire-envelope contract; tagged
+  `@experimental` (the connector stamping that populates it is a later increment) — may change
+  before the v1.0 surface freeze.
+- `hasToolResultProvenance`, `isToolDerivedRef` (functions) — the chain-level and per-ref
+  tool-derived predicates that gate every provenance consumer
 - `MemoryWriteMetadata` (interface) — types the `metadata.provenance` slot on `MemoryWritePayload`
+- `rescanLaunderedProvenance` (function) + `ProvenanceRescanResult` (interface) + the
+  `RAW_UPSTREAM_MATCH_REDACTED` marker — the Home-E laundering re-scan consumer that
+  `createMemoryWriteValidator` runs over a write's provenance chain (Node-only; depends on the
+  raw-upstream cache, so not a named `/edge` export — transitively reachable on Node-compat edge)
 - `INDIRECT_INJECTION_PATTERNS`, `detectIndirectInjection` and the `runWithRawUpstreamCache` /
   `putRawUpstream` / `getRawUpstream` / `rawUpstreamCacheActive` primitives are barrel-reachable but
-  **tactical / forward-contract** (consumed by later connector increments) — treat as experimental,
-  not part of the frozen v1.0 surface, until the connector increments land. (Classification pending
-  maintainer confirmation — see the PR-A audit triage.)
+  **tactical / forward-contract** (the cache is populated by later connector increments) — treat as
+  experimental, not part of the frozen v1.0 surface, until the connector increments land.
+  (Classification pending maintainer confirmation — see the PR-A audit triage.)
 
 #### Cache + replay
 

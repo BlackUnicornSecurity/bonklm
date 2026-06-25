@@ -667,6 +667,24 @@ and the same honesty applies — these classes are best-effort or out of scope:
   parts to a placeholder is the documented text-only scope, and reconstructing the dropped payload
   remains a 2.0 roadmap item.
 
+- **Memory-write laundering re-scan: live consumer, gated on connector provenance stamping.**
+  `createMemoryWriteValidator` re-scans the **raw upstream body** behind a write's
+  `metadata.provenance` chain (looked up by `rawBodyHash` from the per-turn
+  `runWithRawUpstreamCache` scope) so a poisoned tool result the agent **paraphrased** into benign
+  prose before persisting is still caught — the laundered surface text no longer matches a content
+  pattern, but the raw body does. The consumer is wired and default-on, but it only engages when an
+  upstream connector has (a) opened a raw-upstream cache scope, (b) cached the raw body, and (c)
+  threaded the `Provenance` envelope onto the memory write. That **per-connector stamping is a later
+  increment**; until a connector stamps, the re-scan degrades cleanly to a no-op (a missing hash,
+  cache miss, or out-of-scope lookup never produces a false block). A hit that does land **fails
+  closed**: because the poison is not textually present in the laundered `content`, redact mode
+  cannot mitigate it and the write is blocked rather than redacted-and-allowed. Bounds: only the
+  first 64 KiB of each raw body is re-scanned, at most 64 distinct bodies are re-scanned, and at
+  most 256 refs are examined per chain (`metadata.provenance` is caller-supplied, so its length is
+  untrusted; a payload beyond those bounds degrades to the no-op baseline, never a false block); and
+  a re-scan finding's `match` is redacted before it reaches the result, so a secret/PII-bearing raw
+  body is never echoed back through the memory-write result surface.
+
 **By design:** none of these arms run on raw user text — they are gated to connector provenance, so
 the calibrated user-text false-positive floor is unchanged. See
 [`threat-surfaces.md`](./threat-surfaces.md) for the per-surface coverage map.

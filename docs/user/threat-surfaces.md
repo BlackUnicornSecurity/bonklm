@@ -111,6 +111,18 @@ ElizaOS connector ships the sealed `wrapMemory` defence (Story 1.8) on top of th
 `Object.defineProperty` with `writable: false`, closure-captured source-trust, verified-publisher
 allowlist, and the `metadata.bonklmTrust` marker.
 
+**Home-E laundering re-scan (provenance-gated).** Beyond scanning the write's surface `content`, the
+validator re-scans the **raw upstream body** behind `metadata.provenance` — the original tool result
+the content derives from, looked up by `rawBodyHash` from the per-turn `runWithRawUpstreamCache`
+scope. This catches the laundering chain where an agent paraphrases a poisoned tool result into
+benign prose before persisting it: the laundered surface text matches no indirect-injection content
+pattern, but the raw body still does. The re-scan is gated on tool-derived provenance (never engages
+on genuine user writes), fails closed on a hit (redact cannot remove poison that isn't textually in
+`content`), and degrades to a no-op until an upstream connector stamps the envelope + caches the raw
+body (a per-connector follow-up increment). Re-scan findings have their `match` redacted before they
+reach the result — the raw body may carry secrets/PII the laundered `content` never exposed — and
+the scan is byte-bounded per body with a per-chain fan-out cap.
+
 ### `composed_context`
 
 `createComposedContextValidator` defends the **wake-up attack** class where individual memory

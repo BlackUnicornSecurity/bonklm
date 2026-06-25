@@ -80,6 +80,19 @@ const TOOL_DERIVED_SOURCES: ReadonlySet<ProvenanceSource> = new Set<ProvenanceSo
 ]);
 
 /**
+ * True when a single ref is a tool-derived (indirect, attacker-influenceable)
+ * channel — i.e. NOT a genuine `user-input` turn. The canonical home of the
+ * tool-derived source set; both the chain-level {@link hasToolResultProvenance}
+ * gate and the per-ref laundering re-scan filter ({@link rescanLaunderedProvenance})
+ * route through here so the set is defined exactly once.
+ *
+ * @experimental Forward contract (the gating consumer lands in PR-C); may change before freeze.
+ */
+export function isToolDerivedRef(ref?: ToolResultRef | null): boolean {
+  return ref !== null && ref !== undefined && TOOL_DERIVED_SOURCES.has(ref.source);
+}
+
+/**
  * True when the provenance chain carries at least one tool-derived (indirect)
  * ref. A chain that is empty, absent, malformed, or composed entirely of
  * `user-input` refs returns `false` — the laundering / indirect-injection
@@ -91,5 +104,5 @@ export function hasToolResultProvenance(provenance?: Provenance): boolean {
   if (!provenance || !Array.isArray(provenance.derivedFrom)) {
     return false;
   }
-  return provenance.derivedFrom.some(ref => ref !== null && ref !== undefined && TOOL_DERIVED_SOURCES.has(ref.source));
+  return provenance.derivedFrom.some(isToolDerivedRef);
 }

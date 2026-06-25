@@ -512,6 +512,10 @@ dist/validators/prompt-injection.d.ts
 dist/validators/prompt-injection.d.ts.map
 dist/validators/prompt-injection.js
 dist/validators/prompt-injection.js.map
+dist/validators/provenance-rescan.d.ts
+dist/validators/provenance-rescan.d.ts.map
+dist/validators/provenance-rescan.js
+dist/validators/provenance-rescan.js.map
 dist/validators/provenance.d.ts
 dist/validators/provenance.d.ts.map
 dist/validators/provenance.js

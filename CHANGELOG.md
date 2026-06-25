@@ -48,6 +48,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [Known limitations](docs/user/known-limitations.md)). A tool result that previously passed can now
   be filtered when it carries a `tool_result` injection signal; no public API or option changes.
 
+- **Memory writes are re-scanned against their raw upstream source (laundering defence).**
+  `createMemoryWriteValidator` now re-scans the **raw upstream body** behind a write's
+  `metadata.provenance` chain — the original tool result the content derives from, looked up by
+  `rawBodyHash` from the `runWithRawUpstreamCache` scope — in addition to scanning the write's surface
+  content. This catches the chain where an agent paraphrases a poisoned tool result into benign prose
+  before persisting it: the laundered text matches no content pattern, but the raw body still does. The
+  re-scan is gated on tool-derived provenance (genuine user writes are never re-scanned, so the
+  user-text false-positive floor is unchanged), and **fails closed** — because the poison is not
+  textually present in the laundered content, redact mode cannot remove it and the write is blocked.
+  New exports: `rescanLaunderedProvenance` / `ProvenanceRescanResult` and the `isToolDerivedRef`
+  predicate. The consumer is default-on but engages only once an upstream connector caches the raw
+  body and stamps the `Provenance` envelope (a later per-connector increment); until then it degrades
+  cleanly to a no-op (a missing hash, cache miss, or out-of-scope lookup never blocks). See
+  [ADR-0010](docs/contributing/adr/0010-provenance-gated-indirect-injection.md) and
+  [threat surfaces](docs/user/threat-surfaces.md).
+
 - **Supply-chain hardening: npm build provenance, SBOM, and shipped-closure audit/license gates.**
   Stable releases now publish with npm build provenance — a Sigstore attestation binding each tarball
   to its CI build, commit, and source repository (verify with `npm audit signatures`) — and every

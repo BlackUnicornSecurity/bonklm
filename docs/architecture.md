@@ -1,6 +1,6 @@
 # BonkLM Architecture
 
-> Last updated: 2026-06-03 Audience: senior engineers onboarding to `@blackunicorn/bonklm`. Project
+> Last updated: 2026-06-25 Audience: senior engineers onboarding to `@blackunicorn/bonklm`. Project
 > version: `1.0.0-rc.4`. Source of truth: `packages/core/package.json` + the `[1.0.0-rc.4]`
 > CHANGELOG entry. Root `package.json` (private; repo metadata only) is aligned to the same version.
 > Per [CONTRIBUTING.md](../CONTRIBUTING.md#versioning-changesets-and-releases), the changeset
@@ -154,14 +154,52 @@ string config) because the sealing path must be tamper-resistant.
   first sentence boundary; flips to `Infinity` (full-response mode) when `chainHasSecretOrPii: true`
   — the only setting that prevents partial-leak. See `known-limitations.md` §5.
 
+### 5b. Connector-provenance layer & raw-upstream re-scan (Home-E)
+
+The connector-boundary `IndirectInjectionValidator` (D-065 §7-step-2.b) scans content as it crosses
+a surface (`retrieved_doc` / `composed_context` / `tool_result` / `memory_write`). A laundering
+chain defeats a content-only scan: an agent reads a poisoned tool result, **paraphrases** it into
+benign prose, then persists the paraphrase to memory — the surface text now matches nothing.
+
+The provenance layer closes that gap with two cooperating primitives:
+
+- **`Provenance` envelope** (`validators/provenance.ts`) — a JSON wire-contract carried on
+  `MemoryWritePayload.metadata.provenance` (and intended for `ToolCallResult`). Its `derivedFrom`
+  chain of `ToolResultRef`s records each upstream link's `source` (tool-result / http-fetch /
+  agent-paraphrase / user-input) and a SHA-256 `rawBodyHash`. `hasToolResultProvenance` /
+  `isToolDerivedRef` are the gates: a chain that is absent, empty, or all-`user-input` never
+  triggers the stricter path, so genuine user writes keep the calibrated user-text false-positive
+  floor.
+- **Raw-upstream cache** (`validators/raw-upstream-cache.ts`) — an `AsyncLocalStorage`-scoped
+  `rawBodyHash → raw body` map (256-entry cap) that lives only for the duration of one
+  `runWithRawUpstreamCache` turn scope. It preserves the engine's stateless-per-turn semantics:
+  outside a scope every accessor is an inert no-op (writes drop, reads return `undefined`), never a
+  throw, so a connector that has not opted in degrades cleanly.
+
+`rescanLaunderedProvenance` (`validators/provenance-rescan.ts`) is the consumer
+`createMemoryWriteValidator` runs after its content chain: for each tool-derived ref carrying a
+cached `rawBodyHash`, it re-scans the **raw body** through a shared `tool_result`
+`IndirectInjectionValidator` and merges any hit into the write's verdict. The re-scan **fails
+closed** — since the poison is not textually in the laundered `content`, redact mode cannot mitigate
+it, so a hit blocks the write. Re-scan findings have their `match` REDACTED before they leave the
+re-scan (the raw body may carry secrets/PII the laundered `content` never exposed), and the per-body
+scan is byte-bounded with a per-chain fan-out cap so a pathological chain cannot turn one write into
+unbounded regex work. Populating the cache + stamping the envelope is a per-connector follow-up
+increment (mirroring how the PR-A core validator preceded the PR-B connector rollout); until a
+connector stamps, the consumer is live but inert. The raw-upstream cache is Node-only: it is not a
+named `/edge` export, but because `createMemoryWriteValidator` (which is `/edge`-exported) now
+reaches it transitively, `node:async_hooks` joins the Node built-ins the edge surface requires (see
+§6) — fine on the Node-compatible edge runtimes BonkLM targets, out of scope for strict
+`edge-light`.
+
 ## 6. Edge vs Node runtime split
 
 - `package.json` for `@blackunicorn/bonklm` declares an `./edge` subpath with workerd / deno / bun
   conditional exports (plus `import` for Node). All three edge runtimes resolve to
   `dist/edge/index.js`. The `edge-light` (strict Vercel Edge) condition is intentionally not
-  declared — the edge surface transitively uses Node built-ins
-  (`node:fs`/`node:path`/`node:crypto`), so it requires a Node-compatible edge runtime (`workerd`
-  with `nodejs_compat`, Deno, Bun).
+  declared — the edge surface transitively uses Node built-ins (`node:fs`/`node:path`/`node:crypto`,
+  plus `node:async_hooks` via the memory-write provenance re-scan — see §5b), so it requires a
+  Node-compatible edge runtime (`workerd` with `nodejs_compat`, Deno, Bun).
 - `packages/core/src/edge/index.ts` exports the portable subset: engine, base types, all primary
   validators (`PromptInjectionValidator`, `JailbreakValidator`, `ReformulationDetector`,
   `BoundaryDetector`, `MultilingualDetector`), all four composites, all content guards except

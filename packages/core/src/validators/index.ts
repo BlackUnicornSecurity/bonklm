@@ -23,5 +23,6 @@ export * from './code-injection.js';
 export * from './path-traversal.js';
 export * from './provenance.js';
 export * from './raw-upstream-cache.js';
+export * from './provenance-rescan.js';
 export * from './indirect-injection.js';
 export * from './indirect-injection-arm.js';
