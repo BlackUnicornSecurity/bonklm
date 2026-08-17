@@ -1,0 +1,75 @@
+{
+  "name": "@blackunicorn/bonklm-inngest",
+  "version": "1.0.13",
+  "description": "Inngest middleware for BonkLM — replay-safe LLM security guardrails via cachedValidate",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "test:types": "tsd",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "inngest",
+    "middleware",
+    "step-function",
+    "replay",
+    "durable",
+    "llm",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "jailbreak",
+    "ai-safety"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/inngest-connector"
+  },
+  "homepage": "https://github.com/BlackUnicornSecurity/bonklm",
+  "bugs": {
+    "url": "https://github.com/BlackUnicornSecurity/bonklm/issues"
+  },
+  "author": "BlackUnicorn <info@blackunicorn.tech>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "peerDependencies": {
+    "inngest": "^4.4.0"
+  },
+  "peerDependenciesMeta": {
+    "inngest": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@blackunicorn/bonklm-stagehand": "workspace:*",
+    "@browserbasehq/stagehand": "^3.4.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "inngest": "^4.4.0",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

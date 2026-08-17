@@ -1,0 +1,48 @@
+# BonkLM gitleaks configuration.
+#
+# Used by:
+#   * `.pre-commit-config.yaml` gitleaks hook (staged-only)
+#   * `.github/workflows/tier0.yml` CI secret-scan job
+#   * `scripts/scan-tarballs.sh` post-publish tarball scan
+#
+# Extends gitleaks' bundled default ruleset (so every upstream rule still
+# fires) and allowlists known-intentional placeholders / fixtures.
+#
+# Important: LLM-Guardrails IS a security-testing library. Its source code,
+# tests, and detection fixtures deliberately contain secret-shaped strings
+# so the detectors can be unit-tested. The allowlists below carve those out
+# WITHOUT broadening to net-new code paths — each entry pinpoints a real
+# fixture path or a documented placeholder pattern that has been
+# individually reviewed.
+
+title = "BonkLM gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Documented fake placeholders + intentional security-testing fixtures"
+
+# Never allowlist a directory. Detection fixtures, tests, UAT, examples, and
+# documentation are all normal disclosure surfaces. Intentional fake values are
+# permitted only by exact value regexes below, so a new credential-shaped value
+# introduced anywhere remains visible to the scanner.
+paths = []
+
+# Specific placeholder regexes that may appear outside the path allowlist
+# (e.g., in a future quickstart snippet authored elsewhere). Narrow on
+# purpose — broadening this is a fleet-canon change.
+regexes = [
+  # Core README placeholder — the sole allowlist for the core README's fake
+  # key (`const apiKey = 'sk-1234567890abcdef'`), scoped to the value so it
+  # holds in every scan context (repo tree AND tarball) without allowlisting
+  # any other README. See the paths note above. Anchored `^…$`: gitleaks matches
+  # allowlist regexes as UNANCHORED substrings of the detected secret, so a bare
+  # value would also allowlist any longer secret that embeds it — anchoring pins
+  # it to the exact placeholder.
+  '''^sk-1234567890abcdef$''',
+  # Docs / quickstart placeholder family. `sk-proj-` is the OpenAI project
+  # API-key prefix; the `abc123(xyz)?` suffix is obviously not a real key.
+  # Anchored for the same reason as above.
+  '''^sk-proj-abc123(xyz)?$''',
+]

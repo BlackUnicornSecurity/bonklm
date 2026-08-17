@@ -1,0 +1,112 @@
+{
+  "name": "@blackunicorn/bonklm",
+  "version": "1.0.13",
+  "description": "BonkLM — the bat for LLM agents. Framework-agnostic security guardrails with interactive setup wizard.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "bonklm": "./dist/bin/run.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./validators": {
+      "import": "./dist/validators/index.js",
+      "types": "./dist/validators/index.d.ts",
+      "default": "./dist/validators/index.js"
+    },
+    "./guards": {
+      "import": "./dist/guards/index.js",
+      "types": "./dist/guards/index.d.ts",
+      "default": "./dist/guards/index.js"
+    },
+    "./hooks": {
+      "import": "./dist/hooks/index.js",
+      "types": "./dist/hooks/index.d.ts",
+      "default": "./dist/hooks/index.js"
+    },
+    "./common": {
+      "import": "./dist/common/index.js",
+      "types": "./dist/common/index.d.ts",
+      "default": "./dist/common/index.js"
+    },
+    "./core/connector-utils": {
+      "import": "./dist/connector-utils/index.js",
+      "types": "./dist/connector-utils/index.d.ts",
+      "default": "./dist/connector-utils/index.js"
+    },
+    "./testing": {
+      "import": "./dist/testing/index.js",
+      "types": "./dist/testing/index.d.ts",
+      "default": "./dist/testing/index.js"
+    },
+    "./edge": {
+      "workerd": "./dist/edge/index.js",
+      "deno": "./dist/edge/index.js",
+      "bun": "./dist/edge/index.js",
+      "import": "./dist/edge/index.js",
+      "types": "./dist/edge/index.d.ts",
+      "default": "./dist/edge/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc && chmod +x dist/bin/run.js",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:types": "tsd",
+    "lint": "eslint src",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "llm",
+    "security",
+    "guardrails",
+    "prompt-injection",
+    "jailbreak",
+    "ai-safety",
+    "agent-security",
+    "llm-security",
+    "web3",
+    "cli",
+    "wizard"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/BlackUnicornSecurity/bonklm",
+  "bugs": {
+    "url": "https://github.com/BlackUnicornSecurity/bonklm/issues"
+  },
+  "author": "BlackUnicorn <info@blackunicorn.tech>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@clack/prompts": "^0.8.2",
+    "commander": "^12.1.0",
+    "dotenv": "^17.4.2",
+    "lru-cache": "^11.2.6",
+    "secure-json-parse": "^2.5.0",
+    "which": "^4.0.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/which": "^3.0.4",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

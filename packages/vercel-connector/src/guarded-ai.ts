@@ -1,0 +1,498 @@
+/**
+ * Vercel AI SDK Guarded Wrapper
+ * ============================
+ *
+ * Provides security guardrails for Vercel AI SDK operations.
+ *
+ * Security Features:
+ * - Incremental stream validation with early termination
+ * - Max buffer size enforcement to prevent DoS
+ * - Complex message content handling (arrays, images, structured data)
+ * - Production mode error messages
+ * - Validation timeout via validateWithTimeoutSecure
+ * - regression: Correct GuardrailEngine.validate() API (string context)
+ * - regression: Proper logger integration
+ *
+ * @package @blackunicorn/bonklm-vercel
+ */
+
+import type { CoreMessage } from 'ai';
+import {
+  createLogger,
+  type EngineResult,
+  GuardrailEngine,
+  type Logger,
+  RiskLevel,
+  sanitizeMeta,
+  Severity,
+  validateWithTimeoutSecure
+} from '@blackunicorn/bonklm';
+import {
+  ClientSafeStreamGate,
+  ConnectorValidationError,
+  createStreamValidatorState,
+  logValidationFailure,
+  StreamValidationError,
+  StreamValidator,
+  updateStreamValidatorState,
+  validateBufferBeforeAccumulation
+} from '@blackunicorn/bonklm/core/connector-utils';
+import type { GuardedAIOptions, GuardedGenerateTextOptions, GuardedTextResult } from './types.js';
+import { DEFAULT_MAX_BUFFER_SIZE, DEFAULT_VALIDATION_TIMEOUT, VALIDATION_INTERVAL } from './types.js';
+
+/**
+ * Default logger instance.
+ *
+ * @internal
+ */
+const DEFAULT_LOGGER: Logger = createLogger('console');
+
+/**
+ * Extracts text content from CoreMessage array.
+ *
+ * @remarks
+ * Handles complex message content types:
+ * - String content: "Hello"
+ * - Array content: [{type: 'text', text: 'Hello'}, {type: 'image', image: '...'}]
+ *
+ * This is a critical security function as it prevents validation bypass
+ * when messages contain structured data or images.
+ *
+ * @param messages - Array of CoreMessage objects
+ * @returns Concatenated text content from all messages
+ *
+ * @example
+ * ```ts
+ * const messages: CoreMessage[] = [
+ *   { role: 'user', content: 'Hello' },
+ *   { role: 'assistant', content: [{ type: 'text', text: 'Hi there' }] }
+ * ];
+ * const text = messagesToText(messages); // "Hello\nHi there"
+ * ```
+ */
+export function messagesToText(messages: CoreMessage[]): string {
+  return messages
+    .map(m => {
+      const content = m.content;
+
+      // Handle string content (most common case)
+      if (typeof content === 'string') {
+        return content;
+      }
+
+      // Handle array content (structured data, images, etc.)
+      if (Array.isArray(content)) {
+        return content
+          .filter(c => c.type === 'text') // Only extract text parts
+          .map(c => (c.type === 'text' ? (c as { text: string }).text : ''))
+          .join('\n');
+      }
+
+      // Handle other types (convert to string)
+      return String(content);
+    })
+    .filter(c => c.length > 0)
+    .join('\n');
+}
+
+/**
+ * Creates a guarded AI wrapper for Vercel AI SDK operations.
+ *
+ * @param options - Configuration options for the guarded wrapper
+ * @returns An object with `generateText` and `streamText` methods
+ *
+ * @example
+ * ```ts
+ * import { createOpenAI } from '@ai-sdk/openai';
+ * import { createGuardedAI } from '@blackunicorn/bonklm-vercel';
+ * import { PromptInjectionValidator } from '@blackunicorn/bonklm';
+ *
+ * const openai = createOpenAI();
+ * const guardedAI = createGuardedAI({
+ *   validators: [new PromptInjectionValidator()],
+ *   validateStreaming: true,
+ *   streamingMode: 'incremental',
+ * });
+ *
+ * const result = await guardedAI.generateText({
+ *   model: openai('gpt-4'),
+ *   messages: [{ role: 'user', content: userInput }]
+ * });
+ * ```
+ */
+export interface GuardedAIInstance {
+  generateText(opts: GuardedGenerateTextOptions): Promise<GuardedTextResult>;
+  streamText(opts: GuardedGenerateTextOptions & { stream: true }): Promise<any>;
+}
+
+export function createGuardedAI(options: GuardedAIOptions = {}): GuardedAIInstance {
+  const {
+    validators = [],
+    guards = [],
+    logger = DEFAULT_LOGGER, // regression: Use proper logger
+    validateStreaming = false,
+    streamingMode = 'incremental', // Default to incremental
+    streamReleaseMode = 'trailing', // opt-in validate-before-release
+    minBufferBeforeRelease,
+    chainHasSecretOrPii,
+    detectSentenceBoundary,
+    minSentenceLength,
+    maxStreamBufferSize = DEFAULT_MAX_BUFFER_SIZE, // Default 1MB
+    productionMode = process.env.NODE_ENV === 'production',
+    validationTimeout = DEFAULT_VALIDATION_TIMEOUT, // Default 30s
+    onBlocked,
+    onStreamBlocked
+  } = options;
+
+  const engine = new GuardrailEngine({
+    validators,
+    guards,
+    logger
+  });
+
+  /**
+   * regression: Validation timeout wrapper (Sprint 30: routes through canonical validateWithTimeoutSecure primitive).
+   *
+   * @internal
+   */
+  const validateWithTimeout = async (content: string, context?: string): Promise<EngineResult> => {
+    const engineResult = await validateWithTimeoutSecure<EngineResult>({
+      operation: () => engine.validate(content, context),
+      timeoutMs: validationTimeout,
+      timeoutSentinel: () => ({
+        allowed: false,
+        blocked: true,
+        severity: Severity.CRITICAL,
+        risk_level: RiskLevel.HIGH,
+        risk_score: 30,
+        reason: 'Validation timeout',
+        findings: [
+          {
+            category: 'timeout',
+            severity: Severity.CRITICAL,
+            description: 'Validation timeout',
+            weight: 30
+          }
+        ],
+        results: [],
+        validatorCount: validators.length,
+        guardCount: guards.length,
+        executionTime: validationTimeout,
+        timestamp: Date.now()
+      }),
+      logger
+    });
+    return engineResult;
+  };
+
+  /**
+   * Validates input messages and throws if blocked.
+   *
+   * @internal
+   */
+  const validateInput = async (messages: CoreMessage[]): Promise<void> => {
+    // Handle complex message content (arrays, images, etc.)
+    const prompt = messagesToText(messages);
+    const inputResult = await validateWithTimeout(prompt, 'input');
+
+    if (!inputResult.allowed) {
+      // S012-005: Use connector-utils validation failure logging
+      logValidationFailure(logger, inputResult.reason || 'Input blocked', { context: 'input' });
+      if (onBlocked) onBlocked(inputResult);
+
+      // Production mode - generic error
+      if (productionMode) {
+        throw new Error('Content blocked');
+      }
+      // Sprint 43 cross-connector CWE-117 sweep (security HIGH #2
+      // closure): sanitize at dev-mode throw boundary.
+      throw new Error(`Content blocked: ${sanitizeMeta(inputResult.reason)}`);
+    }
+  };
+
+  return {
+    /**
+     * Generates text with guardrails validation.
+     *
+     * @param opts - Generation options including model and messages
+     * @returns Generated text or filtered placeholder
+     */
+    async generateText(opts: GuardedGenerateTextOptions): Promise<GuardedTextResult> {
+      // Validate input first
+      await validateInput(opts.messages);
+
+      // Dynamically import to avoid peer dependency issues
+      const { generateText: aiGenerateText } = await import('ai');
+
+      // Generate text
+      const result = await aiGenerateText(opts);
+
+      // Validate output
+      const outputResult = await validateWithTimeout(result.text, 'output');
+
+      if (!outputResult.allowed) {
+        // S012-005: Use connector-utils validation failure logging
+        logValidationFailure(logger, outputResult.reason || 'Output blocked', { context: 'output' });
+        if (onBlocked) onBlocked(outputResult);
+
+        // CWE-117 sweep: output-leg dev-mode throw.
+        throw new ConnectorValidationError(
+          productionMode ? 'Content blocked' : `Content blocked: ${sanitizeMeta(outputResult.reason)}`,
+          'validation_failed'
+        );
+      }
+
+      return {
+        text: result.text,
+        usage: result.usage,
+        finishReason: result.finishReason,
+        filtered: false,
+        raw: result
+      };
+    },
+
+    /**
+     * Streams text with guardrails validation.
+     *
+     * @remarks
+     * When validateStreaming is enabled, implements:
+     * - Incremental validation with early termination
+     * - Max buffer size enforcement
+     * - S012-005: Buffer mode implementation
+     *
+     * @param opts - Stream options including model and messages
+     * @returns Stream result with potential validation wrapping
+     */
+    async streamText(opts: GuardedGenerateTextOptions & { stream: true }) {
+      // Validate input first
+      await validateInput(opts.messages);
+
+      // Dynamically import to avoid peer dependency issues
+      const { streamText: aiStreamText } = await import('ai');
+
+      // Create stream
+      const result = await aiStreamText(opts);
+
+      if (!validateStreaming) {
+        // No streaming validation - return original stream
+        return result;
+      }
+
+      const originalStream = result.toDataStream();
+
+      if (streamingMode === 'incremental') {
+        // Opt-in: validate-before-release. Hold byte chunks until the
+        // release gate clears their decoded text, then enqueue the ORIGINAL
+        // bytes so the data-stream framing is preserved. No unvalidated output
+        // reaches the client (contrast the trailing path below, which enqueues
+        // each chunk before validating it).
+        if (streamReleaseMode === 'gated') {
+          const decoder = new TextDecoder();
+          const gate = new ClientSafeStreamGate<Uint8Array>(
+            StreamValidator.create(
+              { validate: (content: string) => validateWithTimeout(content, 'output') },
+              {
+                logger,
+                maxBufferSize: maxStreamBufferSize,
+                minBufferBeforeRelease,
+                chainHasSecretOrPii,
+                detectSentenceBoundary,
+                minSentenceLength,
+                onBlocked: accumulated => onStreamBlocked?.(accumulated)
+              }
+            ),
+            // `{ stream: true }` carries a multi-byte UTF-8 sequence split across
+            // byte frames over to the next chunk, so the validated text matches
+            // the bytes the client will reassemble — a per-frame decode would
+            // emit replacement chars at the boundary and could mask a flagged
+            // token straddling it. The ORIGINAL bytes are still what gets
+            // forwarded; this decode only produces the text fed to validation.
+            (bytes: Uint8Array) => decoder.decode(bytes, { stream: true })
+          );
+          const mkError = (reason?: string): Uint8Array =>
+            new TextEncoder().encode(
+              JSON.stringify({
+                type: 'error',
+                error: productionMode ? 'Content filtered' : `Content filtered: ${sanitizeMeta(reason)}`
+              })
+            );
+          return {
+            ...result,
+            toDataStream: () => {
+              const reader = originalStream.getReader();
+              return new ReadableStream({
+                // Each pull MUST enqueue ≥1 chunk or close — a pull that reads
+                // an upstream chunk but enqueues nothing (held) would deadlock a
+                // single-outstanding-read consumer (the stream does not auto-pull
+                // again). So loop internally, draining upstream until the gate
+                // releases a batch or the stream ends.
+                async pull(controller) {
+                  for (;;) {
+                    const { done, value } = await reader.read();
+                    if (done) {
+                      const tail = await gate.finish();
+                      if (tail.blocked) {
+                        controller.enqueue(mkError(tail.reason));
+                      } else {
+                        for (const v of tail.released) controller.enqueue(v);
+                      }
+                      controller.close();
+                      return;
+                    }
+                    const r = await gate.push(value);
+                    if (r.blocked) {
+                      controller.enqueue(mkError(r.reason));
+                      controller.close();
+                      return;
+                    }
+                    if (r.released.length > 0) {
+                      for (const v of r.released) controller.enqueue(v);
+                      return;
+                    }
+                    // Held: nothing released yet — keep draining upstream.
+                  }
+                }
+              });
+            }
+          };
+        }
+
+        // S012-005: Incremental stream validation with early termination
+        // Using connector-utils for buffer validation
+
+        const streamState = createStreamValidatorState();
+
+        return {
+          ...result,
+          toDataStream: () => {
+            const reader = originalStream.getReader();
+
+            return new ReadableStream({
+              async pull(controller) {
+                const { done, value } = await reader.read();
+
+                if (done) {
+                  // Final validation on stream completion
+                  const outputResult = await validateWithTimeout(streamState.accumulated, 'output');
+                  if (!outputResult.allowed) {
+                    logValidationFailure(logger, outputResult.reason || 'Stream blocked', { context: 'stream_final' });
+                    if (onStreamBlocked) onStreamBlocked(streamState.accumulated);
+
+                    // Send error and close
+                    const errorChunk = new TextEncoder().encode(
+                      JSON.stringify({
+                        type: 'error',
+                        error: 'Content filtered'
+                      })
+                    );
+                    controller.enqueue(errorChunk);
+                  }
+                  controller.close();
+                  return;
+                }
+
+                // S012-005: Use connector-utils buffer validation BEFORE accumulating
+                const chunk = new TextDecoder().decode(value);
+                validateBufferBeforeAccumulation(streamState, chunk, {
+                  maxBufferSize: maxStreamBufferSize,
+                  logger
+                });
+
+                updateStreamValidatorState(streamState, chunk);
+
+                // Incremental validation every N chunks
+                if (streamState.chunkCount % VALIDATION_INTERVAL === 0) {
+                  const result = await validateWithTimeout(streamState.accumulated, 'output');
+                  if (!result.allowed) {
+                    logValidationFailure(logger, result.reason || 'Stream blocked', { context: 'stream_incremental' });
+                    if (onStreamBlocked) onStreamBlocked(streamState.accumulated);
+
+                    throw new StreamValidationError('Content blocked during streaming', 'validation_failed', true);
+                  }
+                }
+
+                // Pass through the chunk
+                controller.enqueue(value);
+              }
+            });
+          }
+        };
+      }
+
+      // S012-005: Buffer mode implementation
+      // Accumulates entire stream before validating
+      if (streamingMode === 'buffer') {
+        const streamState = createStreamValidatorState();
+        const chunks: Uint8Array[] = [];
+
+        return {
+          ...result,
+          toDataStream: () => {
+            const reader = originalStream.getReader();
+
+            return new ReadableStream({
+              async pull(controller) {
+                const { done, value } = await reader.read();
+
+                if (done) {
+                  // Stream complete - validate accumulated content
+                  if (streamState.accumulated.length > 0) {
+                    const result = await validateWithTimeout(streamState.accumulated, 'output');
+                    if (!result.allowed) {
+                      logValidationFailure(logger, result.reason || 'Stream blocked', { context: 'stream_buffer' });
+                      if (onStreamBlocked) onStreamBlocked(streamState.accumulated);
+
+                      // Send error and close.
+                      // CWE-117 sweep:
+                      // this JSON chunk is streamed to the client; an
+                      // attacker-influenced `reason` lands in the
+                      // response stream. Sanitize at the boundary.
+                      const errorChunk = new TextEncoder().encode(
+                        JSON.stringify({
+                          type: 'error',
+                          error: productionMode
+                            ? 'Content filtered'
+                            : `Content filtered: ${sanitizeMeta(result.reason)}`
+                        })
+                      );
+                      controller.enqueue(errorChunk);
+                    } else {
+                      // Validation passed - send all accumulated chunks
+                      for (const chunk of chunks) {
+                        controller.enqueue(chunk);
+                      }
+                    }
+                  }
+                  controller.close();
+                  return;
+                }
+
+                // S012-005: Use connector-utils buffer validation BEFORE accumulating
+                const chunk = new TextDecoder().decode(value);
+                validateBufferBeforeAccumulation(streamState, chunk, {
+                  maxBufferSize: maxStreamBufferSize,
+                  logger
+                });
+
+                updateStreamValidatorState(streamState, chunk);
+                chunks.push(value);
+              }
+            });
+          }
+        };
+      }
+
+      return result;
+    }
+  };
+}
+
+/**
+ * Re-exports types for convenience.
+ */
+export type { GuardedAIOptions, GuardedGenerateTextOptions, GuardedStreamOptions, GuardedTextResult } from './types.js';
+
+/**
+ * Re-exports the messagesToText utility for external use.
+ * This can be shared across different connectors (regression).
+ */

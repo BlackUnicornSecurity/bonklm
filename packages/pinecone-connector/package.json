@@ -1,0 +1,69 @@
+{
+  "name": "@blackunicorn/bonklm-pinecone",
+  "version": "1.0.13",
+  "description": "Pinecone vector database connector for BonkLM - Query and retrieval validation",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "test:types": "tsd"
+  },
+  "keywords": [
+    "pinecone",
+    "vector",
+    "rag",
+    "llm",
+    "guardrails",
+    "security",
+    "retrieval",
+    "prompt-injection",
+    "validation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/pinecone-connector"
+  },
+  "author": "BlackUnicorn",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "peerDependencies": {
+    "@pinecone-database/pinecone": "^2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@pinecone-database/pinecone": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@pinecone-database/pinecone": "^2.0.0",
+    "@types/node": "^20.10.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "typescript": "^5.3.0",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.10"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

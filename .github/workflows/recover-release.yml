@@ -1,0 +1,162 @@
+name: Recover failed release
+on:
+  workflow_run:
+    workflows: [Publish]
+    types: [completed]
+permissions:
+  contents: read
+concurrency:
+  group: bonklm-registry-publish
+  cancel-in-progress: false
+  queue: max
+jobs:
+  mark-failed:
+    name: Mark failed release unready
+    if: always() && github.event.workflow_run.conclusion != 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      statuses: write
+    steps:
+      - name: Mark the release transaction failed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: >-
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${RELEASE_SHA}"
+          -f state=failure -f context=bonklm/release-ready
+          -f description='Release transaction failed; recovery required' >/dev/null
+  recover:
+    name: Reconcile failed release
+    environment: public-release-recovery
+    needs: mark-failed
+    if: always() && github.event.workflow_run.conclusion != 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      packages: write
+    env:
+      STAGING_IMAGE: ghcr.io/blackunicornsecurity/bonklm-server-staging
+      STAGING_TAG: staging-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
+    steps:
+      - name: Checkout trusted recovery tooling
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+      - name: Validate the failed workflow identity
+        env:
+          FAILED_SHA: ${{ github.event.workflow_run.head_sha }}
+          FAILED_RUN_ID: ${{ github.event.workflow_run.id }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test '${{ github.event.workflow_run.repository.full_name }}' = "$GITHUB_REPOSITORY"
+          RUN_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${FAILED_RUN_ID}")"
+          test "$(jq -r .event <<< "$RUN_JSON")" = release
+          test "$(jq -r .path <<< "$RUN_JSON")" = .github/workflows/publish.yml
+          test "$(jq -r .head_sha <<< "$RUN_JSON")" = "$FAILED_SHA"
+          FAILED_RUN_TITLE="$(jq -er '.display_title | select(test("^Publish (?:[a-z0-9-]+-)?v[0-9]+\\.[0-9]+\\.[0-9]+([+-][0-9A-Za-z.-]+)?$"))' <<< "$RUN_JSON")"
+          echo "FAILED_RUN_TITLE=$FAILED_RUN_TITLE" >> "$GITHUB_ENV"
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$FAILED_SHA" origin/main
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.19.0
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+      - name: Install trusted recovery tooling dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Download the failed run release bundle
+        id: bundle
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          pattern: bonklm-*-release-artifacts
+          merge-multiple: true
+      - name: Download the retained npm recovery vector
+        id: recovery
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          pattern: bonklm-*-npm-recovery
+          path: release/recovery
+          merge-multiple: true
+      - name: Validate the retained release context
+        id: context
+        if: steps.bundle.outcome == 'success'
+        env:
+          FAILED_SHA: ${{ github.event.workflow_run.head_sha }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          MANIFEST=release/npm/release-manifest.json
+          test -f "$MANIFEST"
+          VERSION="$(jq -er '.version | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+([+-][0-9A-Za-z.-]+)?$"))' "$MANIFEST")"
+          SCOPE="$(jq -er '.scope | select(. == "family" or test("^@blackunicorn/[a-z0-9-]+$"))' "$MANIFEST")"
+          test "$(jq -er '.sourceSha | select(test("^[0-9a-f]{40}$"))' "$MANIFEST")" = "$FAILED_SHA"
+          IFS=$'\t' read -r _ _ PREFIX <<< "$(node tools/release-state.js classify-body "Release-Scope: $SCOPE")"
+          TAG="${PREFIX}${VERSION}"
+          test "$FAILED_RUN_TITLE" = "Publish $TAG"
+          test "$(node tools/release-state.js resolve-published "$GITHUB_REPOSITORY" "$SCOPE" "$TAG")" = "$FAILED_SHA"
+          node tools/release-npm-cli.js names-at-ref "$SCOPE" "$FAILED_SHA" "$RUNNER_TEMP/recovery-package-names.json"
+          {
+            echo "RELEASE_PACKAGE_NAMES_FILE=$RUNNER_TEMP/recovery-package-names.json"
+            echo "RELEASE_SCOPE=$SCOPE"
+            echo "RELEASE_SHA=$FAILED_SHA"
+            echo "RELEASE_TAG=$TAG"
+            echo "RELEASE_VERSION=$VERSION"
+          } >> "$GITHUB_ENV"
+          echo "has-bundle=true" >> "$GITHUB_OUTPUT"
+      - name: Verify the retained bundle against trusted recovery policy
+        id: authorization
+        if: steps.context.outputs.has-bundle == 'true'
+        run: node tools/release-npm-cli.js verify-local release/npm
+      - name: Install recovery signature verification tooling
+        if: always() && steps.authorization.outcome == 'success'
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Verify the retained npm recovery vector signature
+        id: recovery-signature
+        if: steps.authorization.outcome == 'success' && steps.recovery.outcome == 'success'
+        run: >-
+          cosign verify-blob --bundle release/recovery/npm-recovery.sigstore.json
+          --certificate-identity "https://github.com/BlackUnicornSecurity/bonklm/.github/workflows/publish.yml@refs/tags/${RELEASE_TAG}"
+          --certificate-oidc-issuer 'https://token.actions.githubusercontent.com'
+          release/recovery/npm-recovery.json >/dev/null
+      - name: Pin the release npm CLI
+        if: steps.authorization.outcome == 'success'
+        run: node tools/install-pinned-npm.js
+      - name: Restore the retained npm channel vector
+        id: restore
+        if: steps.authorization.outcome == 'success' && steps.recovery-signature.outcome == 'success'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: node tools/release-npm-cli.js restore release/npm release/recovery/npm-recovery.json
+      - name: Remove the failed run npm staging references
+        if: always() && steps.authorization.outcome == 'success'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: node tools/release-npm-cli.js cleanup-staging release/npm "$STAGING_TAG"
+      - name: Install container cleanup tooling
+        if: always() && steps.authorization.outcome == 'success' && env.RELEASE_SCOPE == 'family'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes skopeo
+      - name: Log in to the private staging registry
+        if: always() && steps.authorization.outcome == 'success' && env.RELEASE_SCOPE == 'family'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Remove the failed run private container staging reference
+        if: always() && steps.authorization.outcome == 'success' && env.RELEASE_SCOPE == 'family'
+        run: node tools/release-container.js cleanup-staging "${STAGING_IMAGE}:${STAGING_TAG}"

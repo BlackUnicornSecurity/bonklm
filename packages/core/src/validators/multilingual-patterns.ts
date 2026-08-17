@@ -1,0 +1,718 @@
+/**
+ * BonkLM - Multilingual Injection Patterns
+ * ================================================
+ * Injection patterns in 12 languages: Spanish, French, German, Portuguese,
+ * Italian, Chinese Simplified, Japanese, Korean, Russian, Arabic, Bengali, Urdu.
+ *
+ * Categories per language: SYSTEM_OVERRIDE, CONSTRAINT_REMOVAL, MODE_SWITCHING, ROLE_HIJACKING
+ * Plus romanized transliterations for CJK/Cyrillic.
+ */
+
+import { createResult, Severity as Sev, type Severity } from '../base/GuardrailResult.js';
+import { mergeConfig, type ValidatorConfig } from '../base/ValidatorConfig.js';
+import type { HookSurface, Validator, ValidatorInput } from '../engine/GuardrailEngine.types.js';
+import { unwrapValidatorInput } from './internal/unwrap-input.js';
+import { stripBidiControls } from './internal/rtl-bidi-guard.js';
+
+/**
+ * Locked surface vocab — multilingual detector operates on the text input
+ * surface.
+ */
+const SURFACE: HookSurface = 'text_input';
+
+// =============================================================================
+// TYPES
+// =============================================================================
+
+export interface MultilingualFinding {
+  category: string;
+  pattern_name: string;
+  severity: Severity;
+  language: string;
+  match: string;
+  description: string;
+}
+
+export interface MultilingualDetectorConfig extends ValidatorConfig {
+  /**
+   * Specific languages to detect (empty = all)
+   */
+  languages?: string[];
+
+  /**
+   * Include romanized transliterations
+   */
+  includeRomanized?: boolean;
+}
+
+interface MultilingualPattern {
+  name: string;
+  pattern: RegExp;
+  severity: Severity;
+  language: string;
+  category: string;
+  description: string;
+}
+
+// =============================================================================
+// MULTILINGUAL PATTERN DEFINITIONS
+// =============================================================================
+
+const MULTILINGUAL_PATTERNS: MultilingualPattern[] = [
+  // === SPANISH ===
+  {
+    name: 'es_system_override',
+    pattern: /ignora\s+(?:todas?\s+)?(?:las?\s+)?instrucciones?\s+(?:previas?|anteriores?)/i,
+    severity: Sev.CRITICAL,
+    language: 'es',
+    category: 'system_override',
+    description: 'Spanish: ignore previous instructions'
+  },
+  {
+    name: 'es_constraint_removal',
+    pattern: /(?:elimina|quita|desactiva)\s+(?:todas?\s+)?(?:las?\s+)?(?:restricciones?|limitaciones?|reglas?)/i,
+    severity: Sev.CRITICAL,
+    language: 'es',
+    category: 'constraint_removal',
+    description: 'Spanish: remove restrictions'
+  },
+  {
+    name: 'es_mode_switching',
+    pattern: /(?:activa|entra\s+en|cambia\s+a)\s+(?:modo\s+)?(?:desarrollador|administrador|sin\s+restricciones)/i,
+    severity: Sev.CRITICAL,
+    language: 'es',
+    category: 'mode_switching',
+    description: 'Spanish: activate developer/admin mode'
+  },
+  {
+    name: 'es_role_hijacking',
+    pattern: /(?:ahora\s+eres|a\s+partir\s+de\s+ahora\s+eres|finge\s+ser)/i,
+    severity: Sev.WARNING,
+    language: 'es',
+    category: 'role_hijacking',
+    description: 'Spanish: you are now / pretend to be'
+  },
+
+  // === FRENCH ===
+  {
+    name: 'fr_system_override',
+    pattern: /ignore[zs]?\s+(?:toutes?\s+)?(?:les?\s+)?instructions?\s+(?:précédentes?|antérieures?)/i,
+    severity: Sev.CRITICAL,
+    language: 'fr',
+    category: 'system_override',
+    description: 'French: ignore previous instructions'
+  },
+  {
+    name: 'fr_constraint_removal',
+    pattern:
+      /(?:supprime[zs]?|désactive[zs]?|enlève[zs]?)\s+(?:toutes?\s+)?(?:les?\s+)?(?:restrictions?|limitations?|règles?)/i,
+    severity: Sev.CRITICAL,
+    language: 'fr',
+    category: 'constraint_removal',
+    description: 'French: remove restrictions'
+  },
+  {
+    name: 'fr_mode_switching',
+    pattern: /(?:active[zs]?|passe[zs]?\s+en)\s+(?:mode\s+)?(?:développeur|administrateur|sans\s+restriction)/i,
+    severity: Sev.CRITICAL,
+    language: 'fr',
+    category: 'mode_switching',
+    description: 'French: activate developer/admin mode'
+  },
+  {
+    name: 'fr_role_hijacking',
+    pattern: /(?:tu\s+es\s+maintenant|à\s+partir\s+de\s+maintenant\s+tu\s+es|fais\s+semblant\s+d['']être)/i,
+    severity: Sev.WARNING,
+    language: 'fr',
+    category: 'role_hijacking',
+    description: 'French: you are now / pretend to be'
+  },
+
+  // === GERMAN ===
+  {
+    name: 'de_system_override',
+    pattern: /ignorier(?:e|en)?\s+(?:alle\s+)?(?:vorherigen?|früheren?)\s+(?:Anweisungen?|Instruktionen?)/i,
+    severity: Sev.CRITICAL,
+    language: 'de',
+    category: 'system_override',
+    description: 'German: ignore previous instructions'
+  },
+  {
+    name: 'de_constraint_removal',
+    pattern:
+      /(?:entfern(?:e|en)?|deaktivier(?:e|en)?|lösch(?:e|en)?)\s+(?:alle\s+)?(?:Beschränkungen?|Einschränkungen?|Regeln?)/i,
+    severity: Sev.CRITICAL,
+    language: 'de',
+    category: 'constraint_removal',
+    description: 'German: remove restrictions'
+  },
+  {
+    name: 'de_mode_switching',
+    pattern:
+      /(?:aktivier(?:e|en)?|wechsl(?:e|en)?(?:\s+(?:in|zu)))\s+(?:den\s+)?(?:Entwickler|Admin|uneingeschränkt)(?:modus)?/i,
+    severity: Sev.CRITICAL,
+    language: 'de',
+    category: 'mode_switching',
+    description: 'German: activate developer/admin mode'
+  },
+  {
+    name: 'de_role_hijacking',
+    pattern: /(?:du\s+bist\s+(?:jetzt|nun)|ab\s+(?:jetzt|sofort)\s+bist\s+du|tu\s+so\s+als\s+ob\s+du)/i,
+    severity: Sev.WARNING,
+    language: 'de',
+    category: 'role_hijacking',
+    description: 'German: you are now / pretend to be'
+  },
+
+  // === PORTUGUESE ===
+  {
+    name: 'pt_system_override',
+    pattern: /ignor(?:e|a)\s+(?:todas?\s+)?(?:as?\s+)?instru[çc][õo]es?\s+(?:anteriores?|prévias?)/i,
+    severity: Sev.CRITICAL,
+    language: 'pt',
+    category: 'system_override',
+    description: 'Portuguese: ignore previous instructions'
+  },
+  {
+    name: 'pt_constraint_removal',
+    pattern:
+      /(?:remov(?:a|e)|desativ(?:e|a)|elimin(?:e|a))\s+(?:todas?\s+)?(?:as?\s+)?(?:restri[çc][õo]es?|limita[çc][õo]es?|regras?)/i,
+    severity: Sev.CRITICAL,
+    language: 'pt',
+    category: 'constraint_removal',
+    description: 'Portuguese: remove restrictions'
+  },
+  {
+    name: 'pt_mode_switching',
+    pattern: /(?:ativ(?:e|a)|entre?\s+(?:no|em))\s+(?:modo\s+)?(?:desenvolvedor|administrador|sem\s+restri[çc][õo]es)/i,
+    severity: Sev.CRITICAL,
+    language: 'pt',
+    category: 'mode_switching',
+    description: 'Portuguese: activate developer/admin mode'
+  },
+  {
+    name: 'pt_role_hijacking',
+    pattern: /(?:agora\s+voc[êe]\s+[ée]|a\s+partir\s+de\s+agora\s+voc[êe]\s+[ée]|finja\s+ser)/i,
+    severity: Sev.WARNING,
+    language: 'pt',
+    category: 'role_hijacking',
+    description: 'Portuguese: you are now / pretend to be'
+  },
+
+  // === ITALIAN ===
+  {
+    name: 'it_system_override',
+    pattern: /ignora\s+(?:tutt[ei]\s+)?(?:le?\s+)?istruzioni\s+(?:precedenti|anteriori)/i,
+    severity: Sev.CRITICAL,
+    language: 'it',
+    category: 'system_override',
+    description: 'Italian: ignore previous instructions'
+  },
+  {
+    name: 'it_constraint_removal',
+    pattern: /(?:rimuovi|disattiva|elimina)\s+(?:tutt[ei]\s+)?(?:le?\s+)?(?:restrizioni|limitazioni|regole)/i,
+    severity: Sev.CRITICAL,
+    language: 'it',
+    category: 'constraint_removal',
+    description: 'Italian: remove restrictions'
+  },
+  {
+    name: 'it_mode_switching',
+    pattern: /(?:attiva|entra\s+in)\s+(?:modalità\s+)?(?:sviluppatore|amministratore|senza\s+restrizioni)/i,
+    severity: Sev.CRITICAL,
+    language: 'it',
+    category: 'mode_switching',
+    description: 'Italian: activate developer/admin mode'
+  },
+  {
+    name: 'it_role_hijacking',
+    pattern: /(?:ora\s+sei|d['']ora\s+in\s+poi\s+sei|fingi\s+di\s+essere)/i,
+    severity: Sev.WARNING,
+    language: 'it',
+    category: 'role_hijacking',
+    description: 'Italian: you are now / pretend to be'
+  },
+
+  // === CHINESE SIMPLIFIED ===
+  {
+    name: 'zh_system_override',
+    // The modifier must accept BOTH natural word orders — with or
+    // without the 的 particle (所有之前的/之前所有/之前所有[的]) — as
+    // well as either modifier alone and neither. A demonstrative
+    // (上述/该/此/这些/本/系统 etc.) may sit between verb and noun:
+    // 忽略上述指令 / 无视该说明 / 无视系统指令 are the same attack.
+    // CJK/ASCII punctuation between verb and object (忽略，所有之前的
+    // 指令) is tolerated. Simplified AND traditional glyphs are
+    // enumerated (無視/拋棄/規則/說明) — there is no trad→simp
+    // normalization in the pipeline; whitespace-splits are covered by
+    // the concatenated copy in detectMultilingualInjection.
+    pattern:
+      /(?:忽略|無視|无视|拋棄|抛弃)[，,。;；、]?(?:所有(?:之前的?|以前的?|先前的?)|(?:之前的?|以前的?|先前的?)(?:所有|一切)|(?:上述|该|該|此|這些|这些|那|本|系统|系統)|(?:之前的?|以前的?|先前的?)|(?:所有|一切))?[，,。;；、]?(?:指令|指示|说明|說明|规则|規則)/i,
+    severity: Sev.CRITICAL,
+    language: 'zh',
+    category: 'system_override',
+    description: 'Chinese: ignore previous instructions'
+  },
+  {
+    name: 'zh_constraint_removal',
+    pattern: /(?:移除|刪除|删除|取消|解除)(?:所有|一切|上述|任何)?(?:限制|約束|约束|規則|规则|安全)/i,
+    severity: Sev.CRITICAL,
+    language: 'zh',
+    category: 'constraint_removal',
+    description: 'Chinese: remove restrictions'
+  },
+  {
+    name: 'zh_mode_switching',
+    pattern: /(?:切换到|切換到|进入|啟用|启用|激活)(?:开发者|開發者|管理员|管理員|无限制|無限制|调试|調試)(?:模式)/i,
+    severity: Sev.CRITICAL,
+    language: 'zh',
+    category: 'mode_switching',
+    description: 'Chinese: switch to developer/admin mode'
+  },
+  {
+    name: 'zh_role_hijacking',
+    pattern: /(?:你现在是|你現在是|从现在起你是|從現在起你是|假装你是|假裝你是|扮演)/i,
+    severity: Sev.WARNING,
+    language: 'zh',
+    category: 'role_hijacking',
+    description: 'Chinese: you are now / pretend to be'
+  },
+
+  // === JAPANESE ===
+  {
+    name: 'ja_system_override',
+    pattern: /(?:以前の|前の|これまでの)?(?:指示|命令|ルール|指令)(?:を)?(?:すべて)?(?:無視|忘れ|放棄)/i,
+    severity: Sev.CRITICAL,
+    language: 'ja',
+    category: 'system_override',
+    description: 'Japanese: ignore previous instructions'
+  },
+  {
+    name: 'ja_constraint_removal',
+    pattern: /(?:すべての)?(?:制限|制約|ルール|安全)(?:を)?(?:解除|削除|無効|取り消)/i,
+    severity: Sev.CRITICAL,
+    language: 'ja',
+    category: 'constraint_removal',
+    description: 'Japanese: remove restrictions'
+  },
+  {
+    name: 'ja_mode_switching',
+    pattern: /(?:開発者|管理者|無制限|デバッグ)(?:モード)(?:に)?(?:切り替え|変更|入)/i,
+    severity: Sev.CRITICAL,
+    language: 'ja',
+    category: 'mode_switching',
+    description: 'Japanese: switch to developer mode'
+  },
+  {
+    name: 'ja_role_hijacking',
+    pattern: /(?:あなたは今|今からあなたは|のふりをして)/i,
+    severity: Sev.WARNING,
+    language: 'ja',
+    category: 'role_hijacking',
+    description: 'Japanese: you are now / pretend to be'
+  },
+
+  // === KOREAN ===
+  {
+    name: 'ko_system_override',
+    pattern: /(?:이전의?\s*)?(?:모든\s*)?(?:지시|명령|규칙|지침)(?:을|를)?\s*(?:무시|잊어|무효)/i,
+    severity: Sev.CRITICAL,
+    language: 'ko',
+    category: 'system_override',
+    description: 'Korean: ignore previous instructions'
+  },
+  {
+    name: 'ko_constraint_removal',
+    pattern: /(?:모든\s*)?(?:제한|제약|규칙|안전)(?:을|를)?\s*(?:제거|삭제|해제|비활성화)/i,
+    severity: Sev.CRITICAL,
+    language: 'ko',
+    category: 'constraint_removal',
+    description: 'Korean: remove restrictions'
+  },
+  {
+    name: 'ko_mode_switching',
+    pattern: /(?:개발자|관리자|무제한|디버그)\s*(?:모드)(?:로)?\s*(?:전환|변경|진입)/i,
+    severity: Sev.CRITICAL,
+    language: 'ko',
+    category: 'mode_switching',
+    description: 'Korean: switch to developer mode'
+  },
+  {
+    name: 'ko_role_hijacking',
+    pattern: /(?:너는\s*지금|지금부터\s*너는|인\s*척\s*해)/i,
+    severity: Sev.WARNING,
+    language: 'ko',
+    category: 'role_hijacking',
+    description: 'Korean: you are now / pretend to be'
+  },
+
+  // === RUSSIAN ===
+  {
+    name: 'ru_system_override',
+    pattern:
+      /(?:игнорируй|забудь|отбрось)\s+(?:все\s+)?(?:предыдущие|прежние|прошлые)\s+(?:инструкции|указания|правила)/i,
+    severity: Sev.CRITICAL,
+    language: 'ru',
+    category: 'system_override',
+    description: 'Russian: ignore previous instructions'
+  },
+  {
+    name: 'ru_constraint_removal',
+    pattern: /(?:убери|удали|отключи|сними)\s+(?:все\s+)?(?:ограничения|запреты|правила|защиту)/i,
+    severity: Sev.CRITICAL,
+    language: 'ru',
+    category: 'constraint_removal',
+    description: 'Russian: remove restrictions'
+  },
+  {
+    name: 'ru_mode_switching',
+    pattern: /(?:активируй|включи|перейди\s+в)\s+(?:режим\s+)?(?:разработчика|администратора|без\s+ограничений)/i,
+    severity: Sev.CRITICAL,
+    language: 'ru',
+    category: 'mode_switching',
+    description: 'Russian: activate developer/admin mode'
+  },
+  {
+    name: 'ru_role_hijacking',
+    pattern: /(?:теперь\s+ты|с\s+этого\s+момента\s+ты|притворись)/i,
+    severity: Sev.WARNING,
+    language: 'ru',
+    category: 'role_hijacking',
+    description: 'Russian: you are now / pretend to be'
+  },
+
+  // === BENGALI (bn) ===
+  // Bengali SOV word order: noun-phrase FIRST, verb LAST.
+  // Quantifier `সমস্ত` accepted EITHER before OR after the adjective
+  // (e.g. `সমস্ত আগের` AND `আগের সমস্ত` both valid SOV surface forms).
+  // Locative suffix `মোডে` (mode + locative) accepted via `ে?`
+  // after `মোড`.
+  {
+    name: 'bn_system_override',
+    pattern:
+      /(?:সমস্ত\s+)?(?:পূর্ববর্তী|আগের|পূর্বের)\s+(?:সমস্ত\s+)?(?:নির্দেশ|আদেশ|নিয়ম)\s+(?:উপেক্ষা\s*কর|ভুলে\s*যাও|বাতিল\s*কর)/i,
+    severity: Sev.CRITICAL,
+    language: 'bn',
+    category: 'system_override',
+    description: 'Bengali: ignore previous instructions'
+  },
+  {
+    name: 'bn_constraint_removal',
+    pattern: /(?:সমস্ত\s+)?(?:সীমাবদ্ধতা|বিধিনিষেধ|নিয়ম|সুরক্ষা)\s+(?:সরাও|মুছে\s*ফেল|নিষ্ক্রিয়\s*কর)/i,
+    severity: Sev.CRITICAL,
+    language: 'bn',
+    category: 'constraint_removal',
+    description: 'Bengali: remove restrictions'
+  },
+  {
+    name: 'bn_mode_switching',
+    pattern: /(?:ডেভেলপার|প্রশাসক|অসীমিত)\s*(?:মোডে?)\s+(?:সক্রিয়\s*কর|প্রবেশ\s*কর|পরিবর্তন\s*কর)/i,
+    severity: Sev.CRITICAL,
+    language: 'bn',
+    category: 'mode_switching',
+    description: 'Bengali: switch to developer/admin mode'
+  },
+  {
+    name: 'bn_role_hijacking',
+    pattern: /(?:তুমি\s+এখন|এখন\s+থেকে\s+তুমি|ভান\s+কর)/i,
+    severity: Sev.WARNING,
+    language: 'bn',
+    category: 'role_hijacking',
+    description: 'Bengali: you are now / pretend to be'
+  },
+
+  // === URDU (ur) — RTL preprocessed via stripBidiControls ===
+  // Urdu SOV word order: quantifier
+  // `تمام` accepted EITHER before OR after the adjective. `میں`
+  // (locative) accepted between mode-noun and verb (e.g. `موڈ میں داخل ہو`).
+  {
+    name: 'ur_system_override',
+    pattern:
+      /(?:تمام\s+)?(?:پچھلی|سابقہ|پہلی)\s+(?:تمام\s+)?(?:ہدایات|احکامات|قوانین)\s+(?:نظر\s*انداز\s*کر|بھول\s*جاؤ|ترک\s*کر)/i,
+    severity: Sev.CRITICAL,
+    language: 'ur',
+    category: 'system_override',
+    description: 'Urdu: ignore previous instructions'
+  },
+  {
+    name: 'ur_constraint_removal',
+    pattern: /(?:تمام\s+)?(?:پابندیاں|حدود|قوانین|حفاظت)\s+(?:ہٹاؤ|مٹاؤ|غیر\s*فعال\s*کر)/i,
+    severity: Sev.CRITICAL,
+    language: 'ur',
+    category: 'constraint_removal',
+    description: 'Urdu: remove restrictions'
+  },
+  {
+    name: 'ur_mode_switching',
+    pattern: /(?:ڈویلپر|ایڈمن|لامحدود)\s*(?:موڈ)\s+(?:میں\s+)?(?:فعال\s*کر|داخل\s*ہو)/i,
+    severity: Sev.CRITICAL,
+    language: 'ur',
+    category: 'mode_switching',
+    description: 'Urdu: activate developer/admin mode'
+  },
+  {
+    name: 'ur_role_hijacking',
+    pattern: /(?:تم\s+اب|اب\s+سے\s+تم|بہانہ\s+کرو)/i,
+    severity: Sev.WARNING,
+    language: 'ur',
+    category: 'role_hijacking',
+    description: 'Urdu: you are now / pretend to be'
+  },
+
+  // === ARABIC ===
+  {
+    name: 'ar_system_override',
+    pattern: /(?:تجاهل|انسَ|اهمل)\s+(?:جميع\s+)?(?:التعليمات|الأوامر|القواعد)\s+(?:السابقة|القديمة)/i,
+    severity: Sev.CRITICAL,
+    language: 'ar',
+    category: 'system_override',
+    description: 'Arabic: ignore previous instructions'
+  },
+  {
+    name: 'ar_constraint_removal',
+    pattern: /(?:أزل|احذف|ألغِ|عطّل)\s+(?:جميع\s+)?(?:القيود|القواعد|الحماية)/i,
+    severity: Sev.CRITICAL,
+    language: 'ar',
+    category: 'constraint_removal',
+    description: 'Arabic: remove restrictions'
+  },
+  {
+    name: 'ar_mode_switching',
+    pattern: /(?:فعّل|ادخل)\s+(?:وضع\s+)?(?:المطور|المسؤول|بدون\s+قيود)/i,
+    severity: Sev.CRITICAL,
+    language: 'ar',
+    category: 'mode_switching',
+    description: 'Arabic: activate developer/admin mode'
+  },
+  {
+    name: 'ar_role_hijacking',
+    pattern: /(?:أنت\s+الآن|من\s+الآن\s+أنت|تظاهر\s+بأنك)/i,
+    severity: Sev.WARNING,
+    language: 'ar',
+    category: 'role_hijacking',
+    description: 'Arabic: you are now / pretend to be'
+  },
+
+  // === ROMANIZED TRANSLITERATIONS ===
+  // Chinese romanized (Pinyin)
+  {
+    name: 'zh_romanized_override',
+    pattern: /hulue\s+(?:suoyou\s+)?(?:zhiqian\s+de\s+)?(?:zhiling|zhishi|guize)/i,
+    severity: Sev.WARNING,
+    language: 'zh-romanized',
+    category: 'system_override',
+    description: 'Chinese romanized: ignore previous instructions'
+  },
+  // Japanese romanized (Romaji)
+  {
+    name: 'ja_romanized_override',
+    pattern: /(?:zen(?:no)?|mae\s+no)\s+shiji\s+(?:wo\s+)?mushi/i,
+    severity: Sev.WARNING,
+    language: 'ja-romanized',
+    category: 'system_override',
+    description: 'Japanese romanized: ignore previous instructions'
+  },
+  // Korean romanized
+  {
+    name: 'ko_romanized_override',
+    pattern: /(?:ijeon\s+(?:ui\s+)?)?(?:myeongryeong|jisi|gyuchik)\s+(?:eul|reul)?\s*musi/i,
+    severity: Sev.WARNING,
+    language: 'ko-romanized',
+    category: 'system_override',
+    description: 'Korean romanized: ignore previous instructions'
+  },
+  // Russian romanized
+  {
+    name: 'ru_romanized_override',
+    pattern: /ignoriruy\s+(?:vse\s+)?(?:predydushchie|prezhnie)\s+(?:instruktsii|ukazaniya|pravila)/i,
+    severity: Sev.WARNING,
+    language: 'ru-romanized',
+    category: 'system_override',
+    description: 'Russian romanized: ignore previous instructions'
+  }
+];
+
+// =============================================================================
+// DETECTION FUNCTION
+// =============================================================================
+
+/**
+ * Detect multilingual injection patterns.
+ *
+ * @param content - Text content to scan
+ * @param languages - Optional language filter (empty = all)
+ * @param includeRomanized - Include romanized transliterations
+ * @returns Array of multilingual injection findings
+ */
+export function detectMultilingualInjection(
+  content: string,
+  languages?: string[],
+  includeRomanized = true
+): MultilingualFinding[] {
+  if (!content || content.trim().length === 0) {
+    return [];
+  }
+
+  // Strip Unicode bidi-control characters BEFORE regex matching so
+  // RTL-override attacks (visually benign, logically malicious) hit the
+  // same Arabic/Urdu/Persian patterns as plain-text injections.
+  const normalised = stripBidiControls(content);
+  // CJK scripts are scriptio-continua — 忽略 所有 指令 is the same
+  // attack as 忽略所有指令 with whitespace injected between glyphs.
+  // Scan a whitespace-stripped copy as well (findings deduped by
+  // pattern name). Latin-alphabet patterns are unaffected: their
+  // word-separating spaces are load-bearing, and stripping whitespace
+  // from the CONTENT only makes them MORE specific, never FP-prone.
+  const concatenated = normalised.replace(/\s+/g, '');
+
+  const findings: MultilingualFinding[] = [];
+  const languageFilter = new Set(languages);
+  const includeAll = !languages || languages.length === 0;
+
+  for (const pattern of MULTILINGUAL_PATTERNS) {
+    // Skip romanized if not requested
+    if (!includeRomanized && pattern.language.endsWith('-romanized')) {
+      continue;
+    }
+
+    // Apply language filter
+    if (!includeAll && !languageFilter.has(pattern.language)) {
+      continue;
+    }
+
+    const match = normalised.match(pattern.pattern) ?? concatenated.match(pattern.pattern);
+    if (match) {
+      findings.push({
+        category: `multilingual_${pattern.category}`,
+        pattern_name: pattern.name,
+        severity: pattern.severity,
+        language: pattern.language,
+        match: match[0].slice(0, 100),
+        description: pattern.description
+      });
+    }
+  }
+
+  return findings;
+}
+
+// =============================================================================
+// VALIDATOR CLASS
+// =============================================================================
+
+/**
+ * Multilingual prompt-injection detector.
+ *
+ *  - Implements `Validator` interface — accepts string or any
+ *    `ValidatorInput` shape via the shared `unwrapValidatorInput`
+ *    helper. Drop-in for any `GuardrailEngine` validator chain.
+ *  - `name` field set to `'multilingual'`.
+ *  - Stamps `metadata.surface = 'text_input'` (locked surface vocab)
+ *    so the OTel adapter can emit `bonklm.surface`.
+ *
+ * Known limitations (see `known-limitations.md` §25):
+ *  - 12 languages × 4 categories (no jailbreak / reformulation per
+ *    language yet).
+ *  - English-only code-injection / shell payloads bypass
+ *    `MultilingualDetector` — compose with `CodeInjectionValidator`.
+ */
+export class MultilingualDetector implements Validator {
+  readonly name = 'multilingual';
+  private readonly config: Required<MultilingualDetectorConfig>;
+
+  constructor(config?: MultilingualDetectorConfig) {
+    this.config = mergeConfig({
+      ...config,
+      languages: config?.languages ?? [],
+      includeRomanized: config?.includeRomanized ?? true
+    }) as Required<MultilingualDetectorConfig>;
+  }
+
+  /**
+   * `Validator` interface entry. Accepts plain string OR any
+   * `ValidatorInput` discriminated union shape (via shared unwrap).
+   * For non-string input, the wrapped text is extracted then routed
+   * through the same detection path.
+   */
+  validate(input: string | ValidatorInput): import('../base/GuardrailResult.js').GuardrailResult {
+    const content = unwrapValidatorInput(input, 'MultilingualDetector');
+    return this.validateString(content);
+  }
+
+  private validateString(content: string): import('../base/GuardrailResult.js').GuardrailResult {
+    if (!content || content.trim().length === 0) {
+      const r = createResult(true, Sev.INFO, []);
+      r.metadata = { surface: SURFACE };
+      return r;
+    }
+
+    const findings = detectMultilingualInjection(content, this.config.languages, this.config.includeRomanized);
+
+    if (findings.length === 0) {
+      const r = createResult(true, Sev.INFO, []);
+      r.metadata = { surface: SURFACE };
+      return r;
+    }
+
+    // Convert findings to Finding format
+    const convertedFindings = findings.map(f => ({
+      category: f.category,
+      pattern_name: f.pattern_name,
+      severity: f.severity,
+      match: f.match,
+      description: `[${f.language}] ${f.description}`,
+      weight: f.severity === Sev.CRITICAL ? 20 : f.severity === Sev.WARNING ? 10 : 5
+    }));
+
+    // Determine if we should block based on findings
+    const hasCritical = findings.some(f => f.severity === Sev.CRITICAL);
+    const shouldBlock = this.config.action === 'block' && hasCritical;
+
+    const result = createResult(!shouldBlock, hasCritical ? Sev.CRITICAL : Sev.WARNING, convertedFindings);
+    result.metadata = { surface: SURFACE };
+    return result;
+  }
+
+  /**
+   * Count of distinct language tags in the bundled patterns. This is 16 —
+   * the 12 base languages (see the file header) plus 4 romanized variants
+   * (zh/ja/ko/ru), which carry their own tags — not the 12 base-language
+   * figure quoted in the user docs.
+   */
+  getLanguageCount(): number {
+    const languages = new Set(MULTILINGUAL_PATTERNS.map(p => p.language));
+    return languages.size;
+  }
+
+  /**
+   * Get pattern count per language.
+   */
+  getPatternCountByLanguage(): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const p of MULTILINGUAL_PATTERNS) {
+      counts[p.language] = (counts[p.language] || 0) + 1;
+    }
+    return counts;
+  }
+
+  /**
+   * Get supported languages.
+   */
+  getSupportedLanguages(): string[] {
+    return Array.from(new Set(MULTILINGUAL_PATTERNS.map(p => p.language)));
+  }
+}
+
+// =============================================================================
+// CONVENIENCE FUNCTION
+// =============================================================================
+
+/**
+ * Quick multilingual injection detection.
+ * @param content - Content to check
+ * @returns Detection result
+ */
+export function detectMultilingual(content: string): import('../base/GuardrailResult.js').GuardrailResult {
+  const detector = new MultilingualDetector();
+  return detector.validate(content);
+}

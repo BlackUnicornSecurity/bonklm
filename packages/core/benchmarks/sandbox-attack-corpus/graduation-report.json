@@ -1,0 +1,34 @@
+{
+  "corpus_hash": "e3661e5c808ac604d894e6ead5dcc27960143f45927928d64ebfe64629b5302b",
+  "corpus_size": {
+    "attack": 50,
+    "benign": 50
+  },
+  "confusion_matrix": {
+    "true_positives": 50,
+    "false_negatives": 0,
+    "true_negatives": 50,
+    "false_positives": 0
+  },
+  "metrics": {
+    "recall": 1,
+    "fpr": 0,
+    "precision": 1
+  },
+  "thresholds": {
+    "recall": 0.95,
+    "fpr": 0.05,
+    "precision": 0.8
+  },
+  "gate_results": {
+    "recall_pass": true,
+    "fpr_pass": true,
+    "precision_pass": true,
+    "all_pass": true,
+    "decision": "GRADUATE"
+  },
+  "gap_categories": {
+    "false_negatives_by_subcategory": {},
+    "false_positive_payloads": []
+  }
+}
