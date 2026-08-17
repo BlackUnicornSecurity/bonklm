@@ -1,0 +1,62 @@
+{
+  "name": "@blackunicorn/bonklm-sandbox-utils",
+  "version": "1.0.14",
+  "description": "Shared sandbox-validation primitives for BonkLM e2b-adapter + daytona-adapter — validateCode, validatePath, wrapStream. EXPERIMENTAL flag (Story 3.5 graduation gates flag removal at v0.7).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "test:types": "tsd",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "sandbox",
+    "e2b",
+    "daytona",
+    "guardrails",
+    "security",
+    "code-injection",
+    "path-traversal",
+    "experimental",
+    "ai-safety"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/sandbox-utils"
+  },
+  "homepage": "https://github.com/BlackUnicornSecurity/bonklm",
+  "bugs": {
+    "url": "https://github.com/BlackUnicornSecurity/bonklm/issues"
+  },
+  "author": "BlackUnicorn <info@blackunicorn.tech>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.10",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

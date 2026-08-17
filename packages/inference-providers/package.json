@@ -1,0 +1,78 @@
+{
+  "name": "@blackunicorn/bonklm-inference-providers",
+  "version": "1.0.14",
+  "description": "BonkLM wrappers for Groq + Cerebras + Together inference providers (all OpenAI-compatible). Shared internal wrapOpenAICompatibleClient helper; 3 optional peer deps.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "test:types": "tsd",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "groq",
+    "cerebras",
+    "together",
+    "llm",
+    "inference",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "ai-safety"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/inference-providers"
+  },
+  "homepage": "https://github.com/BlackUnicornSecurity/bonklm",
+  "bugs": {
+    "url": "https://github.com/BlackUnicornSecurity/bonklm/issues"
+  },
+  "author": "BlackUnicorn <info@blackunicorn.tech>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "peerDependencies": {
+    "@cerebras/cerebras_cloud_sdk": "^1.50.0",
+    "groq-sdk": "^0.34.0",
+    "together-ai": "^0.26.0"
+  },
+  "peerDependenciesMeta": {
+    "groq-sdk": {
+      "optional": true
+    },
+    "@cerebras/cerebras_cloud_sdk": {
+      "optional": true
+    },
+    "together-ai": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.10",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

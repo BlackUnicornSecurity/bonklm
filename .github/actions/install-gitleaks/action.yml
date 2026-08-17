@@ -1,0 +1,18 @@
+name: Install gitleaks
+description: >-
+  Build the scanner from one immutable upstream commit. Single source of truth
+  for every workflow that needs the CLI — review and bump the commit here only.
+  Requires the repo to be checked out first (composite `uses: ./...`).
+
+runs:
+  using: composite
+  steps:
+    - name: Install pinned secret scanner
+      shell: bash
+      env:
+        SCANNER_COMMIT: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e
+      run: |
+        set -euo pipefail
+        mkdir -p "${HOME}/.local/bin"
+        GOBIN="${HOME}/.local/bin" go install "github.com/zricethezav/gitleaks/v8@${SCANNER_COMMIT}"
+        echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"

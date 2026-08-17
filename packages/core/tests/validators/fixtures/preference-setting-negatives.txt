@@ -1,0 +1,38 @@
+# Story 1.1c — Synthetic preference-setting TRUE-NEGATIVE corpus
+# Each line below MUST NOT trigger any web3_preference_* pattern.
+# 20+ realistic conversation fragments drawn from non-web3 contexts.
+please remember to wash your hands
+remember to take out the trash
+remember to file your taxes
+my default sort order is by date
+my default browser is Firefox
+my default font size is 14pt
+I want my default browser to be Firefox
+always send confirmations to my email
+always use lowercase letters for tags
+saved my password in 1Password
+saved your draft to drafts folder
+saved the report to OneDrive
+standing meeting Friday
+standing committee on infrastructure
+the team's standing ovation was deafening
+the compliance team will review next week
+treasury report shows positive growth
+the audited financials are ready for review
+audited the latest sprint backlog
+the recipient of the award was announced last night
+approved the budget for next quarter
+the verified user has admin access
+his saved game is in the cloud
+the customer's saved cards are in their wallet
+my saved articles list is full
+my saved drafts folder is messy
+default settings have been restored
+default to the safe option
+always use my email signature on outgoing messages
+always use my coworker Sarah for code reviews
+always use the latest version of the API
+please remember my birthday is in December
+please remember my login for next time
+saved my password in 1Password earlier today
+always send confirmations to my email inbox

@@ -1,0 +1,11 @@
+LICENSE
+README.md
+dist/index.d.ts
+dist/index.d.ts.map
+dist/index.js
+dist/index.js.map
+dist/primitives.d.ts
+dist/primitives.d.ts.map
+dist/primitives.js
+dist/primitives.js.map
+package.json

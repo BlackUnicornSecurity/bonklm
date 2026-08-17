@@ -1,0 +1,73 @@
+{
+  "name": "@blackunicorn/bonklm-openai-agents",
+  "version": "1.0.14",
+  "description": "OpenAI Agents SDK connector for BonkLM — wraps Agent / Handoff / Realtime surfaces with guardrails",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "test:types": "tsd",
+    "lint": "eslint src",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "openai",
+    "openai-agents",
+    "agents",
+    "handoff",
+    "realtime",
+    "llm",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "validation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/openai-agents-connector"
+  },
+  "author": "BlackUnicorn <info@blackunicorn.tech>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "peerDependencies": {
+    "@openai/agents": "^0.11.0"
+  },
+  "peerDependenciesMeta": {
+    "@openai/agents": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "typescript": "^5.3.0",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.10"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

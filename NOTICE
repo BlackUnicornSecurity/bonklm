@@ -1,0 +1,21 @@
+BonkLM
+Copyright 2026 BlackUnicorn
+
+This product includes software developed at BlackUnicorn
+(https://blackunicorn.tech).
+
+The community core of BonkLM — the deterministic guardrail library (validators,
+guards, engine, hooks, fault-tolerance) and all framework / provider / platform
+connectors — is licensed under the Apache License, Version 2.0 (see the
+repository-root LICENSE file). Every community source file carries the SPDX tag
+`SPDX-License-Identifier: Apache-2.0`.
+
+The BonkLM Enterprise tier — curated rule content, signed threat-feed delivery,
+industry policy packs, control-mapping evidence export, advanced detectors, and
+governance primitives — is licensed under the Business Source License 1.1 (see
+LICENSE-BUSL-1.1.txt). Those files carry `SPDX-License-Identifier: BUSL-1.1` and
+are not part of the Apache-licensed community distribution.
+
+"BonkLM" and "BlackUnicorn" are trademarks of BlackUnicorn. Trademark
+rights are not granted by the Apache License (see LICENSE, section 6). For
+trademark or alternative-licensing inquiries: info@blackunicorn.tech

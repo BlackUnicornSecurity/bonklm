@@ -1,0 +1,60 @@
+{
+  "name": "@blackunicorn/bonklm-openclaw",
+  "private": true,
+  "version": "1.0.13",
+  "description": "[DEPRECATED — removed from publish set at v1.0.0] OpenClaw integration for BonkLM. Migrate to a framework-native middleware connector. See README.",
+  "deprecated": "DEPRECATED. Not published as of v1.0.0. Migrate to a framework-native middleware connector (Express, Fastify, NestJS, Hono, Elysia, Next.js). See README for migration recipe.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./middleware": {
+      "import": "./dist/middleware.js",
+      "types": "./dist/middleware.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "lint": "eslint src",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "openclaw",
+    "llm",
+    "guardrails",
+    "security",
+    "middleware"
+  ],
+  "author": "BlackUnicorn <info@blackunicorn.tech>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.6.5"
+  },
+  "peerDependenciesMeta": {
+    "openclaw": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

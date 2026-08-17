@@ -1,0 +1,15 @@
+.git
+.github
+.changeset
+.quality-gate-evidence
+coverage
+node_modules
+team
+**/dist
+**/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+*.sbom.json
+*.tgz
+*.log

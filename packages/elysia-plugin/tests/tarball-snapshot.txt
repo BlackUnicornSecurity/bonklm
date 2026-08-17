@@ -1,0 +1,13 @@
+LICENSE
+README.md
+dist/index.d.ts
+dist/index.d.ts.map
+dist/index.js
+dist/index.js.map
+dist/plugin.d.ts
+dist/plugin.d.ts.map
+dist/plugin.js
+dist/plugin.js.map
+package.json
+src/index.ts
+src/plugin.ts

@@ -1,0 +1,77 @@
+{
+  "name": "@blackunicorn/bonklm-temporal",
+  "version": "1.0.14",
+  "description": "Temporal SDK middleware for BonkLM. Validators run as ACTIVITIES (non-determinism rule); cachedValidate keys decisions for idempotent retry.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "test:types": "tsd",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "temporal",
+    "durable-execution",
+    "workflow",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "ai-safety"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/temporal-middleware"
+  },
+  "homepage": "https://github.com/BlackUnicornSecurity/bonklm",
+  "bugs": {
+    "url": "https://github.com/BlackUnicornSecurity/bonklm/issues"
+  },
+  "author": "BlackUnicorn <info@blackunicorn.tech>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "peerDependencies": {
+    "@temporalio/worker": "^1.16.0",
+    "@temporalio/workflow": "^1.16.0"
+  },
+  "peerDependenciesMeta": {
+    "@temporalio/worker": {
+      "optional": true
+    },
+    "@temporalio/workflow": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@temporalio/activity": "^1.16.0",
+    "@temporalio/client": "^1.16.0",
+    "@temporalio/testing": "^1.16.0",
+    "@temporalio/worker": "^1.16.0",
+    "@temporalio/workflow": "^1.16.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

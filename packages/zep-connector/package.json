@@ -1,0 +1,68 @@
+{
+  "name": "@blackunicorn/bonklm-zep",
+  "version": "1.0.14",
+  "description": "Zep memory-client connector for BonkLM — wraps Zep thread.addMessages/getUserContext + graph.add/search with sealed write + composed-context recall validation",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "workerd": "./dist/index.js",
+      "deno": "./dist/index.js",
+      "bun": "./dist/index.js",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "test:types": "tsd",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "zep",
+    "memory",
+    "llm",
+    "guardrails",
+    "security",
+    "ai-safety",
+    "bonklm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/zep-connector"
+  },
+  "author": "BlackUnicorn <info@blackunicorn.tech>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "@blackunicorn/bonklm-memory-utils": "workspace:*"
+  },
+  "peerDependencies": {
+    "@getzep/zep-cloud": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@getzep/zep-cloud": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.10",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}
