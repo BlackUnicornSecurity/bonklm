@@ -1,0 +1,56 @@
+{
+  "name": "@blackunicorn/bonklm-nextjs",
+  "version": "1.0.15",
+  "description": "BonkLM Next.js helpers — withBonklm(action), bonklmRouteHandler, bonklmEdgeMiddleware (Story 3.9)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "workerd": "./dist/index.js",
+      "edge-light": "./dist/index.js",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:types": "tsd"
+  },
+  "peerDependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "@blackunicorn/bonklm-web-middleware-utils": "workspace:*",
+    "next": "^16.2.11"
+  },
+  "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "@blackunicorn/bonklm-web-middleware-utils": "workspace:*",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.10"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/nextjs-helpers"
+  },
+  "homepage": "https://github.com/BlackUnicornSecurity/bonklm/tree/main/packages/nextjs-helpers#readme",
+  "bugs": "https://github.com/BlackUnicornSecurity/bonklm/issues",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

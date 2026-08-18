@@ -1,0 +1,70 @@
+{
+  "name": "@blackunicorn/bonklm-copilotkit",
+  "version": "1.0.15",
+  "description": "CopilotKit integration for BonkLM",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "type-check": "tsc --noEmit",
+    "test:types": "tsd"
+  },
+  "keywords": [
+    "copilotkit",
+    "copilot",
+    "llm",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "jailbreak-detection",
+    "content-filtering",
+    "react",
+    "hooks"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/copilotkit-connector"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "peerDependencies": {
+    "@copilotkit/react-core": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@copilotkit/react-core": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@copilotkit/react-core": "^1.68.1",
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.0.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "typescript": "^5.3.0",
+    "vitest": "^4.1.10"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

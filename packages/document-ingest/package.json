@@ -1,0 +1,60 @@
+{
+  "name": "@blackunicorn/bonklm-document-ingest",
+  "version": "1.0.15",
+  "description": "BonkLM document-ingest hooks — LlamaParse + Unstructured + Reducto wrappers + validateExtractedText helper for DIY parsers (Story 3.7)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:types": "tsd"
+  },
+  "peerDependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "@llamaindex/llama-cloud": "^2.4.0",
+    "reductoai": "^0.15.0",
+    "unstructured-client": "^0.31.0"
+  },
+  "peerDependenciesMeta": {
+    "@llamaindex/llama-cloud": {
+      "optional": true
+    },
+    "unstructured-client": {
+      "optional": true
+    },
+    "reductoai": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.10"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/document-ingest"
+  },
+  "homepage": "https://github.com/BlackUnicornSecurity/bonklm/tree/main/packages/document-ingest#readme",
+  "bugs": "https://github.com/BlackUnicornSecurity/bonklm/issues",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

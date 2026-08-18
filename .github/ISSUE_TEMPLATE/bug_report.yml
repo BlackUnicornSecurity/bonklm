@@ -1,0 +1,36 @@
+name: Bug report
+description: Report a defect in BonkLM
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. For security vulnerabilities, use a private Security Advisory instead (see SECURITY.md).
+  - type: input
+    id: package
+    attributes:
+      label: Affected package
+      placeholder: '@blackunicorn/bonklm (or a connector, e.g. @blackunicorn/bonkdrant)'
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: '1.0.0'
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you expected, what actually happened, and a minimal reproduction.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      placeholder: 'Node version, OS, runtime (Node/Deno/Bun/edge)'
+    validations:
+      required: false

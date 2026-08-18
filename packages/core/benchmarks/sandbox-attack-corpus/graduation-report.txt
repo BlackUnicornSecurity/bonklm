@@ -1,0 +1,21 @@
+# Sandbox Graduation Gate Report
+
+Provenance: deterministic — a pure function of the corpus hash below and the validator build at this commit; per-run timestamp omitted so this committed report stays byte-stable across re-runs.
+Corpus hash (R2-13): e3661e5c808ac604d894e6ead5dcc27960143f45927928d64ebfe64629b5302b
+Corpus size: 50 attack + 50 benign
+
+## Confusion matrix
+  TP=50  FN=0  TN=50  FP=0
+
+## Metrics
+  Recall:    100.00%  (threshold ≥95%)    PASS
+  FPR:       0.00%  (threshold ≤5%)     PASS
+  Precision: 100.00%  (threshold ≥80%)    PASS
+
+## Decision
+  ✅ GRADUATE — remove `experimental: true` flag from sandbox-utils + e2b-adapter + daytona-adapter.
+
+## Gap categories
+  (no false negatives)
+
+  (no false positives)

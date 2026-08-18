@@ -1,0 +1,28 @@
+name: Install trivy
+description: >-
+  Download the container scanner as one immutable, SHA256-verified release
+  tarball. Single source of truth for every workflow that needs the CLI —
+  review and bump the version+checksum pair here only. Replaces the third
+  -party trivy GitHub Action (supply-chain posture: no foreign action code
+  executes; the binary is verified against a pinned digest before use).
+  Requires the repo to be checked out first (composite `uses: ./...`).
+
+runs:
+  using: composite
+  steps:
+    - name: Install pinned, checksum-verified scanner
+      shell: bash
+      env:
+        TRIVY_VERSION: 0.74.0
+        TRIVY_SHA256_AMD64: 2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a
+      run: |
+        set -euo pipefail
+        mkdir -p "${HOME}/.local/bin"
+        curl --silent --show-error --fail --location \
+          --output "${RUNNER_TEMP}/trivy.tar.gz" \
+          "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+        printf '%s  %s\n' "${TRIVY_SHA256_AMD64}" "${RUNNER_TEMP}/trivy.tar.gz" | sha256sum --check --strict -
+        tar -xzf "${RUNNER_TEMP}/trivy.tar.gz" -C "${RUNNER_TEMP}" trivy
+        install -m 0755 "${RUNNER_TEMP}/trivy" "${HOME}/.local/bin/trivy"
+        "${HOME}/.local/bin/trivy" --version
+        echo "${HOME}/.local/bin" >> "${GITHUB_PATH}"

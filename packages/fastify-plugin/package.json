@@ -1,0 +1,71 @@
+{
+  "name": "@blackunicorn/bonklm-fastify",
+  "version": "1.0.15",
+  "description": "Fastify plugin for BonkLM",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "test:types": "tsd && tsc -p tsconfig.fastify5min.json && tsc -p tsconfig.fastify5.json",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "fastify",
+    "plugin",
+    "llm",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "jailbreak",
+    "ai-safety"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/fastify-plugin"
+  },
+  "author": "BlackUnicorn <info@blackunicorn.tech>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "@blackunicorn/bonklm-logger": "workspace:*",
+    "fastify-plugin": "^6.0.0"
+  },
+  "peerDependencies": {
+    "fastify": "^5.8.5"
+  },
+  "peerDependenciesMeta": {
+    "fastify": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "fastify5": "npm:fastify@5.12.0",
+    "fastify5min": "npm:fastify@5.8.5",
+    "typescript": "^5.3.3",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

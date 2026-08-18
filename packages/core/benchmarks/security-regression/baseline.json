@@ -1,0 +1,314 @@
+{
+  "prompt-injection|sandbox-attack-corpus": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 50,
+    "fp": 0
+  },
+  "prompt-injection|multilingual:bn": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "prompt-injection|multilingual:hi": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "prompt-injection|multilingual:ur": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "jailbreak|sandbox-attack-corpus": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 50,
+    "fp": 0
+  },
+  "jailbreak|multilingual:bn": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "jailbreak|multilingual:hi": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "jailbreak|multilingual:ur": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "code-injection|sandbox-attack-corpus": {
+    "recall": 0.9,
+    "fpr": 0,
+    "fn": 5,
+    "fp": 0
+  },
+  "code-injection|multilingual:bn": {
+    "recall": 0.05,
+    "fpr": 0,
+    "fn": 19,
+    "fp": 0
+  },
+  "code-injection|multilingual:hi": {
+    "recall": 0.05,
+    "fpr": 0,
+    "fn": 19,
+    "fp": 0
+  },
+  "code-injection|multilingual:ur": {
+    "recall": 0.05,
+    "fpr": 0,
+    "fn": 19,
+    "fp": 0
+  },
+  "multilingual|sandbox-attack-corpus": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 50,
+    "fp": 0
+  },
+  "multilingual|multilingual:bn": {
+    "recall": 1,
+    "fpr": 0,
+    "fn": 0,
+    "fp": 0
+  },
+  "multilingual|multilingual:hi": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "multilingual|multilingual:ur": {
+    "recall": 1,
+    "fpr": 0,
+    "fn": 0,
+    "fp": 0
+  },
+  "reformulation|sandbox-attack-corpus": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 50,
+    "fp": 0
+  },
+  "reformulation|multilingual:bn": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "reformulation|multilingual:hi": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "reformulation|multilingual:ur": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "boundary|sandbox-attack-corpus": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 50,
+    "fp": 0
+  },
+  "boundary|multilingual:bn": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "boundary|multilingual:hi": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "boundary|multilingual:ur": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "encoded-rescan|sandbox-attack-corpus": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 50,
+    "fp": 0
+  },
+  "encoded-rescan|multilingual:bn": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "encoded-rescan|multilingual:hi": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "encoded-rescan|multilingual:ur": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "harm-intent|sandbox-attack-corpus": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 50,
+    "fp": 0
+  },
+  "harm-intent|multilingual:bn": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "harm-intent|multilingual:hi": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "harm-intent|multilingual:ur": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "social-engineering|sandbox-attack-corpus": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 50,
+    "fp": 0
+  },
+  "social-engineering|multilingual:bn": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "social-engineering|multilingual:hi": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "social-engineering|multilingual:ur": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "secret|sandbox-attack-corpus": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 50,
+    "fp": 0
+  },
+  "secret|multilingual:bn": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "secret|multilingual:hi": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "secret|multilingual:ur": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "pii|sandbox-attack-corpus": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 50,
+    "fp": 0
+  },
+  "pii|multilingual:bn": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "pii|multilingual:hi": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "pii|multilingual:ur": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "xss|sandbox-attack-corpus": {
+    "recall": 0.1,
+    "fpr": 0,
+    "fn": 45,
+    "fp": 0
+  },
+  "xss|multilingual:bn": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "xss|multilingual:hi": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "xss|multilingual:ur": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "bash-safety|sandbox-attack-corpus": {
+    "recall": 0.08,
+    "fpr": 0.02,
+    "fn": 46,
+    "fp": 1
+  },
+  "bash-safety|multilingual:bn": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "bash-safety|multilingual:hi": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  },
+  "bash-safety|multilingual:ur": {
+    "recall": 0,
+    "fpr": 0,
+    "fn": 20,
+    "fp": 0
+  }
+}

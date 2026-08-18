@@ -1,0 +1,78 @@
+{
+  "name": "@blackunicorn/bonklm-server",
+  "version": "1.0.15",
+  "description": "BonkLM Guardrail HTTP server — Fastify service exposing /litellm, /portkey, /openai-compatible endpoints with HMAC-SHA256 auth for LiteLLM + Portkey integration",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "bonklm-server": "./dist/bin/server.js"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./hmac": {
+      "import": "./dist/hmac/index.js",
+      "types": "./dist/hmac/index.d.ts",
+      "default": "./dist/hmac/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "Dockerfile",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "test:types": "tsd",
+    "clean": "rm -rf dist",
+    "docker:build": "docker build --build-arg RELEASE_VERSION=$(node -p \"require('./package.json').version\") --build-arg RELEASE_REVISION=$(git rev-parse HEAD) -t ghcr.io/blackunicornsecurity/bonklm-server:$(node -p \"require('./package.json').version\") -f Dockerfile ../.."
+  },
+  "keywords": [
+    "bonklm",
+    "fastify",
+    "guardrails",
+    "llm",
+    "security",
+    "litellm",
+    "portkey",
+    "openai-compatible",
+    "hmac",
+    "prompt-injection",
+    "ai-safety",
+    "server",
+    "docker"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/bonklm-server"
+  },
+  "homepage": "https://github.com/BlackUnicornSecurity/bonklm",
+  "bugs": {
+    "url": "https://github.com/BlackUnicornSecurity/bonklm/issues"
+  },
+  "author": "BlackUnicorn <info@blackunicorn.tech>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "fastify": "^5.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "typescript": "^5.3.3",
+    "vitest": "^4.1.10"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

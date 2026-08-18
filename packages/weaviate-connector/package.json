@@ -1,0 +1,70 @@
+{
+  "name": "@blackunicorn/bonkviate",
+  "version": "1.0.15",
+  "description": "Guarded vector-database client wrapper for BonkLM — validation, secret and injection guardrails around a self-hosted vector search engine",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "author": "BlackUnicorn",
+  "license": "Apache-2.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "test:types": "tsd"
+  },
+  "keywords": [
+    "vector",
+    "rag",
+    "llm",
+    "guardrails",
+    "security",
+    "retrieval",
+    "prompt-injection",
+    "validation",
+    "vector-database",
+    "rag"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/weaviate-connector"
+  },
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "peerDependencies": {
+    "weaviate-client": "^3.11.0"
+  },
+  "peerDependenciesMeta": {
+    "weaviate-client": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "typescript": "^5.3.0",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.10",
+    "weaviate-client": "^3.11.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

@@ -1,0 +1,79 @@
+# Synthetic security-test fixtures. Every fingerprint is paired with the
+# SHA-256 of its complete source line; tools/check-gitleaks-ignore.js fails if
+# a value changes while the file/rule/line tuple stays the same.
+# line-sha256:3f61b21f768dfbbff62bb9d55e1eb2961d29b33e99b01635fda5f25af19ec350
+docs/openclaw-integration.md:generic-api-key:368
+# line-sha256:036d25e89efa7c7ddc78114227848d5f706be08239ee9bdea703cf4c7a523bf4
+docs/user/guides/security-guide.md:generic-api-key:299
+# line-sha256:3fa00095bdf2beea92c5dc382c6c1ef43f00190f7c8a9c95709feb5bf5453436
+packages/core/src/cli/commands/connector-test.test.ts:generic-api-key:318
+# line-sha256:83b95c6866ef65d9b51c9a18d4857bf6c448a8d4171ce54e23be8cc1fbf5185a
+packages/core/src/cli/detection/credentials.test.ts:generic-api-key:58
+# line-sha256:83b95c6866ef65d9b51c9a18d4857bf6c448a8d4171ce54e23be8cc1fbf5185a
+packages/core/src/cli/detection/credentials.test.ts:generic-api-key:98
+# line-sha256:83b95c6866ef65d9b51c9a18d4857bf6c448a8d4171ce54e23be8cc1fbf5185a
+packages/core/src/cli/detection/credentials.test.ts:generic-api-key:145
+# line-sha256:83b95c6866ef65d9b51c9a18d4857bf6c448a8d4171ce54e23be8cc1fbf5185a
+packages/core/src/cli/detection/credentials.test.ts:generic-api-key:254
+# line-sha256:83b95c6866ef65d9b51c9a18d4857bf6c448a8d4171ce54e23be8cc1fbf5185a
+packages/core/src/cli/detection/credentials.test.ts:generic-api-key:281
+# line-sha256:83b95c6866ef65d9b51c9a18d4857bf6c448a8d4171ce54e23be8cc1fbf5185a
+packages/core/src/cli/detection/credentials.test.ts:generic-api-key:316
+# line-sha256:83b95c6866ef65d9b51c9a18d4857bf6c448a8d4171ce54e23be8cc1fbf5185a
+packages/core/src/cli/detection/credentials.test.ts:generic-api-key:350
+# line-sha256:83b95c6866ef65d9b51c9a18d4857bf6c448a8d4171ce54e23be8cc1fbf5185a
+packages/core/src/cli/detection/credentials.test.ts:generic-api-key:461
+# line-sha256:83b95c6866ef65d9b51c9a18d4857bf6c448a8d4171ce54e23be8cc1fbf5185a
+packages/core/src/cli/detection/credentials.test.ts:generic-api-key:592
+# line-sha256:060d9777ceb3792cb2df5176a5183e713949110d85c8767f25c270ce3c820dc3
+packages/core/src/cli/utils/error.test.ts:generic-api-key:61
+# line-sha256:adbe01376037b3f21a359618bd9083e1956268e656070b335c154e1bb5e53656
+packages/core/src/cli/utils/error.test.ts:jwt:151
+# line-sha256:f3a832802774ce15dc44b4327bd43520c577d9907be86b4afc6aff764275610f
+packages/core/src/cli/utils/error.test.ts:generic-api-key:256
+# line-sha256:86387c08d4921772ef5153bb36b546e65e48c7c0ccffed237e5c101f600f3891
+packages/core/src/cli/utils/error.test.ts:generic-api-key:272
+# line-sha256:f5efbb8c2b3bcf28adc6c67673ea574c7fda7188d1ebf99cd1208caf22d7b876
+packages/core/src/cli/utils/error.test.ts:jwt:366
+# line-sha256:6169710c58d656d81c81447a726fc3569acbab91f5edf67e7e3810bb33986fca
+packages/core/src/cli/utils/error.test.ts:generic-api-key:374
+# line-sha256:adbe01376037b3f21a359618bd9083e1956268e656070b335c154e1bb5e53656
+packages/core/src/cli/utils/error.test.ts:jwt:400
+# line-sha256:6169710c58d656d81c81447a726fc3569acbab91f5edf67e7e3810bb33986fca
+packages/core/src/cli/utils/error.test.ts:generic-api-key:410
+# line-sha256:bb8626effe8d7b85316b7632424b6ec6dc68646ee1d4d02f8261a24098816d11
+packages/core/src/cli/utils/secure-credential.test.ts:generic-api-key:489
+# line-sha256:89dc87771ea9620f940a3dafd6ef402cdd812f5f5b4b26a21598e6b39302e9a0
+packages/core/tests/engine/GuardrailEngine.test.ts:generic-api-key:154
+# line-sha256:a2ffc86df564e3a3e89ccac9b89d45ccd32bb7c1ddefdecf48971297b7742b80
+packages/core/tests/unit/common/redact-credential-egress.test.ts:stripe-access-token:40
+# line-sha256:f60d99feb3321999e2a13ff0988671e04daf0a0aaa1154f3cefde60957ad4c6d
+packages/core/tests/unit/common/redact-credential-egress.test.ts:generic-api-key:51
+# line-sha256:8263c9c5207ef836d3c141b115c6b775dfbeaec08db5f4f9546f48aab066d94a
+packages/core/tests/unit/common/redaction-consolidation.test.ts:generic-api-key:58
+# line-sha256:2e0870aa982bf3a9dbcfc7aa166c9b3e0ccc8d899704a83e6e6a197d08301cd4
+packages/core/tests/unit/guards/secret.test.ts:jwt:55
+# line-sha256:08409db49a14ea38f50c3f64476143ea138490aa811b4361b198598225f425fa
+packages/core/tests/unit/guards/secret.test.ts:private-key:78
+# line-sha256:1b767119148b5cd593daebd3375df65c8fa308b73205df459803458860644ddf
+packages/core/tests/unit/guards/secret.test.ts:private-key:86
+# line-sha256:7b968c66ef8ccf6023f4033db79343e9e98b3080819ec12389cdbc272607d84a
+packages/core/tests/unit/guards/secret.test.ts:slack-bot-token:293
+# line-sha256:6dab51b5e1d2d571f514abdbaf54c1ad942058cdf7c506cfbce8df4ba3b5c205
+packages/core/tests/unit/security/override-token.test.ts:generic-api-key:19
+# line-sha256:febd73f78518244e719292f882be9d2f42b27b389f4b9c37c0754b8d1a1e2dee
+packages/core/tests/validators/indirect-injection-match-redaction.test.ts:generic-api-key:72
+# line-sha256:2c840d5a74e4d6270ac8ece3e150b4815b64cbf67b47da192b96aaa18d3605ae
+packages/core/tests/validators/tool-call-args.test.ts:slack-bot-token:101
+# line-sha256:7459ded48aae8ca22027631a000ef6447abb5b8bef47b4fb54512cef6dc03a13
+packages/core/uat/fixtures/attack-patterns.ts:jwt:154
+# line-sha256:b27b024c09fe51c4b760dfc35fb5be24770d9186583a4cdec5f2907d2a519b3c
+packages/core/uat/fixtures/attack-patterns.ts:private-key:166
+# line-sha256:70f8e94fa6c3335051e1c61c6bc75b6e19e11a022616c7cbd94096f1b46ed96f
+packages/core/uat/fixtures/attack-patterns.ts:generic-api-key:173
+# line-sha256:d496c89e9c4db36d6067114bc0ace9e0da3dae6f07e41e8b6eea64f34582fbd9
+packages/core/uat/uat-suite.ts:generic-api-key:1176
+# line-sha256:ae2e15b8197b3c1a03415718df5e0768ef72158bf5d12066ef2eb65c119d9df4
+packages/examples/multi-validator/index.ts:generic-api-key:238
+# line-sha256:3f61b21f768dfbbff62bb9d55e1eb2961d29b33e99b01635fda5f25af19ec350
+packages/examples/openclaw-integration/middleware.ts:generic-api-key:135

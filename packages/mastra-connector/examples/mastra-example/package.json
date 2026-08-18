@@ -1,0 +1,17 @@
+{
+  "name": "mastra-example",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*",
+    "@blackunicorn/bonklm-mastra": "workspace:*",
+    "@mastra/core": "^1.4.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.0.0"
+  }
+}
