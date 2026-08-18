@@ -1,0 +1,9 @@
+paths:
+  .github/workflows/publish.yml:
+    # actionlint 1.7.12 predates GitHub's documented concurrency.queue property.
+    ignore:
+      - 'unexpected key "queue" for "concurrency" section'
+  .github/workflows/recover-release.yml:
+    # Same documented GitHub queue property; keep the compatibility waiver path-scoped.
+    ignore:
+      - 'unexpected key "queue" for "concurrency" section'

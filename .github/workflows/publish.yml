@@ -1,0 +1,563 @@
+name: Publish
+run-name: Publish ${{ github.event.release.tag_name || inputs.tag }}
+on:
+  release:
+    types: [published]
+  # Operator entry path for self-hosted git forges that do not deliver
+  # the `release` event to Actions runners. NOT a second release gate: the
+  # dispatch only delivers the event — every job re-resolves the
+  # PUBLISHED Release object by tag and re-validates identity, scope,
+  # channel, tag->sha, and main ancestry before any mutation, exactly
+  # as on the release event.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Published release tag to publish (e.g. v1.0.2)'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: bonklm-registry-publish
+  cancel-in-progress: false
+  queue: max
+env:
+  IMAGE_NAME: ghcr.io/blackunicornsecurity/bonklm-server
+  STAGING_IMAGE: ghcr.io/blackunicornsecurity/bonklm-server-staging
+jobs:
+  validate:
+    name: Validate release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      kind: ${{ steps.release.outputs.kind }}
+      channel: ${{ steps.release.outputs.channel }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
+      scope: ${{ steps.release.outputs.scope }}
+      sha: ${{ steps.release.outputs.sha }}
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release_ctx.outputs.tag }}
+      release_id: ${{ steps.release_ctx.outputs.release_id }}
+    steps:
+      - name: Checkout published release
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+          fetch-depth: 0
+      - name: Resolve published release context
+        id: release_ctx
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISPATCH_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          RELEASE_JSON="$(jq -c '.release // empty' "$GITHUB_EVENT_PATH")"
+          if [ -z "$RELEASE_JSON" ] && [ -n "$DISPATCH_TAG" ]; then
+            RELEASE_JSON="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${DISPATCH_TAG}")"
+          fi
+          if [ -z "$RELEASE_JSON" ]; then
+            echo "Error: event carries no published release and no dispatch tag was given" >&2
+            exit 1
+          fi
+          if [ "$(jq -r .draft <<<"$RELEASE_JSON")" = "true" ] || [ -z "$(jq -r .published_at <<<"$RELEASE_JSON")" ]; then
+            echo "Error: release is a draft — publish it first" >&2
+            exit 1
+          fi
+          jq -r .body <<<"$RELEASE_JSON" > "$RUNNER_TEMP/release-body.md"
+          {
+            echo "tag=$(jq -r .tag_name <<<"$RELEASE_JSON")"
+            echo "release_id=$(jq -r .id <<<"$RELEASE_JSON")"
+            echo "event_prerelease=$(jq -r .prerelease <<<"$RELEASE_JSON")"
+            echo "body_file=$RUNNER_TEMP/release-body.md"
+          } >> "$GITHUB_OUTPUT"
+      - name: Validate release commit is on main
+        run: |
+          git fetch --force --no-tags origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor HEAD origin/main || {
+            echo "Error: published release commit is not on main"
+            exit 1
+          }
+          git branch --force main origin/main
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.19.0
+          cache: pnpm
+      - name: Install release validation dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Validate and classify release version
+        id: release
+        env:
+          RELEASE_BODY_FILE: ${{ steps.release_ctx.outputs.body_file }}
+          RELEASE_TAG: ${{ steps.release_ctx.outputs.tag }}
+        run: |
+          set -euo pipefail
+          IFS=$'\t' read -r SCOPE KIND PREFIX <<< "$(node tools/release-state.js classify-body "$(cat "$RELEASE_BODY_FILE")")"
+          if [[ "$RELEASE_TAG" != "$PREFIX"* ]]; then
+            echo "Error: release tag does not match release scope $SCOPE"
+            exit 1
+          fi
+          VERSION="${RELEASE_TAG#"$PREFIX"}"
+          if [ "$KIND" = family ]; then
+            PRERELEASE="$(node tools/release-version.js "$VERSION" .changeset/pre.json)"
+          else
+            PRERELEASE="$(node tools/release-version.js "$VERSION")"
+          fi
+          if [ "$PRERELEASE" = true ]; then CHANNEL=next; else CHANNEL=latest; fi
+          {
+            echo "channel=$CHANNEL"
+            echo "kind=$KIND"
+            echo "prerelease=$PRERELEASE"
+            echo "scope=$SCOPE"
+            echo "sha=$(git rev-parse HEAD)"
+            echo "version=$VERSION"
+          } >> "$GITHUB_OUTPUT"
+      - name: Validate release channel
+        env:
+          PRERELEASE: ${{ steps.release.outputs.prerelease }}
+          RELEASE_IS_PRERELEASE: ${{ steps.release_ctx.outputs.event_prerelease }}
+        run: |
+          set -euo pipefail
+          if [ "$PRERELEASE" != "$RELEASE_IS_PRERELEASE" ]; then
+            echo "Error: GitHub release channel does not match the SemVer"
+            exit 1
+          fi
+      - name: Validate release candidates and version invariants
+        env:
+          KIND: ${{ steps.release.outputs.kind }}
+          SCOPE: ${{ steps.release.outputs.scope }}
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          node tools/release-npm-cli.js candidates "$SCOPE" "$VERSION"
+          node tools/check-release-plan.js --assert-consumed "$SCOPE"
+          if [ "$KIND" = family ]; then
+            bash scripts/check-version-pin.sh --expected "$VERSION"
+          else
+            bash scripts/check-version-pin.sh
+          fi
+      - name: Require a public GHCR target and private staging package
+        if: steps.release.outputs.kind == 'family'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node tools/release-state.js assert-package BlackUnicornSecurity bonklm-server public
+          node tools/release-state.js assert-package BlackUnicornSecurity bonklm-server-staging private allow-missing
+          node tools/release-state.js assert-no-mutable-tags BlackUnicornSecurity bonklm-server
+  build:
+    name: Build and test (Node ${{ matrix.node-version }})
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # v20 line tested at its current LTS floor (20.19+): the dev
+        # toolchain (eslint 10) uses import-attribute `with` syntax that
+        # 20.4.0's V8 cannot parse. The LIBRARY's engines floor
+        # (>=20.4.0) is a runtime claim and is unaffected.
+        node-version: [20, 22, 24]
+    steps:
+      - name: Checkout validated commit
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.validate.outputs.sha }}
+          fetch-depth: 0
+      - name: Assert release tag still resolves to the validated commit
+        env:
+          RELEASE_SHA: ${{ needs.validate.outputs.sha }}
+          RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          git fetch --force --no-tags origin main:refs/remotes/origin/main
+          git branch --force main origin/main
+          git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$RELEASE_SHA"
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run release gates
+        env:
+          KIND: ${{ needs.validate.outputs.kind }}
+          SCOPE: ${{ needs.validate.outputs.scope }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          pnpm run build
+          pnpm exec tsc --noEmit
+          pnpm run test:types
+          pnpm run lint
+          pnpm run check:changeset-linked
+          pnpm run check:release-plan
+          pnpm run check:workspace-policy
+          pnpm run check:ee-boundary
+          pnpm run check:edge-node-builtins
+          if [ "$KIND" = family ]; then
+            bash scripts/check-version-pin.sh --expected "$VERSION"
+          else
+            bash scripts/check-version-pin.sh
+          fi
+          pnpm run verify:surface
+          mapfile -t RELEASE_ROOTS < <(node --input-type=module -e \
+            "import { discoverReleaseCandidates } from './tools/release-npm.js'; import { FAMILY_SIZE } from './tools/release-scope.js'; for (const item of discoverReleaseCandidates('.', process.env.VERSION, FAMILY_SIZE, process.env.SCOPE)) console.log(item.path)")
+          ROOT_ARGS=()
+          for root in "${RELEASE_ROOTS[@]}"; do ROOT_ARGS+=(--root "$root"); done
+          node scripts/supply-chain-audit.mjs "${ROOT_ARGS[@]}"
+          node scripts/license-audit.mjs "${ROOT_ARGS[@]}"
+      - name: Install gitleaks
+        uses: ./.github/actions/install-gitleaks
+      - name: Scan release source for secrets
+        run: |
+          node tools/check-gitleaks-ignore.js
+          gitleaks detect --source . --no-git --config .gitleaks.toml --no-banner --redact --verbose
+      - name: Run tests and release-blocking harnesses
+        run: |
+          pnpm run test
+          pnpm run uat
+          node packages/core/benchmarks/sandbox-attack-corpus/run-graduation-gate.mjs
+  artifact-preflight:
+    name: Build and verify release artifacts
+    needs: [validate, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout validated commit
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.validate.outputs.sha }}
+          fetch-depth: 0
+      - name: Assert release tag still resolves to the validated commit
+        env:
+          RELEASE_SHA: ${{ needs.validate.outputs.sha }}
+          RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+        run: |
+          git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$RELEASE_SHA"
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.19.0
+          cache: pnpm
+      - name: Setup QEMU
+        if: needs.validate.outputs.kind == 'family'
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
+        with:
+          image: 'tonistiigi/binfmt:qemu-v10.2.3@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0'
+          platforms: arm64
+      - name: Setup Docker Buildx
+        if: needs.validate.outputs.kind == 'family'
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+        with:
+          version: v0.36.1
+          driver-opts: 'image=moby/buildkit:v0.32.2@sha256:28a898719c18a33f4e8000685287fa36fd0dd9560c6440227d3a732d79bb41d8'
+      - name: Install artifact inspection tools
+        if: needs.validate.outputs.kind == 'family'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes skopeo
+      - name: Install trivy
+        if: needs.validate.outputs.kind == 'family'
+        uses: ./.github/actions/install-trivy
+      - name: Install, build, and verify npm artifacts
+        env:
+          SCOPE: ${{ needs.validate.outputs.scope }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm run build
+          mapfile -t RELEASE_ROOTS < <(node --input-type=module -e \
+            "import { discoverReleaseCandidates } from './tools/release-npm.js'; import { FAMILY_SIZE } from './tools/release-scope.js'; for (const item of discoverReleaseCandidates('.', process.env.VERSION, FAMILY_SIZE, process.env.SCOPE)) console.log(item.path)")
+          ROOT_ARGS=()
+          for root in "${RELEASE_ROOTS[@]}"; do ROOT_ARGS+=(--root "$root"); done
+          node scripts/supply-chain-audit.mjs "${ROOT_ARGS[@]}"
+          node scripts/license-audit.mjs "${ROOT_ARGS[@]}"
+          pnpm run verify:surface
+
+      - name: Pack the exact npm release bundle once
+        env:
+          RELEASE_SHA: ${{ needs.validate.outputs.sha }}
+          SCOPE: ${{ needs.validate.outputs.scope }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: node tools/release-npm-cli.js prepare release/npm "$SCOPE" "$VERSION"
+
+      - name: Verify exact npm tarball surfaces and clean installation
+        env:
+          BONKLM_TARBALL_DIR: release/npm
+        run: |
+          node scripts/check-release-tarballs.js
+          SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+          export SOURCE_DATE_EPOCH
+          node tools/release-npm-cli.js preflight-consumer release/npm release/sbom
+
+      - name: Install gitleaks
+        uses: ./.github/actions/install-gitleaks
+
+      - name: Secret-scan published tarballs
+        env:
+          BONKLM_TARBALL_DIR: release/npm
+        run: scripts/scan-tarballs.sh
+
+      - name: Build the multi-architecture OCI artifact once
+        if: needs.validate.outputs.kind == 'family'
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          SOURCE_DATE_EPOCH="$(git show -s --format=%ct HEAD)"
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --build-arg "RELEASE_VERSION=$VERSION" \
+            --build-arg "RELEASE_REVISION=${{ needs.validate.outputs.sha }}" \
+            --build-arg "SOURCE_DATE_EPOCH=$SOURCE_DATE_EPOCH" \
+            --file packages/bonklm-server/Dockerfile \
+            --provenance=false \
+            --sbom=false \
+            --output type=oci,dest=bonklm-server.oci.tar,rewrite-timestamp=true \
+            .
+          test "$(skopeo inspect --raw oci-archive:bonklm-server.oci.tar | jq -c '[.manifests[].platform | .os + "/" + .architecture] | sort')" = '["linux/amd64","linux/arm64"]'
+          skopeo copy --override-os linux --override-arch amd64 \
+            oci-archive:bonklm-server.oci.tar \
+            docker-archive:bonklm-server-amd64.tar:bonklm-server:amd64
+          skopeo copy --override-os linux --override-arch arm64 \
+            oci-archive:bonklm-server.oci.tar \
+            docker-archive:bonklm-server-arm64.tar:bonklm-server:arm64
+          docker load --input bonklm-server-amd64.tar >/dev/null
+          docker load --input bonklm-server-arm64.tar >/dev/null
+          docker run --rm --platform linux/amd64 --entrypoint node --volume "$PWD/scripts/image-inventory.mjs:/tmp/image-inventory.mjs:ro" bonklm-server:amd64 /tmp/image-inventory.mjs > bonklm-server-amd64.inventory.json
+          docker run --rm --platform linux/arm64 --entrypoint node --volume "$PWD/scripts/image-inventory.mjs:/tmp/image-inventory.mjs:ro" bonklm-server:arm64 /tmp/image-inventory.mjs > bonklm-server-arm64.inventory.json
+
+      - name: Scan amd64 image
+        if: needs.validate.outputs.kind == 'family'
+        run: trivy image --input bonklm-server-amd64.tar --format table --exit-code 1 --ignore-unfixed false --vuln-type os,library --severity HIGH,CRITICAL
+
+      - name: Generate amd64 image SBOM
+        if: needs.validate.outputs.kind == 'family'
+        run: trivy image --input bonklm-server-amd64.tar --format cyclonedx --output bonklm-server-amd64.sbom.json
+
+      - name: Scan arm64 image
+        if: needs.validate.outputs.kind == 'family'
+        run: trivy image --input bonklm-server-arm64.tar --format table --exit-code 1 --ignore-unfixed false --vuln-type os,library --severity HIGH,CRITICAL
+
+      - name: Generate arm64 image SBOM
+        if: needs.validate.outputs.kind == 'family'
+        run: trivy image --input bonklm-server-arm64.tar --format cyclonedx --output bonklm-server-arm64.sbom.json
+
+      - name: Enforce the reviewed image-license policy on both platforms
+        if: needs.validate.outputs.kind == 'family'
+        run: |
+          node scripts/check-image-runtime.mjs bonklm-server-amd64.inventory.json bonklm-server-arm64.inventory.json
+          node scripts/check-sbom-licenses.mjs "${{ needs.validate.outputs.version }}" bonklm-server-amd64.sbom.json bonklm-server-amd64.inventory.json
+          node scripts/check-sbom-licenses.mjs "${{ needs.validate.outputs.version }}" bonklm-server-arm64.sbom.json bonklm-server-arm64.inventory.json
+
+      - name: Smoke-test both platform images
+        if: needs.validate.outputs.kind == 'family'
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          pnpm run docker:smoke -- bonklm-server:amd64 "$VERSION" linux/amd64
+          pnpm run docker:smoke -- bonklm-server:arm64 "$VERSION" linux/arm64
+
+      - name: Retain the verified release artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bonklm-${{ needs.validate.outputs.version }}-release-artifacts
+          path: |
+            release/sbom
+            bonklm-server-*.json
+            bonklm-server.oci.tar
+            release/npm
+          if-no-files-found: error
+          retention-days: 90
+  release-transaction:
+    name: Publish and reconcile release
+    environment: public-release
+    needs: [validate, build, artifact-preflight]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+      statuses: write
+    env:
+      CHANNEL: ${{ needs.validate.outputs.channel }}
+      RELEASE_ID: ${{ needs.validate.outputs.release_id }}
+      RELEASE_PRERELEASE: ${{ needs.validate.outputs.prerelease }}
+      RELEASE_SCOPE: ${{ needs.validate.outputs.scope }}
+      RELEASE_SHA: ${{ needs.validate.outputs.sha }}
+      RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+      RELEASE_VERSION: ${{ needs.validate.outputs.version }}
+      STAGING_TAG: staging-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Checkout validated commit
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          persist-credentials: false
+          ref: ${{ needs.validate.outputs.sha }}
+          fetch-depth: 0
+      - name: Setup pnpm
+        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.19.0
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+      - name: Install trusted release tooling dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Download verified release artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: bonklm-${{ needs.validate.outputs.version }}-release-artifacts
+      - name: Pin provenance-capable npm CLI
+        run: node tools/install-pinned-npm.js
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Install registry inspection tool
+        if: needs.validate.outputs.kind == 'family'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes skopeo
+      - name: Verify private release policy against the exact public bytes
+        env:
+          BONKLM_TARBALL_DIR: release/npm
+          BONKLM_RESTRICTED_TERMS: ${{ secrets.BONKLM_RELEASE_DENY_TERMS }}
+          BONKLM_REQUIRE_RESTRICTED_TERMS: true
+        run: |
+          node scripts/check-release-tarballs.js
+          node scripts/check-public-export.js
+      - name: Verify npm read-write authorization before either registry mutates
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # whoami proves the token is live; the access listing must query
+          # the package SCOPE, not the user — granular tokens cannot call
+          # the user-form endpoint (/-/org/<user>/package) even with org
+          # read-write granted, while the scope form returns exactly the
+          # per-package grants preflight-access verifies.
+          npm whoami > /dev/null
+          npm access list packages "@blackunicorn" --json > "$RUNNER_TEMP/npm-access.json"
+          node tools/release-npm-cli.js preflight-access release/npm "$RUNNER_TEMP/npm-access.json"
+      - name: Revalidate release authorization before mutation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch --force origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$RELEASE_SHA"
+          node tools/release-state.js revalidate
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${RELEASE_SHA}" -f state=pending -f context=bonklm/release-ready -f description='Registry transaction in progress' >/dev/null
+      - name: Log in to GitHub Container Registry
+        if: needs.validate.outputs.kind == 'family'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push only a private opaque staging reference
+        id: stage
+        if: needs.validate.outputs.kind == 'family'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node tools/release-state.js assert-package BlackUnicornSecurity bonklm-server-staging private allow-missing
+          skopeo copy --all oci-archive:bonklm-server.oci.tar "docker://${STAGING_IMAGE}:${STAGING_TAG}"
+          node tools/release-state.js assert-package BlackUnicornSecurity bonklm-server-staging private
+          echo "digest=$(skopeo inspect --format '{{.Digest}}' "docker://${STAGING_IMAGE}:${STAGING_TAG}")" >> "$GITHUB_OUTPUT"
+      - name: Sign and verify the staged image digest
+        if: needs.validate.outputs.kind == 'family'
+        env:
+          DIGEST: ${{ steps.stage.outputs.digest }}
+        run: |
+          cosign sign --yes "${STAGING_IMAGE}@${DIGEST}"
+          cosign verify --certificate-identity "https://github.com/BlackUnicornSecurity/bonklm/.github/workflows/publish.yml@refs/tags/v${RELEASE_VERSION}" --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' "${STAGING_IMAGE}@${DIGEST}" >/dev/null
+      - name: Publish immutable npm versions under an opaque staging tag
+        id: publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+        run: node tools/release-npm-cli.js publish release/npm "$STAGING_TAG"
+      - name: Verify exact npm bytes and source-bound provenance
+        run: |
+          node tools/release-npm-cli.js verify release/npm
+          node tools/release-npm-cli.js verify-provenance release/npm
+      - name: Snapshot the complete npm channel recovery vector
+        id: snapshot
+        run: |
+          node tools/release-npm-cli.js snapshot release/npm "$CHANNEL" release/npm-recovery.json
+          cosign sign-blob --yes --bundle release/npm-recovery.sigstore.json release/npm-recovery.json
+      - name: Retain the recovery vector before public promotion
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: bonklm-${{ needs.validate.outputs.version }}-npm-recovery
+          path: |
+            release/npm-recovery.json
+            release/npm-recovery.sigstore.json
+          if-no-files-found: error
+          retention-days: 90
+      - name: Expose the signed exact container after npm exact versions verify
+        if: needs.validate.outputs.kind == 'family'
+        env:
+          DIGEST: ${{ steps.stage.outputs.digest }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node tools/release-state.js revalidate
+          node tools/release-state.js assert-package BlackUnicornSecurity bonklm-server public
+          EFFECTIVE_DIGEST="$(node tools/release-container.js ensure-exact "$STAGING_IMAGE" "${IMAGE_NAME}:${RELEASE_VERSION}" "$DIGEST" "$RELEASE_VERSION" "$RELEASE_SHA")"
+          test "$(skopeo inspect --format '{{.Digest}}' "docker://${IMAGE_NAME}:${RELEASE_VERSION}")" = "$EFFECTIVE_DIGEST"
+          # Signatures are separate manifests in the staging package and do
+          # not transfer across packages on copy — sign the exposed public
+          # digest keylessly (same workflow identity) while registry
+          # credentials are still present, then verify after logout.
+          cosign sign --yes "${IMAGE_NAME}@${EFFECTIVE_DIGEST}" >/dev/null
+          docker logout ghcr.io
+          cosign verify --certificate-identity "https://github.com/BlackUnicornSecurity/bonklm/.github/workflows/publish.yml@refs/tags/v${RELEASE_VERSION}" --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' "${IMAGE_NAME}@${EFFECTIVE_DIGEST}" >/dev/null
+      - name: Promote and reconcile the public npm channel
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          node tools/release-state.js revalidate
+          node tools/release-npm-cli.js promote release/npm "$CHANNEL" release/npm-recovery.json
+          node tools/release-state.js revalidate
+          node tools/release-npm-cli.js verify-channel release/npm "$CHANNEL"
+          node tools/release-npm-cli.js verify-provenance release/npm "$CHANNEL"
+          node tools/release-state.js revalidate
+      - name: Restore the original npm channel after a failed promotion or reconciliation
+        if: failure() && steps.snapshot.outcome == 'success'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: node tools/release-npm-cli.js restore release/npm release/npm-recovery.json
+      - name: Remove opaque npm staging references
+        if: always() && steps.publish.outcome != 'skipped'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: node tools/release-npm-cli.js cleanup-staging release/npm "$STAGING_TAG"
+      - name: Reauthenticate for private container cleanup
+        if: always() && needs.validate.outputs.kind == 'family' && steps.stage.outcome != 'skipped'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Remove the private container staging reference
+        if: always() && needs.validate.outputs.kind == 'family' && steps.stage.outcome != 'skipped'
+        run: node tools/release-container.js cleanup-staging "${STAGING_IMAGE}:${STAGING_TAG}"
+      - name: Mark the release transaction ready
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api "repos/${GITHUB_REPOSITORY}/statuses/${RELEASE_SHA}" -f state=success -f context=bonklm/release-ready -f description='All release artifacts reconciled' >/dev/null

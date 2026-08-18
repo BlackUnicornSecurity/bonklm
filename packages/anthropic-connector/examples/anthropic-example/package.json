@@ -1,0 +1,17 @@
+{
+  "name": "anthropic-example",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.28.0",
+    "@blackunicorn/bonklm": "workspace:*",
+    "@blackunicorn/bonklm-anthropic": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0"
+  }
+}

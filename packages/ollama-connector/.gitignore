@@ -1,0 +1,8 @@
+# Build artifacts
+dist/
+
+# Dependencies
+node_modules/
+
+# Test coverage
+coverage/

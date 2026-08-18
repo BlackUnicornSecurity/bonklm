@@ -1,0 +1,109 @@
+# LLM-Guardrails (BonkLM) — Tier-0 blocking gates (BU framework).
+# Optional Python pre-commit parity harness. Normal installs use the canonical
+# simple-git-hooks command in package.json. Package manager: pnpm@9.15.0.
+#
+# Gates enforced (all must pass before commit):
+#   - gitleaks       : secret scan, staged-only, zero tolerance
+#   - eslint         : strict lint (pnpm lint, via local language=system hook)
+#   - tsc --noEmit   : strict typecheck (pnpm typecheck, via local hook)
+#   - hygiene        : whitespace, EOF, yaml/json validity, large files,
+#                      merge-conflict markers, private keys, line endings
+#
+# Install (once per clone):
+#   pipx install pre-commit   # or: brew install pre-commit
+#   pre-commit install        # writes .git/hooks/pre-commit
+#
+# Run manually on all files:
+#   pre-commit run --all-files
+#
+# macOS Tahoe (Darwin 25/26) libexpat ABI mismatch:
+#   If `pre-commit install` or first run fails with
+#   `Symbol not found: _XML_SetAllocTrackerActivationThreshold`,
+#   apply the one-time pyexpat relink documented in
+#   ~/Projects/Infra/README.md §"Known issue — macOS Tahoe libexpat".
+
+minimum_pre_commit_version: "3.5.0"
+fail_fast: false
+
+default_install_hook_types:
+  - pre-commit
+
+default_stages:
+  - pre-commit
+
+repos:
+  - repo: local
+    hooks:
+      - id: gitleaks-ignore-integrity
+        name: verify gitleaks ignore integrity
+        entry: node tools/check-gitleaks-ignore.js
+        language: system
+        pass_filenames: false
+
+  # -------------------------------------------------------------------------
+  # Tier 0 — Secret scan (zero tolerance, staged-only)
+  # -------------------------------------------------------------------------
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: 83d9cd684c87d95d656c1458ef04895a7f1cbd8e
+    hooks:
+      - id: gitleaks
+        name: gitleaks (staged scan, zero tolerance)
+        description: >-
+          Block commits that contain secrets/API keys/tokens/PII. Uses the
+          repo-local .gitleaks.toml when present. No suppressions without
+          written justification.
+
+  # -------------------------------------------------------------------------
+  # Tier 0 — Hygiene
+  # -------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        args: ["--markdown-linebreak-ext=md"]
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ["--allow-multiple-documents"]
+      - id: check-json
+        # tsconfig*.json + jsconfig*.json allow JSONC (comments) per the
+        # TypeScript spec; check-json uses strict JSON and would reject them.
+        exclude: ^(tsconfig.*\.json|jsconfig.*\.json|.*/tsconfig.*\.json|.*/jsconfig.*\.json|.*\.code-workspace)$
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: mixed-line-ending
+        args: ["--fix=lf"]
+      - id: detect-private-key
+        # LLM-Guardrails is a security-testing library; test fixtures
+        # intentionally include canonical fake RSA/EC private keys so the
+        # detection logic can be unit-tested. These three paths are the
+        # known fixture locations — re-audit when test fixtures move.
+        exclude: |
+          (?x)^(
+            \.claude/validators-node/test/validators\.test\.js|
+            packages/core/tests/unit/guards/secret\.test\.ts|
+            packages/core/uat/fixtures/attack-patterns\.ts|
+            team/uat/fixtures/attack-patterns\.ts
+          )$
+
+  # -------------------------------------------------------------------------
+  # Tier 0 — Lint + Typecheck (delegated to pnpm scripts already defined in
+  # package.json so CI and pre-commit run the exact same command).
+  # -------------------------------------------------------------------------
+  - repo: local
+    hooks:
+      - id: pnpm-lint
+        name: pnpm lint (eslint, strict)
+        entry: pnpm lint
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+        types_or: [ts, tsx, javascript, jsx]
+
+      - id: pnpm-typecheck
+        name: pnpm typecheck (tsc --noEmit)
+        entry: pnpm typecheck
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+        types_or: [ts, tsx]

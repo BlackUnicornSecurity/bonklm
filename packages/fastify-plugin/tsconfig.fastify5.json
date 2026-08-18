@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.fastify5min.json",
+  "compilerOptions": {
+    "paths": {
+      "@blackunicorn/bonklm": ["../core/dist/index.d.ts"],
+      "@blackunicorn/bonklm-fastify": ["./dist/index.d.ts"],
+      "@blackunicorn/bonklm-logger": ["../logger/dist/index.d.ts"],
+      "fastify": ["./node_modules/fastify5"]
+    }
+  }
+}

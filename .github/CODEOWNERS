@@ -1,0 +1,36 @@
+# CODEOWNERS — review ownership for release-critical surfaces.
+#
+# Owners reference the publishing organization. No dedicated
+# maintainers team exists yet — replace the org handle with a scoped
+# team once one is created so ownership can rotate without editing
+# every rule.
+
+# Default owner for anything not listed below.
+* @BlackUnicornSecurity
+
+# Release automation + CI: any change here can publish artifacts, so
+# it always requires maintainer review.
+/.github/workflows/          @BlackUnicornSecurity
+/.github/actions/            @BlackUnicornSecurity
+/.github/CODEOWNERS          @BlackUnicornSecurity
+/scripts/                    @BlackUnicornSecurity
+/tools/oss-export/           @BlackUnicornSecurity
+
+# Publish-surface manifests: version + packaging metadata ship to the
+# registry unchanged; treat edits with release scrutiny.
+/packages/core/package.json        @BlackUnicornSecurity
+/packages/bonklm-server/package.json @BlackUnicornSecurity
+
+# Authentication + engine core: the request-auth and fail-closed
+# behavior of the server and engine is security-critical.
+/packages/bonklm-server/src/       @BlackUnicornSecurity
+/packages/core/src/engine/         @BlackUnicornSecurity
+/packages/core/src/guards/         @BlackUnicornSecurity
+/packages/core/src/validators/     @BlackUnicornSecurity
+
+# Secret-scanner configuration alters what the zero-tolerance gate
+# ignores — review every edit.
+/.gitleaks.toml               @BlackUnicornSecurity
+
+# Root manifest: pnpm overrides + toolchain pins govern the dev/test closure
+/package.json @BlackUnicornSecurity

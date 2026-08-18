@@ -1,0 +1,72 @@
+{
+  "name": "@blackunicorn/bonklm-langchain",
+  "version": "1.0.16",
+  "description": "LangChain connector for BonkLM",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint src",
+    "type-check": "tsc --noEmit",
+    "test:types": "tsd"
+  },
+  "keywords": [
+    "langchain",
+    "llm",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "jailbreak-detection",
+    "content-filtering",
+    "callback-handler"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/langchain-connector"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "peerDependencies": {
+    "@langchain/core": "^0.3.0 || ^0.4.0 || ^1.0.0",
+    "langchain": "^1.0.0 || ^1.4.0"
+  },
+  "peerDependenciesMeta": {
+    "@langchain/core": {
+      "optional": true
+    },
+    "langchain": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@langchain/core": "^0.3.0",
+    "@types/node": "^20.10.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "typescript": "^5.3.0",
+    "vitest": "^4.1.10"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}

@@ -1,0 +1,102 @@
+# Tier-0 enforcement gates for LLM-Guardrails (BonkLM publishing repo).
+#
+# This workflow adds ONLY the Tier-0 gates that are missing from ci.yml.
+# It is intentionally minimal and MUST NOT duplicate jobs that ci.yml
+# already owns.
+#
+# Coverage map (Tier-0 'Blocking' rules from AGENTS.md / CLAUDE.md):
+#
+#   * Never commit secrets        — OWNED HERE (secret-scan job).
+#   * Secret scan, zero tolerance — OWNED HERE (secret-scan job).
+#   * Conventional Commits        — repo convention, no CI job yet.
+#   * Many small files            — review-gated, no CI job yet.
+#   * Test everything changed     — ci.yml `test` (Vitest thresholds are
+#                                   enforced; Codecov is reporting only).
+#   * Strict lint + typecheck     — ci.yml `lint` + `type-check` (eslint
+#                                   rule audit for no-`any` / no-dead-code
+#                                   tracked separately).
+#
+# Other Tier-1 surfaces ci.yml already covers and which this file MUST NOT
+# re-add: EE License Boundary (`ee-boundary`), Workspace Tiering
+# (`workspace-policy`), Changeset Linked-Group (`changeset-linked`),
+# Version-Locked Release Plan (`release-plan`), Container Build (`container`),
+# Tarball Drift (`tarball-drift`), Type Surface (`type-surface`), Build,
+# UAT Harness, Performance Benchmark, Sandbox Graduation Gate,
+# Temporal Integration.
+#
+# DESIGN NOTES:
+#
+#   * secret-scan calls the gitleaks CLI directly, NOT a third-party
+#     gitleaks-action. The scanner source is pinned to an immutable upstream
+#     commit. Detection rules come from the repo-root
+#     .gitleaks.toml so this gate, the local pre-commit hook, and
+#     scripts/scan-tarballs.sh all consume one rule source.
+#   * Actions SHA-pinned to verified `vX.Y.Z` release SHAs resolved via
+#     `gh api repos/<owner>/<repo>/git/ref/tags/<tag>` on 2026-06-21.
+#   * Workflow-level `permissions: contents: read` (least-privilege).
+#   * SHA values from `github.event.pull_request.*` are passed through `env:`
+#     (not inlined into `run:`) per the GitHub Actions injection-safety
+#     guidance — `BASE_SHA`/`HEAD_SHA` are 40-char hex IDs that cannot
+#     contain shell metacharacters, but the env-var pattern is the
+#     defense-in-depth idiom and matches the project's secure-workflow norm.
+#   * On PR: gitleaks walks the base..HEAD delta only (NOT --all). --all
+#     was rejected as a DoS / gate-fatigue vector (force-pushed synthetic
+#     history balloons CI; historical-debt findings punish unrelated PRs).
+#   * On push to main: working tree + HEAD only — belt-and-braces guard
+#     against a direct-to-main release commit slipping past the PR pipeline.
+
+name: tier0
+
+on:
+  pull_request:
+    branches: ['**']
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  secret-scan:
+    name: Secret scan (gitleaks CLI, zero tolerance)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout (full history on PR for base..HEAD diff, HEAD on push)
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: ${{ github.event_name == 'pull_request' && 0 || 1 }}
+
+      - name: Install commit-pinned gitleaks source
+        uses: ./.github/actions/install-gitleaks
+
+      - name: Verify gitleaks ignore integrity
+        run: node tools/check-gitleaks-ignore.js
+
+      - name: Run gitleaks (PR base..HEAD diff scan)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # SHA values are 40-char hex IDs (validated by GitHub event schema),
+        # so the env-var pattern is defense-in-depth — they cannot contain
+        # shell metacharacters but we route through env per the GitHub
+        # Actions injection-safety guidance.
+        run: |
+          gitleaks detect \
+            --source . \
+            --config .gitleaks.toml \
+            --no-banner \
+            --redact \
+            --verbose \
+            --log-opts="${BASE_SHA}..${HEAD_SHA}"
+
+      - name: Run gitleaks (push — HEAD + working tree)
+        if: github.event_name == 'push'
+        run: |
+          gitleaks detect \
+            --source . \
+            --config .gitleaks.toml \
+            --no-banner \
+            --redact \
+            --verbose

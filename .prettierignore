@@ -1,0 +1,91 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Test coverage
+coverage/
+
+# Team workspace (internal docs)
+team/
+
+# Generated files
+*.min.js
+*.d.ts
+*.generated.*
+
+# Tool-generated docs (owned by changesets — do not hand-format)
+CHANGELOG.md
+.changeset/README.md
+
+# Local demo evidence (untracked run output / transcripts — not hand-authored)
+demo/
+
+# Prettier is non-idempotent on this file: proseWrap reflow of a blockquote that
+# contains a long inline [needs-info: …] annotation appends a stray '>' on every
+# run (never converges). Excluded until the annotation is resolved/restructured.
+docs/user/examples/usage-patterns.md
+
+# Package lock files
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Claude files
+.claude/
+
+# Local agent-harness artifacts (untracked, machine-generated — not hand-authored)
+.agents/
+.codex/
+AGENTS.md
+
+# Documentation outputs
+docs/generated/
+
+# Vendors
+vendor/
+
+# Temp files
+*.tmp
+.temp/
+tmp/
+
+# Cache
+.cache/
+.parcel-cache/
+.eslintcache
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+
+# Backup files
+*.bak
+*.backup
+
+# Generated agent rule surfaces (Infra/gen_rules.py) — not Prettier-formatted
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+.clinerules
+.rules/
+.edition-boundary.yaml
+.cursor/

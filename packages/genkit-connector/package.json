@@ -1,0 +1,69 @@
+{
+  "name": "@blackunicorn/bonklm-genkit",
+  "version": "1.0.16",
+  "description": "Google Genkit plugin for BonkLM",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "type-check": "tsc --noEmit",
+    "test:types": "tsd"
+  },
+  "keywords": [
+    "genkit",
+    "google",
+    "llm",
+    "guardrails",
+    "security",
+    "prompt-injection",
+    "jailbreak-detection",
+    "content-filtering",
+    "flows",
+    "plugins"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BlackUnicornSecurity/bonklm.git",
+    "directory": "packages/genkit-connector"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@blackunicorn/bonklm": "workspace:*"
+  },
+  "peerDependencies": {
+    "genkit": "^1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "genkit": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@vitest/coverage-v8": "^4.1.10",
+    "genkit": "^1.41.0",
+    "typescript": "^5.3.0",
+    "vitest": "^4.1.10"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.4.0"
+  }
+}
